@@ -2,6 +2,7 @@
 import React, { Component } from 'react'
 import "./schoolPlanner.css"
 import { fas } from '@fortawesome/free-solid-svg-icons'
+import { apiUrl } from "../../../../../config/api";
 //.........VARIABLES................
 var courses=[]
 var lectures=[]
@@ -47,7 +48,7 @@ export default class SchoolPlanner extends Component {
     this.setState({
       lecture_isLoading:true
     })
-    let url = "http://localhost:4000/api/user/setPageFinishLecture/"+ this.props.state.my_id+"/"+lecture._id+"/"+boolean;
+    let url = apiUrl("/api/user/setPageFinishLecture/")+ this.props.state.my_id+"/"+lecture._id+"/"+boolean;
     let options = {
       method: "PUT",
       mode: "cors",
@@ -82,7 +83,7 @@ export default class SchoolPlanner extends Component {
     this.setState({
       lecture_isLoading:true
     })
-    let url = "http://localhost:4000/api/user/hideUncheckedLectures/"+ this.props.state.my_id;
+    let url = apiUrl("/api/user/hideUncheckedLectures/")+ this.props.state.my_id;
     let options = {
       method: "PUT",
       mode: "cors",
@@ -106,7 +107,7 @@ export default class SchoolPlanner extends Component {
     this.setState({
       lecture_isLoading:true
     })
-    let url = "http://localhost:4000/api/user/unhideUncheckedLectures/"+ this.props.state.my_id;
+    let url = apiUrl("/api/user/unhideUncheckedLectures/")+ this.props.state.my_id;
     let options = {
       method: "PUT",
       mode: "cors",
@@ -311,7 +312,7 @@ export default class SchoolPlanner extends Component {
       })
       let ul = document.getElementById("schoolPlanner_lectures_ul");
       ul.innerHTML=""
-      let url = "http://localhost:4000/api/user/update/" + this.props.state.my_id;
+      let url = apiUrl("/api/user/update/") + this.props.state.my_id;
       let req = new Request(url, {
         method: "GET",
         mode: "cors",
@@ -556,7 +557,7 @@ export default class SchoolPlanner extends Component {
     })
     let ul = document.getElementById("schoolPlanner_lectures_ul");
     ul.innerHTML=""
-    let url = "http://localhost:4000/api/user/update/" + this.props.state.my_id;
+    let url = apiUrl("/api/user/update/") + this.props.state.my_id;
     let req = new Request(url, {
       method: "GET",
       mode: "cors",
@@ -874,7 +875,7 @@ export default class SchoolPlanner extends Component {
     let ul = document.getElementById("schoolPlanner_courses_ul");
     ul.innerHTML=""
     document.getElementById("schoolPlanner_courses_ul").innerHTML="";
-    let url = "http://localhost:4000/api/user/update/" + this.props.state.my_id;
+    let url = apiUrl("/api/user/update/") + this.props.state.my_id;
     let req = new Request(url, {
       method: "GET",
       mode: "cors",
@@ -1151,7 +1152,7 @@ export default class SchoolPlanner extends Component {
     for (var i = 0; i < checkedLectures.length; i++) {
       console.log(checkedLectures[i])
       let url =
-        "http://localhost:4000/api/user/deleteLecture/"+ this.props.state.my_id +"/" + checkedLectures[i];
+        apiUrl("/api/user/deleteLecture/")+ this.props.state.my_id +"/" + checkedLectures[i];
       let options = {
         method: "DELETE", 
         mode: "cors",
@@ -1177,7 +1178,7 @@ export default class SchoolPlanner extends Component {
     //......DELETEING item FROM itemS DB
     for (var i = 0; i < checkedCourses.length; i++) {
       let url =
-        "http://localhost:4000/api/user/deleteCourse/"+ this.props.state.my_id +"/" + checkedCourses[i];
+        apiUrl("/api/user/deleteCourse/")+ this.props.state.my_id +"/" + checkedCourses[i];
       let options = {
         method: "DELETE", 
         mode: "cors",
@@ -1202,7 +1203,7 @@ export default class SchoolPlanner extends Component {
     document.getElementById("schoolPlanner_addCourse_div").style.display =
       "none";
       let url =
-        "http://localhost:4000/api/user/editCourse/"+ this.props.state.my_id +"/" + target_editCourse;
+        apiUrl("/api/user/editCourse/")+ this.props.state.my_id +"/" + target_editCourse;
       let options = {
         method: "POST", 
         mode: "cors",
@@ -1239,7 +1240,7 @@ export default class SchoolPlanner extends Component {
     document.getElementById("schoolPlanner_addCourse_div").style.display =
       "none";
       let url =
-        "http://localhost:4000/api/user/editCourse/"+ this.props.state.my_id +"/" + target_editCourse;
+        apiUrl("/api/user/editCourse/")+ this.props.state.my_id +"/" + target_editCourse;
       let options = {
         method: "POST", 
         mode: "cors",
@@ -1280,7 +1281,7 @@ editCoursePages = async () => {
   })
   for(var i = 0;i<course_pages.length;i++){
     let url =
-      "http://localhost:4000/api/user/editCoursePages/"+ this.props.state.my_id +"/" + course_pages[i].course_name;
+      apiUrl("/api/user/editCoursePages/")+ this.props.state.my_id +"/" + course_pages[i].course_name;
     let options = {
       method: "POST", 
       mode: "cors",
@@ -1315,7 +1316,7 @@ editCoursePages = async () => {
     this.setState({
       lecture_isLoading:true
     })
-    let url = "http://localhost:4000/api/user/editLecture/"+ this.props.state.my_id+"/"+object._id;
+    let url = apiUrl("/api/user/editLecture/")+ this.props.state.my_id+"/"+object._id;
     let options = {
       method: "POST",
       mode: "cors",
@@ -1346,7 +1347,7 @@ editCoursePages = async () => {
     if (!object.lecture_date)  object.lecture_date="-"
     if (!object.lecture_length)  object.lecture_length=0
     if (!object.lecture_progress)  object.lecture_progress=0
-    let url = "http://localhost:4000/api/user/addLecture/"+ this.props.state.my_id;
+    let url = apiUrl("/api/user/addLecture/")+ this.props.state.my_id;
     let options = {
       method: "POST",
       mode: "cors",
@@ -1374,7 +1375,7 @@ editCoursePages = async () => {
     if (object.course_class==="Course classification")  object.course_class="-"
     if (object.course_status==="Course status")  object.course_status="-"
 
-    let url = "http://localhost:4000/api/user/addCourse/"+ this.props.state.my_id;
+    let url = apiUrl("/api/user/addCourse/")+ this.props.state.my_id;
     let options = {
       method: "POST",
       mode: "cors",

@@ -2,6 +2,7 @@ import React from "react";
 import Addfriend from "./AddFriend/AddFriend"
 import DropHorizontally from "./DropHorizontally";
 import FriendsList from "./FriendsList/FriendsList";
+import { apiUrl } from "../../../config/api";
 
 class Friends extends React.Component {
   constructor(props) {
@@ -12,7 +13,7 @@ class Friends extends React.Component {
   //......SEARCH FOR USERS.......
   ////////////////////////SEARCH USER/////////////////////////
   searchUsers = (target) => {
-    let url = "https://backendstep.onrender.com/api/user/searchUsers/" + target;
+    let url = apiUrl("/api/user/searchUsers/") + target;
     let options = {
       method: "GET",
       mode: "cors",
@@ -93,7 +94,7 @@ class Friends extends React.Component {
   //.....ADD A USER..........
    addFriend = (friend_username) => {
     let url =
-      "https://backendstep.onrender.com/api/user/addFriend/" + friend_username;
+      apiUrl("/api/user/addFriend/") + friend_username;
     let options = {
       method: "POST",
       mode: "cors",

@@ -31,6 +31,7 @@ import Chat from "./SubApps/Chat/Chat";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
 import SchoolPlanner from "./SubApps/StudyPlannner/components/SchoolPlanner/SchoolPlanner";
 import axios from "axios";
+import { apiUrl } from "../config/api";
 //...........component..................
 class App extends React.Component {
   //..........states...........
@@ -109,7 +110,7 @@ class App extends React.Component {
 
   //......MAKE YOURSELF AVAILABLE TO CHAT......
   availableToChat = (isConnected) => {
-    let url = "http://localhost:4000/api/user/isOnline/" + this.state.my_id;
+    let url = apiUrl("/api/user/isOnline/") + this.state.my_id;
     let options = {
       method: "PUT",
       mode: "cors",
@@ -692,7 +693,7 @@ class App extends React.Component {
   ////////////////////////////Delete terminology////////////////////////////
   deleteTerminology = (term_id) => {
     let url =
-      "http://localhost:4000/api/user/deleteTerminology/" +
+      apiUrl("/api/user/deleteTerminology/") +
       term_id +
       "/" +
       this.state.my_id;
@@ -776,7 +777,7 @@ class App extends React.Component {
         app_is_loading: true,
       });
       let url =
-        "http://localhost:4000/api/user/newTerminology/" + this.state.my_id;
+        apiUrl("/api/user/newTerminology/") + this.state.my_id;
       let options = {
         method: "POST",
         mode: "cors",
@@ -879,7 +880,7 @@ class App extends React.Component {
         });
     } else {
       let url =
-        "http://localhost:4000/api/user/editTerminology/" +
+        apiUrl("/api/user/editTerminology/") +
         this.termIdSelected +
         "/" +
         this.state.my_id;
@@ -987,7 +988,7 @@ class App extends React.Component {
   postComment = (event, post_id, input_id) => {
     if (event.which === 13) {
       let url =
-        "http://localhost:4000/api/posts/commentPost/" +
+        apiUrl("/api/posts/commentPost/") +
         post_id.slice(10, post_id.length) +
         "/" +
         document.getElementById(input_id).value;
@@ -1016,7 +1017,7 @@ class App extends React.Component {
     textarea.style.height = "70px";
     if (message && message.trim() !== "") {
       let url =
-        "http://localhost:4000/api/chat/sendMessage/" +
+        apiUrl("/api/chat/sendMessage/") +
         this.state.friendID_selected +
         "/" +
         this.state.my_id;
@@ -1050,7 +1051,7 @@ class App extends React.Component {
     document.getElementById("server_answer_message").textContent = "Adding ...";
     document.getElementById("server_answer").style.width = "fit-content";
     let url =
-      "http://localhost:4000/api/user/acceptFriend/" +
+      apiUrl("/api/user/acceptFriend/") +
       this.state.my_id +
       "/" +
       friend_trim;
@@ -1069,7 +1070,7 @@ class App extends React.Component {
           "You're now friends!";
 
         let url =
-          "http://localhost:4000/api/user/editUserInfo/" +
+          apiUrl("/api/user/editUserInfo/") +
           this.state.my_id +
           "/" +
           friend_trim;
@@ -1111,7 +1112,7 @@ class App extends React.Component {
     let friend_trim = friend.slice(12, friend.length);
     alert(friend_trim);
     let url =
-      "http://localhost:4000/api/user/editUserInfo/" +
+      apiUrl("/api/user/editUserInfo/") +
       this.state.my_id +
       "/" +
       friend_trim;
@@ -1146,7 +1147,7 @@ class App extends React.Component {
 
   buildFriendsList = () => {
     //...START FETCHING FRIENDS
-    let url = "http://localhost:4000/api/user/update/" + this.state.my_id;
+    let url = apiUrl("/api/user/update/") + this.state.my_id;
     let req = new Request(url, {
       method: "GET",
       mode: "cors",
@@ -1242,7 +1243,7 @@ class App extends React.Component {
   };
   ////////////////////////////Update State//////////DONE/////////////////////
   updateUserInfo = () => {
-    let url = "http://localhost:4000/api/user/update/" + this.state.my_id;
+    let url = apiUrl("/api/user/update/") + this.state.my_id;
     let req = new Request(url, {
       method: "GET",
       mode: "cors",
@@ -1365,7 +1366,7 @@ class App extends React.Component {
 
   updateBeforeLeave = () => {
     let url =
-      "http://localhost:4000/api/user/updateBeforeLeave/" + this.state.my_id;
+      apiUrl("/api/user/updateBeforeLeave/") + this.state.my_id;
     let options = {
       method: "PUT",
       mode: "cors",

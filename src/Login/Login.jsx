@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "../Login/login.css";
+import { apiUrl } from "../config/api";
 
 const Login = ({ onLogin }) => {
   const [is_loading, setIs_loading] = useState(null);
@@ -62,7 +63,7 @@ const Login = ({ onLogin }) => {
 
     if (Login_password_input.value && Login_username_input.value) {
       setIs_loading(true);
-      let url = "http://localhost:4000/api/user/login/";
+      let url = apiUrl("/api/user/login/");
       let req = new Request(url, {
         method: "POST",
         mode: "cors",
@@ -179,7 +180,7 @@ const Login = ({ onLogin }) => {
       Login_lastname_input.value &&
       Login_email_input.value
     ) {
-      const url = "http://localhost:4000/api/user/signup";
+      const url = apiUrl("/api/user/signup");
       const options = {
         method: "POST",
         mode: "cors",

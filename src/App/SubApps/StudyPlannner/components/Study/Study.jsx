@@ -1,6 +1,7 @@
 //...........IMPORT..........
 import React, { createElement, useEffect } from 'react'
 import "./study.css"
+import { apiUrl } from "../../../../../config/api";
 //.........VARIABLES.................
 var keywordStructure
 var keywordStructureProperty
@@ -39,7 +40,7 @@ const Study = (props) => {
   const deleteCustomize=(customizeID,type)=>{
     setIs_loading(true)
     let url =
-    "http://localhost:4000/api/user/deleteCustomize/" +
+    apiUrl("/api/user/deleteCustomize/") +
     props.state.my_id+"/"+customizeID+"/"+type;
   let options = {
     method: "DELETE",
@@ -61,7 +62,7 @@ const Study = (props) => {
   const editCustomize=(object,propertyObjectID,type)=>{
     setIs_loading(true)
     let url =
-    "http://localhost:4000/api/user/editCustomize/" +
+    apiUrl("/api/user/editCustomize/") +
     props.state.my_id+"/"+propertyObjectID+"/"+type;
   let options = {
     method: "PUT",
@@ -96,7 +97,7 @@ const Study = (props) => {
   const editPropertyObjectAndUnitCustomize=(object)=>{
     setIs_loading(true)
     let url =
-    "http://localhost:4000/api/user/editPropertyObjectAndUnitCustomize/" +
+    apiUrl("/api/user/editPropertyObjectAndUnitCustomize/") +
     props.state.my_id+"/"+object.propertyObject._id;
   let options = {
     method: "PUT",
@@ -123,7 +124,7 @@ const Study = (props) => {
   //..........addCustomize
   const addCustomize=(object,type)=>{
     let url =
-    "http://localhost:4000/api/user/addCustomize/" +
+    apiUrl("/api/user/addCustomize/") +
     props.state.my_id+"/"+type;
   let options = {
     method: "POST",
@@ -154,7 +155,7 @@ const Study = (props) => {
    //..........addMemory
    const addMemory=(object,type)=>{
     let url =
-    "http://localhost:4000/api/user/addMemory/" +
+    apiUrl("/api/user/addMemory/") +
     props.state.my_id+"/"+type;
   let options = {
     method: "POST",
@@ -186,7 +187,7 @@ const Study = (props) => {
   //..........addMemory
   const deleteMemory=(memoryID,type)=>{
     let url =
-    "http://localhost:4000/api/user/deleteMemory/" +
+    apiUrl("/api/user/deleteMemory/") +
     props.state.my_id+"/"+memoryID+"/"+type;
     let options = {
       method: "DELETE",
@@ -207,7 +208,7 @@ const Study = (props) => {
   const editMemory=(object,memoryID,type)=>{
     setIs_loading(true)
     let url =
-    "http://localhost:4000/api/user/editMemory/" +
+    apiUrl("/api/user/editMemory/") +
     props.state.my_id+"/"+memoryID+"/"+type;
     let options = {
       method: "PUT",
@@ -234,7 +235,7 @@ const Study = (props) => {
   const updateFunctionStructureProperties= async (functionKeywordID)=>{
     let keyword_structureArray=[]
     let url =
-    "http://localhost:4000/api/user/update/" +
+    apiUrl("/api/user/update/") +
     props.state.my_id;
   let options = {
     method: "GET",
@@ -345,7 +346,7 @@ const Study = (props) => {
   //.................DELETE STRUCTURE KEYWORD
   const deleteStrucutreKeywordProperty =(keywordID,keywordStructurePropertyID)=>{
     let url =
-    "http://localhost:4000/api/user/deleteKeywordStructureProperty/" +
+    apiUrl("/api/user/deleteKeywordStructureProperty/") +
     props.state.my_id+"/"+keywordID+"/"+keywordStructurePropertyID;
   let options = {
     method: "POST",
@@ -370,7 +371,7 @@ const Study = (props) => {
    const editKeywordStructurePropertiesForOneStructure = async(keyword_structureArray)=>{
     setIs_loading(true)
     let url =
-    "http://localhost:4000/api/user/editKeywordStructureAfterChangingFunctionName/" +
+    apiUrl("/api/user/editKeywordStructureAfterChangingFunctionName/") +
     props.state.my_id;
   let options = {
     method: "POST",
@@ -408,7 +409,7 @@ const Study = (props) => {
 
   
     let url =
-    "http://localhost:4000/api/user/editKeywordStructureProperty/" +
+    apiUrl("/api/user/editKeywordStructureProperty/") +
     props.state.my_id+"/"+keyword._id+"/"+keywordStructurePropertyID;
   let options = {
     method: "POST",
@@ -460,7 +461,7 @@ const Study = (props) => {
     var editButtonkeywordFunction=document.getElementById("study_keywordFunction_edit_i")
 
     let url =
-      "http://localhost:4000/api/user/editKeyword/" +
+      apiUrl("/api/user/editKeyword/") +
       props.state.my_id+"/"+keywordID+"/"+type;
     let options = {
       method: "POST",
@@ -511,7 +512,7 @@ const Study = (props) => {
   //.............DELETE KEYWORD STRUCTURE.................
   const deleteKeyword = (type,keywordID) => {
     let url =
-      "http://localhost:4000/api/user/deleteKeyword/" +
+      apiUrl("/api/user/deleteKeyword/") +
       props.state.my_id+"/"+keywordID+"/"+type;
     let options = {
       method: "POST",
@@ -537,7 +538,7 @@ const Study = (props) => {
 
     if(needFetch===true){
       let url =
-        "http://localhost:4000/api/user/update/" +
+        apiUrl("/api/user/update/") +
         props.state.my_id;
       let options = {
         method: "GET",
@@ -1305,7 +1306,7 @@ const Study = (props) => {
     let keyword_propertyUnit =document.getElementById("study_keywordPropertyUnit");
     var body
     let url =
-    "http://localhost:4000/api/user/addKeywordStructureProperties/" +
+    apiUrl("/api/user/addKeywordStructureProperties/") +
     props.state.my_id+"/"+ keyword._id;
        body={
         _id:keyword._id+"_property_"+Date.now(),
@@ -1348,7 +1349,7 @@ const Study = (props) => {
     let keyword_propertyUnit =document.getElementById("study_keywordPropertyUnit");
     var body
     let url =
-    "http://localhost:4000/api/user/addKeywordFunctionProperties/" +
+    apiUrl("/api/user/addKeywordFunctionProperties/") +
     props.state.my_id+"/"+ keyword._id;
        body={
         _id:keyword._id+"_property_"+Date.now(),
@@ -1751,7 +1752,7 @@ const Study = (props) => {
   var editButtonkeywordFunction=document.getElementById("study_keywordFunction_edit_i")
 
   let url =
-    "http://localhost:4000/api/user/addKeyword/"+ props.state.my_id+"/"+type;
+    apiUrl("/api/user/addKeyword/")+ props.state.my_id+"/"+type;
   let options = {
     method: "POST",
     mode: "cors",

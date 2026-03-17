@@ -1,5 +1,6 @@
 import React from "react";
 import Friends from "../../Parts/Friends/Friends";
+import { apiUrl } from "../../../config/api";
 
 class Chat extends React.Component {
   constructor(props) {
@@ -11,7 +12,7 @@ class Chat extends React.Component {
   //...........................................Preperation..................................................
   preparingChat = () => {
     let url =
-      "https://backendstep.onrender.com/api/chat/prepareChat/" +
+      apiUrl("/api/chat/prepareChat/") +
       this.state.my_id;
     let options = {
       method: "POST",
@@ -70,7 +71,7 @@ class Chat extends React.Component {
     this.textarea.style.height = "70px";
     if (message && message.trim() !== "") {
       let url =
-        "https://backendstep.onrender.com/api/chat/sendMessage/" +
+        apiUrl("/api/chat/sendMessage/") +
         this.state.friendID_selected +
         "/" +
         this.state.my_id;
