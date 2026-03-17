@@ -17,7 +17,7 @@ const Login = ({ onLogin }) => {
 
   const formControl = (text) => {
     let Login_firstname_input = document.getElementById(
-      "Login_firstname_input"
+      "Login_firstname_input",
     );
     let Login_lastname_input = document.getElementById("Login_lastname_input");
     let Login_email_input = document.getElementById("Login_email_input");
@@ -26,7 +26,7 @@ const Login = ({ onLogin }) => {
     let Login_login_button = document.getElementById("Login_login_button");
     let Login_loginShow_text = document.getElementById("Login_loginShow_text");
     let Login_signupShow_text = document.getElementById(
-      "Login_signupShow_text"
+      "Login_signupShow_text",
     );
 
     switch (text) {
@@ -118,7 +118,7 @@ const Login = ({ onLogin }) => {
 
   const login_listener = () => {
     let app_page_width = parseInt(
-      window.getComputedStyle(document.querySelector("#root")).width
+      window.getComputedStyle(document.querySelector("#root")).width,
     );
 
     if (authReport) {
@@ -129,7 +129,7 @@ const Login = ({ onLogin }) => {
         document.getElementById("Login_loginLogo_text").style.fontSize =
           "100pt";
         document.getElementById(
-          "Login_loginLogo_container"
+          "Login_loginLogo_container",
         ).style.marginBottom = "150px";
         document.getElementById("Login_subLoginLogo_text").style.fontSize =
           "50pt";
@@ -137,7 +137,7 @@ const Login = ({ onLogin }) => {
       if (1000 > app_page_width > 700) {
         document.getElementById("Login_loginLogo_text").style.fontSize = "90pt";
         document.getElementById(
-          "Login_loginLogo_container"
+          "Login_loginLogo_container",
         ).style.marginBottom = "140px";
         document.getElementById("Login_subLoginLogo_text").style.fontSize =
           "40pt";
@@ -145,7 +145,7 @@ const Login = ({ onLogin }) => {
       if (app_page_width < 700) {
         document.getElementById("Login_loginLogo_text").style.fontSize = "70pt";
         document.getElementById(
-          "Login_loginLogo_container"
+          "Login_loginLogo_container",
         ).style.marginBottom = "130px";
         document.getElementById("Login_subLoginLogo_text").style.fontSize =
           "30pt";
@@ -167,7 +167,7 @@ const Login = ({ onLogin }) => {
     let Login_username_input = document.getElementById("Login_username_input");
     let Login_password_input = document.getElementById("Login_password_input");
     let Login_firstname_input = document.getElementById(
-      "Login_firstname_input"
+      "Login_firstname_input",
     );
     let Login_lastname_input = document.getElementById("Login_lastname_input");
     let Login_email_input = document.getElementById("Login_email_input");
@@ -303,7 +303,7 @@ const Login = ({ onLogin }) => {
       </main>
       <footer id="Login_footer">
         <section id="Login_copyright_container">
-          <h4 id="Login_copyright_text">Â©2020 Rudy Hamame</h4>
+          <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
         </section>
       </footer>
       {is_loading === true && (
