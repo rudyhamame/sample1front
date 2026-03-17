@@ -1,0 +1,22 @@
+#Menu_content_container {
+  display: none;
+  position: absolute;
+  background-color: var(--background_menu);
+  height: 50%;
+  width: 300px;
+  overflow: auto;
+  color: white;
+  justify-content: flex-start;
+  gap: 10px;
+  border-bottom: var(--red) 10px solid;
+}
+#Menu_content_container li {
+  font-family: "Roboto", sans-serif;
+  background-color: rgb(212, 48, 48);
+  padding: 20px;
+  cursor: pointer;
+}
+
+#Menu_i_close {
+  display: none;
+}

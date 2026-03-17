@@ -1,0 +1,17 @@
+#Posts_article {
+  flex-grow: 1;
+  order: 3;
+  align-items: center;
+  overflow: auto;
+}
+#Posts_content_container {
+  order: 1;
+  flex-grow: 1;
+  width: 100%;
+}
+
+@media screen and (max-width: 1400px) {
+  #Posts_content_container {
+    width: 100%;
+  }
+}

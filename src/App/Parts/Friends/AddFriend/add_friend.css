@@ -1,0 +1,70 @@
+/*......todoAddFriend.....*/
+#AddFriend_article {
+  order: 2;
+  background-color: var(--black);
+  height: 0;
+  overflow: hidden;
+}
+
+#AddFriend_content_container {
+  overflow: hidden;
+  animation-name: width;
+  animation-duration: 1s;
+  width: 100%;
+  padding: 30px;
+  box-shadow: 0 0px 10px rgba(56, 46, 46, 0.24);
+  z-index: 1;
+  gap: 30px;
+}
+
+#AddFriend_i {
+  text-align: center;
+  color: var(--white);
+  font-size: 30pt;
+}
+
+#AddFriend_addFriend_results {
+  flex-grow: 1;
+  overflow: auto;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+#AddFriend_addFriend_results li {
+  font-family: "Roboto", sans-serif;
+  color: white;
+  font-size: 13pt;
+  text-align: center;
+  padding: 20px 20px;
+  background-color: var(--black2);
+  justify-content: space-between;
+  align-items: center;
+  white-space: nowrap;
+}
+
+#AddFriend_addFriend {
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+#AddFriend_addFriend input {
+  border-radius: 8px;
+  outline-style: none;
+  border: none;
+  width: 250px;
+  font-size: 14pt;
+  padding: 10px;
+  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.226);
+  font-family: "Roboto", sans-serif;
+  flex-direction: 1;
+}
+
+@keyframes width {
+  0% {
+    width: 0;
+  }
+  20% {
+    width: 40px;
+  }
+}

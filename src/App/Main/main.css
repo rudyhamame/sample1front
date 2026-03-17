@@ -1,0 +1,7 @@
+#Main_article {
+  flex-grow: 1;
+  width: 100%;
+  order: 1;
+  overflow: hidden;
+}
+

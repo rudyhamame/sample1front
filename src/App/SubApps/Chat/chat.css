@@ -1,0 +1,104 @@
+/* Chat Fiends */
+
+#Chat_article {
+  text-align: center;
+  color: white;
+  font-size: 12pt;
+  font-weight: 300;
+  background-color: var(--black);
+  height: 0;
+  order: 3;
+}
+#Chat_title_container {
+  padding: 10px;
+  background-color: var(--black);
+  font-family: "Roboto", sans-serif;
+  overflow: hidden;
+  align-items: center;
+  border-bottom: 2px rgba(255, 255, 255, 0.082) solid;
+}
+
+#Chat_title_text {
+  font-size: 16pt;
+  font-weight: 300;
+  text-align: center;
+  flex-grow: 1;
+}
+#Chat_goback_icon {
+  font-size: 18pt;
+  overflow: hidden;
+  position: absolute;
+  display: none;
+  padding: 10px;
+}
+
+#Chat_form {
+  box-shadow: 0 10px 400px rgba(255, 255, 255, 0.226);
+}
+
+#Chat_textarea_input {
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+  background-color: var(--black2);
+  padding: 10px 20px;
+  font-size: 13pt;
+  color: var(--white);
+  min-height: 70px;
+}
+
+#Chat_form i {
+  font-size: 20pt;
+  justify-content: center;
+  padding: 10px;
+}
+#Chat_messages {
+  overflow: auto;
+  flex-basis: 0;
+  flex-grow: 1;
+  padding: 0 20px;
+  padding-bottom: 70px;
+  padding-top: 20px;
+}
+
+.sentMessagesLI {
+  border-radius: 10px;
+  background-color: var(--black2);
+  width: fit-content;
+  max-width: 70%;
+}
+.receivedMessagesLI {
+  border-radius: 10px;
+  background-color: var(--green);
+  width: fit-content;
+}
+.sentMessagesDIV {
+  width: 100%;
+  align-items: flex-end;
+  overflow: hidden;
+  padding: 10px;
+}
+.receivedMessagesDIV {
+  width: 100%;
+  align-items: flex-start;
+  overflow: hidden;
+  padding: 10px 0px;
+}
+
+#Chat_messages p {
+  font-size: 14pt;
+  font-family: "Roboto", sans-serif;
+  padding: 5px 10px;
+}
+#Chat_submit_button {
+  background-color: var(--red);
+  border: 0;
+  color: white;
+  border-radius: 0;
+}
+@media screen and (max-width: 1200px) {
+  #Chat_textarea_input {
+    padding: 10px 20px;
+    font-size: 12pt;
+    color: var(--white);
+  }
+}

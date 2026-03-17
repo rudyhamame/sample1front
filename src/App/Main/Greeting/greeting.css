@@ -1,0 +1,264 @@
+#Greeting_studysessions_article {
+  order: 2;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--white);
+  overflow: auto;
+  height: 100vh;
+}
+
+#timer_container {
+  order: 3;
+  font-size: 14pt;
+  padding: 10px;
+}
+
+#Greeting_studySessions_area {
+  color: var(--black);
+  overflow: auto;
+  max-height: 200px;
+  padding: 10px 0;
+}
+#Greeting_preStart_reportDiv {
+  padding: 20px;
+  text-align: center;
+}
+#Greeting_totalDuration_li {
+  font-size: 14pt;
+}
+#Greeting_studySessions_area div {
+  padding: 10px;
+  text-align: center;
+}
+
+#Greeting_preStart {
+  padding-top: 50px;
+  border-radius: 100px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-grow: 1;
+}
+#Greeting_preStart h1 {
+  font-family: "Raleway", sans-serif;
+  text-align: center;
+  font-size: 45pt;
+  padding: 10px;
+  background-color: white;
+}
+#Greeting_preStart h2 {
+  font-family: "Raleway", sans-serif;
+  padding: 10px;
+  text-align: center;
+  font-size: 30pt;
+  background-color: white;
+}
+#Greeting_preStart_button1,#Greeting_preStart_button2 {
+  justify-content: center;
+  align-content: center;
+  gap: 10px;
+  font-family: "Roboto", sans-serif;
+  padding: 10px 20px;
+  text-align: center;
+  font-size: 14pt;
+  background-color: var(--blue4);
+  color: var(--white);
+  border-radius: 40px;
+  margin-top: 30px;
+}
+#Greeting_userMenu_personalInfo_content_div{
+  background-color: var(--white);
+  padding: 10px;
+  gap: 5px;
+}
+
+#Greeting_userMenu_personalInfo_div{
+  background-color: var(--white2);
+  padding: 10px;
+}
+#Greeting_userMenu_personalInfo_div label{
+  color: var(--special_black2);
+}
+.Greeting_userMenu_title_label{
+  color: var(--special_black2) !important;
+  text-align: center;
+}
+
+#Greeting_userMenu_div{
+  position: absolute;
+  top: 30px;
+  left: 50px;
+}
+#Greeting_userMenu_div label,
+#Greeting_userMenu_div p
+{
+font-size: 12px;
+color: var(--black2);
+}
+#Greeting_userMenu_button{
+  border: solid 4px var(--blue4) ;
+  padding: 5px;
+  width: min-content;
+  border-bottom-left-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+  background-color: var(--white2);
+
+
+}
+#Greeting_userMenu_i{
+  font-size: 30px;
+  color: var(--blue4);
+}
+#Greeting_userMenu_content_div{
+  display: none;
+}
+.Greeting_userMenu_contentDivs{
+  gap: 10px;
+}
+#profile_pic input,
+#profile_pic button
+{
+  font-size: 10px;
+  padding: 5px;
+}
+input[type="file"] {
+  display: none;
+}
+.custom-file-upload {
+  display: inline-block;
+  padding: 6px 12px;
+  cursor: pointer;
+  height: min-content;
+  overflow: hidden;
+
+}
+.custom-file-upload_profilePic_div{
+  overflow: hidden;
+  width: 100px;
+  height: 100px;
+  place-items: center;
+  place-content: center;
+  background-color: var(--special_black2);
+  border-radius: 50%;
+
+}
+.custom-file-upload_profilePic{
+  width: 100px;
+}
+#profile_pic_button{
+  height: min-content;
+  background-color: var(--blue4);
+  color: var(--white);
+  font-size: 12px;
+}
+#profile_pic_i{
+  font-size: 20px;
+  color: var(--blue4);
+  position: absolute;
+  bottom: 40px;
+  right: 10px;
+}
+#profile_pic_section{
+  position: relative;
+}
+
+@media screen and (max-height: 700px) {
+  #Greeting_preStart {
+    transform: scale(0.8);
+  }
+  #Greeting_preStart h1 {
+    font-size: 30pt;
+  }
+  #Greeting_preStart h2 {
+    font-size: 20pt;
+  }
+  #Greeting_preStart_button {
+    font-size: 15pt;
+    white-space: nowrap;
+  }
+  #Greeting_studySessions_area div {
+    font-size: 10pt;
+  }
+  #Greeting_studySessions_area {
+    max-height: 150px;
+  }
+}
+@media screen and (max-height: 600px) {
+  #Greeting_preStart h1 {
+    font-size: 25pt;
+  }
+  #Greeting_preStart h2 {
+    font-size: 15pt;
+  }
+  #Greeting_preStart_button {
+    font-size: 10pt;
+    white-space: nowrap;
+  }
+  #Greeting_studySessions_area div {
+    font-size: 10pt;
+  }
+  #Greeting_studySessions_area {
+    max-height: 100px;
+  }
+  #i_nav_logout {
+    font-size: 14pt !important;
+  }
+}
+@media screen and (max-width: 1200px) {
+  #Greeting_preStart h1 {
+    font-size: 40pt;
+  }
+  #Greeting_preStart h2 {
+    font-size: 20pt;
+  }
+  #Greeting_preStart_button {
+    font-size: 14pt;
+    white-space: nowrap;
+  }
+  #Greeting_studySessions_area div {
+    font-size: 12pt;
+  }
+
+  #i_nav_logout {
+    font-size: 18pt !important;
+  }
+  #Greeting_studysessions_article {
+  }
+  #Greeting_preStart_reportDiv h3 {
+    font-size: 12pt;
+  }
+  #Greeting_totalDuration_li {
+    font-size: 12pt;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  #Greeting_preStart h1 {
+    font-size: 25pt;
+  }
+  #Greeting_preStart h2 {
+    font-size: 16pt;
+  }
+  #Greeting_preStart_button {
+    font-size: 10pt;
+    white-space: nowrap;
+  }
+  #Greeting_studySessions_area div {
+    font-size: 10pt;
+  }
+
+  #i_nav_logout {
+    font-size: 18pt !important;
+  }
+  #Greeting_studysessions_article {
+  }
+  #Greeting_preStart_reportDiv h3 {
+    font-size: 12pt;
+  }
+  #Greeting_totalDuration_li {
+    font-size: 12pt;
+  }
+}

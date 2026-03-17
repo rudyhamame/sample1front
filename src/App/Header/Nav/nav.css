@@ -1,0 +1,28 @@
+/*Nav*/
+#Nav_article i {
+  font-size: 15pt;
+  color: rgba(255, 255, 255, 0.904);
+  cursor: pointer;
+}
+
+#Nav_article {
+  gap: 35px;
+  align-items: center;
+  padding: 14px;
+}
+
+#Nav_article i:hover {
+  transform: scale(0.96);
+}
+
+@media screen and (max-width: 1200px) {
+  #Header_content_container h2 {
+    font-size: 20pt;
+  }
+  #Nav_article i {
+    font-size: 10pt !important;
+  }
+  #Nav_article {
+    gap: 17px;
+  }
+}

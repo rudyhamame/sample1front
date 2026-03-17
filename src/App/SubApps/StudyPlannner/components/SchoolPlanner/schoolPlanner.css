@@ -1,0 +1,515 @@
+#schoolPlanner_article {
+    height: 100vh;
+    position: relative;
+}
+
+#schoolPlanner_courses_aside {
+    background-color: var(--special_black2);
+    position: relative;
+}
+#schoolPlanner_coursesLectures_wrapper{
+    flex-grow: 1;
+    overflow: scroll;
+}
+
+#schoolPlanner_lectures_nav {
+    background-color: #01978b;
+}
+#schoolPlanner_lectures_nav input{
+    font-size: 10px;
+    padding: 5px;
+}
+#schoolPlanner_lectures_search_div{
+    place-content: center;
+    place-items: center;
+}
+#schoolPlanner_courses_nav {
+    background-color: #01978b;
+    justify-content: center;
+}
+
+#schoolPlanner_courses_nav button {
+    background-color: var(--green2);
+    cursor: pointer;
+    height: fit-content;
+    font-size: 10px;
+    color: var(--white);
+    border-radius: 0;
+    border: 0;
+    flex-grow: 1;
+}
+
+#schoolPlanner_lectures_nav button {
+    background-color: var(--green2);
+    cursor: pointer;
+    height: fit-content;
+    font-size: 10px;
+    color: var(--white);
+    border-radius: 0;
+    border: 0;
+}
+
+#schoolPlanner_coursesDoor_div {
+    background-color: var(--green2);
+    justify-content: center;
+    align-items: center;
+    box-shadow: 1px 4px 10px rgba(0, 0, 0, 0.292);
+    z-index: 10;
+    padding: 10px;
+
+}
+#schoolPlanner_planDoor_div {
+    background-color: var(--green2);
+    justify-content: center;
+    align-items: center;
+    box-shadow: 1px 4px 10px rgba(0, 0, 0, 0.292);
+    z-index: 10;
+    padding: 10px;
+
+}
+
+#schoolPlanner_lectures_section {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--special_black2);
+    flex-grow: 1;
+}
+
+#schoolPlanner_lectures_ul {
+    display: flex;
+    flex-direction: column;
+    overflow: scroll;
+    flex-grow: 1;
+}
+
+.schoolPlanner_lectures_div_pLi {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 150px;
+    align-items: center;
+    justify-content: center;}
+
+.schoolPlanner_lectures_editSection {
+    padding: 10px;
+    display: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 100px;
+    flex-grow: 1;
+    gap: 1px
+}
+
+.schoolPlanner_lectures_editSection input {
+    border: dotted 1px black;
+    font-size: 10px;
+}
+
+.schoolPlanner_lectures_li {
+    flex-grow: 1;
+    background-color: #fffafa;
+    gap:10px;
+    padding: 10px;
+ 
+}
+
+.div_outline{
+    width: 100%;
+    gap: 5px;
+    
+}
+.div_outline p{
+    width: 100% !important;
+    text-align: right;
+    direction: rtl;
+}
+
+#schoolPlanner_lectures_tableLabels_section{
+    display: flex;
+    flex-direction: row;
+    background-color: #2f847c;
+    align-items: center;
+    box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.39);
+    z-index: 2;
+    padding-left: 35.33px;
+    padding-right: 24.33px;
+}
+#schoolPlanner_courses_ulLabels_div {
+    display: flex;
+    flex-direction: row;
+    background-color: #2f847c;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.39);
+    z-index: 2;
+}
+
+#schoolPlanner_lectures_tableLabels_section input {
+    width: min-content;
+}
+
+#schoolPlanner_lectures_tableLabels_div {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 150px;
+    flex-grow: 1;
+    padding-right: 10px;
+    padding-left: 10px;
+    align-items: center;
+    justify-content: center;
+
+}
+#schoolPlanner_lectures_tableLabels_div p{
+    text-align: center;
+}
+
+#schoolPlanner_courses_ul{
+    overflow: scroll;
+    gap:5px;
+    background-color: var(--green4);
+}
+#schoolPlanner_lectures_tableLabels_div label,
+#schoolPlanner_courses_ulLabels_div label {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+}
+
+#schoolPlanner_lectures_section ul li p {
+    font-size: 10px;
+    word-wrap: break-word;
+    text-align: center;
+}
+
+#schoolPlanner_lectures_section ul li i {
+    width: min-content;
+}
+
+#schoolPlanner_addLecture_div,
+#schoolPlanner_addCourse_div {
+    z-index: 1000;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+
+}
+
+#schoolPlanner_addLecture_div label,
+#schoolPlanner_addCourse_div label {
+    background-color: var(--red2);
+    padding: 10px;
+    width: fit-content;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.schoolPlanner_courses_dayAndTime_div,
+.schoolPlanner_courses_instructors_div {
+    display: flex !important;
+    flex-direction: column !important;
+
+
+}
+
+
+.lecuturesTable_menu_subdiv {
+    width: 0;
+    background-color: var(--green2);
+    justify-content: space-between;
+    order: 0;
+    align-items: center;
+
+}
+
+.lecuturesTable_menu_subdiv i {
+    color: var(--white);
+    padding: 10px;
+}
+
+.lecuturesTable_menu_div {
+    color: var(--green2);
+    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--white2);
+    border-right: solid rgba(0, 0, 0, 0.073) 1px;
+
+
+}
+
+.lecuturesTable_menu_div i {
+    order: 1;
+    padding: 10px;
+    order: 2;
+
+
+}
+
+.menuLi_div {
+    border: solid 1px var(--green2);
+    position: relative;
+}
+
+.schoolPlanner_lectures_editSection_editButton {
+    background-color: var(--green2);
+    margin-left: 20px;
+    border-radius: 0;
+    color: var(--white2);
+    font-size: 12px;
+    position: absolute;
+    bottom: 0;
+    right: 10px
+}
+
+#schoolPlanner_addLecture_div input,
+#schoolPlanner_addLecture_div textarea,
+#schoolPlanner_addLecture_div select,
+#schoolPlanner_addCourse_div input,
+#schoolPlanner_addCourse_div select,
+#schoolPlanner_addCourse_div textarea
+ {
+    font-size: 10px !important;
+    width: 50vw;
+}
+#schoolPlanner_addCourse_grade_div {
+    width: 50vw;
+}
+#schoolPlanner_addCourse_grade_div p{
+    background-color: var(--green4);
+    padding: 5px;
+    font-size: 10px;
+    text-align: center;
+    color: var(--white);
+}
+#schoolPlanner_addCourse_form select,
+#schoolPlanner_addLecture_form select {
+    font-size: 12px;
+    width: 50vw;
+
+}
+
+.schoolPlanner_courses_li {
+    background-color: var(--white);
+    font-size: 10px;
+}
+
+.schoolPlanner_courses_li p,
+.schoolPlanner_courses_li label {
+    padding: 5px;
+}
+
+
+.schoolPlanner_coursesLiMenu_div {
+    color: var(--green2);
+    align-items: center;
+    background-color: var(--green3);
+    order: 3;
+
+}
+
+.schoolPlanner_coursesLiMenu_div i {
+    padding: 5px;
+    font-size: 10px;
+    color: var(--white);
+
+}
+.schoolPlanner_courses_div_pLi{
+    flex-grow: 1;
+}
+.schoolPlanner_courses_div_pLi div {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100px;
+    border-bottom: 1px var(--green2) solid;
+}
+
+.schoolPlanner_courses_div_pLi label {
+    background-color: var(--green3);
+    flex-grow: 1;
+}
+
+#schoolPlanner_addCourse_dayAndTime_div,
+#schoolPlanner_addCourse_instructorsNames_div {
+    align-items: center;
+    background-color: var(--red2);
+}
+
+#schoolPlanner_addLecture_outlines_div {
+    justify-content: center;
+    align-items: center;
+    background-color: var(--red2);
+}
+
+
+#schoolPlanner_addCourse_dayAndTime_ul,
+#schoolPlanner_addLecture_outlines_ul,
+#schoolPlanner_addCourse_instructorsNames_ul {
+    padding: 10px;
+    background-color: var(--white2);
+    width: 50vw;
+    gap: 10px;
+    overflow: scroll;
+}
+
+#schoolPlanner_addLecture_outlines_ul p,
+#schoolPlanner_addCourse_instructorsNames_ul p,
+#schoolPlanner_addCourse_dayAndTime_ul p {
+    background-color: var(--red2);
+    padding: 5px;
+    color: var(--white);
+    font-size: 10px;
+    border-radius: 5px;
+
+}
+
+
+.schoolPlanner_addCourse_dayAndTime_div,
+.schoolPlanner_addCourse_instructorsNames_div, .schoolPlanner_addCourse_outlines_div {
+    align-items: center;
+    justify-content: center;
+    background-color: var(--red2);
+    padding: 5px;
+    border-radius: 5px;
+    gap: 2px;
+}
+
+.schoolPlanner_addCourse_dayAndTime_div i,
+.schoolPlanner_addCourse_instructorsNames_div i,.schoolPlanner_addCourse_outlines_div i {
+    color: var(--white);
+    font-size: 10px;
+}
+
+#schoolPlanner_lectures_num_div{
+    background-color: var(--green3);
+    gap:5px;
+    padding:10px;
+    overflow: hidden;
+    
+}
+#schoolPlanner_lectures_num_div label{
+    font-size: 10px;
+}
+#schoolPlanner_lectures_num_div p{
+    font-size: 10px;
+    color: var(--white);
+}
+.div_progression{
+gap: 5px;
+background-color: var(--white2);
+color: var(--black);
+border-radius: 30px;
+box-shadow: 1px 1px 10px rgba(0, 0, 0, 0.046);
+cursor: pointer;
+align-items: center;
+
+}
+.div_indicator_progression{
+width: 0;
+height: 4px;
+background-color: var(--green4);
+}
+.div_indicatorBox_progression{
+border: 1px solid var(--gray);
+border-radius: 10px;
+overflow: hidden;
+width: 150px;
+}
+
+.div_partOfPlan{
+    align-items: center;
+    justify-content: center;
+    border-left: solid rgba(0, 0, 0, 0.073) 1px;
+    padding: 5px;
+    background-color: var(--white2);
+}
+
+#schoolPlanner_courses_refresh_div{
+    background-color: var(--green3);
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+}
+#schoolPlanner_courses_refresh_i{
+    color:var(--white)
+}
+#schoolPlanner_plan_aside{
+
+}
+#schoolPlanner_plan_wrapper{
+    width: 100%;
+    background-color: var(--special_black2);
+    flex-grow: 1;
+    overflow: hidden;
+}
+#schoolPlanner_plan_days_wrapper{
+    display: grid;
+    grid-template-columns: 300px 300px 300px ;    
+    flex-grow: 1;
+    padding: 20px;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    overflow: scroll;
+}
+.schoolPlanner_plan_days_div{
+    padding: 10px;
+    border: solid var(--green4) 6px;
+    background-color: var(--white);
+    height: 300px;
+    font-size: 10px;
+    box-shadow: 1px 4px 10px black(146, 141, 141, 0.5);
+    border-radius: 25px;
+
+}
+#schoolPlanner_planDoor_div i{
+    color: var(--white);
+    font-size: 12px;
+    color: var(--white);
+}
+.plan_p_dayNum{
+    margin-bottom: 10px;
+    font-weight:bolder;
+    border-bottom: 1px rgba(0, 0, 0, 0.466) solid;
+
+}
+.plan_div_course{
+justify-content: space-between;
+}
+.plan_p_total{
+    margin-top: 10px;
+    font-weight:bolder;
+    border-top: 1px rgba(0, 0, 0, 0.466) solid;
+}
+.ul_pages_finished{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;    
+    flex-grow: 1;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    height: 0px;
+    overflow: hidden;
+}
+.ul_pages_finished p{
+    color:black;
+    text-align: center;
+    padding: 10px !important;
+    cursor: pointer;
+    border: 2px solid var(--green4);
+}
+#div_progression{
+    display: none;
+    font-size: 10px;
+    position:fixed;
+    transform:translate(-50%, -50%);
+    top:50%;
+    left:50%;
+    padding: 10px;
+}

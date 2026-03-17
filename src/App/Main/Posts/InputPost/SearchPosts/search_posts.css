@@ -1,0 +1,116 @@
+/* Search */
+
+#SearchPosts_article {
+  padding: 5px 0;
+  order: 3;
+  width: 100%;
+  border-top: solid rgba(0, 0, 0, 0.13) 1px;
+  box-shadow: 2px 4px -10px black;
+  background-color: #01796f;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  z-index: 100;
+  position: relative;
+}
+#SearchPosts_content_container {
+  gap: 30px;
+  align-items: center;
+  justify-content: center;
+  display: none;
+  padding: 10px;
+}
+#SearchPosts_control_section {
+  color: var(--white);
+  align-items: center;
+  justify-content: center;
+}
+
+#SearchPosts_subject_container {
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+#SearchPosts_category_container {
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+#SearchPosts_keyword {
+  outline-style: none;
+  font-size: 12pt;
+  padding: 10px;
+  box-shadow: none !important;
+  border-radius: 0 !important ;
+  border-bottom-right-radius: 10px;
+  border-top-right-radius: 10px;
+  background-color: var(--white);
+}
+#SearchPosts_category {
+  outline-style: none;
+  font-size: 12pt;
+  padding: 10px;
+  box-shadow: none !important;
+  border-radius: 0 !important ;
+  border-bottom-right-radius: 10px;
+  border-top-right-radius: 10px;
+  background-color: var(--white);
+}
+
+#SearchPosts_subject {
+  outline-style: none;
+  font-size: 12pt;
+  padding: 10px;
+  box-shadow: none !important;
+  border-radius: 0 !important ;
+  border-bottom-right-radius: 10px;
+  border-top-right-radius: 10px;
+  background-color: var(--white);
+}
+
+#SearchPosts_Buttons_container {
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+#SearchPosts_searchButton {
+  border: none;
+  background-color: var(--special_black);
+  border-radius: 0;
+  color: var(--white);
+  font-size: 12pt;
+}
+#SearchPosts_clearButton {
+  border: none;
+  background-color: var(--special_black);
+  border-radius: 0;
+  color: var(--white);
+  font-size: 12pt;
+}
+#SearchPosts_control_close_icon {
+  display: none;
+  padding: 5px 0;
+}
+#SearchPosts_control_icon_container {
+  color: var(--white);
+  padding: 5px 0;
+}
+@media screen and (max-width: 700px) {
+  #SearchPosts_category,
+  #SearchPosts_subject,
+  #SearchPosts_searchButton,
+  #SearchPosts_clearButton,
+  #SearchPosts_keyword {
+    font-size: 8pt;
+    width: 200px;
+  }
+  #SearchPosts_content_container {
+    flex-direction: column;
+    gap: 5px;
+  }
+  #SearchPosts_Buttons_container {
+    flex-direction: column;
+    gap: 5px;
+  }
+}

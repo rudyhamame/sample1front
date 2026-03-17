@@ -1,0 +1,47 @@
+#Notifications_dropMenu_container {
+  display: none;
+  position: fixed;
+  background-color: var(--background_menu);
+  height: 50%;
+  overflow: auto;
+  color: white;
+  justify-content: flex-start;
+  gap: 10px;
+  border-bottom: var(--red) 10px solid;
+  width: 20%;
+}
+
+#Notifications_dropMenu_container li {
+  font-family: "Roboto", sans-serif;
+  background-color: rgb(212, 48, 48);
+  padding: 20px;
+  cursor: pointer;
+  width: 80%;
+}
+
+#Notifications_dropMenu_container div {
+  align-items: center;
+  gap: 10px;
+}
+#Notifications_dropMenu_container i {
+  padding-inline-end: 10px;
+}
+#Notifications_alert {
+  color: red;
+  position: absolute;
+  font-size: 10px !important;
+  z-index: 1;
+}
+
+@media screen and (max-width: 1000px) {
+  #Notifications_dropMenu_container {
+    width: 60%;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  #Notifications_dropMenu_container {
+    width: 100%;
+    left: 0;
+  }
+}

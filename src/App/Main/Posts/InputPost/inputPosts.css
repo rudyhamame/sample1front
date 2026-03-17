@@ -1,0 +1,131 @@
+#InputPost_article {
+  order: 1;
+  width: 100%;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.473);
+  z-index: 1;
+  margin: auto;
+}
+#InputPost_textarea_container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 100px;
+}
+
+#InputPost_textarea {
+  font-size: 13pt;
+  line-height: 20pt;
+  border-bottom-left-radius: 10px;
+  height: 60px;
+  min-height: 60px;
+  padding: 15px 20px;
+  background-color: var(--special_black);
+  color: white;
+}
+#InputPost_textarea::placeholder {
+  color: rgba(255, 255, 255, 0.658);
+}
+#InputPost_inputs_container {
+  margin: 0 auto;
+  padding-top: 0;
+  background-color: var(--special_black);
+  /* border-left: solid 10px black;
+  border-right: solid 10px black; */
+  border-bottom-right-radius: 10px;
+}
+
+#InputPost_post_button {
+  color: white;
+  font-weight: 300;
+  border: 0;
+  font-size: 14pt;
+  padding: 10px 30px;
+  border-radius: 0px;
+  font-family: "Raleway", sans-serif;
+  border-bottom-right-radius: 10px;
+  background-color: #01796f;
+}
+
+#InputPost_greeting_container {
+  justify-content: center;
+  background-color: var(--green);
+  z-index: 1;
+}
+
+/* #InputPost_greeting_text {
+  font-family: "Pacifico", cursive;
+  font-size: 20pt;
+  white-space: nowrap;
+  padding: 20px;
+  color: var(--white);
+  text-align: center;
+} */
+
+#InputPost_category,
+#InputPost_subject,
+#InputPost_resourse,
+#InputPost_page {
+  font-family: "Raleway", sans-serif;
+  color: white;
+  font-size: 11pt;
+  border: solid rgba(0, 0, 0, 0.068) 1px;
+  background-color: var(--special_black);
+  box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.404);
+}
+
+#InputPost_resourse::placeholder,
+#InputPost_page::placeholder {
+  color: rgba(255, 255, 255, 0.658);
+}
+#InputPost_refresh_icon:hover {
+  transform: none;
+}
+
+@media screen and (max-width: 1000px) {
+  #InputPost_textarea {
+    font-size: 12pt;
+  }
+  #InputPost_textarea_container {
+    padding: 0 5px;
+    flex-direction: column;
+  }
+  #InputPost_textarea {
+    border-bottom-left-radius: 0px;
+  }
+  #InputPost_category,
+  #InputPost_subject,
+  #InputPost_resourse,
+  #InputPost_page {
+    font-size: 10pt;
+  }
+
+  #InputPost_post_button {
+    font-size: 12pt;
+    border-bottom-right-radius: 0px;
+  }
+}
+@media screen and (max-width: 600px) {
+  #InputPost_textarea {
+    font-size: 12pt;
+  }
+  #InputPost_greeting_text {
+    font-size: 12pt;
+    white-space: normal;
+  }
+  #InputPost_category,
+  #InputPost_subject,
+  #InputPost_resourse,
+  #InputPost_page {
+    font-size: 10pt;
+  }
+  #InputPost_post_button {
+    font-size: 10pt;
+    padding: 10px 15px;
+  }
+}
+
+@media screen and (max-width: 1300px) {
+  #InputPost_textarea_container,
+  #InputPost_inputs_container {
+    width: 100%;
+  }
+}

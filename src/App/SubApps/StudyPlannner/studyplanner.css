@@ -1,0 +1,24 @@
+#Header_article{
+    background-color: var(--white);
+}
+#Header_article i{
+    color: var(--green2);
+}
+#Header_article h1{
+    color: var(--green2) !important; 
+}
+#studyplanner_article{
+    height: 100%;
+    background-color: var(--white);
+}
+#studyplanner_button_section button{
+background-color: var(--green2);
+color: var(--white);
+padding: 10px;
+margin: 10px;
+}
+#studyplanner_button_section{
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+}

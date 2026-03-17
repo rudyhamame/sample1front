@@ -1,0 +1,90 @@
+#Friends_article {
+  order: 5;
+  z-index: 3;
+}
+
+#Friends_content_container {
+  order: 2;
+  width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+#form_notes_dashboard h2 {
+  font-family: "Pacifico", cursive;
+  font-weight: 300;
+  padding: 10px;
+  background-color: var(--orange);
+  text-align: center;
+  color: var(--white);
+  font-size: 14pt;
+  width: 100%;
+}
+
+#Friends_control_door {
+  background-color: var(--black);
+  justify-content: center;
+  align-items: center;
+  order: 1;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.24);
+  border-left: solid rgba(0, 0, 0, 0.459) 2px;
+  z-index: 99;
+}
+#Friends_control_door i {
+  color: var(--white);
+  font-size: 16pt;
+  padding: 10px;
+  animation-name: arrow_control_color;
+  animation-duration: 1.5s;
+}
+
+input[value=""]::-webkit-datetime-edit {
+  color: transparent;
+}
+
+@media screen and (max-width: 1200px) {
+  #Friends_content_container {
+    background-color: var(--red);
+    width: 100% !important;
+  }
+  #menuaside_main_container li {
+    font-size: 7pt;
+  }
+  #menuaside_main_container {
+    font-size: 7pt;
+  }
+}
+
+@keyframes width {
+  0% {
+    width: 0;
+  }
+  20% {
+    width: 40px;
+  }
+}
+@media screen and (max-width: 1200px) {
+  #Friends_control_door {
+    background-color: var(--black2);
+  }
+  #Friends_control_door i {
+    font-size: 16pt;
+  }
+  #DropHorizontally_article i {
+    font-size: 16pt;
+  }
+  #Chat_goback_icon {
+    font-size: 16pt;
+  }
+}
+@media screen and (max-width: 1200px) {
+  #Friends_content_container {
+    overflow: hidden;
+    height: 0;
+    width: 0;
+  }
+  #Friends_article {
+    flex-direction: column;
+    display: none;
+  }
+}

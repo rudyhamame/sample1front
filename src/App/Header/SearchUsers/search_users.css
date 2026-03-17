@@ -1,0 +1,27 @@
+/* Search */
+
+#Search_section {
+  overflow: hidden;
+  align-items: center;
+  margin-top: 20px;
+  justify-content: center;
+}
+#SearchUsers_input {
+  outline-style: none;
+  font-size: 12pt;
+  padding: 10px;
+  box-shadow: none !important;
+  border-radius: 0 !important ;
+  border-bottom-right-radius: 10px;
+  border-top-right-radius: 10px;
+  background-color: var(--white);
+}
+
+#Search_button {
+  border: none;
+  background-color: var(--green);
+  border-radius: 0;
+  color: var(--white);
+  font-size: 12pt;
+  height: 100%;
+}

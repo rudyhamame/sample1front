@@ -1,0 +1,75 @@
+#FriendsList_article {
+  text-align: center;
+  color: white;
+  font-size: 12pt;
+  font-weight: 300;
+  background-color: var(--black);
+  overflow: auto;
+  order: 3;
+  height: 100%;
+}
+
+#FriendsList_i {
+}
+
+#FriendsList_centent_container {
+  flex-grow: 1;
+}
+
+#FriendsList_friends_list {
+  background-color: var(--black);
+  gap: 20px;
+}
+
+#FriendsList_friends_list i {
+  color: var(--special_black);
+}
+#FriendsList_friends_list div {
+  background-color: var(--black2);
+  color: var(--white);
+  font-size: 16pt;
+  padding: 20px 30px;
+  font-family: "Raleway", sans-serif;
+  cursor: pointer;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#FriendsList_content_container {
+  overflow: hidden;
+  animation-name: width;
+  animation-duration: 1s;
+  width: 100%;
+  padding: 30px 0;
+  z-index: 1;
+  gap: 30px;
+}
+
+#FriendsList_i {
+  text-align: center;
+  color: var(--white);
+  font-size: 20pt;
+}
+
+#FriendsList_friends_list {
+  flex-grow: 1;
+  overflow: auto;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+#FriendsList_friends_list li {
+  font-family: "Roboto", sans-serif;
+  color: white;
+  font-size: 12pt;
+  text-align: center;
+  padding: 20px;
+  background-color: var(--black2);
+  justify-content: space-between;
+  align-items: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#FriendsList_friends_list i {
+  font-size: 14pt;
+}
