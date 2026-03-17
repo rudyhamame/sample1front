@@ -13,12 +13,12 @@
 
 /*......Header and Loginform Container.......*/
 #Login_main {
-  gap: 50px;
+  gap: 36px;
   align-items: center;
   justify-content: center;
   flex-grow: 1;
   width: 100%;
-  padding: 32px 20px 24px;
+  padding: 28px 20px 20px;
   box-sizing: border-box;
 }
 #Login_loginLogo_container {
@@ -39,7 +39,7 @@
 
 #Login_loginLogo_text {
   font-family: "Exo", sans-serif;
-  font-size: 80pt;
+  font-size: 64pt;
   font-weight: 700;
   text-align: center;
   line-height: 0.85;
@@ -50,10 +50,10 @@
 #Login_subLoginLogo_text {
   font-family: "Pacifico", cursive;
   font-weight: 300;
-  font-size: 35pt;
+  font-size: 26pt;
   color: var(black);
   text-align: center;
-  margin: 18px 0 0;
+  margin: 12px 0 0;
 }
 
 #Login_loginForm_container {
@@ -65,24 +65,25 @@
 #Login_loginFrom_form {
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 24px;
+  gap: 10px;
+  padding: 20px;
   background-color: var(--brightestWhite);
-  border-radius: 20px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.486);
-  width: min(100%, 450px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  width: min(100%, 390px);
   overflow: hidden;
   box-sizing: border-box;
+  border: 1px solid rgba(1, 121, 111, 0.08);
 }
 
 #Login_loginFrom_form input {
-  font-size: 12pt;
+  font-size: 10.5pt;
   width: 100%;
   box-sizing: border-box;
-  min-height: 48px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 10px;
   border: 1px solid rgba(1, 121, 111, 0.2);
   background: #fff;
 }
@@ -91,10 +92,15 @@
   background-color: #01796f;
   color: var(--brightestWhite);
   font-weight: bold;
-  font-size: 14pt;
+  font-size: 11pt;
   width: 100%;
-  min-height: 48px;
-  border-radius: 12px;
+  min-height: 42px;
+  border-radius: 10px;
+}
+
+#Login_loginFrom_form h4 {
+  font-size: 11pt;
+  margin: 6px 0 0;
 }
 
 #Login_footer {
@@ -166,6 +172,36 @@
   }
   #Login_loginFrom_form {
     width: min(100%, 380px);
+  }
+}
+
+@media screen and (min-width: 901px) and (max-width: 1440px) {
+  #Login_main {
+    gap: 30px;
+    padding-top: 24px;
+  }
+
+  #Login_loginLogo_text {
+    font-size: 56pt;
+  }
+
+  #Login_subLoginLogo_text {
+    font-size: 22pt;
+  }
+
+  #Login_loginFrom_form {
+    width: min(100%, 360px);
+    padding: 18px;
+  }
+
+  #Login_loginFrom_form input,
+  #Login_loginFrom_form button {
+    min-height: 40px;
+    font-size: 10pt;
+  }
+
+  #Login_loginFrom_form h4 {
+    font-size: 10pt;
   }
 }
 @media screen and (max-width: 500px) {
