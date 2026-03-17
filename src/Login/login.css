@@ -50,9 +50,9 @@
   position: relative;
 }
 #Login_subLoginLogo_text {
-  font-family: "Pacifico", cursive;
-  font-weight: 300;
-  font-size: clamp(1.2rem, 3.3vw, 26pt);
+  font-family: "Playwrite DK Uloopet Guides", cursive;
+  font-weight: 400;
+  font-style: normal;
   color: var(black);
   text-align: center;
   margin: clamp(8px, 1.5vh, 12px) 0 0;
@@ -189,11 +189,11 @@
   }
 
   #Login_loginLogo_text {
-    font-size: 56pt;
+    font-size: 90pt;
   }
 
   #Login_subLoginLogo_text {
-    font-size: 22pt;
+    font-size: 18pt;
   }
 
   #Login_loginFrom_form {
@@ -203,7 +203,7 @@
 
   #Login_loginFrom_form input,
   #Login_loginFrom_form button {
-    min-height: 40px;
+    min-height: 20px;
     font-size: 10pt;
   }
 

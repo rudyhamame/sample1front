@@ -220,8 +220,10 @@ const Login = ({ onLogin }) => {
     <article id="Login_article" className="fc">
       <main id="Login_main" className="fc">
         <section id="Login_loginLogo_container">
-          <h1 id="Login_loginLogo_text">MCTOSH</h1>
-          <h4 id="Login_subLoginLogo_text">Virtual Medicine</h4>
+          <h1 id="Login_loginLogo_text">H | MCTOS</h1>
+          <h4 id="Login_subLoginLogo_text">
+            From Phenomena to Diagnosis: A Phenomenology of Medicine
+          </h4>
         </section>
         <section id="Login_loginForm_container">
           <section id="Login_loginFrom_form" className="fc">
@@ -229,18 +231,18 @@ const Login = ({ onLogin }) => {
               id="Login_firstname_input"
               type="text"
               style={{ display: "none" }}
-              placeholder="first name"
+              placeholder="doctor's first name"
             />
             <input
               id="Login_lastname_input"
               type="text"
               style={{ display: "none" }}
-              placeholder="last name"
+              placeholder="doctor's last name"
             />
             <input
               id="Login_username_input"
               type="text"
-              placeholder="username"
+              placeholder="doctor's username"
               onKeyPress={(event) => {
                 if (event.which === 13) {
                   login();
@@ -260,7 +262,7 @@ const Login = ({ onLogin }) => {
             <input
               id="Login_email_input"
               type="email"
-              placeholder="email address"
+              placeholder="doctor's email address"
               style={{ display: "none" }}
             />
             <input
