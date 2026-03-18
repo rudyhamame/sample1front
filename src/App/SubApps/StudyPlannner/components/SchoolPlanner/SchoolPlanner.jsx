@@ -387,6 +387,14 @@ export default class SchoolPlanner extends Component {
         course_grade,
         course_fullGrade,
       })
+      document.getElementById("schoolPlanner_addCourse_examType_input").value = "Exam type"
+      document.getElementById("schoolPlanner_addCourse_examDate_day_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_examDate_month_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_examDate_year_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_grade_input").value = ""
+      document.getElementById("schoolPlanner_addCourse_fullGrade_input").value = ""
       this.retrieveCourseExams()
     }
   }
@@ -466,6 +474,7 @@ export default class SchoolPlanner extends Component {
     let courseExams_ul=document.getElementById("schoolPlanner_addCourse_exams_ul")
     courseExams_ul.innerHTML=""
     for(var i=0;i<courseExams.length;i++){
+      const examIndex = i
       let p=document.createElement("p")
       let deleteIcon = document.createElement("i")
       let div_exam= document.createElement("div")
@@ -473,12 +482,11 @@ export default class SchoolPlanner extends Component {
       p.textContent=courseExams[i].exam_type+" | "+courseExams[i].exam_date+" | "+courseExams[i].exam_time+" | "+courseExams[i].course_grade+"/"+courseExams[i].course_fullGrade
 
       deleteIcon.setAttribute("class","fa fa-close");
-      deleteIcon.setAttribute("id",i+"DIcourseExams")
       div_exam.setAttribute("class","schoolPlanner_addCourse_exams_div fr")
 
       const removeCourseExamItem = () => {
-        div_exam.remove()
-        courseExams.splice(parseInt(deleteIcon.id),1)
+        courseExams.splice(examIndex,1)
+        this.retrieveCourseExams()
       }
 
       deleteIcon.addEventListener("click",()=>{
