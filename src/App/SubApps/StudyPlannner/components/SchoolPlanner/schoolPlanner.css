@@ -168,13 +168,119 @@
     text-align: center;
 }
 
-#schoolPlanner_courses_ul{
-    overflow: scroll;
-    gap:5px;
-    background-color: var(--green4);
+#schoolPlanner_courses_select {
+    width: calc(100% - 20px);
+    margin: 10px;
+    padding: 10px 12px;
+    font-size: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: var(--white2);
+    color: var(--black);
+    border-radius: 10px;
+    outline: none;
 }
-#schoolPlanner_lectures_tableLabels_div label,
-#schoolPlanner_courses_ulLabels_div label {
+
+#schoolPlanner_courses_details_div {
+    margin: 0 10px 10px;
+    padding: 12px;
+    gap: 0;
+    background-color: var(--white2);
+    border-radius: 14px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+    overflow-y: auto;
+}
+
+#schoolPlanner_courses_emptyState {
+    font-size: 10px;
+    color: var(--grayScale);
+    text-align: center;
+    padding: 20px 10px;
+}
+
+.schoolPlanner_courses_sectionTitle {
+    font-size: 11px;
+    color: var(--planner-green-deep);
+    margin: 12px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(31, 95, 89, 0.16);
+}
+
+#schoolPlanner_courses_actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+#schoolPlanner_courses_actions button {
+    background-color: var(--planner-green-mid);
+    color: var(--white);
+    border: 0;
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.schoolPlanner_courseDetail_row {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 8px 0;
+    border-top: 1px solid rgba(31, 95, 89, 0.12);
+}
+
+.schoolPlanner_courseDetail_row:first-of-type {
+    border-top: 0;
+}
+
+.schoolPlanner_courseDetail_row p:first-child {
+    background-color: transparent;
+    color: var(--planner-green-deep);
+    padding: 0;
+    width: auto;
+    font-size: 10px;
+    cursor: default;
+}
+
+.schoolPlanner_courseDetail_row p {
+    font-size: 10px;
+    color: var(--black);
+    text-align: left;
+    word-break: break-word;
+}
+
+#schoolPlanner_courses_examBlock {
+    margin-top: 4px;
+}
+
+#schoolPlanner_courses_examEmpty {
+    font-size: 10px;
+    color: var(--grayScale);
+    padding: 10px 0;
+}
+
+#schoolPlanner_courses_exam_ul {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.schoolPlanner_courses_exam_li {
+    list-style: none;
+    padding: 10px;
+    border: 1px solid rgba(31, 95, 89, 0.14);
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.schoolPlanner_courseDetail_row_exam:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+#schoolPlanner_lectures_tableLabels_div p,
+#schoolPlanner_courses_ulLabels_div p {
     padding-top: 2px;
     padding-bottom: 2px;
     font-size: 10px;
@@ -208,12 +314,25 @@
 
 #schoolPlanner_addCourse_div {
     width: min(96vw, 980px);
-    background-color: rgba(19, 52, 58, 0.492);
+    height: 80vh;
+    max-height: 80vh;
+    flex-direction: column;
+    background-color: rgba(65, 65, 60, 0.832);
     padding: 20px;
     border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
     transform: translate(-50%, -52%);
+    overflow: hidden;
+    overflow-x: hidden;
+}
+
+#schoolPlanner_addCourse_scrollArea {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
 }
 
 #schoolPlanner_addLecture_div {
@@ -328,7 +447,18 @@
     padding: 10px;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
-    gap: 0;
+    gap: 4px;
+}
+
+.schoolPlanner_addCourse_examFieldLabel {
+    background-color: transparent !important;
+    color: var(--planner-green-deep);
+    padding: 0;
+    width: auto;
+    font-size: 9px;
+    cursor: default;
+    box-shadow: none !important;
+    font-weight: 600;
 }
 
 #schoolPlanner_addCourse_exam_input_section input,
@@ -412,9 +542,21 @@
     border-bottom-left-radius: 0 !important;
 }
 
-#schoolPlanner_addCourse_time_input{
+#schoolPlanner_addCourse_time_inputs {
+    gap: 0;
+    width: 100%;
+}
+
+#schoolPlanner_addCourse_time_hour_input,
+#schoolPlanner_addCourse_time_minute_input {
+    text-align: center;
     border-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_time_hour_input {
     border-bottom-left-radius: 10px !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
 }
 
 #schoolPlanner_addCourse_div input,
