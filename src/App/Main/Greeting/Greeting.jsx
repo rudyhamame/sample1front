@@ -4,14 +4,8 @@ import React, {useState, useEffect} from 'react'
 import {storage} from "../../../firebase"
 import {ref, uploadBytes, listAll, getDownloadURL} from "firebase/storage"
 import {v4} from "uuid"
-import { getGreetingLine } from "../../../api/enquiries";
-
-const DEFAULT_GREETING_LINE =
-  "Your dashboard is ready and your medical workspace is waiting for today's progress.";
 
 const Greeting=(props)=>{
-  const [greetingLine, setGreetingLine] = useState(DEFAULT_GREETING_LINE);
-
   useEffect(()=>{
     listAll(imageListRef).then((response)=>{
       response.items.forEach((item)=>{
@@ -21,29 +15,6 @@ const Greeting=(props)=>{
       })
     })
   },[])
-
-  useEffect(() => {
-    let isActive = true;
-
-    getGreetingLine({
-      userId: props.state.my_id,
-      username: props.state.username,
-    })
-      .then((data) => {
-        if (isActive) {
-          setGreetingLine(data.reply || "");
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setGreetingLine(DEFAULT_GREETING_LINE);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [props.state.my_id, props.state.username]);
 
   const [imageUpload, setImageUpload]=useState(null)
   const[imageList, setImageList]=useState([])
@@ -71,17 +42,6 @@ const Greeting=(props)=>{
       <section id="Greeting_preStart" className="fc slide-top">
         <div className="fc" style={{ alignItems: "center" }}>
           <h1>Hello Dr. Rudy,</h1>
-          <p
-            style={{
-              marginTop: "8px",
-              marginBottom: "8px",
-              maxWidth: "680px",
-              textAlign: "center",
-              lineHeight: "1.5",
-            }}
-          >
-            {greetingLine}
-          </p>
           {/* <button id="Greeting_preStart_button" className="fr">
             <Link to="/study">
               <i class="fas fa-stopwatch"></i> Start Timer

@@ -1,4 +1,11 @@
 #schoolPlanner_article {
+    --planner-green-deep: #1f5f59;
+    --planner-green-mid: #2f847c;
+    --planner-green-bright: #49a99d;
+    --planner-green-soft: #e3f3ef;
+}
+
+#schoolPlanner_article {
     height: 100vh;
     position: relative;
 }
@@ -13,40 +20,39 @@
 }
 
 #schoolPlanner_lectures_nav {
-    background-color: #01978b;
+    background-color: var(--planner-green-deep);
 }
 #schoolPlanner_lectures_nav input{
     font-size: 10px;
     padding: 5px;
 }
 #schoolPlanner_lectures_search_div{
-    place-content: center;
-    place-items: center;
+    
 }
 #schoolPlanner_courses_nav {
-    background-color: #01978b;
+    background-color: var(--planner-green-deep);
     justify-content: center;
 }
 
 #schoolPlanner_courses_nav button {
-    background-color: var(--green2);
+    background-color: var(--planner-green-bright);
     cursor: pointer;
-    height: fit-content;
     font-size: 10px;
     color: var(--white);
     border-radius: 0;
     border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
     flex-grow: 1;
 }
 
 #schoolPlanner_lectures_nav button {
-    background-color: var(--green2);
+    background-color: var(--planner-green-bright);
     cursor: pointer;
-    height: fit-content;
     font-size: 10px;
     color: var(--white);
     border-radius: 0;
     border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 #schoolPlanner_coursesDoor_div {
@@ -126,7 +132,7 @@
 #schoolPlanner_lectures_tableLabels_section{
     display: flex;
     flex-direction: row;
-    background-color: #2f847c;
+    background-color: var(--planner-green-mid);
     align-items: center;
     box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.39);
     z-index: 2;
@@ -136,7 +142,7 @@
 #schoolPlanner_courses_ulLabels_div {
     display: flex;
     flex-direction: row;
-    background-color: #2f847c;
+    background-color: var(--planner-green-mid);
     justify-content: center;
     align-items: center;
     box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.39);
@@ -172,6 +178,7 @@
     padding-top: 2px;
     padding-bottom: 2px;
     font-size: 10px;
+    color: var(--white);
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -197,16 +204,315 @@
     left: 50%;
     transform: translate(-50%, -50%);
     display: none;
+}
 
+#schoolPlanner_addCourse_div {
+    width: min(96vw, 980px);
+    background-color: rgba(19, 52, 58, 0.492);
+    padding: 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
+    transform: translate(-50%, -52%);
+}
+
+#schoolPlanner_addLecture_div {
+    width: min(92vw, 620px);
+    padding: 20px;
+    gap: 12px;
+    background-color: var(--special_black2);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42);
+    transform: translate(-50%, -52%);
 }
 
 #schoolPlanner_addLecture_div label,
 #schoolPlanner_addCourse_div label {
-    background-color: var(--red2);
+    background-color: var(--green3);
     padding: 10px;
     width: fit-content;
     font-size: 10px;
     cursor: pointer;
+}
+
+#schoolPlanner_addLecture_div label,
+#schoolPlanner_addCourse_addButton_label,
+#schoolPlanner_addCourse_closeButton,
+#schoolPlanner_addCourse_dayAndTime_label > div,
+#schoolPlanner_addCourse_exam_label > div,
+#schoolPlanner_addCourse_instructorsNames_div > div:last-child,
+#schoolPlanner_addLecture_outlines_div > div:last-child {
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+}
+
+#schoolPlanner_addCourse_addButton_label {
+    background-color: var(--green4);
+    color: var(--white);
+    padding: 10px 14px;
+    width: fit-content;
+    font-size: 10px !important;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    transform: translateY(10px);
+}
+
+#schoolPlanner_addCourse_closeButton {
+    background-color: var(--green4);
+    color: var(--white);
+    padding: 10px;
+    width: fit-content;
+    font-size: 10px !important;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    transform: translateY(-10px);
+}
+
+#schoolPlanner_addCourse_form {
+    width: 100%;
+    gap: 10px;
+}
+
+.schoolPlanner_addCourse_row {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+}
+
+.schoolPlanner_addCourse_rowWide {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.schoolPlanner_addCourse_rowSplit {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
+.schoolPlanner_addCourse_rowQuad {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.schoolPlanner_addCourse_rowMeta {
+    align-items: stretch;
+}
+
+#schoolPlanner_addCourse_examSection {
+    width: 100%;
+}
+
+#schoolPlanner_addCourse_exam_div {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) auto;
+    gap: 0;
+    min-width: 0;
+    align-items: stretch;
+}
+
+#schoolPlanner_addCourse_exam_input_section {
+    gap: 10px;
+}
+
+#schoolPlanner_addCourse_exam_input_section > div:first-child {
+    background-color: var(--white);
+    border: 1px solid rgba(31, 95, 89, 0.2);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    padding: 10px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    gap: 0;
+}
+
+#schoolPlanner_addCourse_exam_input_section input,
+#schoolPlanner_addCourse_exam_input_section select {
+    border-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_examDate_inputs {
+    gap: 0;
+    width: 100%;
+}
+
+#schoolPlanner_addCourse_examTime_inputs {
+    gap: 0;
+    width: 100%;
+}
+
+#schoolPlanner_addCourse_examDate_day_input,
+#schoolPlanner_addCourse_examDate_month_input,
+#schoolPlanner_addCourse_examDate_year_input,
+#schoolPlanner_addCourse_examTime_hour_input,
+#schoolPlanner_addCourse_examTime_minute_input {
+    text-align: center;
+}
+
+#schoolPlanner_addCourse_examDate_day_input {
+    border-top-left-radius: 10px !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_examDate_month_input {
+    border-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_examDate_year_input {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_examTime_hour_input {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_examTime_minute_input {
+    border-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_grade_div {
+    width: 100%;
+}
+
+#schoolPlanner_addCourse_exam_label {
+    background-color: var(--green4);
+    color: var(--white);
+    width: fit-content;
+    min-height: 100%;
+    align-self: stretch;
+    font-size: 10px;
+    display: flex;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+#schoolPlanner_addCourse_exam_label > div {
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+#schoolPlanner_addCourse_day_input{
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_time_input{
+    border-radius: 0 !important;
+    border-bottom-left-radius: 10px !important;
+}
+
+#schoolPlanner_addCourse_div input,
+#schoolPlanner_addCourse_div select,
+#schoolPlanner_addCourse_div textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#schoolPlanner_addLecture_form {
+    width: 100%;
+    gap: 10px;
+}
+
+.schoolPlanner_addLecture_row {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+}
+
+.schoolPlanner_addLecture_rowSplit {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.schoolPlanner_addLecture_rowWide {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.schoolPlanner_addLecture_rowNarrow {
+    grid-template-columns: minmax(0, 180px);
+    justify-content: end;
+}
+
+#schoolPlanner_addLecture_div input,
+#schoolPlanner_addLecture_div select,
+#schoolPlanner_addLecture_div textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#schoolPlanner_addLecture_outlines_div {
+    width: 100%;
+    align-items: stretch;
+    gap: 0;
+}
+
+#schoolPlanner_addLecture_outlines_div > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#schoolPlanner_addLecture_outlines_input {
+    min-height: 96px;
+    resize: vertical;
+}
+
+#schoolPlanner_addLecture_outlines_ul {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#schoolPlanner_addLecture_outlines_div > div:last-child {
+    min-width: 64px;
+}
+
+#schoolPlanner_addLecture_addButton_label,
+#schoolPlanner_addLecture_div > label:first-child {
+    background-color: var(--green4);
+    color: var(--white);
+    padding: 10px 14px;
+    font-size: 10px !important;
+    line-height: 1;
+    align-self: center;
+}
+
+#schoolPlanner_addLecture_div > label:first-child {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+#schoolPlanner_addLecture_addButton_label {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+@media screen and (max-width: 700px) {
+    .schoolPlanner_addLecture_rowSplit,
+    .schoolPlanner_addLecture_rowNarrow {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .schoolPlanner_courses_dayAndTime_div,
@@ -275,23 +581,13 @@
 #schoolPlanner_addCourse_div textarea
  {
     font-size: 10px !important;
-    width: 50vw;
 }
 #schoolPlanner_addCourse_grade_div {
-    width: 50vw;
-}
-#schoolPlanner_addCourse_grade_div p{
-    background-color: var(--green4);
-    padding: 5px;
-    font-size: 10px;
-    text-align: center;
-    color: var(--white);
+    width: 100%;
 }
 #schoolPlanner_addCourse_form select,
 #schoolPlanner_addLecture_form select {
     font-size: 12px;
-    width: 50vw;
-
 }
 
 .schoolPlanner_courses_li {
@@ -335,32 +631,151 @@
 }
 
 #schoolPlanner_addCourse_dayAndTime_div,
-#schoolPlanner_addCourse_instructorsNames_div {
+#schoolPlanner_addCourse_exam_div,
+#schoolPlanner_addCourse_instructorsNames_div,
+#schoolPlanner_addLecture_outlines_div {
+    align-items: stretch;
+}
+
+#schoolPlanner_addCourse_dayAndTime_div {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) auto;
+    gap: 0;
+    min-width: 0;
+}
+
+#schoolPlanner_addCourse_dayAndTime_input_section {
+    gap: 10px;
+}
+
+#schoolPlanner_addCourse_dayAndTime_input_section > div:first-child {
+    background-color: var(--white);
+    border: 1px solid rgba(31, 95, 89, 0.2);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    padding: 10px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+#schoolPlanner_addCourse_dayAndTime_label,
+#schoolPlanner_addCourse_exam_label,
+#schoolPlanner_addCourse_instructorsNames_div > div:last-child,
+#schoolPlanner_addLecture_outlines_div > div:last-child {
+    background-color: var(--green4);
+    color: var(--white);
+    width: fit-content;
+    min-height: 100%;
+    align-self: stretch;
+    font-size: 10px;
+    display: flex;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+#schoolPlanner_addCourse_dayAndTime_label > div,
+#schoolPlanner_addCourse_exam_label > div,
+#schoolPlanner_addCourse_instructorsNames_div > div:last-child,
+#schoolPlanner_addLecture_outlines_div > div:last-child {
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
     align-items: center;
-    background-color: var(--red2);
+    justify-content: center;
+    min-height: 100%;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
 }
 
 #schoolPlanner_addLecture_outlines_div {
     justify-content: center;
-    align-items: center;
-    background-color: var(--red2);
+    background-color: var(--green3);
 }
 
 
 #schoolPlanner_addCourse_dayAndTime_ul,
+#schoolPlanner_addCourse_exams_ul,
 #schoolPlanner_addLecture_outlines_ul,
 #schoolPlanner_addCourse_instructorsNames_ul {
     padding: 10px;
     background-color: var(--white2);
-    width: 50vw;
     gap: 10px;
     overflow: scroll;
+    border-bottom-left-radius: 10px;
+}
+
+#schoolPlanner_addCourse_dayAndTime_ul,
+#schoolPlanner_addCourse_instructorsNames_ul {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+#schoolPlanner_addCourse_exams_ul {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 10px;
+}
+
+#schoolPlanner_addCourse_instructorsNames_div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+}
+
+#schoolPlanner_addCourse_instructorName_section {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+    background-color: var(--white);
+    border: 1px solid rgba(31, 95, 89, 0.2);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+#schoolPlanner_addCourse_instructorName_input {
+    min-width: 180px;
+    max-width: 220px;
+    background-color: var(--white);
+    border: 1px solid rgba(31, 95, 89, 0.2);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    position: relative;
+    z-index: 1;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px !important;
+}
+
+#schoolPlanner_addCourse_fullGrade_input {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+#schoolPlanner_addCourse_grade_input {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
 }
 
 #schoolPlanner_addLecture_outlines_ul p,
 #schoolPlanner_addCourse_instructorsNames_ul p,
 #schoolPlanner_addCourse_dayAndTime_ul p {
-    background-color: var(--red2);
+    background-color: var(--green3);
     padding: 5px;
     color: var(--white);
     font-size: 10px;
@@ -368,20 +783,65 @@
 
 }
 
+#schoolPlanner_addCourse_exams_ul p {
+    background-color: transparent;
+    padding: 0;
+    color: var(--black);
+    font-size: 10px;
+    border-radius: 0;
+    flex: 1 1 auto;
+}
+
 
 .schoolPlanner_addCourse_dayAndTime_div,
 .schoolPlanner_addCourse_instructorsNames_div, .schoolPlanner_addCourse_outlines_div {
     align-items: center;
     justify-content: center;
-    background-color: var(--red2);
     padding: 5px;
     border-radius: 5px;
     gap: 2px;
 }
 
+.schoolPlanner_addCourse_exams_div {
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    gap: 8px;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(31, 95, 89, 0.18);
+}
+
+.schoolPlanner_addCourse_exams_div:last-child {
+    border-bottom: 0;
+}
+
+@media screen and (max-width: 900px) {
+    .schoolPlanner_addCourse_rowQuad {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media screen and (max-width: 700px) {
+    .schoolPlanner_addCourse_rowSplit,
+    .schoolPlanner_addCourse_rowQuad,
+    .schoolPlanner_addCourse_examGroup {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #schoolPlanner_addCourse_exam_div {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+}
+
 .schoolPlanner_addCourse_dayAndTime_div i,
 .schoolPlanner_addCourse_instructorsNames_div i,.schoolPlanner_addCourse_outlines_div i {
     color: var(--white);
+    font-size: 10px;
+}
+
+.schoolPlanner_addCourse_exams_div i {
+    color: var(--green4);
     font-size: 10px;
 }
 

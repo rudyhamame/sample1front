@@ -10,6 +10,7 @@ var courses_partOfPlan = []
 var checkedLectures = [];
 var checkedCourses = [];
 var courseDayAndTime= [];
+var courseExams= [];
 var lectureOutlines= [];
 var courseNames=[];
 var courseNames_filtered=[];
@@ -22,6 +23,102 @@ var lectureInEdit={}
 
 var timezone = (new Date()).getTimezoneOffset()
 var todayDate = Date.now() - timezone*60000
+
+const toSafeNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getProgressStats = (progressValue, lengthValue) => {
+  const progress = Math.max(0, toSafeNumber(progressValue));
+  const length = Math.max(0, toSafeNumber(lengthValue));
+  const remaining = Math.max(0, length - progress);
+  const percent = length > 0 ? Math.round((progress * 100) / length) : 0;
+
+  return {
+    progress,
+    length,
+    remaining,
+    percent,
+    indicatorWidth: (150 * percent) / 100,
+  };
+};
+
+const getSafePagesPerDay = (lengthValue, progressValue, daysValue) => {
+  const length = toSafeNumber(lengthValue);
+  const progress = toSafeNumber(progressValue);
+  const days = Math.max(0, toSafeNumber(daysValue));
+
+  if (days <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((length - progress) / days));
+};
+
+const getPrimaryCourseExam = (examEntries = []) => {
+  const firstExam = examEntries[0] || {};
+
+  return {
+    exam_type: firstExam.exam_type || "-",
+    exam_date: firstExam.exam_date || "-",
+    exam_time: firstExam.exam_time || "-",
+    course_grade: firstExam.course_grade || "",
+    course_fullGrade: firstExam.course_fullGrade || "",
+  };
+};
+
+const formatExamDateParts = (value) => {
+  if (!value || value === "-") {
+    return { day: "", month: "", year: "" };
+  }
+
+  const dateParts = String(value).split("-");
+  if (dateParts.length === 3) {
+    return {
+      year: dateParts[0] || "",
+      month: dateParts[1] || "",
+      day: dateParts[2] || "",
+    };
+  }
+
+  return { day: "", month: "", year: "" };
+};
+
+const buildExamDateValue = ({ day, month, year }) => {
+  const normalizedDay = String(day || "").trim();
+  const normalizedMonth = String(month || "").trim();
+  const normalizedYear = String(year || "").trim();
+
+  if (!normalizedDay || !normalizedMonth || !normalizedYear) {
+    return "";
+  }
+
+  return `${normalizedYear.padStart(4, "0")}-${normalizedMonth.padStart(2, "0")}-${normalizedDay.padStart(2, "0")}`;
+};
+
+const formatExamTimeParts = (value) => {
+  if (!value || value === "-") {
+    return { hour: "", minute: "" };
+  }
+
+  const timeParts = String(value).split(":");
+  return {
+    hour: timeParts[0] || "",
+    minute: timeParts[1] || "",
+  };
+};
+
+const buildExamTimeValue = ({ hour, minute }) => {
+  const normalizedHour = String(hour || "").trim();
+  const normalizedMinute = String(minute || "").trim();
+
+  if (!normalizedHour || !normalizedMinute) {
+    return "";
+  }
+
+  return `${normalizedHour.padStart(2, "0")}:${normalizedMinute.padStart(2, "0")}`;
+};
 
 
 //..................................
@@ -72,11 +169,13 @@ export default class SchoolPlanner extends Component {
           })
           let p_progression = div_progression.children[1]
           let div_indicator_progression = div_progression.children[2].children[0]
-          let progression_percent=Number(lecture.lecture_progress*100/lecture.lecture_length).toFixed(0)
-          let progressionPercent_indicatorWidth_Ratio=150*progression_percent/100
-          p_progression.textContent = String(Number(lecture.lecture_length)+" ("+Number(lecture.lecture_progress)+" : "+Number(lecture.lecture_length - lecture.lecture_progress)+" | "+progression_percent+"%)");
-          div_indicator_progression.style.width=progressionPercent_indicatorWidth_Ratio+"px"
-          if(progression_percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"     
+          let progressionStats = getProgressStats(
+            lecture.lecture_progress,
+            lecture.lecture_length
+          )
+          p_progression.textContent = String(progressionStats.length+" ("+progressionStats.progress+" : "+progressionStats.remaining+" | "+progressionStats.percent+"%)");
+          div_indicator_progression.style.width=progressionStats.indicatorWidth+"px"
+          if(progressionStats.percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"     
     })
   }
   hideUncheckedLectures=()=>{
@@ -176,6 +275,7 @@ export default class SchoolPlanner extends Component {
     if(object.buttonName==="Add"){
     courseDayAndTime=[]
     courseInstructorsNames=[]
+    courseExams=[]
     document.getElementById("schoolPlanner_addCourse_name_input").value="";
     document.getElementById("schoolPlanner_addCourse_component_input").value="Course component";
     document.getElementById("schoolPlanner_addCourse_day_input").value="Course day";
@@ -186,14 +286,32 @@ export default class SchoolPlanner extends Component {
     document.getElementById("schoolPlanner_addCourse_status_input").value="Course status";
     document.getElementById("schoolPlanner_addCourse_grade_input").value="";
     document.getElementById("schoolPlanner_addCourse_fullGrade_input").value="";
+    document.getElementById("schoolPlanner_addCourse_examType_input").value="Exam type";
+    document.getElementById("schoolPlanner_addCourse_examDate_day_input").value="";
+    document.getElementById("schoolPlanner_addCourse_examDate_month_input").value="";
+    document.getElementById("schoolPlanner_addCourse_examDate_year_input").value="";
+    document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value="";
+    document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value="";
     document.getElementById("schoolPlanner_addCourse_instructorName_input").value="";
     document.getElementById("schoolPlanner_addCourse_instructorsNames_ul").innerHTML="";
     document.getElementById("schoolPlanner_addCourse_dayAndTime_ul").innerHTML="";
+    document.getElementById("schoolPlanner_addCourse_exams_ul").innerHTML="";
 
   }
     if(object.buttonName==="Edit"){
     courseDayAndTime=object.course.course_dayAndTime
     courseInstructorsNames=object.course.course_instructors
+    courseExams=(object.course.course_exams && object.course.course_exams.length>0)
+      ? object.course.course_exams
+      : ((object.course.exam_date || object.course.exam_time || object.course.exam_type || object.course.course_grade || object.course.course_fullGrade)
+        ? [{
+            exam_type: object.course.exam_type || "-",
+            exam_date: object.course.exam_date || "-",
+            exam_time: object.course.exam_time || "-",
+            course_grade: object.course.course_grade || "",
+            course_fullGrade: object.course.course_fullGrade || ""
+          }]
+        : [])
     //.........
     document.getElementById("schoolPlanner_addCourse_name_input").value=object.course.course_name.split(" (")[0];
     document.getElementById("schoolPlanner_addCourse_component_input").value=object.course.course_component;
@@ -208,11 +326,18 @@ export default class SchoolPlanner extends Component {
     document.getElementById("schoolPlanner_addCourse_instructorsNames_ul").innerHTML="";
     document.getElementById("schoolPlanner_addCourse_grade_input").value=object.course.course_grade;
     document.getElementById("schoolPlanner_addCourse_fullGrade_input").value=object.course.course_fullGrade;
-    document.getElementById("schoolPlanner_addCourse_examDate_input").value=object.course.exam_date;
-    document.getElementById("schoolPlanner_addCourse_examTime_input").value=object.course.exam_time;
+    document.getElementById("schoolPlanner_addCourse_examType_input").value=object.course.exam_type || "Exam type";
+    const examDateParts = formatExamDateParts(object.course.exam_date)
+    document.getElementById("schoolPlanner_addCourse_examDate_day_input").value=examDateParts.day;
+    document.getElementById("schoolPlanner_addCourse_examDate_month_input").value=examDateParts.month;
+    document.getElementById("schoolPlanner_addCourse_examDate_year_input").value=examDateParts.year;
+    const examTimeParts = formatExamTimeParts(object.course.exam_time)
+    document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value=examTimeParts.hour;
+    document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value=examTimeParts.minute;
     //................
     this.retrieveCourseDayAndTime()
     this.retrieveCourseInstructorsNames()
+    this.retrieveCourseExams()
   }
   };
    closeAddCourseForm = () => {
@@ -240,6 +365,31 @@ export default class SchoolPlanner extends Component {
     courseInstructorsNames.push(instructorName)
     this.retrieveCourseInstructorsNames()
   }
+  addCourseExam=()=>{
+    const exam_type = document.getElementById("schoolPlanner_addCourse_examType_input").value
+    const exam_date = buildExamDateValue({
+      day: document.getElementById("schoolPlanner_addCourse_examDate_day_input").value,
+      month: document.getElementById("schoolPlanner_addCourse_examDate_month_input").value,
+      year: document.getElementById("schoolPlanner_addCourse_examDate_year_input").value,
+    })
+    const exam_time = buildExamTimeValue({
+      hour: document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value,
+      minute: document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value,
+    })
+    const course_grade = document.getElementById("schoolPlanner_addCourse_grade_input").value
+    const course_fullGrade = document.getElementById("schoolPlanner_addCourse_fullGrade_input").value
+
+    if (exam_type && exam_date && exam_time) {
+      courseExams.push({
+        exam_type,
+        exam_date,
+        exam_time,
+        course_grade,
+        course_fullGrade,
+      })
+      this.retrieveCourseExams()
+    }
+  }
   retrieveCourseDayAndTime=()=>{
     var courseDayAndTime_ul=document.getElementById("schoolPlanner_addCourse_dayAndTime_ul")
     courseDayAndTime_ul.innerHTML=""
@@ -254,9 +404,16 @@ export default class SchoolPlanner extends Component {
       deleteIcon.setAttribute("id",i+"DIdayAndTime")
       div_dayAndTime.setAttribute("class","schoolPlanner_addCourse_dayAndTime_div fr")
 
-      deleteIcon.addEventListener("click",()=>{
-        deleteIcon.parentElement.remove()
+      const removeDayAndTimeItem = () => {
+        div_dayAndTime.remove()
         courseDayAndTime.splice(parseInt(deleteIcon.id),1)
+      }
+
+      deleteIcon.addEventListener("click",()=>{
+        removeDayAndTimeItem()
+      })
+      p.addEventListener("click", () => {
+        removeDayAndTimeItem()
       })
       div_dayAndTime.append(deleteIcon,p)
       courseDayAndTime_ul.appendChild(div_dayAndTime)
@@ -305,6 +462,35 @@ export default class SchoolPlanner extends Component {
       courseInstructorsNames_ul.appendChild(div_instructorsNames)
     }
   }
+  retrieveCourseExams=()=>{
+    let courseExams_ul=document.getElementById("schoolPlanner_addCourse_exams_ul")
+    courseExams_ul.innerHTML=""
+    for(var i=0;i<courseExams.length;i++){
+      let p=document.createElement("p")
+      let deleteIcon = document.createElement("i")
+      let div_exam= document.createElement("div")
+
+      p.textContent=courseExams[i].exam_type+" | "+courseExams[i].exam_date+" | "+courseExams[i].exam_time+" | "+courseExams[i].course_grade+"/"+courseExams[i].course_fullGrade
+
+      deleteIcon.setAttribute("class","fa fa-close");
+      deleteIcon.setAttribute("id",i+"DIcourseExams")
+      div_exam.setAttribute("class","schoolPlanner_addCourse_exams_div fr")
+
+      const removeCourseExamItem = () => {
+        div_exam.remove()
+        courseExams.splice(parseInt(deleteIcon.id),1)
+      }
+
+      deleteIcon.addEventListener("click",()=>{
+        removeCourseExamItem()
+      })
+      p.addEventListener("click", () => {
+        removeCourseExamItem()
+      })
+      div_exam.append(deleteIcon,p)
+      courseExams_ul.appendChild(div_exam)
+    }
+  }
 
     retrieveLecturesSearched = (searchKeyword)=>{
       this.setState({
@@ -336,7 +522,10 @@ export default class SchoolPlanner extends Component {
               String(lecture.lecture_instructor).includes(searchKeyword) ||
               String(lecture.lecture_outlines).includes(searchKeyword)
                 ){
-                    let progression_percent=Number(lecture.lecture_progress*100/lecture.lecture_length).toFixed(0)
+                    let progressionStats = getProgressStats(
+                      lecture.lecture_progress,
+                      lecture.lecture_length
+                    )
                     lecture_courses.push(lecture.lecture_course)
                     let p1 = document.createElement("p");
                     let p2 = document.createElement("p");
@@ -370,7 +559,7 @@ export default class SchoolPlanner extends Component {
                     p3.textContent = lecture.lecture_instructor;
                     p4.textContent = lecture.lecture_writer;
                     p5.textContent = lecture.lecture_date;
-                    p_progression.textContent = String(Number(lecture.lecture_length)+" ("+Number(lecture.lecture_progress)+" : "+Number(lecture.lecture_length - lecture.lecture_progress)+" | "+progression_percent+"%)");
+                    p_progression.textContent = String(progressionStats.length+" ("+progressionStats.progress+" : "+progressionStats.remaining+" | "+progressionStats.percent+"%)");
           
                       for(var i=0;i<lecture.lecture_outlines.length;i++){
                         let p=document.createElement("p")
@@ -413,9 +602,8 @@ export default class SchoolPlanner extends Component {
                     menu_editIcon.setAttribute("id",lecture._id+"menu_editIcon")
           
                     //........Progression logic
-                    let progressionPercent_indicatorWidth_Ratio=150*progression_percent/100
-                    div_indicator_progression.style.width=progressionPercent_indicatorWidth_Ratio+"px"
-                    if(progression_percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"
+                    div_indicator_progression.style.width=progressionStats.indicatorWidth+"px"
+                    if(progressionStats.percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"
                     //........  
                     //.......PagesFinished Logic
                     for(var i = 0;i<lecture.lecture_length;i++){
@@ -576,7 +764,10 @@ export default class SchoolPlanner extends Component {
         var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b)=> a.lecture_course > b.lecture_course ? -1 : 1)
         var lecture_courses = []
         lecture_sorted.forEach((lecture) => {
-          let progression_percent=Number(lecture.lecture_progress*100/lecture.lecture_length).toFixed(0)
+          let progressionStats = getProgressStats(
+            lecture.lecture_progress,
+            lecture.lecture_length
+          )
           lecture_courses.push(lecture.lecture_course)
           if(lecture.lecture_hidden===false){
           let p1 = document.createElement("p");
@@ -610,7 +801,7 @@ export default class SchoolPlanner extends Component {
           p3.textContent = lecture.lecture_instructor;
           p4.textContent = lecture.lecture_writer;
           p5.textContent = lecture.lecture_date;
-          p_progression.textContent = String(Number(lecture.lecture_length)+" ("+Number(lecture.lecture_progress)+" : "+Number(lecture.lecture_length - lecture.lecture_progress)+" | "+progression_percent+"%)");
+          p_progression.textContent = String(progressionStats.length+" ("+progressionStats.progress+" : "+progressionStats.remaining+" | "+progressionStats.percent+"%)");
 
             for(var i=0;i<lecture.lecture_outlines.length;i++){
               let p=document.createElement("p")
@@ -655,9 +846,8 @@ export default class SchoolPlanner extends Component {
           menu_editIcon.setAttribute("id",lecture._id+"menu_editIcon")
 
           //........Progression logic
-          let progressionPercent_indicatorWidth_Ratio=150*progression_percent/100
-          div_indicator_progression.style.width=progressionPercent_indicatorWidth_Ratio+"px"
-          if(progression_percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"
+          div_indicator_progression.style.width=progressionStats.indicatorWidth+"px"
+          if(progressionStats.percent<50) div_indicator_progression.style.backgroundColor="var(--red2)"
           //........  
          //.......PagesFinished Logic
          for(var i = 0;i<lecture.lecture_length;i++){
@@ -990,7 +1180,11 @@ export default class SchoolPlanner extends Component {
           p4.textContent = course.course_class;
           p5.textContent = course.course_status;
           p7.textContent = course.course_grade+"/"+course.course_fullGrade;
-          p8.textContent = course.course_progress+"/"+course.course_length+" ("+Number(course.course_progress/course.course_length*100).toFixed(0)+
+          const courseProgressStats = getProgressStats(
+            course.course_progress,
+            course.course_length
+          )
+          p8.textContent = courseProgressStats.progress+"/"+courseProgressStats.length+" ("+courseProgressStats.percent+
           "%)";
           p9.textContent = course.exam_date;
           p10.textContent = course.exam_time;
@@ -1011,7 +1205,11 @@ export default class SchoolPlanner extends Component {
           var examTime_mins = Number(String(course.exam_time).split(":")[1])
           //....
           p11.textContent = "Due in "+diffDaysWithoutDecimals+" day(s) and "+(diffHoursWithoutDecimals)+" hour(s) and " + (diffMinsWithoutDecimals)+" min(s) with "+ examTime_hour+" more hour(s) and "+examTime_mins+" min(s) on the exam day"
-          p12.textContent = Math.ceil(Number((course.course_length-course.course_progress)/diffDaysWithoutDecimals))
+          p12.textContent = getSafePagesPerDay(
+            course.course_length,
+            course.course_progress,
+            diffDaysWithoutDecimals
+          )
 
           label1.textContent="Course name:"
           label2.textContent="Course time:"
@@ -1019,7 +1217,7 @@ export default class SchoolPlanner extends Component {
           label4.textContent="Course class:"
           label5.textContent="Course status:"
           label6.textContent="Course instructors"
-          label7.textContent="Course grade"
+          label7.textContent="Actual grade"
           label8.textContent="Course pages"
           label9.textContent="Exam date"
           label10.textContent="Exam time"
@@ -1200,6 +1398,7 @@ export default class SchoolPlanner extends Component {
   //...............................................
   //..............EDIT COURSE....................
   editCourse = (object) => {
+    const primaryExam = getPrimaryCourseExam(courseExams)
     document.getElementById("schoolPlanner_addCourse_div").style.display =
       "none";
       let url =
@@ -1219,13 +1418,15 @@ export default class SchoolPlanner extends Component {
           course_class:object.course_class,
           course_status:object.course_status,
           course_instructors:courseInstructorsNames,
-          course_grade:object.course_grade,
-          course_fullGrade:object.course_fullGrade,
+          course_grade:primaryExam.course_grade,
+          course_fullGrade:primaryExam.course_fullGrade,
           course_length:object.course_length,
           course_progress:object.course_progress,
           course_partOfPlan:false,
-          exam_date:object.exam_date,
-          exam_time:object.exam_time
+          course_exams:courseExams,
+          exam_type:primaryExam.exam_type,
+          exam_date:primaryExam.exam_date,
+          exam_time:primaryExam.exam_time
         }),
       };
       let req = new Request(url, options);
@@ -1237,6 +1438,8 @@ export default class SchoolPlanner extends Component {
   };
   //..............PartofPlan COURSE....................
   partOfPlanCourse = (object,partOfPlanID,boolean) => {
+    const storedCourseExams = object.course_exams || [];
+    const primaryExam = getPrimaryCourseExam(storedCourseExams)
     document.getElementById("schoolPlanner_addCourse_div").style.display =
       "none";
       let url =
@@ -1256,13 +1459,15 @@ export default class SchoolPlanner extends Component {
           course_class:object.course_class,
           course_status:object.course_status,
           course_instructors:object.course_instructors,
-          course_grade:object.course_grade,
-          course_fullGrade:object.course_fullGrade,
+          course_grade:primaryExam.course_grade || object.course_grade,
+          course_fullGrade:primaryExam.course_fullGrade || object.course_fullGrade,
           course_length:object.course_length,
           course_progress:object.course_progress,
           course_partOfPlan:boolean,
-          exam_date:object.exam_date,
-          exam_time:object.exam_time
+          course_exams:storedCourseExams,
+          exam_type:primaryExam.exam_type || object.exam_type,
+          exam_date:primaryExam.exam_date || object.exam_date,
+          exam_time:primaryExam.exam_time || object.exam_time
         }),
       };
       let req = new Request(url, options);
@@ -1368,12 +1573,14 @@ editCoursePages = async () => {
 
   //.........ADD COURSE............
    addCourse = (object) => {
+    const primaryExam = getPrimaryCourseExam(courseExams)
     if (object.course_name){
     if (object.course_component==="Course component")  object.course_component="-"
     if (object.course_year==="Course year")  object.course_year="-"
     if (object.course_term==="Course term")  object.course_term="-"
     if (object.course_class==="Course classification")  object.course_class="-"
     if (object.course_status==="Course status")  object.course_status="-"
+    if (object.exam_type==="Exam type") object.exam_type="-"
 
     let url = apiUrl("/api/user/addCourse/")+ this.props.state.my_id;
     let options = {
@@ -1392,12 +1599,14 @@ editCoursePages = async () => {
         course_class:object.course_class,
         course_status:object.course_status,
         course_instructors:courseInstructorsNames,
-        course_grade:object.course_grade,
-        course_fullGrade:object.course_fullGrade,
-        course_length: {},
-        course_progress: {},
-        exam_date:object.exam_date,
-        exam_time:object.exam_time
+        course_grade:primaryExam.course_grade,
+        course_fullGrade:primaryExam.course_fullGrade,
+        course_length: 0,
+        course_progress: 0,
+        course_exams:courseExams,
+        exam_type:primaryExam.exam_type,
+        exam_date:primaryExam.exam_date,
+        exam_time:primaryExam.exam_time
       }),
     };
     let req = new Request(url, options);
@@ -1531,7 +1740,11 @@ editCoursePages = async () => {
                 var diffDaysWithDecimals=(examDateinMillisec-todayDate)/86400000
                 var diffDaysWithoutDecimals = Math.floor(diffDaysWithDecimals)
                 for(var j = 0;j<diffDaysWithoutDecimals;j++){
-                  let pageNum = Math.ceil(Number((course.course_length-course.course_progress)/diffDaysWithoutDecimals))
+                  let pageNum = getSafePagesPerDay(
+                    course.course_length,
+                    course.course_progress,
+                    diffDaysWithoutDecimals
+                  )
                   let p_courseName = document.createElement("p")
                   let p_coursePagesPerDay = document.createElement("p")
                   let div_course=document.createElement("div")
@@ -1573,25 +1786,33 @@ editCoursePages = async () => {
       <div id="schoolPlanner_addLecture_div" className="fc">
         <label onClick={this.closeAddLectureForm}>Close</label>
         <form id="schoolPlanner_addLecture_form" className="fc">
-          <input
-            id="schoolPlanner_addLecture_name_input"
-            placeholder="Lecture name"
-          />
-          <select id="schoolPlanner_addLecture_course_input">
-          <option selected disabled>Lecture course</option>
-          </select>
-          <select id="schoolPlanner_addLecture_instructorName_input">
-          <option selected disabled>Lecture instructor name</option>
-          </select>
-          <input
-            id="schoolPlanner_addLecture_writerName_input"
-            placeholder="Lecture writer name"
-          />
-          <input id="schoolPlanner_addLecture_date_input" type="date"/>
-          <input
-            id="schoolPlanner_addLecture_length_input"
-            placeholder="Lecture length"
-          />
+          <div className="schoolPlanner_addLecture_row schoolPlanner_addLecture_rowWide">
+            <input
+              id="schoolPlanner_addLecture_name_input"
+              placeholder="Lecture name"
+            />
+          </div>
+          <div className="schoolPlanner_addLecture_row schoolPlanner_addLecture_rowSplit">
+            <select id="schoolPlanner_addLecture_course_input">
+            <option selected disabled>Lecture course</option>
+            </select>
+            <select id="schoolPlanner_addLecture_instructorName_input">
+            <option selected disabled>Lecture instructor name</option>
+            </select>
+          </div>
+          <div className="schoolPlanner_addLecture_row schoolPlanner_addLecture_rowSplit">
+            <input
+              id="schoolPlanner_addLecture_writerName_input"
+              placeholder="Lecture writer name"
+            />
+            <input id="schoolPlanner_addLecture_date_input" type="date"/>
+          </div>
+          <div className="schoolPlanner_addLecture_row schoolPlanner_addLecture_rowNarrow">
+            <input
+              id="schoolPlanner_addLecture_length_input"
+              placeholder="Lecture length"
+            />
+          </div>
           <div id="schoolPlanner_addLecture_outlines_div" className='fr'>
             <div className='fc'>
             <textarea
@@ -1601,7 +1822,16 @@ editCoursePages = async () => {
           <ul id="schoolPlanner_addLecture_outlines_ul" className='fr'>
           </ul>
             </div>
-            <label onClick={()=>{this.addLectureOutline()}}>add</label>
+            <div
+            role="button"
+            tabIndex={0}
+            onClick={()=>{this.addLectureOutline()}}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                this.addLectureOutline()
+              }
+            }}
+            >add</div>
       </div>
             
               </form>
@@ -1667,18 +1897,31 @@ editCoursePages = async () => {
               </label>
       </div>
       <div id="schoolPlanner_addCourse_div" className="fc">
-        <label onClick={this.closeAddCourseForm}>Close</label>
+        <div
+        id="schoolPlanner_addCourse_closeButton"
+        role="button"
+        tabIndex={0}
+        onClick={this.closeAddCourseForm}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            this.closeAddCourseForm()
+          }
+        }}
+        >Close</div>
         <form id="schoolPlanner_addCourse_form" className="fc">
-          <input
-            id="schoolPlanner_addCourse_name_input"
-            placeholder="Course name"
-          />
-          <select id="schoolPlanner_addCourse_component_input">
-            <option selected="true" disabled="disabled">Course component</option>
-            <option>In-class</option>
-            <option>Out-of-class</option>
-          </select>
-          <div id="schoolPlanner_addCourse_dayAndTime_div" className='fr'>
+          <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowSplit">
+            <input
+              id="schoolPlanner_addCourse_name_input"
+              placeholder="Course name"
+            />
+            <select id="schoolPlanner_addCourse_component_input">
+              <option selected="true" disabled="disabled">Course component</option>
+              <option>In-class</option>
+              <option>Out-of-class</option>
+            </select>
+          </div>
+          <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
+            <div id="schoolPlanner_addCourse_dayAndTime_div" className='fr'>
             <section id="schoolPlanner_addCourse_dayAndTime_input_section" className='fc'>
               <div className='fc'>
               <select id="schoolPlanner_addCourse_day_input">
@@ -1696,18 +1939,31 @@ editCoursePages = async () => {
               type="time"
             />
             </div>
+            </section>
             <ul id="schoolPlanner_addCourse_dayAndTime_ul" className='fr'></ul>
-          </section>
           <div id="schoolPlanner_addCourse_dayAndTime_label">
-          <label onClick={()=>{
+          <div
+          role="button"
+          tabIndex={0}
+          onClick={()=>{
           this.addCourseDayAndTime({
               day:document.getElementById("schoolPlanner_addCourse_day_input").value,
               time:document.getElementById("schoolPlanner_addCourse_time_input").value
           })
-          }}>add</label>
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              this.addCourseDayAndTime({
+                day:document.getElementById("schoolPlanner_addCourse_day_input").value,
+                time:document.getElementById("schoolPlanner_addCourse_time_input").value
+              })
+            }
+          }}
+          >add</div>
+            </div>
           </div>
-              
-                </div>
+          </div>
+          <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowQuad">
                 <select class="form-select" name="year" id="schoolPlanner_addCourse_year_input">
                       <option selected="true" disabled="disabled">Course year</option>
                       <option value="1940">1940</option>
@@ -1817,8 +2073,10 @@ editCoursePages = async () => {
                     <option>Pass</option>
                     <option>Fail</option>
                   </select>
-                  <div id="schoolPlanner_addCourse_instructorsNames_div" className='fr'>
-                  <div className='fc'>
+          </div>
+          <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
+            <div id="schoolPlanner_addCourse_instructorsNames_div" className='fr'>
+                  <div id="schoolPlanner_addCourse_instructorName_section" className='fr'>
                   <input
                   id="schoolPlanner_addCourse_instructorName_input"
                   placeholder="Course instructors"
@@ -1826,20 +2084,66 @@ editCoursePages = async () => {
                 <ul id="schoolPlanner_addCourse_instructorsNames_ul" className='fr'>
                 </ul>
                   </div>              
-                  <label onClick={()=>{this.addCourseInstructorsNames()}}>add</label>
+                  <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={()=>{this.addCourseInstructorsNames()}}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      this.addCourseInstructorsNames()
+                    }
+                  }}
+                  >add</div>
                 </div>
-                <div id="schoolPlanner_addCourse_grade_div" className='fr'>
-                  <input placeholder='Course grade' id="schoolPlanner_addCourse_grade_input"/>
-                  <p>out of</p>
-                  <input placeholder='Full course grade' id="schoolPlanner_addCourse_fullGrade_input"/>
+          </div>
+          <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide schoolPlanner_addCourse_rowMeta">
+                <div id="schoolPlanner_addCourse_examSection" className='fc'>
+                  <div id="schoolPlanner_addCourse_exam_div" className='fr'>
+                    <section id="schoolPlanner_addCourse_exam_input_section" className='fc'>
+                      <div className='fc'>
+                        <div id="schoolPlanner_addCourse_examDate_inputs" className='fr'>
+                          <input placeholder='DD' id="schoolPlanner_addCourse_examDate_day_input"/>
+                          <input placeholder='MM' id="schoolPlanner_addCourse_examDate_month_input"/>
+                          <input placeholder='YYYY' id="schoolPlanner_addCourse_examDate_year_input"/>
+                        </div>
+                        <div id="schoolPlanner_addCourse_examTime_inputs" className='fr'>
+                          <input placeholder='hh' id="schoolPlanner_addCourse_examTime_hour_input"/>
+                          <input placeholder='mm' id="schoolPlanner_addCourse_examTime_minute_input"/>
+                        </div>
+                        <select id="schoolPlanner_addCourse_examType_input">
+                          <option selected="true" disabled="disabled">Exam type</option>
+                          <option>Quiz</option>
+                          <option>Midterm</option>
+                          <option>Final</option>
+                          <option>Practical</option>
+                          <option>Oral</option>
+                        </select>
+                      <div id="schoolPlanner_addCourse_grade_div" className='fr'>
+                        <input placeholder='Actual grade' id="schoolPlanner_addCourse_grade_input"/>
+                        <input placeholder='Full grate' id="schoolPlanner_addCourse_fullGrade_input"/>
+                      </div>
+                      </div>
+                    </section>
+                    <ul id="schoolPlanner_addCourse_exams_ul" className='fr'></ul>
+                    <div id="schoolPlanner_addCourse_exam_label">
+                      <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={()=>{this.addCourseExam()}}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          this.addCourseExam()
+                        }
+                      }}
+                      >add</div>
+                    </div>
+                  </div>
                 </div>
-                <input placeholder='Exam date' type='date' id="schoolPlanner_addCourse_examDate_input"/>
-                <input
-                    id="schoolPlanner_addCourse_examTime_input"
-                    type="time"
-                  />
+          </div>
               </form>
-              <label id="schoolPlanner_addCourse_addButton_label"
+              <div id="schoolPlanner_addCourse_addButton_label"
+                role="button"
+                tabIndex={0}
                 onClick={() =>{
                   let buttonName=document.getElementById("schoolPlanner_addCourse_addButton_label").textContent
                   let course_name=document.getElementById(
@@ -1866,8 +2170,15 @@ editCoursePages = async () => {
                   let course_fullGrade=document.getElementById(
                     "schoolPlanner_addCourse_fullGrade_input"
                   ).value
-                  let exam_date=document.getElementById("schoolPlanner_addCourse_examDate_input").value
-                  let exam_time=document.getElementById("schoolPlanner_addCourse_examTime_input").value
+                  let exam_date=buildExamDateValue({
+                    day:document.getElementById("schoolPlanner_addCourse_examDate_day_input").value,
+                    month:document.getElementById("schoolPlanner_addCourse_examDate_month_input").value,
+                    year:document.getElementById("schoolPlanner_addCourse_examDate_year_input").value
+                  })
+                  let exam_time=buildExamTimeValue({
+                    hour:document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value,
+                    minute:document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value
+                  })
                     if(buttonName==="Add"){
                       this.addCourse({
                         course_name: course_name + " ("+ course_component+")",
@@ -1878,8 +2189,8 @@ editCoursePages = async () => {
                         course_status:course_status,
                         course_grade:course_grade,
                         course_fullGrade:course_fullGrade,
-                        course_length:{},
-                        course_progress:{},
+                        course_length:0,
+                        course_progress:0,
                         exam_date:exam_date,
                         exam_time:exam_time
                         })  
@@ -1894,16 +2205,89 @@ editCoursePages = async () => {
                       course_status:course_status,
                       course_grade:course_grade,
                       course_fullGrade:course_fullGrade,
-                      course_length:"No data",
-                      course_progress:"No data",
+                      course_length:0,
+                      course_progress:0,
                       exam_date:exam_date,
                       exam_time:exam_time
                       })  
                 }
+                }
               }
-              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  let buttonName=document.getElementById("schoolPlanner_addCourse_addButton_label").textContent
+                  let course_name=document.getElementById(
+                    "schoolPlanner_addCourse_name_input"
+                  ).value;
+                  let course_component=document.getElementById(
+                    "schoolPlanner_addCourse_component_input"
+                  ).value;
+                  let course_year= document.getElementById(
+                    "schoolPlanner_addCourse_year_input"
+                  ).value;
+                  let course_term=document.getElementById(
+                    "schoolPlanner_addCourse_term_input"
+                  ).value;
+                  let course_class=document.getElementById(
+                    "schoolPlanner_addCourse_class_input"
+                  ).value;
+                  let course_status=document.getElementById(
+                    "schoolPlanner_addCourse_status_input"
+                  ).value
+                  let course_grade=document.getElementById(
+                    "schoolPlanner_addCourse_grade_input"
+                  ).value
+                  let course_fullGrade=document.getElementById(
+                    "schoolPlanner_addCourse_fullGrade_input"
+                  ).value
+                  let exam_type=document.getElementById("schoolPlanner_addCourse_examType_input").value
+                  let exam_date=buildExamDateValue({
+                    day:document.getElementById("schoolPlanner_addCourse_examDate_day_input").value,
+                    month:document.getElementById("schoolPlanner_addCourse_examDate_month_input").value,
+                    year:document.getElementById("schoolPlanner_addCourse_examDate_year_input").value
+                  })
+                  let exam_time=buildExamTimeValue({
+                    hour:document.getElementById("schoolPlanner_addCourse_examTime_hour_input").value,
+                    minute:document.getElementById("schoolPlanner_addCourse_examTime_minute_input").value
+                  })
+                    if(buttonName==="Add"){
+                      this.addCourse({
+                        course_name: course_name + " ("+ course_component+")",
+                        course_component: course_component,
+                        course_year: course_year,
+                        course_term: course_term,
+                        course_class:course_class,
+                        course_status:course_status,
+                        course_grade:course_grade,
+                        course_fullGrade:course_fullGrade,
+                        course_length:0,
+                        course_progress:0,
+                        exam_type:exam_type,
+                        exam_date:exam_date,
+                        exam_time:exam_time
+                        })  
+                      }
+                    if(buttonName==="Edit"){
+                      this.editCourse({
+                      course_name: course_name + " ("+course_component+")",
+                      course_component: course_component,
+                      course_year: course_year,
+                      course_term: course_term,
+                      course_class:course_class,
+                      course_status:course_status,
+                      course_grade:course_grade,
+                      course_fullGrade:course_fullGrade,
+                      course_length:0,
+                      course_progress:0,
+                      exam_type:exam_type,
+                      exam_date:exam_date,
+                      exam_time:exam_time
+                      })  
+                }
+                }
+              }}
               >
-              </label>
+              </div>
       </div>
       <div id="div_progression" className='div_progression fc'>
       </div>

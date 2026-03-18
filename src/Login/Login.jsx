@@ -222,7 +222,8 @@ const Login = ({ onLogin }) => {
         <section id="Login_loginLogo_container">
           <h1 id="Login_loginLogo_text">H | MCTOS</h1>
           <h4 id="Login_subLoginLogo_text">
-            From Phenomena to Diagnosis: A Phenomenology of Medicine
+            From Clinical-related Phenomena to Diagnosis: A Phenomenology of
+            Medicine
           </h4>
         </section>
         <section id="Login_loginForm_container">
@@ -306,6 +307,10 @@ const Login = ({ onLogin }) => {
       <footer id="Login_footer">
         <section id="Login_copyright_container">
           <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
+          <p id="Login_poweredBy_text">
+            Powered by OpenAI API to support intelligent medical knowledge and
+            enquiry experiences.
+          </p>
         </section>
       </footer>
       {is_loading === true && (
