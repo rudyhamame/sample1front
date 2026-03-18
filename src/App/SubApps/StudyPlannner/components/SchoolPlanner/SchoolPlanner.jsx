@@ -907,6 +907,19 @@ export default class SchoolPlanner extends Component {
     detailsDiv.appendChild(examBlock);
   };
 
+  renderCourseDetailsLoader = () => {
+    let detailsDiv = document.getElementById(
+      "schoolPlanner_courses_details_div",
+    );
+    if (!detailsDiv) return;
+
+    detailsDiv.innerHTML = `
+      <div id="schoolPlanner_courses_details_loader" class="fc">
+        <img src="/img/loader.gif" alt="" width="50px" />
+      </div>
+    `;
+  };
+
   retrieveLecturesSearched = (searchKeyword) => {
     this.setState({
       lecture_isLoading: true,
@@ -1595,7 +1608,7 @@ export default class SchoolPlanner extends Component {
   };
 
   //.........RETRIEVE COURSES.................
-  retrieveCourses = () => {
+  retrieveCourses = (selectedCourseId) => {
     this.setState({
       course_isLoading: true,
     });
@@ -1603,11 +1616,13 @@ export default class SchoolPlanner extends Component {
     let courseDetails = document.getElementById(
       "schoolPlanner_courses_details_div",
     );
+    const activeCourseId =
+      selectedCourseId || (courseSelect ? courseSelect.value : "");
     if (courseSelect) {
       courseSelect.innerHTML = "";
     }
     if (courseDetails) {
-      courseDetails.innerHTML = "";
+      this.renderCourseDetailsLoader();
     }
     let url = apiUrl("/api/user/update/") + this.props.state.my_id;
     let req = new Request(url, {
@@ -1617,9 +1632,6 @@ export default class SchoolPlanner extends Component {
     fetch(req)
       .then((response) => {
         if (response.status === 200) {
-          this.setState({
-            course_isLoading: false,
-          });
           courseNames = [];
           courseInstructorsNames = [];
           courses_partOfPlan = [];
@@ -1658,8 +1670,11 @@ export default class SchoolPlanner extends Component {
           });
 
           if (courses.length > 0) {
-            courseSelect.value = courses[0]._id;
-            this.renderCourseDetailsCard(courses[0]);
+            const selectedCourse =
+              courses.find((course) => course._id === activeCourseId) ||
+              courses[0];
+            courseSelect.value = selectedCourse._id;
+            this.renderCourseDetailsCard(selectedCourse);
           } else {
             this.renderCourseDetailsCard(null);
           }
@@ -1673,6 +1688,9 @@ export default class SchoolPlanner extends Component {
         }
       })
       .then(() => {
+        this.setState({
+          course_isLoading: false,
+        });
         console.log(courses_partOfPlan);
         //....TO ADD COURSE NAMES OPTIONS TO SELECT COURSE IN LECTURE ADD FORM
         var select_courseNames = document.getElementById(
@@ -1695,6 +1713,12 @@ export default class SchoolPlanner extends Component {
           option.innerHTML = courseInstructorsNames_filtered[i];
           select_courseInstructorsNames.append(option);
         }
+      })
+      .catch(() => {
+        this.setState({
+          course_isLoading: false,
+        });
+        this.renderCourseDetailsCard(null);
       });
   };
   //.............................................
@@ -1938,6 +1962,9 @@ export default class SchoolPlanner extends Component {
     let req = new Request(url, options);
     fetch(req).then((lecture) => {
       if (lecture.status === 201) {
+        const selectedCourseId = document.getElementById(
+          "schoolPlanner_courses_select",
+        )?.value;
         this.setState({
           lecture_isLoading: false,
         });
@@ -1945,6 +1972,7 @@ export default class SchoolPlanner extends Component {
         document.getElementById("schoolPlanner_addLecture_div").style.display =
           "none";
         this.retrieveLectures();
+        this.retrieveCourses(selectedCourseId);
       }
     });
   };
@@ -1972,9 +2000,13 @@ export default class SchoolPlanner extends Component {
     let req = new Request(url, options);
     fetch(req).then((lecture) => {
       if (lecture.status === 201) {
+        const selectedCourseId = document.getElementById(
+          "schoolPlanner_courses_select",
+        )?.value;
         document.getElementById("schoolPlanner_addLecture_div").style.display =
           "none";
         this.retrieveLectures();
+        this.retrieveCourses(selectedCourseId);
       }
     });
   };
@@ -2037,11 +2069,6 @@ export default class SchoolPlanner extends Component {
         <article id="schoolPlanner_article" className="fr">
           <div className="fr" id="schoolPlanner_coursesLectures_wrapper">
             <aside id="schoolPlanner_courses_aside" className="fc">
-              {this.state.course_isLoading === true && (
-                <div id="course_loaderImg" className="loaderImg_div fc">
-                  <img src="/img/loader.gif" alt="" width="50px" />
-                </div>
-              )}
               <nav id="schoolPlanner_courses_nav" className="fr">
                 <button
                   onClick={() =>

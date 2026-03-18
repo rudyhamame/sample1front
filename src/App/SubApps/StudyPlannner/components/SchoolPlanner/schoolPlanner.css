@@ -188,6 +188,13 @@
     border-radius: 14px;
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
     overflow-y: auto;
+    min-height: 220px;
+}
+
+#schoolPlanner_courses_details_loader {
+    min-height: 196px;
+    align-items: center;
+    justify-content: center;
 }
 
 #schoolPlanner_courses_emptyState {
