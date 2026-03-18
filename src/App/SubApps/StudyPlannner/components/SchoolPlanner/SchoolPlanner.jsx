@@ -2056,7 +2056,9 @@ export default class SchoolPlanner extends Component {
               <div id="schoolPlanner_courses_ulLabels_div">
                 <p>Courses</p>
               </div>
-              <select id="schoolPlanner_courses_select"></select>
+              <div id="schoolPlanner_courses_select_shell">
+                <select id="schoolPlanner_courses_select"></select>
+              </div>
               <div id="schoolPlanner_courses_details_div" className="fc"></div>
               {}
             </aside>
