@@ -2024,7 +2024,6 @@ export default class SchoolPlanner extends Component {
         if (course.status === 201) {
           document.getElementById("schoolPlanner_addCourse_div").style.display =
             "none";
-          document.getElementById("schoolPlanner_courses_ul").innerHTML = "";
           this.retrieveCourses();
         }
       });
@@ -2044,13 +2043,6 @@ export default class SchoolPlanner extends Component {
                 </div>
               )}
               <nav id="schoolPlanner_courses_nav" className="fr">
-                <div className="fc" id="schoolPlanner_courses_refresh_div">
-                  <i
-                    class="fi fi-rr-refresh"
-                    id="schoolPlanner_courses_refresh_i"
-                    onClick={() => this.editCoursePages()}
-                  ></i>
-                </div>
                 <button
                   onClick={() =>
                     this.openAddCourseForm({
@@ -2418,7 +2410,7 @@ export default class SchoolPlanner extends Component {
                     placeholder="Course name"
                   />
                   <select id="schoolPlanner_addCourse_component_input">
-                    <option selected="true" disabled="disabled">
+                    <option selected={true} disabled="disabled">
                       Course component
                     </option>
                     <option>In-class</option>
@@ -2436,7 +2428,7 @@ export default class SchoolPlanner extends Component {
                     >
                       <div className="fc">
                         <select id="schoolPlanner_addCourse_day_input">
-                          <option selected="true" disabled="disabled">
+                          <option selected={true} disabled="disabled">
                             Course day
                           </option>
                           <option>Sunday</option>
@@ -2514,7 +2506,7 @@ export default class SchoolPlanner extends Component {
                     name="year"
                     id="schoolPlanner_addCourse_year_input"
                   >
-                    <option selected="true" disabled="disabled">
+                    <option selected={true} disabled="disabled">
                       Course year
                     </option>
                     <option value="1940">1940</option>
@@ -2603,7 +2595,7 @@ export default class SchoolPlanner extends Component {
                     <option value="2023">2023</option>
                   </select>
                   <select name="" id="schoolPlanner_addCourse_term_input">
-                    <option selected="true" disabled="disabled">
+                    <option selected={true} disabled="disabled">
                       Course term
                     </option>
                     <option>Fall</option>
@@ -2611,7 +2603,7 @@ export default class SchoolPlanner extends Component {
                     <option>Summer</option>
                   </select>
                   <select id="schoolPlanner_addCourse_class_input">
-                    <option selected="true" disabled="disabled">
+                    <option selected={true} disabled="disabled">
                       Course classification
                     </option>
                     <option disabled="disabled">IN-CLASS</option>
@@ -2622,7 +2614,7 @@ export default class SchoolPlanner extends Component {
                     <option>Clinical rotation</option>
                   </select>
                   <select name="" id="schoolPlanner_addCourse_status_input">
-                    <option selected="true" disabled="disabled">
+                    <option selected={true} disabled="disabled">
                       Course status
                     </option>
                     <option>Unstarted</option>
@@ -2725,7 +2717,7 @@ export default class SchoolPlanner extends Component {
                             Exam type
                           </label>
                           <select id="schoolPlanner_addCourse_examType_input">
-                            <option selected="true" disabled="disabled">
+                            <option selected={true} disabled="disabled">
                               Exam type
                             </option>
                             <option>Quiz</option>
