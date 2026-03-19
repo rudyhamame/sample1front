@@ -1,16 +1,17 @@
 import React from "react";
 import Posts from "../posts/Posts";
 import Friends from "../friends/Friends";
-import Terminology from "../../moa/terminology/Terminology";
 
 const Main = (props) => {
   return (
     <main id="Main_article" className="fr">
+      {/*
       <Terminology
         state={props.state}
         postingTerminology={props.postingTerminology}
         content={props.content}
       />
+      */}
       <Posts
         state={props.state}
         postingPost={props.postingPost}
