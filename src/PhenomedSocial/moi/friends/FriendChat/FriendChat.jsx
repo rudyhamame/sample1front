@@ -70,6 +70,7 @@ const FriendChat = ({
               }}
             ></i>
             <div id="Chat_title_copy" className="fc">
+              <p id="Chat_app_title">Noga Chat</p>
               <h1 id="Chat_title_text">
                 {state?.activeChatFriendName || chatContent?.title || "Chat"}
               </h1>

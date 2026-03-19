@@ -1,0 +1,159 @@
+@media screen and (min-width: 901px) and (max-width: 1200px) {
+  #PhenomedSocial_article {
+    padding: 10px;
+  }
+
+  .PhenomedSocial_intro {
+    padding: 10px 12px;
+  }
+
+  .PhenomedSocial_headingRow {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .PhenomedSocial_headingCopy {
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .PhenomedSocial_headerAside {
+    flex: 0 0 170px;
+    min-width: 170px;
+  }
+
+  .PhenomedSocial_metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .PhenomedSocial_metricCard {
+    min-width: 0;
+    padding: 6px 7px;
+  }
+
+  #PhenomedSocial_article #Terminology_article {
+    flex: 0 0 182px;
+    width: 182px;
+    min-width: 182px;
+  }
+
+  #PhenomedSocial_article #Friends_article {
+    flex: 0 0 182px;
+    width: 182px;
+    min-width: 182px;
+  }
+
+  #PhenomedSocial_article #InputPost_article,
+  #PhenomedSocial_article #MountPosts_content_container,
+  #PhenomedSocial_article #FriendsList_content_container,
+  #PhenomedSocial_article #AddFriend_content_container,
+  #PhenomedSocial_article #FriendChat_content_container,
+  #PhenomedSocial_article #Terminology_content_container {
+    padding: 7px;
+  }
+
+  #PhenomedSocial_article .sentMessagesLI p,
+  #PhenomedSocial_article .receivedMessagesLI p {
+    font-size: 0.56rem;
+    padding: 4px 6px;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  #PhenomedSocial_article {
+    width: 100%;
+    padding: 16px;
+    transform: none;
+  }
+
+  #PhenomedSocial_article #Main_article {
+    flex-direction: column;
+    height: auto;
+  }
+
+  #PhenomedSocial_article #Terminology_article,
+  #PhenomedSocial_article #Friends_article {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  #PhenomedSocial_article #Terminology_article {
+    display: flex;
+  }
+
+  #PhenomedSocial_article #Posts_article,
+  #PhenomedSocial_article #Friends_article {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .PhenomedSocial--arabic #Terminology_article,
+  .PhenomedSocial--arabic #Posts_article,
+  .PhenomedSocial--arabic #Friends_article {
+    order: initial;
+  }
+
+  #PhenomedSocial_article .sentMessagesLI p,
+  #PhenomedSocial_article .receivedMessagesLI p {
+    font-size: 0.8rem;
+    padding: 9px 11px;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  .PhenomedSocial_intro {
+    padding: 20px;
+  }
+
+  .PhenomedSocial_sectionNav {
+    display: none;
+  }
+
+  .PhenomedSocial_headingCopy h1 {
+    font-size: 1.7rem;
+  }
+
+  .PhenomedSocial_headerAside {
+    align-items: stretch;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  #PhenomedSocial_article #InputPost_textarea_container {
+    flex-direction: column;
+  }
+
+  #PhenomedSocial_article #MountPosts_content_container,
+  #PhenomedSocial_article #Terminology_content_container {
+    padding: 14px;
+  }
+
+  #PhenomedSocial_article .sentMessagesLI,
+  #PhenomedSocial_article .receivedMessagesLI {
+    max-width: 86%;
+  }
+
+  #PhenomedSocial_article .sentMessagesDIV,
+  #PhenomedSocial_article .receivedMessagesDIV {
+    padding: 5px 0;
+  }
+
+  #PhenomedSocial_article .sentMessagesLI p,
+  #PhenomedSocial_article .receivedMessagesLI p {
+    font-size: 0.76rem;
+    line-height: 1.5;
+    padding: 8px 10px;
+  }
+}
+
+@media screen and (max-width: 390px) {
+  /* iPhone 12 / 12 Pro CSS viewport width */
+}

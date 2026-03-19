@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Link } from "react-router-dom";
 import Nav from "../App/Header/Nav/Nav";
 import Main from "./moi/main/Main";
@@ -7,6 +7,22 @@ import "./phenomedsocial.css";
 
 const PhenomedSocial = (props) => {
   const content = phenomedSocialEnglishContent;
+  const openPostsView = () => {
+    const postsArticle = document.getElementById("Posts_article");
+
+    if (postsArticle) {
+      postsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const openFriendsView = () => {
+    const friendsArticle = document.getElementById("Friends_article");
+
+    if (friendsArticle) {
+      friendsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <article id="PhenomedSocial_article" className="fc">
       <section className="PhenomedSocial_intro fc">
@@ -32,6 +48,20 @@ const PhenomedSocial = (props) => {
               logOut={props.logOut}
               acceptFriend={props.acceptFriend}
               makeNotificationsRead={props.makeNotificationsRead}
+              extraActions={[
+                {
+                  id: "phenomed-posts",
+                  label: content.metrics.posts,
+                  iconClass: "far fa-newspaper",
+                  onClick: openPostsView,
+                },
+                {
+                  id: "phenomed-friends",
+                  label: content.metrics.friends,
+                  iconClass: "fas fa-users",
+                  onClick: openFriendsView,
+                },
+              ]}
             />
             <div className="PhenomedSocial_metrics fr">
               <div className="PhenomedSocial_metricCard fc">
@@ -73,3 +103,4 @@ const PhenomedSocial = (props) => {
 };
 
 export default PhenomedSocial;
+

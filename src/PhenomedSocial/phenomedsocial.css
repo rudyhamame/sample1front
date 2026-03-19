@@ -1,4 +1,4 @@
-@import "../App/Main/main.css";
+﻿@import "../App/Main/main.css";
 @import "./moi/posts/posts.css";
 @import "./moa/posts/InputPost/inputPosts.css";
 @import "./moa/posts/InputPost/SearchPosts/search_posts.css";
@@ -10,6 +10,7 @@
 @import "./moi/friends/FriendsList/friendslist.css";
 @import "./moa/friends/SearchUsers/search_users.css";
 
+@media screen {
 #PhenomedSocial_article {
   position: relative;
   min-height: 100vh;
@@ -100,15 +101,14 @@
 }
 
 .PhenomedSocial_headingRow {
-  justify-content: space-between;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 10px;
   flex-wrap: wrap;
 }
 
 .PhenomedSocial_headingCopy {
   gap: 4px;
-  max-width: 560px;
+  max-width: 100%;
 }
 
 .PhenomedSocial_headingCopy h1 {
@@ -140,7 +140,7 @@
 }
 
 .PhenomedSocial_headerAside {
-  align-items: flex-end;
+  align-items: stretch;
   gap: 6px;
 }
 
@@ -168,7 +168,9 @@
 
 .PhenomedSocial_headerAside > #Nav_article {
   align-self: flex-end;
-  padding: 4px 30px;
+  width: fit-content;
+  min-width: 0;
+  padding: 6px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(24, 27, 30, 0.98), rgba(16, 18, 21, 0.99));
   border: 1px solid rgba(255, 255, 255, 0.218);
@@ -189,6 +191,32 @@
   font-size: 0.8rem !important;
 }
 
+.PhenomedSocial_headerAside > #Nav_article .Nav_actionButton {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid rgba(184, 244, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(240, 242, 245, 0.92);
+  background: rgba(22, 44, 48, 0.7);
+  cursor: pointer;
+}
+
+.PhenomedSocial_headerAside > #Nav_article .Nav_actionButton i {
+  font-size: 0.62rem !important;
+}
+
+.PhenomedSocial_headerAside > #Nav_article .Nav_actionButton span {
+  display: none;
+  font-size: 0.52rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .PhenomedSocial_workspace {
   display: flex;
   flex-direction: column;
@@ -202,8 +230,9 @@
 
 #PhenomedSocial_article #Main_article {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  height: 100%;
+  height: auto;
   min-height: 0;
   align-items: stretch;
 }
@@ -212,10 +241,14 @@
   min-height: 0;
 }
 
+.PhenomedSocial_sectionNav {
+  display: none;
+}
+
 #PhenomedSocial_article #Terminology_article,
 #PhenomedSocial_article #Posts_article,
 #PhenomedSocial_article #Friends_article {
-  height: 100%;
+  height: auto;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.18);
@@ -224,9 +257,9 @@
 }
 
 #PhenomedSocial_article #Terminology_article {
-  flex: 0 0 214px;
-  width: 214px;
-  min-width: 214px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, rgba(18, 28, 31, 0.92), rgba(12, 22, 24, 0.96));
@@ -275,6 +308,7 @@
 
 #PhenomedSocial_article #Posts_article {
   flex: 1;
+  width: 100%;
   min-width: 0;
   background: linear-gradient(180deg, rgba(15, 28, 31, 0.96), rgba(10, 20, 22, 0.98));
 }
@@ -358,7 +392,9 @@
 }
 
 #PhenomedSocial_article #Friends_article {
-  flex: 0 0 208px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   background: linear-gradient(180deg, rgba(14, 30, 33, 0.96), rgba(10, 21, 24, 0.98));
 }
 
@@ -596,6 +632,18 @@
   align-items: center;
 }
 
+#PhenomedSocial_article #Chat_app_title {
+  margin: 0;
+  font-family: "Josefin Slab", "Times New Roman", serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(184, 244, 255, 0.96);
+  text-shadow: 0 0 18px rgba(4, 184, 208, 0.18);
+}
+
 #PhenomedSocial_article #Chat_title_text {
   margin: 0;
   flex: 1;
@@ -827,24 +875,16 @@
   align-items: center;
 }
 
+.PhenomedSocial--arabic #Chat_app_title {
+  letter-spacing: 0.08em;
+}
+
 .PhenomedSocial--arabic #Chat_title_status {
   letter-spacing: 0;
 }
 
 .PhenomedSocial--arabic .PhenomedSocial_headerAside > #Nav_article {
   align-self: flex-start;
-}
-
-.PhenomedSocial--arabic #Terminology_article {
-  order: 3;
-}
-
-.PhenomedSocial--arabic #Posts_article {
-  order: 2;
-}
-
-.PhenomedSocial--arabic #Friends_article {
-  order: 1;
 }
 
 .PhenomedSocial--arabic #Chat_goback_icon {
@@ -857,6 +897,62 @@
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
+}
+
+@media screen and (min-width: 901px) {
+  .PhenomedSocial_headingRow {
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .PhenomedSocial_headingCopy {
+    max-width: 560px;
+  }
+
+  .PhenomedSocial_headerAside {
+    align-items: flex-end;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article {
+    align-self: flex-end;
+  }
+
+  #PhenomedSocial_article #Main_article {
+    flex-direction: row;
+    height: 100%;
+  }
+
+  #PhenomedSocial_article #Terminology_article,
+  #PhenomedSocial_article #Posts_article,
+  #PhenomedSocial_article #Friends_article {
+    height: 100%;
+  }
+
+  #PhenomedSocial_article #Terminology_article {
+    flex: 0 0 214px;
+    width: 214px;
+    min-width: 214px;
+  }
+
+  #PhenomedSocial_article #Friends_article {
+    flex: 0 0 208px;
+    width: 208px;
+    min-width: 208px;
+  }
+
+  .PhenomedSocial--arabic #Terminology_article {
+    order: 3;
+  }
+
+  .PhenomedSocial--arabic #Posts_article {
+    order: 2;
+  }
+
+  .PhenomedSocial--arabic #Friends_article {
+    order: 1;
+  }
+}
+
 
 @media screen and (min-width: 901px) and (max-width: 1200px) {
   #PhenomedSocial_article {
@@ -892,10 +988,6 @@
   .PhenomedSocial_metricCard {
     min-width: 0;
     padding: 6px 7px;
-  }
-
-  #PhenomedSocial_article #Main_article {
-    gap: 6px;
   }
 
   #PhenomedSocial_article #Terminology_article {
@@ -950,6 +1042,12 @@
     display: flex;
   }
 
+  #PhenomedSocial_article #Posts_article,
+  #PhenomedSocial_article #Friends_article {
+    width: 100%;
+    min-width: 0;
+  }
+
   .PhenomedSocial--arabic #Terminology_article,
   .PhenomedSocial--arabic #Posts_article,
   .PhenomedSocial--arabic #Friends_article {
@@ -966,6 +1064,10 @@
 @media screen and (max-width: 760px) {
   .PhenomedSocial_intro {
     padding: 20px;
+  }
+
+  .PhenomedSocial_sectionNav {
+    display: none;
   }
 
   .PhenomedSocial_headingCopy h1 {
@@ -1007,3 +1109,118 @@
     padding: 8px 10px;
   }
 }
+
+@media screen and (max-width: 430px) {
+  /* iPhone 12 / 12 Pro portrait and similar phone widths */
+  #PhenomedSocial_article {
+    min-height: 100vh;
+    padding: 10px;
+    gap: 10px;
+    scroll-snap-type: y proximity;
+  }
+
+  .PhenomedSocial_intro {
+    min-height: calc(100vh - 20px);
+    justify-content: space-between;
+    padding: 16px 14px;
+    scroll-snap-align: start;
+  }
+
+  .PhenomedSocial_topbar {
+    margin-bottom: auto;
+  }
+
+  .PhenomedSocial_headingRow {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-top: auto;
+  }
+
+  .PhenomedSocial_headingCopy {
+    gap: 8px;
+    max-width: 100%;
+  }
+
+  .PhenomedSocial_headingCopy h1 {
+    font-size: 1.22rem;
+  }
+
+  .PhenomedSocial_headingCopy p,
+  .PhenomedSocial_doctorName {
+    font-size: 0.78rem !important;
+    line-height: 1.45;
+  }
+
+  #PhenomedSocial_article #Chat_app_title {
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+
+  .PhenomedSocial_headerAside {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article {
+    align-self: stretch;
+    justify-content: center;
+    width: fit-content;
+    min-width: 0;
+    margin-inline: auto;
+    padding: 6px;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article section,
+  .PhenomedSocial_headerAside > #Nav_article div {
+    gap: 14px;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article .Nav_actionButton {
+    display: inline-flex;
+    gap: 6px;
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+    background: linear-gradient(135deg, rgba(1, 121, 111, 0.96), rgba(14, 140, 153, 0.92));
+    border-color: rgba(184, 244, 255, 0.24);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.24);
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article .Nav_actionButton i {
+    font-size: 0.86rem !important;
+    color: rgba(255, 255, 255, 0.96);
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article .Nav_actionButton span {
+    display: inline;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.98);
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article i,
+  .PhenomedSocial_headerAside > #Nav_article button i {
+    font-size: 0.94rem !important;
+  }
+
+  .PhenomedSocial_metrics {
+    display: none;
+  }
+
+  .PhenomedSocial_workspace {
+    scroll-snap-align: start;
+  }
+
+  #PhenomedSocial_article #Main_article {
+    gap: 12px;
+  }
+
+  #PhenomedSocial_article #Posts_article,
+  #PhenomedSocial_article #Friends_article {
+    width: 100%;
+    min-width: 0;
+  }
+}
+

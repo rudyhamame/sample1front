@@ -3,21 +3,37 @@ import Dim from "./Dim/Dim";
 import Logout from "./Logout/Logout";
 import Notifications from "./Notifications/Notifications";
 import Refresh from "./Refresh/Refresh";
+
 const Nav = (props) => {
-  let app_page = document.getElementById("root");
-  let width = window.getComputedStyle(app_page).width;
-      return (
-        <nav id="Nav_article" className="fr">
-          <Logout logOut={props.logOut} />
-          <Notifications
-            state={props.state}
-            acceptFriend={props.acceptFriend}
-            makeNotificationsRead={props.makeNotificationsRead}
-          />
-          <Dim />
-          <Refresh />
-        </nav>
-      )
+  return (
+    <nav id="Nav_article" className="fr">
+      {Array.isArray(props.extraActions)
+        ? props.extraActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className={`Nav_actionButton${
+                action.isActive ? " Nav_actionButton--active" : ""
+              }`}
+              onClick={action.onClick}
+              aria-label={action.label}
+              title={action.label}
+            >
+              <i className={action.iconClass}></i>
+              <span>{action.label}</span>
+            </button>
+          ))
+        : null}
+      <Logout logOut={props.logOut} />
+      <Notifications
+        state={props.state}
+        acceptFriend={props.acceptFriend}
+        makeNotificationsRead={props.makeNotificationsRead}
+      />
+      <Dim />
+      <Refresh />
+    </nav>
+  );
 };
 
 export default Nav;
