@@ -6,7 +6,7 @@ const Logout = (props) => {
       <i
         title="Log out"
         onClick={props.logOut}
-        class="fas fa-sign-out-alt"
+        className="fas fa-sign-out-alt"
         id="i_nav_logout"
       ></i>
     </section>

@@ -1,30 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const Notifications = (props) => {
-  function openNotifications() {
-    // if (document.getElementById("Notifications_alert")) {
-    //   document.getElementById("Notifications_alert").style.display = "none";
-    // }
-    let Notifications_dropMenu_container = document.getElementById(
-      "Notifications_dropMenu_container"
-    );
-    let i_bell_close = document.getElementById("i_bell_close");
-    let i_bell_open = document.getElementById("i_bell_open");
-    Notifications_dropMenu_container.style.display = "flex";
-    i_bell_close.style.display = "inline";
-    i_bell_open.style.display = "none";
-    i_bell_open.style.color = "white";
+  const [isOpen, setIsOpen] = useState(false);
+  const unreadNotifications = (props.state?.notifications || []).filter(
+    (notification) => notification.status !== "read"
+  );
+
+  useEffect(() => {
+    function closeOnOutsideClick(event) {
+      const article = document.getElementById("Notifications_article");
+
+      if (article && !article.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("click", closeOnOutsideClick);
+
+    return () => {
+      document.removeEventListener("click", closeOnOutsideClick);
+    };
+  }, []);
+
+  function openNotifications(event) {
+    event.stopPropagation();
+    setIsOpen(true);
   }
 
-  function closeNotifications() {
-    let Notifications_dropMenu_container = document.getElementById(
-      "Notifications_dropMenu_container"
-    );
-    let i_bell_close = document.getElementById("i_bell_close");
-    let i_bell_open = document.getElementById("i_bell_open");
-    Notifications_dropMenu_container.style.display = "none";
-    i_bell_close.style.display = "none";
-    i_bell_open.style.display = "inline";
+  function closeNotifications(event) {
+    event.stopPropagation();
+    setIsOpen(false);
   }
 
   return (
@@ -33,21 +38,58 @@ const Notifications = (props) => {
         <i
           id="i_bell_open"
           onClick={openNotifications}
-          class="fas fa-bell"
+          className="fas fa-bell"
           title="Notifications"
+          style={{ display: isOpen ? "none" : "inline-flex" }}
         ></i>
         <i
           id="i_bell_close"
           onClick={closeNotifications}
-          style={{ display: "none" }}
-          class="fas fa-bell"
+          style={{ display: isOpen ? "inline-flex" : "none" }}
+          className="fas fa-bell"
           title="Notifications"
         ></i>
-
       </div>
 
       <section id="Notifications_content_container">
-        <ul id="Notifications_dropMenu_container" className="fc"></ul>
+        <ul
+          id="Notifications_dropMenu_container"
+          className="fc"
+          style={{ display: isOpen ? "flex" : "none" }}
+        >
+          {unreadNotifications.length === 0 ? (
+            <li id="Notifications_empty_state">No new notifications</li>
+          ) : (
+            unreadNotifications.map((notification) => (
+              <div
+                key={notification._id || notification.id}
+                className="Notifications_row fr"
+              >
+                <li id={notification.id}>
+                  <p>{notification.message}</p>
+                </li>
+                <i
+                  id={`decline_icon${notification.id}`}
+                  onClick={() =>
+                    props.makeNotificationsRead &&
+                    props.makeNotificationsRead(`decline_icon${notification.id}`)
+                  }
+                  className="fas fa-times"
+                  title="Dismiss"
+                ></i>
+                <i
+                  id={`accept_icon${notification.id}`}
+                  onClick={() =>
+                    props.acceptFriend &&
+                    props.acceptFriend(`accept_icon${notification.id}`)
+                  }
+                  className="fas fa-user-check"
+                  title="Accept"
+                ></i>
+              </div>
+            ))
+          )}
+        </ul>
       </section>
     </section>
   );

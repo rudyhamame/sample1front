@@ -41,7 +41,7 @@ const Greeting=(props)=>{
       <article id="Greeting_studysessions_article" className="fc">
       <section id="Greeting_preStart" className="fc slide-top">
         <div className="fc" style={{ alignItems: "center" }}>
-          <h1>Hello Dr. Rudy,</h1>
+          <h1>Hello Dr. {props.state.firstname},</h1>
           {/* <button id="Greeting_preStart_button" className="fr">
             <Link to="/study">
               <i class="fas fa-stopwatch"></i> Start Timer
@@ -55,6 +55,11 @@ const Greeting=(props)=>{
           <button id="Greeting_preStart_button2" className="fr">
           <Link to="/studyplanner">
               <i class="fas fa-stopwatch"></i> Study organizer
+            </Link>
+          </button>
+          <button id="Greeting_preStart_button3" className="fr">
+          <Link to="/phenomedsocial">
+              <i class="fas fa-home"></i> Phenomed Social
             </Link>
           </button>
        
@@ -72,7 +77,7 @@ const Greeting=(props)=>{
         </div>
         
       </section>
-      <Nav path="/" />
+      <Nav path="/" state={props.state} logOut={props.logOut} />
       <div id="Greeting_userMenu_div" className="fc">
         <button id="Greeting_userMenu_button" onClick={()=>{
             let Greeting_userMenu_content_div= document.querySelector("#Greeting_userMenu_content_div");

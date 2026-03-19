@@ -1,0 +1,947 @@
+@import "../App/Main/main.css";
+@import "./moi/posts/posts.css";
+@import "./moa/posts/InputPost/inputPosts.css";
+@import "./moa/posts/InputPost/SearchPosts/search_posts.css";
+@import "./moi/posts/MountPosts/mount_posts.css";
+@import "./moa/terminology/terminology.css";
+@import "./moi/footer/footer.css";
+@import "./moa/friends/AddFriend/add_friend.css";
+@import "./moi/friends/friends.css";
+@import "./moi/friends/FriendsList/friendslist.css";
+@import "./moa/friends/SearchUsers/search_users.css";
+
+#PhenomedSocial_article {
+  position: relative;
+  min-height: 100vh;
+  gap: 18px;
+  padding: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.04), transparent 22%),
+    radial-gradient(circle at 82% 14%, rgba(255, 255, 255, 0.03), transparent 20%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 46%),
+    linear-gradient(180deg, #111314 0%, #171a1c 38%, #1d2124 68%, #121416 100%);
+}
+
+#PhenomedSocial_article::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+#PhenomedSocial_article::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, transparent 52%, rgba(0, 0, 0, 0.22) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+}
+
+.PhenomedSocial_intro,
+.PhenomedSocial_workspace {
+  position: relative;
+  z-index: 2;
+}
+
+.PhenomedSocial_intro {
+  gap: 14px;
+  padding: 24px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  background: linear-gradient(
+    145deg,
+    rgba(14, 31, 34, 0.86),
+    rgba(28, 58, 64, 0.72)
+  );
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
+}
+
+.PhenomedSocial_topbar {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.PhenomedSocial_eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.68rem;
+  color: rgba(240, 242, 245, 0.74);
+}
+
+.PhenomedSocial_languageSwitch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: rgba(240, 242, 245, 0.92);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(4, 184, 208, 0.22), rgba(1, 121, 111, 0.34));
+  border: 1px solid rgba(184, 244, 255, 0.18);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.PhenomedSocial_headingRow {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.PhenomedSocial_headingCopy {
+  gap: 10px;
+  max-width: 760px;
+}
+
+.PhenomedSocial_headingCopy h1 {
+  margin: 0;
+  color: var(--brightestWhite);
+  font-size: clamp(1.65rem, 3vw, 2.7rem);
+  letter-spacing: -0.04em;
+  font-family: "Josefin Slab", serif;
+}
+
+.PhenomedSocial_headingCopy p {
+  margin: 0;
+  max-width: 62ch;
+  color: rgba(240, 242, 245, 0.82);
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+
+.PhenomedSocial_doctorName {
+  color: rgba(184, 244, 255, 0.92) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.PhenomedSocial_metrics {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.PhenomedSocial_headerAside {
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.PhenomedSocial_metricCard {
+  min-width: 120px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.PhenomedSocial_metricCard span {
+  color: rgba(240, 242, 245, 0.68);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.PhenomedSocial_metricCard strong {
+  color: var(--brightestWhite);
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.PhenomedSocial_headerAside > #Nav_article {
+  align-self: flex-end;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(24, 27, 30, 0.98), rgba(16, 18, 21, 0.99));
+  border: 1px solid rgba(255, 255, 255, 0.218);
+  box-shadow:
+    inset 0 -12px 20px rgba(0, 0, 0, 0.34),
+    inset 8px 0 14px rgba(255, 255, 255, 0.01),
+    0 16px 34px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(16px);
+}
+
+.PhenomedSocial_headerAside > #Nav_article section,
+.PhenomedSocial_headerAside > #Nav_article div {
+  gap: 10px;
+}
+
+.PhenomedSocial_workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+#PhenomedSocial_article .PhenomedSocial_workspace > #Main_article {
+  flex: 1;
+}
+
+#PhenomedSocial_article #Main_article {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+#PhenomedSocial_article #Main_article > * {
+  min-height: 0;
+}
+
+#PhenomedSocial_article #Terminology_article,
+#PhenomedSocial_article #Posts_article,
+#PhenomedSocial_article #Friends_article {
+  height: 100%;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+#PhenomedSocial_article #Terminology_article {
+  flex: 0 0 340px;
+  width: 340px;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(18, 28, 31, 0.92), rgba(12, 22, 24, 0.96));
+}
+
+#PhenomedSocial_article #Terminology_container {
+  width: 100%;
+  height: 100%;
+}
+
+#PhenomedSocial_article #Terminology_control_door {
+  display: none;
+}
+
+#PhenomedSocial_article #Terminology_title,
+#PhenomedSocial_article #FriendsList_article::before {
+  letter-spacing: 0.03em;
+}
+
+#PhenomedSocial_article #Terminology_title {
+  background: linear-gradient(135deg, #0e8c99, #01796f);
+  padding: 22px 20px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+#PhenomedSocial_article #Terminology_content_container {
+  background: transparent;
+  padding: 18px;
+  gap: 14px;
+}
+
+#PhenomedSocial_article #Terminology_content_container li {
+  border-radius: 18px;
+  background: rgba(22, 44, 48, 0.92);
+  border: 1px solid rgba(88, 149, 157, 0.16);
+  box-shadow: inset 0 1px 0 rgba(120, 197, 208, 0.05);
+}
+
+#PhenomedSocial_article #Terminology_inputs_container {
+  padding: 18px;
+  background: rgba(1, 121, 111, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+#PhenomedSocial_article #Posts_article {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(15, 28, 31, 0.96), rgba(10, 20, 22, 0.98));
+}
+
+#PhenomedSocial_article #InputPost_article {
+  margin: 0;
+  padding: 18px 18px 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+#PhenomedSocial_article #InputPost_textarea_container {
+  gap: 14px;
+  padding: 0;
+}
+
+#PhenomedSocial_article #InputPost_textarea,
+#PhenomedSocial_article #InputPost_inputs_container,
+#PhenomedSocial_article #MountPosts_content_container {
+  background: rgba(11, 23, 26, 0.9);
+}
+
+#PhenomedSocial_article #InputPost_textarea {
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.14);
+}
+
+#PhenomedSocial_article #InputPost_inputs_container {
+  gap: 8px;
+  padding: 10px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.14);
+}
+
+#PhenomedSocial_article #InputPost_category,
+#PhenomedSocial_article #InputPost_subject,
+#PhenomedSocial_article #InputPost_resourse,
+#PhenomedSocial_article #InputPost_page {
+  border-radius: 14px;
+  background: rgba(22, 44, 48, 0.95);
+  color: rgba(240, 242, 245, 0.9);
+  border: 1px solid rgba(88, 149, 157, 0.16);
+  font-size: 0.88rem;
+}
+
+#PhenomedSocial_article #InputPost_post_button {
+  border-radius: 14px;
+  padding-inline: 22px;
+  background: linear-gradient(135deg, #04b8d0, #01796f);
+  box-shadow: 0 12px 24px rgba(1, 121, 111, 0.24);
+  font-size: 0.92rem;
+}
+
+#PhenomedSocial_article #MountPosts_article {
+  box-shadow: none;
+}
+
+#PhenomedSocial_article #MountPosts_content_container {
+  padding: 18px;
+  gap: 16px;
+}
+
+#PhenomedSocial_article #MountPosts_content_container li {
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(34, 43, 46, 0.96), rgba(24, 30, 33, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+#PhenomedSocial_article .MountPosts_postOptionsContainer p,
+#PhenomedSocial_article .postername_p {
+  border-radius: 999px;
+  padding: 8px 12px !important;
+}
+
+#PhenomedSocial_article .comment_input,
+#PhenomedSocial_article .commentlist_ul {
+  border-radius: 16px;
+}
+
+#PhenomedSocial_article #Friends_article {
+  flex: 0 0 320px;
+  background: linear-gradient(180deg, rgba(14, 30, 33, 0.96), rgba(10, 21, 24, 0.98));
+}
+
+#PhenomedSocial_article #Friends_content_container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: transparent;
+}
+
+#PhenomedSocial_article #DropHorizontally_article {
+  order: 0;
+  gap: 16px !important;
+  padding: 14px 18px !important;
+  background: linear-gradient(135deg, #01796f, #0e8c99) !important;
+}
+
+#PhenomedSocial_article #AddFriend_article,
+#PhenomedSocial_article #FriendsList_article,
+#PhenomedSocial_article #FriendChat_article {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: transparent;
+}
+
+#PhenomedSocial_article #FriendsList_article {
+  display: flex;
+  height: 100%;
+}
+
+#PhenomedSocial_article #AddFriend_article {
+  display: none;
+  height: 100%;
+}
+
+#PhenomedSocial_article #FriendChat_article {
+  display: none;
+  height: 100%;
+}
+
+#PhenomedSocial_article #FriendsList_content_container,
+#PhenomedSocial_article #AddFriend_content_container,
+#PhenomedSocial_article #FriendChat_content_container {
+  padding: 18px;
+  animation: none;
+}
+
+#PhenomedSocial_article #FriendsList_article {
+  flex: 1;
+  min-height: 0;
+}
+
+#PhenomedSocial_article #FriendsList_content_container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#PhenomedSocial_article #AddFriend_content_container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 30px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+#PhenomedSocial_article #FriendChat_content_container,
+#PhenomedSocial_article #Chat_article {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#PhenomedSocial_article #AddFriend_addFriend {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+#PhenomedSocial_article #AddFriend_addFriend_results {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  gap: 20px;
+}
+
+#PhenomedSocial_article #FriendsList_friends_list li,
+#PhenomedSocial_article #AddFriend_addFriend_results li {
+  border-radius: 18px;
+  background: rgba(25, 47, 52, 0.92);
+  color: rgba(240, 242, 245, 0.92);
+  border: 1px solid rgba(88, 149, 157, 0.14);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+#PhenomedSocial_article .FriendsList_actions {
+  align-items: center;
+  gap: 10px;
+  margin-inline-start: auto;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(11, 23, 26, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#PhenomedSocial_article .FriendsList_actions .fa-comments {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  color: rgba(240, 242, 245, 0.86);
+  border-radius: 999px;
+  background: rgba(22, 44, 48, 0.74);
+  border: 1px solid rgba(184, 244, 255, 0.08);
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+#PhenomedSocial_article .FriendsList_actions .fa-comments:hover {
+  color: rgba(184, 244, 255, 0.96);
+  transform: translateY(-1px);
+  background: rgba(14, 62, 68, 0.92);
+  border-color: rgba(184, 244, 255, 0.18);
+}
+
+#PhenomedSocial_article .FriendsList_actions .fa-circle {
+  font-size: 0.72rem;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.22));
+}
+
+#PhenomedSocial_article #AddFriend_addFriend_results li {
+  border-radius: 18px;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(88, 149, 157, 0.14);
+}
+
+#PhenomedSocial_article #Search_section {
+  margin-top: 0;
+  gap: 0;
+  border-radius: 0;
+}
+
+#PhenomedSocial_article #Search_button {
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #01796f, #0e8c99);
+  font-size: 0.88rem;
+  border-radius: 0;
+}
+
+#PhenomedSocial_article #SearchUsers_input {
+  padding: 12px 14px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  background: rgba(22, 44, 48, 0.96);
+  color: rgba(240, 242, 245, 0.92);
+  font-size: 0.88rem;
+}
+
+#PhenomedSocial_article #SearchUsers_input::placeholder {
+  color: rgba(240, 242, 245, 0.5);
+}
+
+#PhenomedSocial_article #FriendsList_article,
+#PhenomedSocial_article #FriendsList_friends_list,
+#PhenomedSocial_article #AddFriend_article,
+#PhenomedSocial_article #AddFriend_addFriend,
+#PhenomedSocial_article #FriendChat_article {
+  background: transparent;
+}
+
+#PhenomedSocial_article #Chat_article {
+  gap: 16px;
+  color: rgba(240, 242, 245, 0.92);
+  background: transparent;
+  height: 100%;
+}
+
+#PhenomedSocial_article #Chat_title_container {
+  position: relative;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(25, 47, 52, 0.92);
+  border: 1px solid rgba(88, 149, 157, 0.14);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+#PhenomedSocial_article #Chat_title_copy {
+  flex: 1;
+  gap: 2px;
+  align-items: center;
+}
+
+#PhenomedSocial_article #Chat_title_text {
+  margin: 0;
+  flex: 1;
+  font-size: 0.96rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+#PhenomedSocial_article #Chat_title_status {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: rgba(184, 244, 255, 0.8);
+  text-transform: lowercase;
+}
+
+#PhenomedSocial_article #Chat_goback_icon {
+  position: static;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+#PhenomedSocial_article #Chat_messages {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+#PhenomedSocial_article #FriendChat_empty_state {
+  padding: 18px;
+  border-radius: 18px;
+  text-align: center;
+  background: rgba(25, 47, 52, 0.92);
+  border: 1px solid rgba(88, 149, 157, 0.14);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+#PhenomedSocial_article .sentMessagesDIV,
+#PhenomedSocial_article .receivedMessagesDIV {
+  width: 100%;
+  overflow: hidden;
+}
+
+#PhenomedSocial_article .sentMessagesDIV {
+  align-items: flex-end;
+}
+
+#PhenomedSocial_article .receivedMessagesDIV {
+  align-items: flex-start;
+}
+
+#PhenomedSocial_article .sentMessagesLI,
+#PhenomedSocial_article .receivedMessagesLI {
+  width: fit-content;
+  max-width: 78%;
+  list-style: none;
+  border-radius: 18px;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+#PhenomedSocial_article .sentMessagesLI {
+  background: rgba(28, 40, 44, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#PhenomedSocial_article .receivedMessagesLI {
+  background: linear-gradient(135deg, rgba(1, 121, 111, 0.96), rgba(14, 140, 153, 0.92));
+  border: 1px solid rgba(184, 244, 255, 0.14);
+}
+
+#PhenomedSocial_article .sentMessagesLI p,
+#PhenomedSocial_article .receivedMessagesLI p {
+  margin: 0;
+  padding: 10px 14px;
+  line-height: 1.55;
+  color: rgba(240, 242, 245, 0.94);
+}
+
+#PhenomedSocial_article #Chat_form {
+  gap: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(11, 23, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.14);
+}
+
+#PhenomedSocial_article #Chat_textarea_input {
+  flex: 1;
+  min-height: 72px;
+  padding: 14px 16px;
+  color: rgba(240, 242, 245, 0.92);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.88rem;
+}
+
+#PhenomedSocial_article #Chat_textarea_input::placeholder {
+  color: rgba(240, 242, 245, 0.5);
+}
+
+#PhenomedSocial_article #Chat_submit_button {
+  border: none;
+  border-radius: 0;
+  padding: 0 18px;
+  color: rgba(240, 242, 245, 0.92);
+  background: linear-gradient(135deg, #01796f, #0e8c99);
+  cursor: pointer;
+}
+
+#PhenomedSocial_article #Chat_submit_button i {
+  font-size: 1rem;
+}
+
+#PhenomedSocial_article #Terminology_content_container p {
+  font-size: 0.9rem !important;
+}
+
+#PhenomedSocial_article #Terminology_content_container li {
+  line-height: 1.65;
+}
+
+#PhenomedSocial_article #MountPosts_content_container p {
+  font-size: 0.88rem;
+}
+
+#PhenomedSocial_article #MountPosts_content_container .note_p {
+  font-size: 1rem;
+}
+
+#PhenomedSocial_article .details_div p,
+#PhenomedSocial_article .MountPosts_date,
+#PhenomedSocial_article .comment_li,
+#PhenomedSocial_article .comment_input {
+  font-size: 0.82rem;
+}
+
+#PhenomedSocial_article #InputPost_textarea {
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+#PhenomedSocial_article #FriendsList_friends_list li,
+#PhenomedSocial_article #AddFriend_addFriend_results li,
+#PhenomedSocial_article #FriendsList_article h1 {
+  font-size: 0.88rem;
+}
+
+.PhenomedSocial--arabic {
+  direction: rtl;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_intro {
+  direction: rtl;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_topbar,
+.PhenomedSocial--arabic .PhenomedSocial_headingRow,
+.PhenomedSocial--arabic .PhenomedSocial_metrics,
+.PhenomedSocial--arabic #Main_article,
+.PhenomedSocial--arabic #InputPost_textarea_container,
+.PhenomedSocial--arabic #InputPost_inputs_container,
+.PhenomedSocial--arabic #DropHorizontally_article,
+.PhenomedSocial--arabic #Chat_form,
+.PhenomedSocial--arabic #Search_section {
+  flex-direction: row-reverse;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy,
+.PhenomedSocial--arabic .PhenomedSocial_headerAside,
+.PhenomedSocial--arabic #Terminology_container,
+.PhenomedSocial--arabic #Friends_content_container,
+.PhenomedSocial--arabic #FriendChat_content_container,
+.PhenomedSocial--arabic #Chat_article {
+  align-items: stretch;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_intro,
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy,
+.PhenomedSocial--arabic .PhenomedSocial_headerAside {
+  align-items: flex-start;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_eyebrow,
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy,
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy p,
+.PhenomedSocial--arabic .PhenomedSocial_doctorName,
+.PhenomedSocial--arabic .PhenomedSocial_metricCard,
+.PhenomedSocial--arabic #Terminology_title,
+.PhenomedSocial--arabic #Terminology_content_container,
+.PhenomedSocial--arabic #Search_section,
+.PhenomedSocial--arabic #FriendsList_friends_list li,
+.PhenomedSocial--arabic #AddFriend_addFriend_results li,
+.PhenomedSocial--arabic #Chat_title_container,
+.PhenomedSocial--arabic #FriendChat_empty_state,
+.PhenomedSocial--arabic #Chat_textarea_input {
+  text-align: right;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_eyebrow,
+.PhenomedSocial--arabic .PhenomedSocial_doctorName,
+.PhenomedSocial--arabic .PhenomedSocial_metricCard span {
+  letter-spacing: 0;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy h1,
+.PhenomedSocial--arabic .PhenomedSocial_headingCopy p,
+.PhenomedSocial--arabic .PhenomedSocial_doctorName {
+  font-family: "Tajawal", "Cairo", sans-serif;
+}
+
+.PhenomedSocial--arabic #Chat_title_copy {
+  align-items: center;
+}
+
+.PhenomedSocial--arabic #Chat_title_status {
+  letter-spacing: 0;
+}
+
+.PhenomedSocial--arabic .PhenomedSocial_headerAside > #Nav_article {
+  align-self: flex-start;
+}
+
+.PhenomedSocial--arabic #Terminology_article {
+  order: 3;
+}
+
+.PhenomedSocial--arabic #Posts_article {
+  order: 2;
+}
+
+.PhenomedSocial--arabic #Friends_article {
+  order: 1;
+}
+
+.PhenomedSocial--arabic #Chat_goback_icon {
+  transform: scaleX(-1);
+}
+
+.PhenomedSocial--arabic #SearchUsers_input {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+@media screen and (min-width: 901px) and (max-width: 1200px) {
+  #PhenomedSocial_article {
+    padding: 18px;
+  }
+
+  .PhenomedSocial_intro {
+    padding: 22px 24px;
+  }
+
+  .PhenomedSocial_headingRow {
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .PhenomedSocial_headingCopy {
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .PhenomedSocial_headerAside {
+    flex: 0 0 250px;
+    min-width: 250px;
+  }
+
+  .PhenomedSocial_metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .PhenomedSocial_metricCard {
+    min-width: 0;
+    padding: 13px 14px;
+  }
+
+  #PhenomedSocial_article #Main_article {
+    gap: 16px;
+  }
+
+  #PhenomedSocial_article #Terminology_article {
+    flex: 0 0 272px;
+    width: 272px;
+    min-width: 272px;
+  }
+
+  #PhenomedSocial_article #Friends_article {
+    flex: 0 0 272px;
+    width: 272px;
+    min-width: 272px;
+  }
+
+  #PhenomedSocial_article #InputPost_article,
+  #PhenomedSocial_article #MountPosts_content_container,
+  #PhenomedSocial_article #FriendsList_content_container,
+  #PhenomedSocial_article #AddFriend_content_container,
+  #PhenomedSocial_article #FriendChat_content_container,
+  #PhenomedSocial_article #Terminology_content_container {
+    padding: 16px;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  #PhenomedSocial_article {
+    padding: 16px;
+  }
+
+  #PhenomedSocial_article #Main_article {
+    flex-direction: column;
+    height: auto;
+  }
+
+  #PhenomedSocial_article #Terminology_article,
+  #PhenomedSocial_article #Friends_article {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  #PhenomedSocial_article #Terminology_article {
+    display: flex;
+  }
+
+  .PhenomedSocial--arabic #Terminology_article,
+  .PhenomedSocial--arabic #Posts_article,
+  .PhenomedSocial--arabic #Friends_article {
+    order: initial;
+  }
+}
+
+@media screen and (max-width: 760px) {
+  .PhenomedSocial_intro {
+    padding: 20px;
+  }
+
+  .PhenomedSocial_headingCopy h1 {
+    font-size: 1.7rem;
+  }
+
+  .PhenomedSocial_headerAside {
+    align-items: stretch;
+  }
+
+  .PhenomedSocial_headerAside > #Nav_article {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  #PhenomedSocial_article #InputPost_textarea_container {
+    flex-direction: column;
+  }
+
+  #PhenomedSocial_article #MountPosts_content_container,
+  #PhenomedSocial_article #Terminology_content_container {
+    padding: 14px;
+  }
+}

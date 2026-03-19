@@ -21,8 +21,8 @@ const AppRouter = () => {
   }, []);
 
   const handleLogout = useCallback(() => {
-    sessionStorage.removeItem("Header_timer_h1");
-    sessionStorage.removeItem("state");
+    sessionStorage.clear();
+    localStorage.clear();
     setAuthState(null);
   }, []);
 
@@ -53,6 +53,27 @@ const AppRouter = () => {
         <Route path="/studyplanner">
           {isAuthenticated ? (
             <App path="/studyplanner" onLogout={handleLogout} />
+          ) : (
+            <Redirect to="/" />
+          )}
+        </Route>
+        <Route exact path="/phenomedsocial/ar">
+          {isAuthenticated ? (
+            <App path="/phenomedsocial/ar" onLogout={handleLogout} />
+          ) : (
+            <Redirect to="/" />
+          )}
+        </Route>
+        <Route exact path="/phenomedsocial">
+          {isAuthenticated ? (
+            <App path="/phenomedsocial" onLogout={handleLogout} />
+          ) : (
+            <Redirect to="/" />
+          )}
+        </Route>
+        <Route path="/profile/:username">
+          {isAuthenticated ? (
+            <App path="/profile" onLogout={handleLogout} />
           ) : (
             <Redirect to="/" />
           )}

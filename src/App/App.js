@@ -3,35 +3,19 @@ import React from "react";
 
 //........import CSS...........
 import "./App.css";
-import "./Footer/footer.css";
-import "./Header/header.css";
-import "./Parts/Friends/AddFriend/add_friend.css";
-import "./Main/Posts/posts.css";
 import "./Main/main.css";
-import "./Parts/Friends/friends.css";
-import "./Header/SearchUsers/search_users.css";
-import "./Main/Posts/InputPost/SearchPosts/search_posts.css";
-import "./Header/Logo/logo.css";
 import "./Header/Nav/Notifications/notifications.css";
 import "./Header/Nav/nav.css";
-import "./Main/Posts/InputPost/inputPosts.css";
-import "./Main/Posts/MountPosts/mount_posts.css";
-import "./Header/Nav/Menu/menu.css";
-import "./Parts/Friends/FriendsList/friendslist.css";
-import "./SubApps/Chat/chat.css";
-import "./Main/Terminology/terminology.css";
 import "./Main/Greeting/greeting.css";
 import { Route } from "react-router-dom";
-import Terminology from "./Main/Terminology/Terminology";
-import Posts from "./Main/Posts/Posts";
 import Greeting from "./Main/Greeting/Greeting";
-import SearchPosts from "./Main/Posts/InputPost/SearchPosts/SearchPosts";
-import Header from "./Header/Header";
-import Chat from "./SubApps/Chat/Chat";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
 import SchoolPlanner from "./SubApps/StudyPlannner/components/SchoolPlanner/SchoolPlanner";
-import axios from "axios";
 import { apiUrl } from "../config/api";
+import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
+import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
+import Profile from "../Profile/Profile";
+import { connectRealtime } from "../realtime/socket";
 //...........component..................
 class App extends React.Component {
   //..........states...........
@@ -55,6 +39,11 @@ class App extends React.Component {
       friend_target: null,
       server_answer: null,
       friendID_selected: null,
+      activeChatFriendId: null,
+      activeChatFriendName: "",
+      isChatting: false,
+      friendChatPresence: {},
+      friendTypingPresence: {},
       searching_on: false,
       friendsPosts_retrieved: false,
       retrievingFriendsPosts_DONE: false,
@@ -74,6 +63,7 @@ class App extends React.Component {
       image: null,
     };
   }
+  realtimeSocket = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -91,12 +81,25 @@ class App extends React.Component {
       token: JSON.parse(sessionStorage.getItem("state")).token,
     });
     this.updateUserInfo();
+    this.connectRealtime();
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
     this.buildNotifications();
+
+    if (
+      this.state.friendID_selected &&
+      (prevState.chat !== this.state.chat ||
+        prevState.friendID_selected !== this.state.friendID_selected)
+    ) {
+      this.RetrievingMySendingMessages(this.state.friendID_selected);
+    }
   }
   componentWillUnmount() {
+    if (this.realtimeSocket) {
+      this.realtimeSocket.disconnect();
+      this.realtimeSocket = null;
+    }
     // if (this.props.path === "/study") {
     //   let input = window.confirm(
     //     "Do you want this study session to be counted?"
@@ -109,6 +112,72 @@ class App extends React.Component {
   }
 
   //......MAKE YOURSELF AVAILABLE TO CHAT......
+  connectRealtime = () => {
+    if (this.realtimeSocket || !this.state.my_id) {
+      return;
+    }
+
+    this.realtimeSocket = connectRealtime({
+      userId: this.state.my_id,
+      onUserRefresh: () => {
+        this.updateUserInfo();
+      },
+      onChatPresence: ({ userId, isChatting }) => {
+        if (!userId || userId === this.state.my_id) {
+          return;
+        }
+
+        this.setState((prevState) => ({
+          friendChatPresence: {
+            ...prevState.friendChatPresence,
+            [userId]: Boolean(isChatting),
+          },
+        }));
+      },
+      onTypingPresence: ({ userId, isTyping }) => {
+        if (!userId || userId === this.state.my_id) {
+          return;
+        }
+
+        this.setState((prevState) => ({
+          friendTypingPresence: {
+            ...prevState.friendTypingPresence,
+            [userId]: Boolean(isTyping),
+          },
+        }));
+      },
+      onConnected: () => {
+        if (this.state.isChatting && this.state.activeChatFriendId) {
+          this.updateMyChatPresence(this.state.activeChatFriendId, true);
+        }
+      },
+    });
+  };
+
+  updateMyChatPresence = (friendId, isChatting) => {
+    if (!this.realtimeSocket || !this.state.my_id || !friendId) {
+      return;
+    }
+
+    this.realtimeSocket.emit("user:chat-status", {
+      userId: this.state.my_id,
+      friendId,
+      isChatting,
+    });
+  };
+
+  updateMyTypingPresence = (friendId, isTyping) => {
+    if (!this.realtimeSocket || !this.state.my_id || !friendId) {
+      return;
+    }
+
+    this.realtimeSocket.emit("user:typing-status", {
+      userId: this.state.my_id,
+      friendId,
+      isTyping,
+    });
+  };
+
   availableToChat = (isConnected) => {
     let url = apiUrl("/api/user/isOnline/") + this.state.my_id;
     let options = {
@@ -123,17 +192,17 @@ class App extends React.Component {
     };
 
     let req = new Request(url, options);
-    fetch(req)
+    return fetch(req)
       .then((response) => {
-        if (response.status === 201 && this.state.isConnected === false) {
-          if (this.props.onLogout) {
-            this.props.onLogout();
-          }
+        if (response.status === 201) {
           return response.json();
         }
+
+        throw new Error("Unable to update connection status.");
       })
       .catch((err) => {
         console.log("error:", err.message);
+        throw err;
       });
   };
 
@@ -1012,9 +1081,63 @@ class App extends React.Component {
     }
   };
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
+  RetrievingMySendingMessages = (friend_id) => {
+    const ul = document.getElementById("Chat_messages");
+
+    if (!ul || !friend_id) {
+      return;
+    }
+
+    ul.innerHTML = "";
+
+    const seenDates = [];
+    const chatHistory = Array.isArray(this.state.chat) ? this.state.chat : [];
+    const matchingMessages = chatHistory.filter((message, index) => {
+      if (seenDates[index] === message.date || friend_id !== message._id) {
+        return false;
+      }
+
+      seenDates[index] = message.date;
+      return true;
+    });
+
+    if (matchingMessages.length === 0) {
+      const emptyState = document.createElement("li");
+      emptyState.setAttribute("id", "FriendChat_empty_state");
+      emptyState.textContent = "No messages yet for this conversation.";
+      ul.appendChild(emptyState);
+      return;
+    }
+
+    matchingMessages.forEach((message) => {
+      const p = document.createElement("p");
+      const li = document.createElement("li");
+      const div = document.createElement("div");
+
+      p.textContent = message.message;
+      if (message.from === "me") {
+        li.setAttribute("class", "sentMessagesLI");
+        div.setAttribute("class", "sentMessagesDIV fc");
+      } else {
+        li.setAttribute("class", "receivedMessagesLI");
+        div.setAttribute("class", "receivedMessagesDIV fc");
+      }
+
+      li.appendChild(p);
+      div.appendChild(li);
+      ul.appendChild(div);
+    });
+
+    ul.scrollTop = ul.scrollHeight;
+  };
+
   sendToThemMessage = (message) => {
     let textarea = document.getElementById("Chat_textarea_input");
     textarea.style.height = "70px";
+    if (!this.state.friendID_selected) {
+      this.serverReply("Select a doctor from your friends list first");
+      return;
+    }
     if (message && message.trim() !== "") {
       let url =
         apiUrl("/api/chat/sendMessage/") +
@@ -1036,6 +1159,9 @@ class App extends React.Component {
       fetch(req).then((result) => {
         if (result.status === 201) {
           document.getElementById("Chat_textarea_input").value = "";
+          this.updateMyTypingPresence(this.state.friendID_selected, false);
+        } else {
+          this.serverReply("Unable to send message");
         }
       });
     } else {
@@ -1221,20 +1347,40 @@ class App extends React.Component {
 
   ////////////////////////////Select friend id to chat //////////////////////////////////////////////////
   get_current_friend_chat_id = (friendID) => {
-    this.setState({
-      friendID_selected: friendID,
-    });
+    let activeChatFriendName = "";
     this.state.friends.forEach((friend) => {
       if (friend._id === friendID) {
-        document.getElementById("Chat_title_text").textContent =
-          friend.info.firstname;
+        activeChatFriendName =
+          friend.info?.firstname && friend.info?.lastname
+            ? `${friend.info.firstname} ${friend.info.lastname}`
+            : friend.info?.firstname || "Chat";
       }
     });
-    document.getElementById("Chat_goback_icon").style.display = "inline";
-    document.getElementById("Chat_article").style.height = "100%";
-    document.getElementById("FriendsList_article").style.height = "0";
 
+    this.setState({
+      friendID_selected: friendID,
+      activeChatFriendId: friendID,
+      activeChatFriendName,
+      isChatting: true,
+    });
+
+    this.updateMyChatPresence(friendID, true);
+    this.updateMyTypingPresence(friendID, false);
     this.RetrievingMySendingMessages(friendID);
+  };
+
+  closeActiveChat = () => {
+    if (this.state.activeChatFriendId) {
+      this.updateMyChatPresence(this.state.activeChatFriendId, false);
+      this.updateMyTypingPresence(this.state.activeChatFriendId, false);
+    }
+
+    this.setState({
+      friendID_selected: null,
+      activeChatFriendId: null,
+      activeChatFriendName: "",
+      isChatting: false,
+    });
   };
 
   ///DeleteFriendPost
@@ -1279,49 +1425,20 @@ class App extends React.Component {
   notificaitons_array = [];
 
   buildNotifications = () => {
-    let ul = document.getElementById("Notifications_dropMenu_container");
+    let bell = document.getElementById("i_bell_open");
+    if (!bell) {
+      return;
+    }
+
+    let hasUnreadNotifications = false;
     for (var i = 0; i < this.state.notifications.length; i++) {
-      if (
-        this.state.notifications[i].status !== "read" &&
-        this.notificaitons_array[i] !== this.state.notifications[i]._id
-      ) {
-        document.getElementById("i_bell_open").style.color = "yellow";
-        let p = document.createElement("p");
-        let li = document.createElement("li");
-        let div = document.createElement("div");
-        let decline_icon = document.createElement("i");
-        let accept_icon = document.createElement("i");
-
-        decline_icon.setAttribute("class", "fas fa-times");
-        accept_icon.setAttribute("class", "fas fa-user-check");
-        accept_icon.setAttribute(
-          "id",
-          "accept_icon" + this.state.notifications[i].id
-        );
-        decline_icon.setAttribute(
-          "id",
-          "decline_icon" + this.state.notifications[i].id
-        );
-        decline_icon.addEventListener("click", () => {
-          this.makeNotificationsRead(decline_icon.id);
-        });
-        accept_icon.addEventListener("click", () => {
-          this.acceptFriend(accept_icon.id);
-        });
-
-        p.textContent = this.state.notifications[i].message;
-        div.setAttribute("class", "fr");
-        div.style.justifyContent = "space-between";
-        li.setAttribute("id", this.state.notifications[i].id);
-        li.appendChild(p);
-        div.appendChild(li);
-        div.appendChild(decline_icon);
-        div.appendChild(accept_icon);
-        ul.appendChild(div);
+      if (this.state.notifications[i].status !== "read") {
+        hasUnreadNotifications = true;
       }
-
       this.notificaitons_array[i] = this.state.notifications[i]._id;
     }
+
+    bell.style.color = hasUnreadNotifications ? "yellow" : "";
   };
   ///////////////////////////////////////Counter////////////////////////////////////////////////
   counter = () => {
@@ -1433,23 +1550,44 @@ class App extends React.Component {
 
   /////////////////////////Log out//////////////////////
   logOut = () => {
-    this.setState({
-      isConnected: false,
-    });
-
-    if (this.props.path === "/study") {
-      let input = window.confirm(
-        "Do you want this study session to be counted?"
-      );
-      if (input) {
-        this.updateBeforeLeave();
-      } else {
-        this.availableToChat(false);
+    const finishLogout = () => {
+      if (this.realtimeSocket) {
+        this.realtimeSocket.disconnect();
+        this.realtimeSocket = null;
       }
-      return;
+
+      if (this.props.onLogout) {
+        this.props.onLogout();
+      }
+    };
+
+    this.setState(
+      {
+        isConnected: false,
+      },
+      () => {
+        if (this.props.path === "/study") {
+          let input = window.confirm(
+            "Do you want this study session to be counted?"
+          );
+          if (input) {
+            this.updateBeforeLeave();
+          }
+        }
+
+        this.availableToChat(false)
+          .catch(() => null)
+          .finally(finishLogout);
+      }
+    );
+  };
+
+  friendConnectionColor = (isConnected) => {
+    if (isConnected) {
+      return "#32cd32";
     }
 
-    this.availableToChat(false);
+    return "rgba(240, 242, 245, 0.42)";
   };
 
   ///////////////////////Searching in posts////////////////////
@@ -1791,7 +1929,7 @@ class App extends React.Component {
         <Route exact path="/">
           <article id="app_page" className="fc">
             <main id="Main_article" className="fr">
-              <Greeting state={this.state} />
+              <Greeting state={this.state} logOut={this.logOut} />
             </main>
           </article>
         </Route>
@@ -1819,6 +1957,55 @@ class App extends React.Component {
             memory={this.memory}
             serverReply={this.serverReply}
           />
+        </Route>
+        <Route exact path="/phenomedsocial/ar">
+          <article id="app_page" className="fc">
+            <main id="Main_article" className="fr">
+              <PhenomedSocialArabic
+                state={this.state}
+                logOut={this.logOut}
+                friendConnectionColor={this.friendConnectionColor}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                postingTerminology={this.postingTerminology}
+                searchPosts={this.searchPosts}
+                prepare_searchPosts={this.prepare_searchPosts}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+                sendToThemMessage={this.sendToThemMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
+                type={this.type}
+                counter={this.counter}
+                updateBeforeLeave={this.updateBeforeLeave}
+              />
+            </main>
+          </article>
+        </Route>
+        <Route exact path="/phenomedsocial">
+          <article id="app_page" className="fc">
+            <main id="Main_article" className="fr">
+              <PhenomedSocial
+                state={this.state}
+                logOut={this.logOut}
+                friendConnectionColor={this.friendConnectionColor}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                postingTerminology={this.postingTerminology}
+                searchPosts={this.searchPosts}
+                prepare_searchPosts={this.prepare_searchPosts}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+                sendToThemMessage={this.sendToThemMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
+                type={this.type}
+                counter={this.counter}
+                updateBeforeLeave={this.updateBeforeLeave}
+              />
+            </main>
+          </article>
+        </Route>
+        <Route path="/profile/:username">
+          <Profile viewerState={this.state} logOut={this.logOut} />
         </Route>
         <div
           id="server_answer"

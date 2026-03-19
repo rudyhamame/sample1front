@@ -7,6 +7,9 @@ const Login = ({ onLogin }) => {
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
   const [authReport, setAuthReport] = useState(null);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [signupMessage, setSignupMessage] = useState(null);
+  const [pendingSignup, setPendingSignup] = useState(null);
 
   useEffect(() => {
     if (login_ok && authReport) {
@@ -32,6 +35,7 @@ const Login = ({ onLogin }) => {
     switch (text) {
       case "signup":
         setLogin_ok(null);
+        setSignupMessage(null);
         Login_firstname_input.style.display = "initial";
         Login_lastname_input.style.display = "initial";
         Login_email_input.style.display = "initial";
@@ -44,6 +48,9 @@ const Login = ({ onLogin }) => {
 
       case "login":
         setSignup_ok(null);
+        setVerificationPending(false);
+        setPendingSignup(null);
+        setSignupMessage(null);
         Login_signup_button.style.display = "none";
         Login_signupShow_text.style.display = "initial";
         Login_login_button.style.display = "initial";
@@ -163,6 +170,7 @@ const Login = ({ onLogin }) => {
   const signup = (event) => {
     event.preventDefault();
     setIs_loading(true);
+    setSignupMessage(null);
 
     let Login_username_input = document.getElementById("Login_username_input");
     let Login_password_input = document.getElementById("Login_password_input");
@@ -172,6 +180,9 @@ const Login = ({ onLogin }) => {
     let Login_lastname_input = document.getElementById("Login_lastname_input");
     let Login_email_input = document.getElementById("Login_email_input");
     let Login_dob_input = document.getElementById("Login_dob_input");
+    let Login_verificationCode_input = document.getElementById(
+      "Login_verificationCode_input",
+    );
 
     if (
       Login_username_input.value &&
@@ -180,39 +191,111 @@ const Login = ({ onLogin }) => {
       Login_lastname_input.value &&
       Login_email_input.value
     ) {
-      const url = apiUrl("/api/user/signup");
-      const options = {
-        method: "POST",
-        mode: "cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (!verificationPending) {
+        const signupPayload = {
           username: Login_username_input.value,
           password: Login_password_input.value,
           firstname: Login_firstname_input.value,
           lastname: Login_lastname_input.value,
           email: Login_email_input.value,
           dob: Login_dob_input.value,
-        }),
-      };
+        };
 
-      let req = new Request(url, options);
-      fetch(req)
-        .then((response) => {
-          if (response.status === 201) {
-            setIs_loading(false);
-            setSignup_ok(true);
-            return response.json();
-          } else {
-            setIs_loading(false);
-            setSignup_ok(false);
-          }
-        })
-        .catch((err) => {
-          console.log("error:", err.message);
+        const url = apiUrl("/api/user/signup/request-code");
+        const req = new Request(url, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(signupPayload),
         });
+
+        fetch(req)
+          .then(async (response) => {
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(
+                data.message ||
+                  "Unable to send verification code. Please try again.",
+              );
+            }
+
+            return data;
+          })
+          .then((data) => {
+            setPendingSignup(signupPayload);
+            setVerificationPending(true);
+            setSignup_ok(null);
+            setSignupMessage(
+              data.message || "Verification code sent to your email.",
+            );
+            if (Login_verificationCode_input) {
+              Login_verificationCode_input.value = "";
+            }
+          })
+          .catch((err) => {
+            setSignup_ok(false);
+            setSignupMessage(err.message);
+          })
+          .finally(() => {
+            setIs_loading(false);
+          });
+      } else {
+        if (!Login_verificationCode_input?.value || !pendingSignup) {
+          setIs_loading(false);
+          setSignup_ok(false);
+          setSignupMessage("Please enter the verification code.");
+          return;
+        }
+
+        const url = apiUrl("/api/user/signup/verify-code");
+        const req = new Request(url, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: pendingSignup.username,
+            email: pendingSignup.email,
+            verificationCode: Login_verificationCode_input.value,
+          }),
+        });
+
+        fetch(req)
+          .then(async (response) => {
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(
+                data.message ||
+                  "Unable to verify code. Please request another one.",
+              );
+            }
+
+            return data;
+          })
+          .then((data) => {
+            setSignup_ok(true);
+            setVerificationPending(false);
+            setPendingSignup(null);
+            setSignupMessage(
+              data.message || "You have successfully signed up!",
+            );
+            if (Login_verificationCode_input) {
+              Login_verificationCode_input.value = "";
+            }
+          })
+          .catch((err) => {
+            setSignup_ok(false);
+            setSignupMessage(err.message);
+          })
+          .finally(() => {
+            setIs_loading(false);
+          });
+      }
     } else {
       setIs_loading(false);
       setSignup_ok(false);
+      setSignupMessage("Please make sure you entered valid information");
     }
   };
 
@@ -271,6 +354,12 @@ const Login = ({ onLogin }) => {
               type="date"
               style={{ display: "none" }}
             />
+            <input
+              id="Login_verificationCode_input"
+              type="text"
+              placeholder="verification code"
+              style={{ display: verificationPending ? "initial" : "none" }}
+            />
             <button id="Login_login_button" onClick={login}>
               Log in
             </button>
@@ -279,7 +368,7 @@ const Login = ({ onLogin }) => {
               onClick={signup}
               style={{ display: "none" }}
             >
-              Sign up
+              {verificationPending ? "Verify code" : "Send verification code"}
             </button>
             <h4
               style={{ display: "none" }}
@@ -297,9 +386,12 @@ const Login = ({ onLogin }) => {
             <h4 style={{ overflowWrap: "break-word", color: "red" }}>
               {login_ok === false &&
                 "The password you entered is not correct, please try again"}
-              {signup_ok === true && "You have successfully signed up!"}
+              {signup_ok === true &&
+                (signupMessage || "You have successfully signed up!")}
               {signup_ok === false &&
-                "Please make sure you entered valid information"}
+                (signupMessage ||
+                  "Please make sure you entered valid information")}
+              {signup_ok === null && signupMessage}
             </h4>
           </section>
         </section>

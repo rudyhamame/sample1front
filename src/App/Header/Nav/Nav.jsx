@@ -1,11 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import Dim from "./Dim/Dim";
 import Logout from "./Logout/Logout";
-import Menu from "./Menu/Menu";
-import MessengerIcon from "./MessengerIcon/MessengerIcon";
 import Notifications from "./Notifications/Notifications";
-import ProfileIcon from "./Profile/ProfileIcon";
 import Refresh from "./Refresh/Refresh";
 const Nav = (props) => {
   let app_page = document.getElementById("root");
@@ -16,6 +12,7 @@ const Nav = (props) => {
           <Notifications
             state={props.state}
             acceptFriend={props.acceptFriend}
+            makeNotificationsRead={props.makeNotificationsRead}
           />
           <Dim />
           <Refresh />
