@@ -1,0 +1,32 @@
+@media screen and (min-width: 901px) and (max-width: 1199px) {
+  #Login_main {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 5px;
+  }
+
+  #Login_loginFrom_form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(100%, 100%);
+    max-width: 360px;
+    padding: 18px;
+  }
+
+  #Login_loginFrom_form input,
+  #Login_loginFrom_form button {
+    min-height: 20px;
+    font-size: 0.84rem;
+  }
+
+  #Login_modeNav h4 {
+    font-size: 10pt;
+  }
+
+  #Login_loginFrom_form h4 {
+    font-size: 10pt;
+  }
+
+}

@@ -1,0 +1,77 @@
+@media screen and (max-width: 500px) {
+  #Login_main {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 5px;
+  }
+
+  #Login_loginLogo_container,
+  #Login_loginForm_container {
+    height: auto;
+    max-width: 100%;
+    min-height: 0;
+    width: 100%;
+    padding: 0;
+  }
+
+  #Login_loginLogo_container {
+    flex: 2 1 0;
+    --login-logo-main-size: clamp(3rem, 42cqi, 4rem);
+    justify-content: center;
+    align-items: center;
+  }
+
+  #Login_loginForm_container {
+    flex: 3 1 0;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 6px 10px 12px;
+  }
+
+  #Login_loginLogo_text,
+  #Login_loginLogo_cloneText,
+  #Login_subLoginLogo_text {
+    width: 100%;
+    text-align: center;
+  }
+
+  #Login_loginLogo_cloneText {
+    letter-spacing: 0.12em;
+  }
+
+  #Login_subLoginLogo_text {
+    line-height: 1.35;
+  }
+
+  #Login_loginFrom_form {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px;
+    gap: 4px;
+  }
+
+  #Login_loginFrom_form input,
+  #Login_loginFrom_form button {
+    min-height: 24px;
+    font-size: 0.52rem;
+    padding: 4px 6px;
+  }
+
+  #Login_modeNav h4 {
+    font-size: 8px;
+    padding: 4px 3px 5px;
+  }
+
+  #Login_loginFrom_form h4,
+  #Login_feedback_text {
+    font-size: 0.5rem;
+    line-height: 1.15;
+  }
+
+  #Login_feedback_text {
+    min-height: 0;
+    padding: 8px 10px;
+  }
+
+}

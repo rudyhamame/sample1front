@@ -17,9 +17,39 @@ const PhenomedSocial = (props) => {
 
   const openFriendsView = () => {
     const friendsArticle = document.getElementById("Friends_article");
+    const friendsListArticle = document.getElementById("FriendsList_article");
+    const addFriendArticle = document.getElementById("AddFriend_article");
+    const friendChatArticle = document.getElementById("FriendChat_article");
+    const friendsListIcon = document.getElementById(
+      "DropHorizontally_friendsList_icon"
+    );
+    const addFriendIcon = document.getElementById(
+      "DropHorizontally_addFriend_icon"
+    );
 
     if (friendsArticle) {
-      friendsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
+      friendsArticle.style.display = "flex";
+    }
+    if (friendsListArticle) {
+      friendsListArticle.style.display = "flex";
+    }
+    if (addFriendArticle) {
+      addFriendArticle.style.display = "none";
+    }
+    if (friendChatArticle) {
+      friendChatArticle.style.display = "none";
+    }
+    if (friendsListIcon) {
+      friendsListIcon.style.color = "var(--white)";
+    }
+    if (addFriendIcon) {
+      addFriendIcon.style.color = "var(--special_black)";
+    }
+
+    if (friendsArticle) {
+      window.requestAnimationFrame(() => {
+        friendsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     }
   };
 

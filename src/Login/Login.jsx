@@ -1,66 +1,319 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import "../Login/login.css";
+import "../Login/login.max-width-600.css";
+import "../Login/login.min-1200-max-1440.css";
+import "../Login/login.min-901-max-1199.css";
+import "../Login/login.min-601-max-900.css";
+import "../Login/login.max-width-500.css";
 import { apiUrl } from "../config/api";
 
 const Login = ({ onLogin }) => {
+  const articleRef = useRef(null);
+  const footerRef = useRef(null);
+  const loginFormRef = useRef(null);
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
   const [authReport, setAuthReport] = useState(null);
-  const [verificationPending, setVerificationPending] = useState(false);
   const [signupMessage, setSignupMessage] = useState(null);
-  const [pendingSignup, setPendingSignup] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
+  const [viewportSize, setViewportSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  const [zoomScale, setZoomScale] = useState(
+    window.visualViewport?.scale || 1,
+  );
+  const [hoveredId, setHoveredId] = useState("");
+  const [copiedId, setCopiedId] = useState("");
+  const [showDebugBorders, setShowDebugBorders] = useState(true);
+  const feedbackMessage =
+    (login_ok === false &&
+      "The password you entered is not correct, please try again") ||
+    (signup_ok === true && (signupMessage || "You have successfully signed up!")) ||
+    (signup_ok === false &&
+      (signupMessage || "Please make sure you entered valid information")) ||
+    (signup_ok === null && signupMessage) ||
+    null;
 
   useEffect(() => {
     if (login_ok && authReport) {
-      login_listener();
+      setIsLoginTransitioning(true);
       sessionStorage.setItem("state", JSON.stringify(authReport));
+
+      const timeoutId = window.setTimeout(() => {
+        setIs_loading(false);
+        if (onLogin) {
+          onLogin(authReport);
+        }
+      }, 5000);
+
+      return () => window.clearTimeout(timeoutId);
     }
   }, [authReport, login_ok]);
 
-  const formControl = (text) => {
-    let Login_firstname_input = document.getElementById(
-      "Login_firstname_input",
-    );
-    let Login_lastname_input = document.getElementById("Login_lastname_input");
-    let Login_email_input = document.getElementById("Login_email_input");
-    let Login_dob_input = document.getElementById("Login_dob_input");
-    let Login_signup_button = document.getElementById("Login_signup_button");
-    let Login_login_button = document.getElementById("Login_login_button");
-    let Login_loginShow_text = document.getElementById("Login_loginShow_text");
-    let Login_signupShow_text = document.getElementById(
-      "Login_signupShow_text",
-    );
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
 
-    switch (text) {
-      case "signup":
-        setLogin_ok(null);
-        setSignupMessage(null);
-        Login_firstname_input.style.display = "initial";
-        Login_lastname_input.style.display = "initial";
-        Login_email_input.style.display = "initial";
-        Login_dob_input.style.display = "initial";
-        Login_signup_button.style.display = "initial";
-        Login_login_button.style.display = "none";
-        Login_loginShow_text.style.display = "initial";
-        Login_signupShow_text.style.display = "none";
-        break;
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-      case "login":
-        setSignup_ok(null);
-        setVerificationPending(false);
-        setPendingSignup(null);
-        setSignupMessage(null);
-        Login_signup_button.style.display = "none";
-        Login_signupShow_text.style.display = "initial";
-        Login_login_button.style.display = "initial";
-        Login_email_input.style.display = "none";
-        Login_dob_input.style.display = "none";
-        Login_loginShow_text.style.display = "none";
-        Login_firstname_input.style.display = "none";
-        Login_lastname_input.style.display = "none";
-        break;
+  useEffect(() => {
+    const updateZoomScale = () => {
+      setZoomScale(window.visualViewport?.scale || 1);
+    };
+
+    updateZoomScale();
+    window.addEventListener("resize", updateZoomScale);
+    window.visualViewport?.addEventListener("resize", updateZoomScale);
+
+    return () => {
+      window.removeEventListener("resize", updateZoomScale);
+      window.visualViewport?.removeEventListener("resize", updateZoomScale);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!articleRef.current) {
+      return;
     }
+
+    const handlePointerMove = (event) => {
+      articleRef.current.style.setProperty(
+        "--login-hover-x",
+        `${event.clientX + 14}px`,
+      );
+      articleRef.current.style.setProperty(
+        "--login-hover-y",
+        `${event.clientY + 14}px`,
+      );
+
+      const targetWithId = event.target.closest("[id]");
+      setHoveredId(targetWithId?.id || "");
+    };
+
+    const handlePointerLeave = () => {
+      setHoveredId("");
+    };
+
+    const handleClick = (event) => {
+      const targetWithId = event.target.closest("[id]");
+      const idToCopy = targetWithId?.id;
+
+      if (!idToCopy) {
+        return;
+      }
+
+      navigator.clipboard?.writeText(idToCopy).then(() => {
+        setCopiedId(idToCopy);
+        window.clearTimeout(handleClick.copyTimeoutId);
+        handleClick.copyTimeoutId = window.setTimeout(() => {
+          setCopiedId("");
+        }, 1200);
+      }).catch(() => null);
+    };
+    handleClick.copyTimeoutId = 0;
+
+    const currentArticle = articleRef.current;
+    currentArticle.addEventListener("pointermove", handlePointerMove);
+    currentArticle.addEventListener("pointerleave", handlePointerLeave);
+    currentArticle.addEventListener("click", handleClick);
+
+    return () => {
+      currentArticle.removeEventListener("pointermove", handlePointerMove);
+      currentArticle.removeEventListener("pointerleave", handlePointerLeave);
+      currentArticle.removeEventListener("click", handleClick);
+      window.clearTimeout(handleClick.copyTimeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!footerRef.current || !articleRef.current) {
+      return;
+    }
+
+    // Keep footer:rest-of-page at 1:6, so footer is 1/7 of total visible height.
+    const visibleFooterHeight = viewportSize.height / 7;
+    const scaledFooterHeight = visibleFooterHeight * zoomScale;
+
+    articleRef.current.style.setProperty(
+      "--login-footer-height",
+      `${scaledFooterHeight}px`,
+    );
+    footerRef.current.style.setProperty(
+      "--login-footer-width",
+      `${zoomScale * 100}%`,
+    );
+    footerRef.current.style.setProperty(
+      "--login-footer-height",
+      `${scaledFooterHeight}px`,
+    );
+    footerRef.current.style.setProperty(
+      "--login-footer-scale",
+      `${1 / zoomScale}`,
+    );
+  }, [viewportSize.height, zoomScale]);
+
+  useEffect(() => {
+    if (!loginFormRef.current || isLoginTransitioning) {
+      return;
+    }
+
+    const formEl = loginFormRef.current;
+    const selectors = [
+      "input",
+      "button",
+      "#Login_modeNav h4",
+      "#Login_loginFrom_form h4",
+      "#Login_feedback_text",
+    ].join(", ");
+
+    const resetScaledStyles = () => {
+      formEl.querySelectorAll(selectors).forEach((element) => {
+        element.style.removeProperty("font-size");
+        element.style.removeProperty("min-height");
+        element.style.removeProperty("line-height");
+        element.style.removeProperty("padding-top");
+        element.style.removeProperty("padding-right");
+        element.style.removeProperty("padding-bottom");
+        element.style.removeProperty("padding-left");
+      });
+    };
+
+    const collectMetrics = () =>
+      Array.from(formEl.querySelectorAll(selectors)).map((element) => {
+        const styles = window.getComputedStyle(element);
+        const parseValue = (value) => {
+          const parsed = Number.parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        return {
+          element,
+          fontSize: parseValue(styles.fontSize),
+          minHeight: parseValue(styles.minHeight),
+          lineHeight:
+            styles.lineHeight === "normal"
+              ? null
+              : parseValue(styles.lineHeight),
+          paddingTop: parseValue(styles.paddingTop),
+          paddingRight: parseValue(styles.paddingRight),
+          paddingBottom: parseValue(styles.paddingBottom),
+          paddingLeft: parseValue(styles.paddingLeft),
+        };
+      });
+
+    const applyScale = (metrics, scale) => {
+      metrics.forEach((metric) => {
+        if (metric.fontSize) {
+          metric.element.style.setProperty(
+            "font-size",
+            `${Math.max(metric.fontSize * scale, 6)}px`,
+            "important",
+          );
+        }
+
+        if (metric.minHeight && metric.minHeight > 0) {
+          metric.element.style.setProperty(
+            "min-height",
+            `${Math.max(metric.minHeight * scale, 16)}px`,
+            "important",
+          );
+        }
+
+        if (metric.lineHeight) {
+          metric.element.style.setProperty(
+            "line-height",
+            `${Math.max(metric.lineHeight * scale, 1)}px`,
+            "important",
+          );
+        }
+
+        if (metric.paddingTop !== null) {
+          metric.element.style.setProperty(
+            "padding-top",
+            `${Math.max(metric.paddingTop * scale, 0)}px`,
+            "important",
+          );
+        }
+
+        if (metric.paddingRight !== null) {
+          metric.element.style.setProperty(
+            "padding-right",
+            `${Math.max(metric.paddingRight * scale, 0)}px`,
+            "important",
+          );
+        }
+
+        if (metric.paddingBottom !== null) {
+          metric.element.style.setProperty(
+            "padding-bottom",
+            `${Math.max(metric.paddingBottom * scale, 0)}px`,
+            "important",
+          );
+        }
+
+        if (metric.paddingLeft !== null) {
+          metric.element.style.setProperty(
+            "padding-left",
+            `${Math.max(metric.paddingLeft * scale, 0)}px`,
+            "important",
+          );
+        }
+      });
+    };
+
+    const fitLoginForm = () => {
+      resetScaledStyles();
+      const metrics = collectMetrics();
+      let scale = 1;
+
+      applyScale(metrics, scale);
+
+      while (
+        (formEl.scrollHeight > formEl.clientHeight + 1 ||
+          formEl.scrollWidth > formEl.clientWidth + 1) &&
+        scale > 0.4
+      ) {
+        scale -= 0.04;
+        applyScale(metrics, scale);
+      }
+    };
+
+    const runFit = () => window.requestAnimationFrame(fitLoginForm);
+    const resizeObserver = new ResizeObserver(runFit);
+
+    resizeObserver.observe(formEl);
+    if (articleRef.current) {
+      resizeObserver.observe(articleRef.current);
+    }
+
+    runFit();
+
+    return () => {
+      resizeObserver.disconnect();
+      resetScaledStyles();
+    };
+  }, [
+    authMode,
+    feedbackMessage,
+    isLoginTransitioning,
+    viewportSize.height,
+    viewportSize.width,
+  ]);
+
+  const formControl = (text) => {
+    setAuthMode(text);
+    setLogin_ok(null);
+    setSignup_ok(null);
+    setSignupMessage(null);
   };
 
   const login = () => {
@@ -123,50 +376,6 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const login_listener = () => {
-    let app_page_width = parseInt(
-      window.getComputedStyle(document.querySelector("#root")).width,
-    );
-
-    if (authReport) {
-      document.getElementById("Login_loginFrom_form").style.height = "0";
-      document.getElementById("Login_loginFrom_form").style.padding = "0";
-
-      if (app_page_width > 1000) {
-        document.getElementById("Login_loginLogo_text").style.fontSize =
-          "100pt";
-        document.getElementById(
-          "Login_loginLogo_container",
-        ).style.marginBottom = "150px";
-        document.getElementById("Login_subLoginLogo_text").style.fontSize =
-          "50pt";
-      }
-      if (1000 > app_page_width > 700) {
-        document.getElementById("Login_loginLogo_text").style.fontSize = "90pt";
-        document.getElementById(
-          "Login_loginLogo_container",
-        ).style.marginBottom = "140px";
-        document.getElementById("Login_subLoginLogo_text").style.fontSize =
-          "40pt";
-      }
-      if (app_page_width < 700) {
-        document.getElementById("Login_loginLogo_text").style.fontSize = "70pt";
-        document.getElementById(
-          "Login_loginLogo_container",
-        ).style.marginBottom = "130px";
-        document.getElementById("Login_subLoginLogo_text").style.fontSize =
-          "30pt";
-      }
-
-      setTimeout(() => {
-        setIs_loading(false);
-        if (onLogin) {
-          onLogin(authReport);
-        }
-      }, 5000);
-    }
-  };
-
   const signup = (event) => {
     event.preventDefault();
     setIs_loading(true);
@@ -180,9 +389,6 @@ const Login = ({ onLogin }) => {
     let Login_lastname_input = document.getElementById("Login_lastname_input");
     let Login_email_input = document.getElementById("Login_email_input");
     let Login_dob_input = document.getElementById("Login_dob_input");
-    let Login_verificationCode_input = document.getElementById(
-      "Login_verificationCode_input",
-    );
 
     if (
       Login_username_input.value &&
@@ -191,107 +397,48 @@ const Login = ({ onLogin }) => {
       Login_lastname_input.value &&
       Login_email_input.value
     ) {
-      if (!verificationPending) {
-        const signupPayload = {
-          username: Login_username_input.value,
-          password: Login_password_input.value,
-          firstname: Login_firstname_input.value,
-          lastname: Login_lastname_input.value,
-          email: Login_email_input.value,
-          dob: Login_dob_input.value,
-        };
+      const signupPayload = {
+        username: Login_username_input.value,
+        password: Login_password_input.value,
+        firstname: Login_firstname_input.value,
+        lastname: Login_lastname_input.value,
+        email: Login_email_input.value,
+        dob: Login_dob_input.value,
+      };
 
-        const url = apiUrl("/api/user/signup/request-code");
-        const req = new Request(url, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(signupPayload),
-        });
+      const url = apiUrl("/api/user/signup/request-code");
+      const req = new Request(url, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signupPayload),
+      });
 
-        fetch(req)
-          .then(async (response) => {
-            const data = await response.json();
+      fetch(req)
+        .then(async (response) => {
+          const data = await response.json();
 
-            if (!response.ok) {
-              throw new Error(
-                data.message ||
-                  "Unable to send verification code. Please try again.",
-              );
-            }
-
-            return data;
-          })
-          .then((data) => {
-            setPendingSignup(signupPayload);
-            setVerificationPending(true);
-            setSignup_ok(null);
-            setSignupMessage(
-              data.message || "Verification code sent to your email.",
+          if (!response.ok) {
+            throw new Error(
+              data.message || "Unable to complete signup. Please try again.",
             );
-            if (Login_verificationCode_input) {
-              Login_verificationCode_input.value = "";
-            }
-          })
-          .catch((err) => {
-            setSignup_ok(false);
-            setSignupMessage(err.message);
-          })
-          .finally(() => {
-            setIs_loading(false);
-          });
-      } else {
-        if (!Login_verificationCode_input?.value || !pendingSignup) {
-          setIs_loading(false);
+          }
+
+          return data;
+        })
+        .then((data) => {
+          setSignup_ok(true);
+          setSignupMessage(
+            data.message || "You have successfully signed up!",
+          );
+        })
+        .catch((err) => {
           setSignup_ok(false);
-          setSignupMessage("Please enter the verification code.");
-          return;
-        }
-
-        const url = apiUrl("/api/user/signup/verify-code");
-        const req = new Request(url, {
-          method: "POST",
-          mode: "cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: pendingSignup.username,
-            email: pendingSignup.email,
-            verificationCode: Login_verificationCode_input.value,
-          }),
+          setSignupMessage(err.message);
+        })
+        .finally(() => {
+          setIs_loading(false);
         });
-
-        fetch(req)
-          .then(async (response) => {
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(
-                data.message ||
-                  "Unable to verify code. Please request another one.",
-              );
-            }
-
-            return data;
-          })
-          .then((data) => {
-            setSignup_ok(true);
-            setVerificationPending(false);
-            setPendingSignup(null);
-            setSignupMessage(
-              data.message || "You have successfully signed up!",
-            );
-            if (Login_verificationCode_input) {
-              Login_verificationCode_input.value = "";
-            }
-          })
-          .catch((err) => {
-            setSignup_ok(false);
-            setSignupMessage(err.message);
-          })
-          .finally(() => {
-            setIs_loading(false);
-          });
-      }
     } else {
       setIs_loading(false);
       setSignup_ok(false);
@@ -300,29 +447,53 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <article id="Login_article" className="fc">
+    <article
+      id="Login_article"
+      className={`fc${showDebugBorders ? " Login_debugBordersOn" : ""}`}
+      ref={articleRef}
+    >
+      <div
+        id="Login_viewportBadge"
+        onClick={() => setShowDebugBorders((current) => !current)}
+      >
+        {viewportSize.width} x {viewportSize.height}
+      </div>
+      {hoveredId && <div id="Login_hoveredIdBadge">{hoveredId}</div>}
+      {copiedId && <div id="Login_copiedIdBadge">Copied: {copiedId}</div>}
       <main id="Login_main" className="fc">
         <section id="Login_loginLogo_container">
-          <h1 id="Login_loginLogo_text">H | MCTOS</h1>
+          <h1 id="Login_loginLogo_text">
+            <span className="Login_loginLogo_mark">H</span>
+            <span className="Login_loginLogo_divider" aria-hidden="true">
+              &middot;
+            </span>
+            <span className="Login_loginLogo_name">MCTOS</span>
+          </h1>
+          <h2 id="Login_loginLogo_cloneText">PhenoMed</h2>
           <h4 id="Login_subLoginLogo_text">
-            From Clinical-related Phenomena to Diagnosis: A Phenomenology of
-            Medicine
+            From Clinical-related Phenomena to Diagnosis
           </h4>
         </section>
         <section id="Login_loginForm_container">
-          <section id="Login_loginFrom_form" className="fc">
-            <input
-              id="Login_firstname_input"
-              type="text"
-              style={{ display: "none" }}
-              placeholder="doctor's first name"
-            />
-            <input
-              id="Login_lastname_input"
-              type="text"
-              style={{ display: "none" }}
-              placeholder="doctor's last name"
-            />
+          <section
+            id="Login_loginFrom_form"
+            className={`fc Login_loginFrom_form--${authMode}${isLoginTransitioning ? " is-collapsed" : ""}`}
+            ref={loginFormRef}
+          >
+            {authMode === "signup" && (
+              <input
+                id="Login_firstname_input"
+                type="text"
+                placeholder="doctor's first name"
+              />
+            )}
+            {authMode === "signup" && (
+              <input
+                id="Login_lastname_input"
+                type="text"
+                placeholder="doctor's last name"
+              />
+            )}
             <input
               id="Login_username_input"
               type="text"
@@ -343,62 +514,53 @@ const Login = ({ onLogin }) => {
                 }
               }}
             />
-            <input
-              id="Login_email_input"
-              type="email"
-              placeholder="doctor's email address"
-              style={{ display: "none" }}
-            />
-            <input
-              id="Login_dob_input"
-              type="date"
-              style={{ display: "none" }}
-            />
-            <input
-              id="Login_verificationCode_input"
-              type="text"
-              placeholder="verification code"
-              style={{ display: verificationPending ? "initial" : "none" }}
-            />
-            <button id="Login_login_button" onClick={login}>
-              Log in
-            </button>
-            <button
-              id="Login_signup_button"
-              onClick={signup}
-              style={{ display: "none" }}
-            >
-              {verificationPending ? "Verify code" : "Send verification code"}
-            </button>
-            <h4
-              style={{ display: "none" }}
-              id="Login_loginShow_text"
-              onClick={() => formControl("login")}
-            >
-              Log in?
-            </h4>
-            <h4
-              id="Login_signupShow_text"
-              onClick={() => formControl("signup")}
-            >
-              Sign up?
-            </h4>
-            <h4 style={{ overflowWrap: "break-word", color: "red" }}>
-              {login_ok === false &&
-                "The password you entered is not correct, please try again"}
-              {signup_ok === true &&
-                (signupMessage || "You have successfully signed up!")}
-              {signup_ok === false &&
-                (signupMessage ||
-                  "Please make sure you entered valid information")}
-              {signup_ok === null && signupMessage}
-            </h4>
+            {authMode === "signup" && (
+              <input
+                id="Login_email_input"
+                type="email"
+                placeholder="doctor's email address"
+              />
+            )}
+            {authMode === "signup" && (
+              <input id="Login_dob_input" type="date" />
+            )}
+            {authMode === "login" ? (
+              <button id="Login_login_button" onClick={login}>
+                Log in
+              </button>
+            ) : (
+              <button id="Login_signup_button" onClick={signup}>
+                Sign up
+              </button>
+            )}
+            <nav id="Login_modeNav" aria-label="Authentication mode">
+              {authMode === "signup" && (
+                <h4
+                  className={authMode === "login" ? "is-active" : ""}
+                  id="Login_loginShow_text"
+                  onClick={() => formControl("login")}
+                >
+                  Log in
+                </h4>
+              )}
+              {authMode === "login" && (
+                <h4
+                  id="Login_signupShow_text"
+                  onClick={() => formControl("signup")}
+                >
+                  Sign up
+                </h4>
+              )}
+            </nav>
+            {feedbackMessage && (
+              <h4 id="Login_feedback_text">{feedbackMessage}</h4>
+            )}
           </section>
         </section>
       </main>
-      <footer id="Login_footer">
+      <footer id="Login_footer" ref={footerRef}>
         <section id="Login_copyright_container">
-          <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
+          <h4 id="Login_copyright_text">Â©2020 Rudy Hamame</h4>
           <p id="Login_poweredBy_text">
             Powered by OpenAI API to support intelligent medical knowledge and
             enquiry experiences.
@@ -415,3 +577,5 @@ const Login = ({ onLogin }) => {
 };
 
 export default Login;
+
+
