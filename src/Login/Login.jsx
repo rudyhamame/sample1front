@@ -39,6 +39,7 @@ const initialClinicalRealityHtml = [
   "<h3>H: MCTOS | PhenoMed Website</h3>",
   ...clinicalRealityParagraphs.map((paragraph) => `<p>${paragraph}</p>`),
 ].join("");
+const clinicalRealityStorageKey = "phenomed.login.clinicalRealityHtml";
 
 const buildHighlightCursor = (color) => {
   const svg = `
@@ -57,6 +58,7 @@ const Login = ({ onLogin }) => {
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
   const realityEditorRef = useRef(null);
+  const hasSyncedRealityEditorRef = useRef(false);
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
@@ -65,13 +67,19 @@ const Login = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("login");
   const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
   const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
-  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(
-    initialClinicalRealityHtml,
-  );
+  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(() => {
+    const savedClinicalRealityHtml = window.localStorage.getItem(
+      clinicalRealityStorageKey,
+    );
+
+    return savedClinicalRealityHtml || initialClinicalRealityHtml;
+  });
   const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
   const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
   const [isHighlightModeOn, setIsHighlightModeOn] = useState(false);
   const [hasRealitySelection, setHasRealitySelection] = useState(false);
+  const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
+  const [savingDots, setSavingDots] = useState(".");
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -311,6 +319,52 @@ const Login = ({ onLogin }) => {
     viewportSize.height,
     viewportSize.width,
   ]);
+
+  useEffect(() => {
+    if (!realityEditorRef.current) {
+      return;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const shouldHydrateEditor =
+      !hasSyncedRealityEditorRef.current || document.activeElement !== editorElement;
+
+    if (shouldHydrateEditor && editorElement.innerHTML !== clinicalRealityHtml) {
+      editorElement.innerHTML = clinicalRealityHtml;
+    }
+
+    hasSyncedRealityEditorRef.current = true;
+  }, [clinicalRealityHtml]);
+
+  useEffect(() => {
+    setIsClinicalRealitySaving(true);
+
+    const saveTimeoutId = window.setTimeout(() => {
+      window.localStorage.setItem(
+        clinicalRealityStorageKey,
+        clinicalRealityHtml,
+      );
+      setIsClinicalRealitySaving(false);
+    }, 1000);
+
+    return () => window.clearTimeout(saveTimeoutId);
+  }, [clinicalRealityHtml]);
+
+  useEffect(() => {
+    if (!isClinicalRealitySaving) {
+      setSavingDots(".");
+      return;
+    }
+
+    const frames = [".", "..", "..."];
+    let frameIndex = 0;
+    const dotsIntervalId = window.setInterval(() => {
+      frameIndex = (frameIndex + 1) % frames.length;
+      setSavingDots(frames[frameIndex]);
+    }, 320);
+
+    return () => window.clearInterval(dotsIntervalId);
+  }, [isClinicalRealitySaving]);
 
   useEffect(() => {
     const syncRealitySelection = () => {
@@ -601,6 +655,39 @@ const Login = ({ onLogin }) => {
                   U
                 </button>
                 <label className="Login_realityControlField">
+                  <span>Align</span>
+                  <button
+                    type="button"
+                    className="Login_realityControlButton Login_realityControlButton--align"
+                    title="Align left"
+                    aria-label="Align left"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyEditorCommand("justifyLeft")}
+                  >
+                    <i className="fas fa-align-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="Login_realityControlButton Login_realityControlButton--align"
+                    title="Align center"
+                    aria-label="Align center"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyEditorCommand("justifyCenter")}
+                  >
+                    <i className="fas fa-align-center"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="Login_realityControlButton Login_realityControlButton--align"
+                    title="Align right"
+                    aria-label="Align right"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyEditorCommand("justifyRight")}
+                  >
+                    <i className="fas fa-align-right"></i>
+                  </button>
+                </label>
+                <label className="Login_realityControlField">
                   <span>Color</span>
                   <input
                     type="color"
@@ -680,7 +767,6 @@ const Login = ({ onLogin }) => {
                   ? buildHighlightCursor(editorHighlightColor)
                   : "text",
               }}
-              dangerouslySetInnerHTML={{ __html: clinicalRealityHtml }}
               onInput={(event) => {
                 setClinicalRealityHtml(event.currentTarget.innerHTML);
               }}
@@ -698,6 +784,13 @@ const Login = ({ onLogin }) => {
                 }
               }}
             ></div>
+            <p
+              id="Login_realitySaveStatus"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {isClinicalRealitySaving ? `Saving ${savingDots}` : "Saved"}
+            </p>
           </div>
         </section>
         <section id="Login_loginLogo_container">

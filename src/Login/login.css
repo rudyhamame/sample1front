@@ -357,6 +357,8 @@
   }
 
   #Login_realityPanel_inner {
+    display: flex;
+    flex-direction: column;
     height: 100%;
     min-height: 100%;
     max-height: 100%;
@@ -448,6 +450,15 @@
     padding: 0 10px;
   }
 
+  .Login_realityControlButton--align {
+    min-width: 40px;
+    padding: 0 10px;
+  }
+
+  .Login_realityControlButton--align i {
+    font-size: 0.92rem;
+  }
+
   .Login_realityControlButton--pen i {
     font-size: 1rem;
   }
@@ -503,8 +514,9 @@
   }
 
   #Login_realityEditor {
+    flex: 1 0 auto;
     gap: 12px;
-    min-height: 100%;
+    min-height: 0;
     outline: none;
     color: rgba(26, 59, 67, 0.82);
     font-size: 0.9rem;
@@ -522,6 +534,22 @@
 
   #Login_realityEditor p {
     margin: 0;
+  }
+
+  #Login_realitySaveStatus {
+    position: sticky;
+    bottom: -26px;
+    z-index: 1;
+    margin: 0 -24px -26px;
+    padding: 10px 24px 12px;
+    border-top: 1px solid rgba(124, 157, 165, 0.14);
+    background: rgba(238, 246, 247, 0.98);
+    color: rgba(30, 82, 90, 0.58);
+    font-size: 0.7rem;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: "IBM Plex Mono", monospace;
   }
 
   #Login_realityToggle {
