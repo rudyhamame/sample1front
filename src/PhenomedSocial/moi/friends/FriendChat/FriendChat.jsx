@@ -19,6 +19,8 @@ const CHAT_EMOJIS = [
   "🤝",
 ];
 
+CHAT_EMOJIS.push("🫂", "❤️");
+
 const resetChatTextareaHeight = (textarea) => {
   if (!textarea) {
     return;
