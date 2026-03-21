@@ -6,6 +6,7 @@ import "../Login/login.min-901-max-1199.css";
 import "../Login/login.min-601-max-900.css";
 import "../Login/login.max-width-500.css";
 import { apiUrl } from "../config/api";
+import InspectionOverlay from "../debug/InspectionOverlay";
 
 const Login = ({ onLogin }) => {
   const articleRef = useRef(null);
@@ -22,13 +23,12 @@ const Login = ({ onLogin }) => {
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [zoomScale, setZoomScale] = useState(
-    window.visualViewport?.scale || 1,
-  );
+  const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
   const feedbackMessage =
     (login_ok === false &&
       "The password you entered is not correct, please try again") ||
-    (signup_ok === true && (signupMessage || "You have successfully signed up!")) ||
+    (signup_ok === true &&
+      (signupMessage || "You have successfully signed up!")) ||
     (signup_ok === false &&
       (signupMessage || "Please make sure you entered valid information")) ||
     (signup_ok === null && signupMessage) ||
@@ -371,9 +371,7 @@ const Login = ({ onLogin }) => {
         })
         .then((data) => {
           setSignup_ok(true);
-          setSignupMessage(
-            data.message || "You have successfully signed up!",
-          );
+          setSignupMessage(data.message || "You have successfully signed up!");
         })
         .catch((err) => {
           setSignup_ok(false);
@@ -391,6 +389,13 @@ const Login = ({ onLogin }) => {
 
   return (
     <article id="Login_article" className="fc" ref={articleRef}>
+      <InspectionOverlay
+        rootId="Login_article"
+        debugClassName="Login_debugBordersOn"
+        viewportBadgeId="Login_viewportBadge"
+        hoveredBadgeId="Login_hoveredIdBadge"
+        copiedBadgeId="Login_copiedIdBadge"
+      />
       <main id="Login_main" className="fc">
         <section id="Login_loginLogo_container">
           <h1 id="Login_loginLogo_text">
@@ -405,10 +410,13 @@ const Login = ({ onLogin }) => {
             From Clinical-related Phenomena to Diagnosis
           </h4>
         </section>
-        <section id="Login_loginForm_container">
+        <section
+          id="Login_loginForm_container"
+          className={isLoginTransitioning ? "is-collapsed" : ""}
+        >
           <section
             id="Login_loginFrom_form"
-            className={`fc Login_loginFrom_form--${authMode}${isLoginTransitioning ? " is-collapsed" : ""}`}
+            className={`fc Login_loginFrom_form--${authMode}`}
             ref={loginFormRef}
           >
             {authMode === "signup" && (
@@ -491,7 +499,7 @@ const Login = ({ onLogin }) => {
       </main>
       <footer id="Login_footer" ref={footerRef}>
         <section id="Login_copyright_container">
-          <h4 id="Login_copyright_text">Â©2020 Rudy Hamame</h4>
+          <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
           <p id="Login_poweredBy_text">
             Powered by OpenAI API to support intelligent medical knowledge and
             enquiry experiences.
@@ -508,5 +516,3 @@ const Login = ({ onLogin }) => {
 };
 
 export default Login;
-
-

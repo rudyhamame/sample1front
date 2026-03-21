@@ -17,7 +17,7 @@
 
   #Login_loginLogo_container {
     flex: 2 1 0;
-    --login-logo-main-size: clamp(3rem, 42cqi, 4rem);
+    --login-logo-main-size: clamp(3.4rem, 46cqi, 4.6rem);
     justify-content: center;
     align-items: center;
   }
@@ -34,6 +34,11 @@
   #Login_subLoginLogo_text {
     width: 100%;
     text-align: center;
+  }
+
+  #Login_loginLogo_text {
+    font-family: "Arial Black", "Archivo Black", sans-serif;
+    font-weight: 900;
   }
 
   #Login_loginLogo_cloneText {

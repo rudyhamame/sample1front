@@ -1,64 +1,70 @@
 @media screen and (min-width: 1000px) {
   #PhenomedSocial_article {
-    gap: 10px;
-    padding: calc(12px + var(--phenomed-badge-clearance)) 12px 12px;
+    gap: 14px;
+    padding: 14px 16px 16px;
   }
 
   .PhenomedSocial_intro {
-    gap: 10px;
-    padding: 14px 16px;
-    border-radius: 22px;
+    gap: 14px;
+    padding: 18px 20px;
+    border-radius: 24px;
   }
 
   .PhenomedSocial_headingRow {
     align-items: stretch;
-    gap: 16px;
+    gap: 22px;
     flex-wrap: nowrap;
   }
 
   .PhenomedSocial_headingCopy {
     flex: 1 1 auto;
-    max-width: 680px;
-    gap: 6px;
+    min-width: 0;
+    max-width: 760px;
+    gap: 10px;
   }
 
   .PhenomedSocial_headingCopy h1 {
-    font-size: clamp(1.25rem, 1.6vw, 1.9rem);
+    font-size: clamp(1.45rem, 1.9vw, 2.2rem);
   }
 
   .PhenomedSocial_headingCopy p {
-    font-size: 0.74rem;
-    line-height: 1.4;
+    font-size: 0.84rem;
+    line-height: 1.55;
   }
 
   .PhenomedSocial_doctorName {
-    font-size: 0.68rem !important;
+    font-size: 0.78rem !important;
   }
 
   .PhenomedSocial_headerAside {
-    flex: 0 0 250px;
-    min-width: 250px;
+    flex: 0 0 320px;
+    min-width: 320px;
     align-items: stretch;
-    gap: 10px;
+    gap: 12px;
   }
 
   .PhenomedSocial_headerAside > #Nav_article {
     align-self: stretch;
     justify-content: space-between;
+    gap: 8px;
     width: 100%;
-    padding: 7px 8px;
+    padding: 10px 12px;
+    border-radius: 18px;
   }
 
   .PhenomedSocial_headerAside > #Nav_article .Nav_actionButton {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     min-width: 0;
-    height: 30px;
-    padding: 0 12px;
+    height: 34px;
+    padding: 0 14px;
   }
 
   .PhenomedSocial_headerAside > #Nav_article .Nav_actionButton span {
     display: inline;
-    font-size: 0.6rem;
+    font-size: 0.68rem;
     font-weight: 600;
   }
 
@@ -66,37 +72,46 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
-    gap: 6px;
+    gap: 10px;
   }
 
   .PhenomedSocial_metrics .PhenomedSocial_notificationsCount {
     min-width: 0;
-    padding: 8px 10px;
-    border-radius: 14px;
+    padding: 10px 12px;
+    border-radius: 16px;
   }
 
   .PhenomedSocial_metrics .PhenomedSocial_notificationsCount span {
-    font-size: 0.54rem;
+    font-size: 0.6rem;
   }
 
   .PhenomedSocial_metrics .PhenomedSocial_notificationsCount strong {
-    font-size: 0.92rem;
+    font-size: 1.08rem;
   }
 
   #PhenomedSocial_article #Main_article {
-    gap: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+    height: 100%;
   }
 
   #PhenomedSocial_article #Terminology_article {
-    flex: 0 0 240px;
-    width: 240px;
-    min-width: 240px;
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
   }
 
   #PhenomedSocial_article #Friends_article {
-    flex: 0 0 240px;
-    width: 240px;
-    min-width: 240px;
+    flex: 0 0 280px;
+    width: 280px;
+    min-width: 280px;
+  }
+
+  #PhenomedSocial_article #Posts_article {
+    flex: 1 1 min(620px, 100%);
+    min-width: 0;
   }
 
   #PhenomedSocial_article.PhenomedSocial_panel-home #Posts_article,
@@ -131,30 +146,30 @@
   #PhenomedSocial_article #FriendsList_content_container,
   #PhenomedSocial_article #AddFriend_content_container,
   #PhenomedSocial_article #FriendChat_content_container {
-    padding: 10px;
+    padding: 12px;
   }
 
   #PhenomedSocial_article #MountPosts_content_container {
-    gap: 10px;
+    gap: 12px;
   }
 
   #PhenomedSocial_article #MountPosts_content_container p,
   #PhenomedSocial_article #Terminology_content_container p,
   #PhenomedSocial_article #FriendsList_friends_list li,
   #PhenomedSocial_article #AddFriend_addFriend_results li {
-    font-size: 0.68rem;
+    font-size: 0.74rem;
   }
 
   #PhenomedSocial_article .sentMessagesLI,
   #PhenomedSocial_article .receivedMessagesLI {
-    max-width: 78%;
+    max-width: 82%;
   }
 
   #PhenomedSocial_article .sentMessagesLI p,
   #PhenomedSocial_article .receivedMessagesLI p {
-    font-size: 0.64rem;
-    line-height: 1.36;
-    padding: 7px 9px;
+    font-size: 0.72rem;
+    line-height: 1.48;
+    padding: 9px 11px;
   }
 
   .PhenomedSocial--arabic .PhenomedSocial_headerAside {

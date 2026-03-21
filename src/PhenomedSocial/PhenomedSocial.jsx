@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Main from "./moi/main/Main";
 import PhenomedSocial_Nav from "./PhenomedSocial_Nav";
 import { phenomedSocialEnglishContent } from "./content";
+import InspectionOverlay from "../debug/InspectionOverlay";
 import "./phenomedsocial.css";
 import "./phenomedsocial.max-width-500.css";
 import "./phenomedsocial.min-width-1000.css";
@@ -102,6 +103,13 @@ const PhenomedSocial = (props) => {
       id="PhenomedSocial_article"
       className={`fc PhenomedSocial_panel-${activePanel}`}
     >
+      <InspectionOverlay
+        rootId="PhenomedSocial_article"
+        debugClassName="PhenomedSocial_debugBordersOn"
+        viewportBadgeId="PhenomedSocial_viewportBadge"
+        hoveredBadgeId="PhenomedSocial_hoveredIdBadge"
+        copiedBadgeId="PhenomedSocial_copiedIdBadge"
+      />
       <section className="PhenomedSocial_intro fc">
         <div className="PhenomedSocial_topbar fr">
           <p className="PhenomedSocial_eyebrow">
