@@ -1,5 +1,24 @@
 import React from "react";
 
+const CHAT_EMOJIS = [
+  "😀",
+  "😂",
+  "😊",
+  "😍",
+  "🤔",
+  "👍",
+  "👏",
+  "🙏",
+  "🔥",
+  "🎉",
+  "💙",
+  "💯",
+  "😎",
+  "😅",
+  "😭",
+  "🤝",
+];
+
 const resetChatTextareaHeight = (textarea) => {
   if (!textarea) {
     return;
@@ -33,6 +52,29 @@ const FriendChat = ({
   const friendIsTyping = state?.activeChatFriendId
     ? Boolean(state?.friendTypingPresence?.[state.activeChatFriendId])
     : false;
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = React.useState(false);
+  const emojiPickerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!isEmojiPickerOpen) {
+      return undefined;
+    }
+
+    const handleOutsideClick = (event) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target)
+      ) {
+        setIsEmojiPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isEmojiPickerOpen]);
 
   const handleSend = () => {
     const textarea = document.getElementById("Chat_textarea_input");
@@ -41,6 +83,8 @@ const FriendChat = ({
     if (sendToThemMessage) {
       sendToThemMessage(message);
     }
+
+    setIsEmojiPickerOpen(false);
   };
 
   const handleTypingChange = (event) => {
@@ -54,6 +98,32 @@ const FriendChat = ({
       state.activeChatFriendId,
       Boolean(event.target.value.trim())
     );
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    const textarea = document.getElementById("Chat_textarea_input");
+
+    if (!textarea) {
+      return;
+    }
+
+    const selectionStart = textarea.selectionStart ?? textarea.value.length;
+    const selectionEnd = textarea.selectionEnd ?? textarea.value.length;
+    const nextValue =
+      textarea.value.slice(0, selectionStart) +
+      emoji +
+      textarea.value.slice(selectionEnd);
+
+    textarea.value = nextValue;
+    const nextCursorPosition = selectionStart + emoji.length;
+    textarea.selectionStart = nextCursorPosition;
+    textarea.selectionEnd = nextCursorPosition;
+    resizeChatTextarea(textarea);
+    textarea.focus();
+
+    if (state?.activeChatFriendId && updateMyTypingPresence) {
+      updateMyTypingPresence(state.activeChatFriendId, Boolean(nextValue.trim()));
+    }
   };
 
   return (
@@ -118,6 +188,37 @@ const FriendChat = ({
                 </li>
               </ul>
               <section id="Chat_form" className="fr">
+                <div id="Chat_emoji_picker_wrap" ref={emojiPickerRef}>
+                  <button
+                    id="Chat_emoji_button"
+                    type="button"
+                    aria-label="Open emoji picker"
+                    title="Emoji"
+                    onClick={() => {
+                      setIsEmojiPickerOpen((currentValue) => !currentValue);
+                    }}
+                  >
+                    <span role="img" aria-hidden="true">
+                      🙂
+                    </span>
+                  </button>
+                  {isEmojiPickerOpen ? (
+                    <div id="Chat_emoji_picker" className="fc">
+                      {CHAT_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="Chat_emoji_option"
+                          onClick={() => {
+                            handleEmojiSelect(emoji);
+                          }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <textarea
                   id="Chat_textarea_input"
                   placeholder={chatContent?.inputPlaceholder || "Write a message"}

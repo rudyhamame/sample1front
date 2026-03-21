@@ -1352,8 +1352,9 @@
 #PhenomedSocial_article .receivedMessagesLI p {
   margin: 0;
   padding: 5px 7px;
-  line-height: 1.24;
+  line-height: 1.45;
   font-size: 0.6rem;
+  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
   color: #1e5b86;
 }
 
@@ -1362,6 +1363,8 @@
 }
 
 #PhenomedSocial_article #Chat_form {
+  position: relative;
+  align-items: flex-end;
   gap: 0;
   overflow: hidden;
   border-radius: 10px;
@@ -1381,6 +1384,8 @@
   min-height: 42px;
   box-sizing: border-box;
   padding: 7px 8px;
+  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  line-height: 1.45;
   color: #1e5b86;
   background: transparent;
   border: none;
@@ -1399,6 +1404,77 @@
 
 #PhenomedSocial_article.PhenomedSocial_themeDark #Chat_textarea_input::placeholder {
   color: rgba(240, 247, 248, 0.42);
+}
+
+#PhenomedSocial_article #Chat_emoji_picker_wrap {
+  position: relative;
+  display: flex;
+  align-self: stretch;
+}
+
+#PhenomedSocial_article #Chat_emoji_button,
+#PhenomedSocial_article .Chat_emoji_option {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+#PhenomedSocial_article #Chat_emoji_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 0 8px;
+  color: #1e5b86;
+  background: rgba(255, 255, 255, 0.18);
+  border-right: 1px solid rgba(104, 144, 176, 0.18);
+  font-size: 1rem;
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark #Chat_emoji_button {
+  color: rgba(240, 247, 248, 0.94);
+  background: rgba(255, 255, 255, 0.05);
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+#PhenomedSocial_article #Chat_emoji_picker {
+  position: absolute;
+  left: 6px;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 160px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(248, 252, 254, 0.98);
+  border: 1px solid rgba(104, 144, 176, 0.18);
+  box-shadow: 0 18px 32px rgba(39, 72, 97, 0.18);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark #Chat_emoji_picker {
+  background: rgba(7, 21, 26, 0.97);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+#PhenomedSocial_article .Chat_emoji_option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+#PhenomedSocial_article .Chat_emoji_option:hover {
+  background: rgba(61, 131, 145, 0.12);
+  transform: translateY(-1px);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark .Chat_emoji_option:hover {
+  background: rgba(61, 131, 145, 0.22);
 }
 
 #PhenomedSocial_article #Chat_submit_button {
