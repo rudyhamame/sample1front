@@ -1,35 +1,82 @@
 import React from "react";
 
 const Dim = () => {
+  const syncIcons = (isDark) => {
+    const dimIcon = document.getElementById("Nav_dim_i_dim");
+    const undimIcon = document.getElementById("Nav_dim_i_undim");
+
+    if (dimIcon) {
+      dimIcon.style.display = isDark ? "none" : "inline";
+    }
+    if (undimIcon) {
+      undimIcon.style.display = isDark ? "inline" : "none";
+    }
+  };
+
+  const togglePhenomedSocialTheme = (isDark) => {
+    const article = document.getElementById("PhenomedSocial_article");
+
+    if (!article) {
+      return false;
+    }
+
+    article.classList.toggle("PhenomedSocial_themeDark", isDark);
+    return true;
+  };
+
   const dim = () => {
-    let i_dim_menu_dim = document.getElementById("Nav_dim_i_dim");
-    let i_dim_menu_undim = document.getElementById("Nav_dim_i_undim");
-    i_dim_menu_dim.style.display = "none";
-    i_dim_menu_undim.style.display = "inline";
-    document.getElementById(
+    syncIcons(true);
+
+    if (togglePhenomedSocialTheme(true)) {
+      return;
+    }
+
+    const mountPostsContainer = document.getElementById(
       "MountPosts_content_container"
-    ).style.backgroundColor = "var(--gray)";
-    document.getElementById(
+    );
+    const inputTextareaContainer = document.getElementById(
       "InputPost_textarea_container"
-    ).style.backgroundColor = "var(--gray)";
-    document.getElementById(
+    );
+    const inputInputsContainer = document.getElementById(
       "InputPost_inputs_container"
-    ).style.backgroundColor = "var(--gray)";
+    );
+
+    if (mountPostsContainer) {
+      mountPostsContainer.style.backgroundColor = "var(--gray)";
+    }
+    if (inputTextareaContainer) {
+      inputTextareaContainer.style.backgroundColor = "var(--gray)";
+    }
+    if (inputInputsContainer) {
+      inputInputsContainer.style.backgroundColor = "var(--gray)";
+    }
   };
   const undim = () => {
-    let i_dim_menu_dim = document.getElementById("Nav_dim_i_dim");
-    let i_dim_menu_undim = document.getElementById("Nav_dim_i_undim");
-    i_dim_menu_dim.style.display = "inline";
-    i_dim_menu_undim.style.display = "none";
-    document.getElementById(
+    syncIcons(false);
+
+    if (togglePhenomedSocialTheme(false)) {
+      return;
+    }
+
+    const mountPostsContainer = document.getElementById(
       "MountPosts_content_container"
-    ).style.backgroundColor = "var(--black)";
-    document.getElementById(
+    );
+    const inputTextareaContainer = document.getElementById(
       "InputPost_textarea_container"
-    ).style.backgroundColor = "var(--black)";
-    document.getElementById(
+    );
+    const inputInputsContainer = document.getElementById(
       "InputPost_inputs_container"
-    ).style.backgroundColor = "var(--black)";
+    );
+
+    if (mountPostsContainer) {
+      mountPostsContainer.style.backgroundColor = "var(--black)";
+    }
+    if (inputTextareaContainer) {
+      inputTextareaContainer.style.backgroundColor = "var(--black)";
+    }
+    if (inputInputsContainer) {
+      inputInputsContainer.style.backgroundColor = "var(--black)";
+    }
   };
   return (
     <section id="Dim_article">

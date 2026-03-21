@@ -7,13 +7,6 @@ const SearchUsers = (props) => {
     const searchInput = document.getElementById(
       props.inputId || "SearchUsers_input"
     );
-    const resultsList = document.getElementById(
-      props.resultsListId || "AddFriend_addFriend_results"
-    );
-
-    if (resultsList) {
-      resultsList.innerHTML = "";
-    }
 
     if (props.searchUsers) {
       props.searchUsers(searchInput ? searchInput.value : "");

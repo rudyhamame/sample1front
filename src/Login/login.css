@@ -8,6 +8,11 @@
   outline-offset: -1px;
 }
 
+#Login_article,
+#Login_article * {
+  transition: none;
+}
+
 /* Page Shell */
 #Login_article {
   --login-footer-height: calc(100dvh / 7);
@@ -145,13 +150,13 @@
 /* Brand */
 #Login_loginLogo_text {
   font-family: "Sora", sans-serif;
-  font-size: var(--login-logo-main-size);
-  font-weight: 700;
+  font-size: min(var(--login-logo-main-size), 19cqi);
+  font-weight: 800;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
-  column-gap: 0.18em;
-  letter-spacing: 0.02em;
+  column-gap: 0.16em;
+  letter-spacing: 0.01em;
   text-align: center;
   line-height: 0.85;
   white-space: nowrap;
@@ -161,7 +166,7 @@
 }
 
 #Login_loginLogo_text .Login_loginLogo_mark {
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 
 #Login_loginLogo_text .Login_loginLogo_divider {
@@ -175,7 +180,7 @@
 }
 
 #Login_loginLogo_text .Login_loginLogo_name {
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 #Login_loginLogo_cloneText {
   font-family: "Exo", sans-serif;

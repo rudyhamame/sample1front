@@ -1,8 +1,4 @@
 @media screen and (min-width: 1200px) and (max-width: 1440px) {
-  #Login_article {
-    gap: 28px;
-  }
-
   #Login_main {
     flex-direction: row;
     align-items: flex-start;

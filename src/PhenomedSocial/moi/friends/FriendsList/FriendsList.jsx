@@ -9,15 +9,10 @@ const FriendsList = (props) => {
       props.selectFriendChat(friend._id);
     }
 
+    const phenomedIntro = document.querySelector(".PhenomedSocial_intro");
     const friendsListArticle = document.getElementById("FriendsList_article");
     const addFriendArticle = document.getElementById("AddFriend_article");
     const friendChatArticle = document.getElementById("FriendChat_article");
-    const friendsListIcon = document.getElementById(
-      "DropHorizontally_friendsList_icon"
-    );
-    const addFriendIcon = document.getElementById(
-      "DropHorizontally_addFriend_icon"
-    );
     const chatGoBackIcon = document.getElementById("Chat_goback_icon");
 
     if (friendsListArticle) {
@@ -29,14 +24,11 @@ const FriendsList = (props) => {
     if (friendChatArticle) {
       friendChatArticle.style.display = "flex";
     }
+    if (phenomedIntro) {
+      phenomedIntro.style.display = "none";
+    }
     if (chatGoBackIcon) {
       chatGoBackIcon.style.display = "inline-flex";
-    }
-    if (friendsListIcon) {
-      friendsListIcon.style.color = "var(--special_black)";
-    }
-    if (addFriendIcon) {
-      addFriendIcon.style.color = "var(--special_black)";
     }
   };
 
@@ -48,58 +40,100 @@ const FriendsList = (props) => {
       resultsListId="FriendsList_friends_list"
       searchInputId="FriendsList_search_input"
       buttonLabel={searchContent?.button}
-      placeholder={
-        searchContent?.currentFriendsPlaceholder || "Search current friends"
-      }
+      placeholder="Search for doctors"
       onSearch={props.searchFriends}
     >
-      {props.friends_count === 0 && (
-        <h1
-          style={{
-            fontSize: "12pt",
-            fontWeight: "300",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {friendsContent?.empty || "You have no friends to show"}
-        </h1>
+      {props.searchStatus === "loading" && (
+        <li id="FriendsList_loading_state">Searching...</li>
       )}
-      {props.friends.map((friend) => (
-        <li
-          key={friend._id || friend.info?.username}
-          className="fr"
-          style={{ cursor: "default" }}
-        >
-          <span>
-            {friend.info
-              ? `${friend.info.firstname} ${friend.info.lastname}`
-              : "Friend"}
-          </span>
-          <div className="FriendsList_actions fr">
-            <i
-              className="far fa-comments"
-              title="Open chat"
-              onClick={(event) => {
-                event.stopPropagation();
-                openFriendChat(friend);
-              }}
-            ></i>
-            {friend.status && (
+      {props.searchStatus === "error" && (
+        <li id="FriendsList_error_state">
+          {props.searchError || "Search failed."}
+        </li>
+      )}
+      {props.entries?.length === 0 && (
+        <li id="FriendsList_empty_state">
+          {friendsContent?.empty || "You have no friends to show"}
+        </li>
+      )}
+      {props.entries?.map((entry) => {
+        if (entry.kind === "search") {
+          const user = entry.user;
+          const firstName = String(user?.info?.firstname || "").trim();
+          const lastName = String(user?.info?.lastname || "").trim();
+          const displayName = `${firstName} ${lastName}`.trim() || "Doctor";
+
+          return (
+            <li
+              key={entry.id}
+              className="fr"
+              style={{ cursor: "default" }}
+            >
+              <span>{displayName}</span>
+              <div className="FriendsList_actions fr">
+                <i
+                  className="fas fa-user-plus"
+                  title="Add friend"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (props.addFriend && user?.info?.username) {
+                      props.addFriend(user.info.username);
+                    }
+                  }}
+                ></i>
+              </div>
+            </li>
+          );
+        }
+
+        const friend = entry.friend;
+        const firstName = String(friend?.info?.firstname || "").trim();
+        const lastName = String(friend?.info?.lastname || "").trim();
+        const displayName = `${firstName} ${lastName}`.trim() || "Friend";
+
+        return (
+          <li
+            key={entry.id}
+            className="fr"
+            style={{ cursor: "default" }}
+          >
+            <span>{displayName}</span>
+            <div className="FriendsList_actions fr">
               <i
-                className="fas fa-circle"
-                title={friend.status.isConnected ? "Online" : "Offline"}
-                style={{
-                  color: props.friendConnectionColor
-                    ? props.friendConnectionColor(friend.status.isConnected)
-                    : friend.status.isConnected
-                      ? "#32cd32"
-                      : "rgba(240, 242, 245, 0.42)",
+                className="far fa-comments"
+                title="Open chat"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openFriendChat(friend);
                 }}
               ></i>
-            )}
-          </div>
-        </li>
-      ))}
+              <i
+                className="fas fa-user-minus"
+                title="Unfriend"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (props.removeFriend && friend?._id) {
+                    props.removeFriend(friend._id);
+                  }
+                }}
+              ></i>
+              {friend.status && (
+                <i
+                  className="fas fa-circle"
+                  title={friend.status.isConnected ? "Online" : "Offline"}
+                  style={{
+                    color: props.friendConnectionColor
+                      ? props.friendConnectionColor(friend.status.isConnected)
+                      : friend.status.isConnected
+                        ? "#32cd32"
+                        : "rgba(240, 242, 245, 0.42)",
+                  }}
+                ></i>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </FriendSearchPanel>
   );
 };

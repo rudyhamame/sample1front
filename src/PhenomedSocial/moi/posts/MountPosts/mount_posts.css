@@ -1,10 +1,13 @@
 #MountPosts_article {
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 #MountPosts_content_container {
   padding: 10px 100px;
   gap: 10px;
   width: 100%;
+  min-height: 0;
   margin: 0 auto;
   background-color: var(--black);
   flex-grow: 1;
@@ -74,6 +77,30 @@
   box-shadow: 0 10px 10px rgba(0, 0, 0, 0.075);
   flex-grow: 1;
   order: 2;
+}
+
+#MountPosts_content_container #MountPosts_empty_state {
+  list-style: none;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 360px;
+  min-height: 140px;
+  padding: 28px 24px;
+  text-align: center;
+  color: #214652;
+  font-family: "Ropa Sans", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(241, 247, 248, 0.98), rgba(230, 240, 242, 0.98));
+  border: 1px dashed rgba(124, 157, 165, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 16px 30px rgba(96, 126, 135, 0.1);
 }
 .MountPosts_date {
   font-family: "Roboto", sans-serif;

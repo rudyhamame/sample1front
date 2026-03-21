@@ -14,10 +14,6 @@ const Main = (props) => {
       */}
       <Posts
         state={props.state}
-        postingPost={props.postingPost}
-        RetrievingMyPosts={props.RetrievingMyPosts}
-        searchPosts={props.searchPosts}
-        prepare_searchPosts={props.prepare_searchPosts}
         content={props.content}
         logOut={props.logOut}
         acceptFriend={props.acceptFriend}
@@ -29,6 +25,7 @@ const Main = (props) => {
         state={props.state}
         content={props.content}
         friendConnectionColor={props.friendConnectionColor}
+        removeFriend={props.removeFriend}
         selectFriendChat={props.selectFriendChat}
         closeActiveChat={props.closeActiveChat}
         searchUsers={props.searchUsers}

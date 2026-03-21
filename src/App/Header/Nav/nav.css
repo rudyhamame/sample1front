@@ -1,18 +1,37 @@
 /*Nav*/
 #Nav_article i {
   font-size: 15pt;
-  color: rgba(255, 255, 255, 0.904);
+  color: rgba(38, 77, 89, 0.92);
   cursor: pointer;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
 #Nav_article {
-  gap: 35px;
+  gap: 24px;
   align-items: center;
-  padding: 14px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.98),
+    rgba(233, 241, 243, 0.98)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
 }
 
 #Nav_article i:hover {
+  color: #176673;
   transform: scale(0.96);
+}
+
+#Nav_article .Nav_actionButton {
+  border: none;
+  background: transparent;
+  color: inherit;
 }
 
 @media screen and (max-width: 1200px) {

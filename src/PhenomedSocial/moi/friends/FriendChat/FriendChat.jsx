@@ -46,23 +46,28 @@ const FriendChat = ({
               className="fas fa-chevron-circle-left"
               id="Chat_goback_icon"
               onClick={() => {
+                const phenomedIntro =
+                  document.querySelector(".PhenomedSocial_intro");
                 const friendsListArticle = document.getElementById(
                   "FriendsList_article"
                 );
+                const addFriendArticle = document.getElementById(
+                  "AddFriend_article"
+                );
                 const friendChatArticle =
                   document.getElementById("FriendChat_article");
-                const dropHorizontallyFriendsListIcon = document.getElementById(
-                  "DropHorizontally_friendsList_icon"
-                );
 
                 if (friendsListArticle) {
                   friendsListArticle.style.display = "flex";
                 }
+                if (addFriendArticle) {
+                  addFriendArticle.style.display = "flex";
+                }
                 if (friendChatArticle) {
                   friendChatArticle.style.display = "none";
                 }
-                if (dropHorizontallyFriendsListIcon) {
-                  dropHorizontallyFriendsListIcon.style.color = "var(--white)";
+                if (phenomedIntro) {
+                  phenomedIntro.style.display = "flex";
                 }
                 if (closeActiveChat) {
                   closeActiveChat();

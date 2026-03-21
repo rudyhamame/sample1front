@@ -1,20 +1,11 @@
 import React from "react";
 import MountPosts from "./MountPosts/MountPosts";
-import InputPost from "../../moa/posts/InputPost/InputPost";
 import Footer from "../footer/Footer";
 
 const Posts = (props) => {
   return (
     <article id="Posts_article" className="fc">
       <section id="Posts_content_container" className="fc">
-        <InputPost
-          state={props.state}
-          content={props.content}
-          postingPost={props.postingPost}
-          RetrievingMyPosts={props.RetrievingMyPosts}
-          searchPosts={props.searchPosts}
-          prepare_searchPosts={props.prepare_searchPosts}
-        />
         <MountPosts
           app_posts_sorted={props.app_posts_sorted}
           state={props.state}

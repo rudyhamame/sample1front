@@ -1171,11 +1171,33 @@ class App extends React.Component {
 
   ////////////////////////ACCEPT FRIEND/////////////////////////////////////////////
 
+  hideNotificationRow = (notificationId) => {
+    const row = document.getElementById(String(notificationId));
+
+    if (row?.parentElement) {
+      row.parentElement.style.display = "none";
+    }
+  };
+
+  markNotificationReadLocally = (notificationId) => {
+    this.setState((prevState) => ({
+      notifications: (prevState.notifications || []).map((notification) =>
+        String(notification?.id) === String(notificationId)
+          ? { ...notification, status: "read" }
+          : notification
+      ),
+    }));
+  };
+
   acceptFriend = (friend) => {
     let friend_trim = friend.slice(11, friend.length);
-    document.getElementById(friend_trim).style.backgroundColor = "var(--black)";
-    document.getElementById("server_answer_message").textContent = "Adding ...";
-    document.getElementById("server_answer").style.width = "fit-content";
+    const notificationRow = document.getElementById(friend_trim);
+
+    if (notificationRow) {
+      notificationRow.style.backgroundColor = "var(--black)";
+    }
+
+    this.serverReply("Adding ...");
     let url =
       apiUrl("/api/user/acceptFriend/") +
       this.state.my_id +
@@ -1192,8 +1214,8 @@ class App extends React.Component {
     let req = new Request(url, options);
     fetch(req).then((response) => {
       if (response.status === 201) {
-        document.getElementById("server_answer_message").textContent =
-          "You're now friends!";
+        this.markNotificationReadLocally(friend_trim);
+        this.serverReply("You're now friends!");
 
         let url =
           apiUrl("/api/user/editUserInfo/") +
@@ -1211,24 +1233,15 @@ class App extends React.Component {
         let req = new Request(url, options);
         fetch(req).then((response) => {
           if (response.ok) {
-            setTimeout(() => {
-              document.getElementById("server_answer").style.width = "0";
-              document.getElementById("server_answer_message").textContent = "";
-            }, 5000);
-            document.getElementById(friend_trim).parentElement.style.display =
-              "none";
+            this.markNotificationReadLocally(friend_trim);
+            this.hideNotificationRow(friend_trim);
           }
         });
       }
       if (response.status === 409) {
-        document.getElementById("server_answer_message").textContent =
-          "You're already friends!";
-        setTimeout(() => {
-          document.getElementById("server_answer").style.width = "0";
-          document.getElementById("server_answer_message").textContent = "";
-        }, 5000);
-        document.getElementById(friend_trim).parentElement.style.display =
-          "none";
+        this.markNotificationReadLocally(friend_trim);
+        this.serverReply("You're already friends!");
+        this.hideNotificationRow(friend_trim);
       }
     });
   };
@@ -1236,7 +1249,6 @@ class App extends React.Component {
 
   makeNotificationsRead = (friend) => {
     let friend_trim = friend.slice(12, friend.length);
-    alert(friend_trim);
     let url =
       apiUrl("/api/user/editUserInfo/") +
       this.state.my_id +
@@ -1253,17 +1265,16 @@ class App extends React.Component {
     };
     let req = new Request(url, options);
     fetch(req).then((response) => {
-      document.getElementById(friend_trim).style.backgroundColor =
-        "var(--black)";
+      const notificationRow = document.getElementById(friend_trim);
+
+      if (notificationRow) {
+        notificationRow.style.backgroundColor = "var(--black)";
+      }
+
       if (response.status === 200) {
-        document.getElementById(friend_trim).parentElement.style.display =
-          "none";
-        document.getElementById("server_answer").style.width = "fit-content";
-        document.getElementById("server_answer_message").textContent = "Done!";
-        setTimeout(() => {
-          document.getElementById("server_answer").style.width = "0";
-          document.getElementById("server_answer_message").textContent = "";
-        }, 5000);
+        this.markNotificationReadLocally(friend_trim);
+        this.hideNotificationRow(friend_trim);
+        this.serverReply("Done!");
       }
     });
   };
@@ -1380,6 +1391,49 @@ class App extends React.Component {
       activeChatFriendId: null,
       activeChatFriendName: "",
       isChatting: false,
+    });
+  };
+
+  removeFriend = (friendId) => {
+    if (!friendId) {
+      return;
+    }
+
+    const url =
+      apiUrl("/api/user/removeFriend/") + this.state.my_id + "/" + friendId;
+    const options = {
+      method: "DELETE",
+      mode: "cors",
+      headers: {
+        Authorization: "Bearer " + this.state.token,
+        "Content-Type": "application/json",
+      },
+    };
+
+    fetch(new Request(url, options)).then((response) => {
+      if (response.ok) {
+        this.setState((currentState) => ({
+          friends: (currentState.friends || []).filter(
+            (friend) => friend?._id !== friendId
+          ),
+          activeChatFriendId:
+            currentState.activeChatFriendId === friendId
+              ? null
+              : currentState.activeChatFriendId,
+          activeChatFriendName:
+            currentState.activeChatFriendId === friendId
+              ? ""
+              : currentState.activeChatFriendName,
+          isChatting:
+            currentState.activeChatFriendId === friendId
+              ? false
+              : currentState.isChatting,
+        }));
+        this.serverReply("Friend removed.");
+        return;
+      }
+
+      this.serverReply("Unable to remove friend.");
     });
   };
 
@@ -1965,6 +2019,7 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 friendConnectionColor={this.friendConnectionColor}
+                removeFriend={this.removeFriend}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
                 postingTerminology={this.postingTerminology}
@@ -1988,6 +2043,7 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 friendConnectionColor={this.friendConnectionColor}
+                removeFriend={this.removeFriend}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
                 postingTerminology={this.postingTerminology}

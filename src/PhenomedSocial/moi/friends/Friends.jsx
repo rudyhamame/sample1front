@@ -1,6 +1,4 @@
 import React from "react";
-import Addfriend from "../../moa/friends/AddFriend/AddFriend";
-import DropHorizontally from "./DropHorizontally";
 import FriendChat from "./FriendChat/FriendChat";
 import FriendsList from "./FriendsList/FriendsList";
 import { apiUrl } from "../../../config/api";
@@ -10,7 +8,11 @@ class Friends extends React.Component {
     super(props);
     this.state = {
       searchTerm: "",
+      searchResults: [],
+      searchStatus: "idle",
+      searchError: "",
     };
+    this.searchRequestId = 0;
   }
 
   getNormalizedFriends = () =>
@@ -20,7 +22,26 @@ class Friends extends React.Component {
   //......SEARCH FOR USERS.......
   ////////////////////////SEARCH USER/////////////////////////
   searchUsers = (target) => {
-    let url = apiUrl("/api/user/searchUsers/") + target;
+    const normalizedTarget = String(target || "").trim().toLowerCase();
+    const requestId = ++this.searchRequestId;
+    this.setState({
+      searchTerm: normalizedTarget,
+      searchError: "",
+    });
+
+    if (!normalizedTarget) {
+      this.setState({
+        searchResults: [],
+        searchStatus: "idle",
+      });
+      return;
+    }
+
+    this.setState({
+      searchStatus: "loading",
+    });
+
+    let url = apiUrl("/api/user/searchUsers/") + encodeURIComponent(normalizedTarget);
     let options = {
       method: "GET",
       mode: "cors",
@@ -28,88 +49,37 @@ class Friends extends React.Component {
     let req = new Request(url, options);
     fetch(req)
       .then((results) => {
+        if (!results.ok) {
+          throw new Error(`Search failed with status ${results.status}`);
+        }
         return results.json();
       })
       .then((users) => {
-        const friends = this.getNormalizedFriends();
-        for (
-          var i = 0;
-          i < users.array.length &&
-          users.array[i]._id !== this.props.state?.my_id;
-          i++
-        ) {
-          const existingFriend = friends.some(
-            (friend) => friend._id === users.array[i]._id
-          );
-
-          if (friends.length > 0) {
-            if (!existingFriend) {
-              let p = document.createElement("p");
-              let li = document.createElement("li");
-              let ul = document.getElementById("AddFriend_addFriend_results");
-              let icon = document.createElement("i");
-              p.textContent =
-                users.array[i].info.firstname +
-                " " +
-                users.array[i].info.lastname;
-              li.appendChild(p);
-              li.setAttribute("id", users.array[i].info.username);
-              li.setAttribute("class", "fr");
-
-              icon.setAttribute("class", " fas fa-user-plus");
-              icon.addEventListener("click", () => {
-                this.addFriend(li.id);
-              });
-              li.appendChild(icon);
-              ul.appendChild(li);
-            } else {
-              let p = document.createElement("p");
-              let p2 = document.createElement("p");
-              let li = document.createElement("li");
-              let ul = document.getElementById("AddFriend_addFriend_results");
-              p.textContent =
-                users.array[i].info.firstname +
-                " " +
-                users.array[i].info.lastname;
-              p2.textContent = "already friends";
-              p2.style.fontSize = "10pt";
-              li.appendChild(p);
-              li.appendChild(p2);
-              li.setAttribute("id", users.array[i].info.username);
-              li.setAttribute("class", "fr");
-              ul.appendChild(li);
-            }
-          } else {
-            let p = document.createElement("p");
-            let li = document.createElement("li");
-            let ul = document.getElementById("AddFriend_addFriend_results");
-            let icon = document.createElement("i");
-            p.textContent =
-              users.array[i].info.firstname +
-              " " +
-              users.array[i].info.lastname;
-            li.appendChild(p);
-            li.setAttribute("id", users.array[i].info.username);
-            li.setAttribute("class", "fr");
-
-            icon.setAttribute("class", " fas fa-user-plus");
-            icon.addEventListener("click", () => {
-              this.addFriend(li.id);
-            });
-            li.appendChild(icon);
-            ul.appendChild(li);
-          }
+        if (requestId !== this.searchRequestId) {
+          return;
         }
+
+        this.setState({
+          searchResults: Array.isArray(users?.array)
+            ? users.array.filter((user) => user?._id !== this.props.state?.my_id)
+            : [],
+          searchStatus: "success",
+        });
+      })
+      .catch((error) => {
+        if (requestId !== this.searchRequestId) {
+          return;
+        }
+
+        console.error("Failed to search users", error);
+        this.setState({
+          searchResults: [],
+          searchStatus: "error",
+          searchError: "Unable to load search results right now.",
+        });
       });
   };
   //.....END OF SEARCH FOR USERS......
-
-  searchExistingFriends = (target) => {
-    const normalizedTarget = String(target || "").trim().toLowerCase();
-    this.setState({
-      searchTerm: normalizedTarget,
-    });
-  };
 
   //.....ADD A USER..........
   addFriend = (friend_username) => {
@@ -174,22 +144,41 @@ class Friends extends React.Component {
           );
         })
       : friends;
+    const friendIds = new Set(friends.map((friend) => friend._id));
+    const mergedEntries = searchTerm
+      ? [
+          ...filteredFriends.map((friend) => ({
+            kind: "friend",
+            id: friend._id || friend.info?.username,
+            friend,
+          })),
+          ...this.state.searchResults
+            .filter((user) => !friendIds.has(user?._id))
+            .map((user) => ({
+              kind: "search",
+              id: user._id || user.info?.username,
+              user,
+            })),
+        ]
+      : filteredFriends.map((friend) => ({
+          kind: "friend",
+          id: friend._id || friend.info?.username,
+          friend,
+        }));
 
     return (
       <section id="Friends_article" className="fc">
         <section id="Friends_content_container" className="fc">
-          <Addfriend
-            searchUsers={this.searchUsers}
-            addFriend={this.addFriend}
-            state={this.props.state}
-            content={this.props.content}
-          />
           <FriendsList
-            friends={filteredFriends}
-            friends_count={filteredFriends.length}
-            searchFriends={this.searchExistingFriends}
+            entries={mergedEntries}
+            friends_count={friends.length}
+            searchFriends={this.searchUsers}
+            addFriend={this.addFriend}
             content={this.props.content}
+            searchStatus={this.state.searchStatus}
+            searchError={this.state.searchError}
             friendConnectionColor={this.props.friendConnectionColor}
+            removeFriend={this.props.removeFriend}
             selectFriendChat={this.props.selectFriendChat}
           />
           <FriendChat
@@ -199,7 +188,6 @@ class Friends extends React.Component {
             updateMyTypingPresence={this.props.updateMyTypingPresence}
             closeActiveChat={this.props.closeActiveChat}
           />
-          <DropHorizontally />
         </section>
       </section>
     );

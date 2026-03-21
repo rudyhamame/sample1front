@@ -1,32 +1,63 @@
 ﻿import React from "react";
 import { Link } from "react-router-dom";
-import Nav from "../App/Header/Nav/Nav";
 import Main from "./moi/main/Main";
+import PhenomedSocial_Nav from "./PhenomedSocial_Nav";
 import { phenomedSocialArabicContent } from "./content";
 import "./phenomedsocial.css";
+import "./phenomedsocial.max-width-500.css";
+import "./phenomedsocial.min-width-1000.css";
 
 const PhenomedSocialArabic = (props) => {
   const content = phenomedSocialArabicContent;
+  const [activePanel, setActivePanel] = React.useState("home");
+
   const openPostsView = () => {
+    const isWideScreen = window.innerWidth >= 1000;
     const postsArticle = document.getElementById("Posts_article");
-
-    if (postsArticle) {
-      postsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
-  const openFriendsView = () => {
     const friendsArticle = document.getElementById("Friends_article");
     const friendsListArticle = document.getElementById("FriendsList_article");
     const addFriendArticle = document.getElementById("AddFriend_article");
     const friendChatArticle = document.getElementById("FriendChat_article");
-    const friendsListIcon = document.getElementById(
-      "DropHorizontally_friendsList_icon"
-    );
-    const addFriendIcon = document.getElementById(
-      "DropHorizontally_addFriend_icon"
-    );
 
+    if (postsArticle) {
+      postsArticle.style.display = "flex";
+    }
+    if (friendsArticle && !isWideScreen) {
+      friendsArticle.style.display = "none";
+    } else if (friendsArticle && isWideScreen) {
+      friendsArticle.style.display = "flex";
+    }
+    if (friendsListArticle && isWideScreen) {
+      friendsListArticle.style.display = "flex";
+    }
+    if (addFriendArticle && isWideScreen) {
+      addFriendArticle.style.display = "flex";
+    }
+    if (friendChatArticle && isWideScreen) {
+      friendChatArticle.style.display = "none";
+    }
+
+    if (postsArticle) {
+      window.requestAnimationFrame(() => {
+        postsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    setActivePanel("home");
+  };
+
+  const openFriendsView = () => {
+    const isWideScreen = window.innerWidth >= 1000;
+    const postsArticle = document.getElementById("Posts_article");
+    const friendsArticle = document.getElementById("Friends_article");
+    const friendsListArticle = document.getElementById("FriendsList_article");
+    const addFriendArticle = document.getElementById("AddFriend_article");
+    const friendChatArticle = document.getElementById("FriendChat_article");
+    if (postsArticle && !isWideScreen) {
+      postsArticle.style.display = "none";
+    } else if (postsArticle && isWideScreen) {
+      postsArticle.style.display = "flex";
+    }
     if (friendsArticle) {
       friendsArticle.style.display = "flex";
     }
@@ -34,16 +65,10 @@ const PhenomedSocialArabic = (props) => {
       friendsListArticle.style.display = "flex";
     }
     if (addFriendArticle) {
-      addFriendArticle.style.display = "none";
+      addFriendArticle.style.display = "flex";
     }
     if (friendChatArticle) {
       friendChatArticle.style.display = "none";
-    }
-    if (friendsListIcon) {
-      friendsListIcon.style.color = "var(--white)";
-    }
-    if (addFriendIcon) {
-      addFriendIcon.style.color = "var(--special_black)";
     }
 
     if (friendsArticle) {
@@ -51,12 +76,27 @@ const PhenomedSocialArabic = (props) => {
         friendsArticle.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+
+    setActivePanel("friends");
+  };
+
+  React.useEffect(() => {
+    openPostsView();
+  }, []);
+
+  const togglePrimaryPanel = () => {
+    if (activePanel === "home") {
+      openFriendsView();
+      return;
+    }
+
+    openPostsView();
   };
 
   return (
     <article
       id="PhenomedSocial_article"
-      className="fc PhenomedSocial--arabic"
+      className={`fc PhenomedSocial--arabic PhenomedSocial_panel-${activePanel}`}
       dir="rtl"
       lang="ar"
     >
@@ -77,7 +117,7 @@ const PhenomedSocialArabic = (props) => {
             <p>{content.description}</p>
           </div>
           <div className="PhenomedSocial_headerAside fc">
-            <Nav
+            <PhenomedSocial_Nav
               path={content.path}
               state={props.state}
               logOut={props.logOut}
@@ -85,16 +125,16 @@ const PhenomedSocialArabic = (props) => {
               makeNotificationsRead={props.makeNotificationsRead}
               extraActions={[
                 {
-                  id: "phenomed-posts-ar",
-                  label: content.metrics.posts,
-                  iconClass: "far fa-newspaper",
-                  onClick: openPostsView,
-                },
-                {
-                  id: "phenomed-friends-ar",
-                  label: content.metrics.friends,
-                  iconClass: "fas fa-users",
-                  onClick: openFriendsView,
+                  id: "phenomed-panel-toggle-ar",
+                  label:
+                    activePanel === "home"
+                      ? content.metrics.friends
+                      : content.metrics.posts,
+                  iconClass:
+                    activePanel === "home"
+                      ? "fas fa-users"
+                      : "far fa-newspaper",
+                  onClick: togglePrimaryPanel,
                 },
               ]}
             />
@@ -119,11 +159,10 @@ const PhenomedSocialArabic = (props) => {
         <Main
           state={props.state}
           friendConnectionColor={props.friendConnectionColor}
+          removeFriend={props.removeFriend}
           selectFriendChat={props.selectFriendChat}
           closeActiveChat={props.closeActiveChat}
           postingTerminology={props.postingTerminology}
-          searchPosts={props.searchPosts}
-          prepare_searchPosts={props.prepare_searchPosts}
           acceptFriend={props.acceptFriend}
           sendToThemMessage={props.sendToThemMessage}
           updateMyTypingPresence={props.updateMyTypingPresence}

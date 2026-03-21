@@ -57,7 +57,6 @@ const DropHorizontally = () => {
     <section
       id="DropHorizontally_article"
       style={{
-        order: "1",
         gap: "50px",
         justifyContent: "center",
         backgroundColor: "#01796f",
