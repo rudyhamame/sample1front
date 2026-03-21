@@ -41,6 +41,20 @@ const initialClinicalRealityHtml = [
 ].join("");
 const clinicalRealityStorageKey = "phenomed.login.clinicalRealityHtml";
 
+const getStoredAuthState = () => {
+  try {
+    const rawState = window.sessionStorage.getItem("state");
+
+    if (!rawState) {
+      return null;
+    }
+
+    return JSON.parse(rawState);
+  } catch (error) {
+    return null;
+  }
+};
+
 const buildHighlightCursor = (color) => {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -59,6 +73,8 @@ const Login = ({ onLogin }) => {
   const loginFormRef = useRef(null);
   const realityEditorRef = useRef(null);
   const hasSyncedRealityEditorRef = useRef(false);
+  const hasCompletedClinicalRealityBootstrapRef = useRef(false);
+  const hasSkippedInitialClinicalRealityPersistRef = useRef(false);
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
@@ -337,17 +353,105 @@ const Login = ({ onLogin }) => {
   }, [clinicalRealityHtml]);
 
   useEffect(() => {
+    let ignoreHydration = false;
+    const storedAuthState = getStoredAuthState();
+
+    if (!storedAuthState?.token) {
+      hasCompletedClinicalRealityBootstrapRef.current = true;
+      return undefined;
+    }
+
+    fetch(apiUrl("/api/user/clinical-reality"), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${storedAuthState.token}`,
+      },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load clinical reality content.");
+        }
+
+        return response.json();
+      })
+      .then((payload) => {
+        if (ignoreHydration) {
+          return;
+        }
+
+        const dbHtml = String(payload?.clinicalReality?.html || "");
+
+        if (dbHtml.trim()) {
+          setClinicalRealityHtml(dbHtml);
+          window.localStorage.setItem(clinicalRealityStorageKey, dbHtml);
+        }
+      })
+      .catch(() => {
+        // Keep the local copy as fallback when the authenticated fetch fails.
+      })
+      .finally(() => {
+        if (!ignoreHydration) {
+          hasCompletedClinicalRealityBootstrapRef.current = true;
+        }
+      });
+
+    return () => {
+      ignoreHydration = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasCompletedClinicalRealityBootstrapRef.current) {
+      return;
+    }
+
+    if (!hasSkippedInitialClinicalRealityPersistRef.current) {
+      hasSkippedInitialClinicalRealityPersistRef.current = true;
+      return;
+    }
+
     setIsClinicalRealitySaving(true);
+    let ignoreSave = false;
 
     const saveTimeoutId = window.setTimeout(() => {
       window.localStorage.setItem(
         clinicalRealityStorageKey,
         clinicalRealityHtml,
       );
-      setIsClinicalRealitySaving(false);
+
+      const storedAuthState = getStoredAuthState();
+
+      if (!storedAuthState?.token) {
+        if (!ignoreSave) {
+          setIsClinicalRealitySaving(false);
+        }
+        return;
+      }
+
+      fetch(apiUrl("/api/user/clinical-reality"), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedAuthState.token}`,
+        },
+        body: JSON.stringify({
+          html: clinicalRealityHtml,
+        }),
+      })
+        .catch(() => {
+          // Keep the browser copy if the database save fails.
+        })
+        .finally(() => {
+          if (!ignoreSave) {
+            setIsClinicalRealitySaving(false);
+          }
+        });
     }, 1000);
 
-    return () => window.clearTimeout(saveTimeoutId);
+    return () => {
+      ignoreSave = true;
+      window.clearTimeout(saveTimeoutId);
+    };
   }, [clinicalRealityHtml]);
 
   useEffect(() => {
@@ -365,6 +469,31 @@ const Login = ({ onLogin }) => {
 
     return () => window.clearInterval(dotsIntervalId);
   }, [isClinicalRealitySaving]);
+
+  useEffect(() => {
+    if (!authReport?.token || !hasCompletedClinicalRealityBootstrapRef.current) {
+      return;
+    }
+
+    setIsClinicalRealitySaving(true);
+
+    fetch(apiUrl("/api/user/clinical-reality"), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authReport.token}`,
+      },
+      body: JSON.stringify({
+        html: clinicalRealityHtml,
+      }),
+    })
+      .catch(() => {
+        // Keep the browser copy if the post-login database save fails.
+      })
+      .finally(() => {
+        setIsClinicalRealitySaving(false);
+      });
+  }, [authReport]);
 
   useEffect(() => {
     const syncRealitySelection = () => {
@@ -468,6 +597,10 @@ const Login = ({ onLogin }) => {
     focusRealityEditor();
     document.execCommand("styleWithCSS", false, true);
     document.execCommand(command, false, value);
+
+    if (realityEditorRef.current) {
+      setClinicalRealityHtml(realityEditorRef.current.innerHTML);
+    }
   };
 
   const applyHighlightToSelection = () => {
@@ -537,6 +670,7 @@ const Login = ({ onLogin }) => {
 
     selection.addRange(updatedRange);
 
+    setClinicalRealityHtml(editorElement.innerHTML);
     setHasRealitySelection(true);
   };
 
