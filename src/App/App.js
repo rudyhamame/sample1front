@@ -1163,6 +1163,7 @@ class App extends React.Component {
           if (textarea) {
             textarea.value = "";
             textarea.style.height = "42px";
+            textarea.focus();
           }
           this.updateMyTypingPresence(this.state.friendID_selected, false);
         } else {

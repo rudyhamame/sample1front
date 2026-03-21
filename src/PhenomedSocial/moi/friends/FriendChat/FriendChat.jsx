@@ -36,6 +36,10 @@ const resizeChatTextarea = (textarea) => {
   textarea.style.height = `${Math.max(textarea.scrollHeight, 42)}px`;
 };
 
+const keepTextareaFocus = (event) => {
+  event.preventDefault();
+};
+
 const FriendChat = ({
   state,
   content,
@@ -85,6 +89,10 @@ const FriendChat = ({
     }
 
     setIsEmojiPickerOpen(false);
+
+    if (textarea) {
+      textarea.focus();
+    }
   };
 
   const handleTypingChange = (event) => {
@@ -194,8 +202,16 @@ const FriendChat = ({
                     type="button"
                     aria-label="Open emoji picker"
                     title="Emoji"
+                    onMouseDown={keepTextareaFocus}
+                    onTouchStart={keepTextareaFocus}
                     onClick={() => {
                       setIsEmojiPickerOpen((currentValue) => !currentValue);
+                      const textarea =
+                        document.getElementById("Chat_textarea_input");
+
+                      if (textarea) {
+                        textarea.focus();
+                      }
                     }}
                   >
                     <span role="img" aria-hidden="true">
@@ -209,6 +225,8 @@ const FriendChat = ({
                           key={emoji}
                           type="button"
                           className="Chat_emoji_option"
+                          onMouseDown={keepTextareaFocus}
+                          onTouchStart={keepTextareaFocus}
                           onClick={() => {
                             handleEmojiSelect(emoji);
                           }}
@@ -237,6 +255,8 @@ const FriendChat = ({
                 <button
                   id="Chat_submit_button"
                   type="button"
+                  onMouseDown={keepTextareaFocus}
+                  onTouchStart={keepTextareaFocus}
                   onClick={handleSend}
                 >
                   <i className="fc far fa-paper-plane"></i>
