@@ -1133,7 +1133,9 @@ class App extends React.Component {
 
   sendToThemMessage = (message) => {
     let textarea = document.getElementById("Chat_textarea_input");
-    textarea.style.height = "70px";
+    if (textarea) {
+      textarea.style.height = "42px";
+    }
     if (!this.state.friendID_selected) {
       this.serverReply("Select a doctor from your friends list first");
       return;
@@ -1158,7 +1160,10 @@ class App extends React.Component {
       let req = new Request(url, options);
       fetch(req).then((result) => {
         if (result.status === 201) {
-          document.getElementById("Chat_textarea_input").value = "";
+          if (textarea) {
+            textarea.value = "";
+            textarea.style.height = "42px";
+          }
           this.updateMyTypingPresence(this.state.friendID_selected, false);
         } else {
           this.serverReply("Unable to send message");

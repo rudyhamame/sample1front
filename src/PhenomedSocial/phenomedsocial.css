@@ -1377,7 +1377,9 @@
 
 #PhenomedSocial_article #Chat_textarea_input {
   flex: 1;
+  height: 42px;
   min-height: 42px;
+  box-sizing: border-box;
   padding: 7px 8px;
   color: #1e5b86;
   background: transparent;

@@ -1,5 +1,22 @@
 import React from "react";
 
+const resetChatTextareaHeight = (textarea) => {
+  if (!textarea) {
+    return;
+  }
+
+  textarea.style.height = "42px";
+};
+
+const resizeChatTextarea = (textarea) => {
+  if (!textarea) {
+    return;
+  }
+
+  resetChatTextareaHeight(textarea);
+  textarea.style.height = `${Math.max(textarea.scrollHeight, 42)}px`;
+};
+
 const FriendChat = ({
   state,
   content,
@@ -27,6 +44,8 @@ const FriendChat = ({
   };
 
   const handleTypingChange = (event) => {
+    resizeChatTextarea(event.target);
+
     if (!state?.activeChatFriendId || !updateMyTypingPresence) {
       return;
     }
@@ -102,7 +121,11 @@ const FriendChat = ({
                 <textarea
                   id="Chat_textarea_input"
                   placeholder={chatContent?.inputPlaceholder || "Write a message"}
+                  rows="1"
                   onChange={handleTypingChange}
+                  onInput={(event) => {
+                    resizeChatTextarea(event.target);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
