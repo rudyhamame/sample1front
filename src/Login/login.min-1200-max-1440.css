@@ -1,23 +1,21 @@
 @media screen and (min-width: 1200px) and (max-width: 1440px) {
   #Login_main {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
     gap: 28px;
     padding: 84px 42px 42px;
   }
 
+  #Login_realityPanel_inner {
+    padding: 30px 28px;
+  }
+
   #Login_loginLogo_container {
-    flex: 1.2 1 0;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
-    padding: 28px 18px 28px 8px;
+    padding: 0;
   }
 
   #Login_loginLogo_text {
-    font-family: "Arial Black", "Archivo Black", sans-serif;
-    font-weight: 900;
-    text-align: left;
+    text-align: center;
   }
 
   #Login_loginLogo_cloneText,
@@ -33,7 +31,6 @@
   }
 
   #Login_loginForm_container {
-    flex: 0 1 720px;
     justify-content: flex-end;
     padding: 0;
   }
