@@ -39,7 +39,7 @@ const initialClinicalRealityHtml = [
   "<h3>H: MCTOS | PhenoMed Website</h3>",
   ...clinicalRealityParagraphs.map((paragraph) => `<p>${paragraph}</p>`),
 ].join("");
-const clinicalRealityStorageKey = "phenomed.login.clinicalRealityHtml";
+const clinicalRealityPublicOwnerUsername = "rudyhamame";
 
 const getStoredAuthState = () => {
   try {
@@ -54,6 +54,24 @@ const getStoredAuthState = () => {
     return null;
   }
 };
+
+const saveClinicalRealityToDb = ({ token, html }) =>
+  fetch(apiUrl("/api/user/clinical-reality"), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      html,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error("Unable to save clinical reality content.");
+    }
+
+    return response.json();
+  });
 
 const buildHighlightCursor = (color) => {
   const svg = `
@@ -83,19 +101,18 @@ const Login = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("login");
   const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
   const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
-  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(() => {
-    const savedClinicalRealityHtml = window.localStorage.getItem(
-      clinicalRealityStorageKey,
-    );
-
-    return savedClinicalRealityHtml || initialClinicalRealityHtml;
-  });
+  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(
+    initialClinicalRealityHtml,
+  );
   const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
   const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
   const [isHighlightModeOn, setIsHighlightModeOn] = useState(false);
   const [hasRealitySelection, setHasRealitySelection] = useState(false);
   const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
   const [savingDots, setSavingDots] = useState(".");
+  const [canPersistClinicalReality, setCanPersistClinicalReality] = useState(
+    Boolean(getStoredAuthState()?.token),
+  );
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -356,17 +373,23 @@ const Login = ({ onLogin }) => {
     let ignoreHydration = false;
     const storedAuthState = getStoredAuthState();
 
-    if (!storedAuthState?.token) {
-      hasCompletedClinicalRealityBootstrapRef.current = true;
-      return undefined;
-    }
+    const requestUrl = storedAuthState?.token
+      ? apiUrl("/api/user/clinical-reality")
+      : apiUrl(
+          `/api/user/clinical-reality/public/${clinicalRealityPublicOwnerUsername}`,
+        );
+    const requestOptions = storedAuthState?.token
+      ? {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${storedAuthState.token}`,
+          },
+        }
+      : {
+          method: "GET",
+        };
 
-    fetch(apiUrl("/api/user/clinical-reality"), {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${storedAuthState.token}`,
-      },
-    })
+    fetch(requestUrl, requestOptions)
       .then(async (response) => {
         if (!response.ok) {
           throw new Error("Unable to load clinical reality content.");
@@ -383,11 +406,10 @@ const Login = ({ onLogin }) => {
 
         if (dbHtml.trim()) {
           setClinicalRealityHtml(dbHtml);
-          window.localStorage.setItem(clinicalRealityStorageKey, dbHtml);
         }
       })
       .catch(() => {
-        // Keep the local copy as fallback when the authenticated fetch fails.
+        // Keep the bundled fallback if the public/authenticated fetch fails.
       })
       .finally(() => {
         if (!ignoreHydration) {
@@ -414,11 +436,6 @@ const Login = ({ onLogin }) => {
     let ignoreSave = false;
 
     const saveTimeoutId = window.setTimeout(() => {
-      window.localStorage.setItem(
-        clinicalRealityStorageKey,
-        clinicalRealityHtml,
-      );
-
       const storedAuthState = getStoredAuthState();
 
       if (!storedAuthState?.token) {
@@ -428,18 +445,12 @@ const Login = ({ onLogin }) => {
         return;
       }
 
-      fetch(apiUrl("/api/user/clinical-reality"), {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${storedAuthState.token}`,
-        },
-        body: JSON.stringify({
-          html: clinicalRealityHtml,
-        }),
+      saveClinicalRealityToDb({
+        token: storedAuthState.token,
+        html: clinicalRealityHtml,
       })
         .catch(() => {
-          // Keep the browser copy if the database save fails.
+          // DB save intentionally has no browser fallback.
         })
         .finally(() => {
           if (!ignoreSave) {
@@ -475,20 +486,15 @@ const Login = ({ onLogin }) => {
       return;
     }
 
+    setCanPersistClinicalReality(true);
     setIsClinicalRealitySaving(true);
 
-    fetch(apiUrl("/api/user/clinical-reality"), {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authReport.token}`,
-      },
-      body: JSON.stringify({
-        html: clinicalRealityHtml,
-      }),
+    saveClinicalRealityToDb({
+      token: authReport.token,
+      html: clinicalRealityHtml,
     })
       .catch(() => {
-        // Keep the browser copy if the post-login database save fails.
+        // DB save intentionally has no browser fallback.
       })
       .finally(() => {
         setIsClinicalRealitySaving(false);
@@ -559,7 +565,7 @@ const Login = ({ onLogin }) => {
         })
         .then((userdata) => {
           if (userdata && login === true) {
-            setAuthReport({
+            const nextAuthReport = {
               my_id: userdata.user._id,
               username: userdata.user.info.username,
               firstname: userdata.user.info.firstname,
@@ -574,8 +580,23 @@ const Login = ({ onLogin }) => {
               posts: userdata.user.posts,
               courses: userdata.user.schoolPlanner.courses,
               lectures: userdata.user.schoolPlanner.lectures,
-            });
-            setLogin_ok(true);
+            };
+
+            setIsClinicalRealitySaving(true);
+            saveClinicalRealityToDb({
+              token: userdata.token,
+              html:
+                realityEditorRef.current?.innerHTML || clinicalRealityHtml,
+            })
+              .catch(() => {
+                // If this fails, we still allow login to continue.
+              })
+              .finally(() => {
+                setIsClinicalRealitySaving(false);
+                setCanPersistClinicalReality(true);
+                setAuthReport(nextAuthReport);
+                setLogin_ok(true);
+              });
           } else {
             setLogin_ok(false);
             setIs_loading(false);
@@ -923,7 +944,11 @@ const Login = ({ onLogin }) => {
               aria-live="polite"
               aria-atomic="true"
             >
-              {isClinicalRealitySaving ? `Saving ${savingDots}` : "Saved"}
+              {isClinicalRealitySaving
+                ? `Saving ${savingDots}`
+                : canPersistClinicalReality
+                  ? "Saved"
+                  : "Not saved"}
             </p>
           </div>
         </section>
