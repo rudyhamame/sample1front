@@ -25,9 +25,6 @@ const Login = ({ onLogin }) => {
   const [zoomScale, setZoomScale] = useState(
     window.visualViewport?.scale || 1,
   );
-  const [hoveredId, setHoveredId] = useState("");
-  const [copiedId, setCopiedId] = useState("");
-  const [showDebugBorders, setShowDebugBorders] = useState(true);
   const feedbackMessage =
     (login_ok === false &&
       "The password you entered is not correct, please try again") ||
@@ -77,60 +74,6 @@ const Login = ({ onLogin }) => {
     return () => {
       window.removeEventListener("resize", updateZoomScale);
       window.visualViewport?.removeEventListener("resize", updateZoomScale);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!articleRef.current) {
-      return;
-    }
-
-    const handlePointerMove = (event) => {
-      articleRef.current.style.setProperty(
-        "--login-hover-x",
-        `${event.clientX + 14}px`,
-      );
-      articleRef.current.style.setProperty(
-        "--login-hover-y",
-        `${event.clientY + 14}px`,
-      );
-
-      const targetWithId = event.target.closest("[id]");
-      setHoveredId(targetWithId?.id || "");
-    };
-
-    const handlePointerLeave = () => {
-      setHoveredId("");
-    };
-
-    const handleClick = (event) => {
-      const targetWithId = event.target.closest("[id]");
-      const idToCopy = targetWithId?.id;
-
-      if (!idToCopy) {
-        return;
-      }
-
-      navigator.clipboard?.writeText(idToCopy).then(() => {
-        setCopiedId(idToCopy);
-        window.clearTimeout(handleClick.copyTimeoutId);
-        handleClick.copyTimeoutId = window.setTimeout(() => {
-          setCopiedId("");
-        }, 1200);
-      }).catch(() => null);
-    };
-    handleClick.copyTimeoutId = 0;
-
-    const currentArticle = articleRef.current;
-    currentArticle.addEventListener("pointermove", handlePointerMove);
-    currentArticle.addEventListener("pointerleave", handlePointerLeave);
-    currentArticle.addEventListener("click", handleClick);
-
-    return () => {
-      currentArticle.removeEventListener("pointermove", handlePointerMove);
-      currentArticle.removeEventListener("pointerleave", handlePointerLeave);
-      currentArticle.removeEventListener("click", handleClick);
-      window.clearTimeout(handleClick.copyTimeoutId);
     };
   }, []);
 
@@ -447,19 +390,7 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <article
-      id="Login_article"
-      className={`fc${showDebugBorders ? " Login_debugBordersOn" : ""}`}
-      ref={articleRef}
-    >
-      <div
-        id="Login_viewportBadge"
-        onClick={() => setShowDebugBorders((current) => !current)}
-      >
-        {viewportSize.width} x {viewportSize.height}
-      </div>
-      {hoveredId && <div id="Login_hoveredIdBadge">{hoveredId}</div>}
-      {copiedId && <div id="Login_copiedIdBadge">Copied: {copiedId}</div>}
+    <article id="Login_article" className="fc" ref={articleRef}>
       <main id="Login_main" className="fc">
         <section id="Login_loginLogo_container">
           <h1 id="Login_loginLogo_text">
