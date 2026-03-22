@@ -104,9 +104,10 @@
   }
 
   #PhenomedSocial_article #Friends_article {
-    flex: 0 0 280px;
-    width: 280px;
-    min-width: 280px;
+    flex: 0 0 auto;
+    width: fit-content;
+    min-width: fit-content;
+    max-width: 100%;
   }
 
   #PhenomedSocial_article #Posts_article {

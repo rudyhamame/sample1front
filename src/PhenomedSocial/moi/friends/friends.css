@@ -1,8 +1,8 @@
 #Friends_article {
   order: 5;
   z-index: 3;
-  width: 320px;
-  min-width: 320px;
+  width: fit-content;
+  min-width: fit-content;
   height: 100%;
   background-color: var(--white);
   border-left: solid rgba(0, 0, 0, 0.08) 1px;
@@ -10,7 +10,7 @@
 
 #Friends_content_container {
   order: 2;
-  width: 100%;
+  width: fit-content;
   overflow: hidden;
   height: 100%;
 }

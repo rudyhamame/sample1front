@@ -74,10 +74,13 @@
 .FriendsList_name {
   flex: 1 1 auto;
   min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   overflow-wrap: anywhere;
-  line-height: 1.45;
+  line-height: 1.3;
   font-family: "Raleway", sans-serif;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
 }
 
 .FriendsList_actions {
@@ -108,7 +111,7 @@
   }
 
   .FriendsList_name {
-    font-size: 0.82rem;
+    font-size: 0.7rem;
   }
 
   .FriendsList_actions {

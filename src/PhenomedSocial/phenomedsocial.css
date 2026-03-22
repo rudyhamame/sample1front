@@ -1101,6 +1101,14 @@
   padding-top: 10px;
 }
 
+#PhenomedSocial_article #FriendsList_results {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+
 #PhenomedSocial_article #FriendChat_content_container,
 #PhenomedSocial_article #Chat_article {
   display: flex;
@@ -1127,6 +1135,17 @@
   border: none;
   box-shadow: none;
   gap: 6px;
+}
+
+#PhenomedSocial_article #FriendsList_friends_list {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 #PhenomedSocial_article #FriendsList_friends_list li,
