@@ -11,6 +11,10 @@ import "./phenomedsocial.min-width-1000.css";
 const PhenomedSocialArabic = (props) => {
   const content = phenomedSocialArabicContent;
   const [activePanel, setActivePanel] = React.useState("home");
+  const serverReplyMessage =
+    String(props.serverAnswer || "").trim() || "NO NEW SERVER REPLY";
+  const isIdleServerReply = serverReplyMessage === "NO NEW SERVER REPLY";
+  const hasActiveServerReply = Boolean(props.hasActiveServerReply);
 
   const openPostsView = () => {
     const isWideScreen = window.innerWidth >= 1000;
@@ -180,6 +184,21 @@ const PhenomedSocialArabic = (props) => {
           updateBeforeLeave={props.updateBeforeLeave}
         />
       </section>
+      <footer className="PhenomedSocial_serverReply_footer">
+        <span
+          className={`PhenomedSocial_serverReply_light${
+            hasActiveServerReply ? " PhenomedSocial_serverReply_light--active" : ""
+          }`}
+          aria-hidden="true"
+        ></span>
+        <p
+          className={`PhenomedSocial_serverReply_message${
+            isIdleServerReply ? " PhenomedSocial_serverReply_message--idle" : ""
+          }`}
+        >
+          {serverReplyMessage}
+        </p>
+      </footer>
     </article>
   );
 };

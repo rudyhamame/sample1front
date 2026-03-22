@@ -2308,6 +2308,8 @@ class App extends React.Component {
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}
+                serverAnswer={this.state.server_answer}
+                hasActiveServerReply={this.state.has_active_server_reply}
               />
             </main>
           </article>
@@ -2332,6 +2334,8 @@ class App extends React.Component {
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}
+                serverAnswer={this.state.server_answer}
+                hasActiveServerReply={this.state.has_active_server_reply}
               />
             </main>
           </article>
