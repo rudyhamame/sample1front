@@ -24,16 +24,6 @@
 #FriendsList_friends_list i {
   color: var(--special_black);
 }
-#FriendsList_friends_list div {
-  background-color: var(--black2);
-  color: var(--white);
-  font-size: 16pt;
-  padding: 20px 30px;
-  font-family: "Raleway", sans-serif;
-  cursor: pointer;
-  justify-content: space-between;
-  align-items: center;
-}
 
 #FriendsList_content_container {
   overflow: hidden;
@@ -59,23 +49,45 @@
 }
 
 #FriendsList_friends_list li {
+  display: flex;
   font-family: "Roboto", sans-serif;
   color: white;
   font-size: 12pt;
-  text-align: center;
+  text-align: left;
   padding: 20px;
   background-color: var(--black2);
   justify-content: space-between;
   align-items: center;
-  white-space: nowrap;
-  cursor: pointer;
+  gap: 16px;
+  white-space: normal;
+  cursor: default;
+  border-radius: 14px;
 }
 #FriendsList_friends_list i {
   font-size: 22pt;
 }
 
+.FriendsList_item {
+  min-width: 0;
+}
+
+.FriendsList_name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  font-family: "Raleway", sans-serif;
+  font-size: 0.9rem;
+}
+
 .FriendsList_actions {
+  flex: 0 0 auto;
   gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: fit-content;
+  background: transparent;
+  padding: 0;
 }
 
 .FriendsList_actions i {
@@ -86,4 +98,26 @@
   height: 46px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+@media screen and (max-width: 760px) {
+  #FriendsList_friends_list li {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .FriendsList_name {
+    font-size: 0.82rem;
+  }
+
+  .FriendsList_actions {
+    gap: 8px;
+  }
+
+  .FriendsList_actions i {
+    width: 40px;
+    height: 40px;
+    font-size: 18pt;
+  }
 }

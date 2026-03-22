@@ -66,10 +66,9 @@ const FriendsList = (props) => {
           return (
             <li
               key={entry.id}
-              className="fr"
-              style={{ cursor: "default" }}
+              className="fr FriendsList_item FriendsList_item--search"
             >
-              <span>{displayName}</span>
+              <span className="FriendsList_name">{displayName}</span>
               <div className="FriendsList_actions fr">
                 <i
                   className="fas fa-user-plus"
@@ -94,10 +93,9 @@ const FriendsList = (props) => {
         return (
           <li
             key={entry.id}
-            className="fr"
-            style={{ cursor: "default" }}
+            className="fr FriendsList_item"
           >
-            <span>{displayName}</span>
+            <span className="FriendsList_name">{displayName}</span>
             <div className="FriendsList_actions fr">
               <i
                 className="far fa-comments"
