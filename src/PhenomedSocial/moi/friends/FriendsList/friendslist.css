@@ -26,10 +26,11 @@
 }
 
 #FriendsList_content_container {
-  overflow: hidden;
+  overflow: visible;
   animation-name: width;
   animation-duration: 1s;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   padding: 30px 0;
   z-index: 1;
   gap: 30px;
@@ -45,7 +46,8 @@
   flex-grow: 1;
   overflow: auto;
   overflow-wrap: break-word;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
 }
 
 #FriendsList_friends_list li {
@@ -62,6 +64,8 @@
   white-space: normal;
   cursor: default;
   border-radius: 14px;
+  width: max-content;
+  min-width: 100%;
 }
 #FriendsList_friends_list i {
   font-size: 22pt;
@@ -105,6 +109,13 @@
 }
 
 @media screen and (max-width: 760px) {
+  #FriendsList_content_container,
+  #FriendsList_friends_list,
+  #FriendsList_friends_list li {
+    width: 100%;
+    min-width: 0;
+  }
+
   #FriendsList_friends_list li {
     padding: 16px;
     gap: 12px;
