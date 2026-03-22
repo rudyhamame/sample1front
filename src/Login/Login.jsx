@@ -163,6 +163,16 @@ const insertHtmlAtCurrentSelection = (html) => {
   document.execCommand("insertHTML", false, html);
 };
 
+const extractPlainTextFromHtml = (html) => {
+  if (typeof window === "undefined") {
+    return String(html || "").replace(/<[^>]+>/g, " ");
+  }
+
+  const container = window.document.createElement("div");
+  container.innerHTML = String(html || "");
+  return (container.textContent || container.innerText || "").trim();
+};
+
 const Login = ({ onLogin }) => {
   const articleRef = useRef(null);
   const footerRef = useRef(null);
@@ -194,6 +204,10 @@ const Login = ({ onLogin }) => {
     Boolean(getStoredAuthState()?.token),
   );
   const [hasPendingAdminSave, setHasPendingAdminSave] = useState(false);
+  const [summaryInput, setSummaryInput] = useState("");
+  const [summaryReply, setSummaryReply] = useState("");
+  const [summaryError, setSummaryError] = useState("");
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -1085,6 +1099,50 @@ const Login = ({ onLogin }) => {
     }
   };
 
+  const summarizeClinicalReality = async () => {
+    const sourceText =
+      summaryInput.trim() || extractPlainTextFromHtml(clinicalRealityHtml);
+
+    if (!sourceText) {
+      setSummaryError("There is no text to summarize.");
+      setSummaryReply("");
+      return;
+    }
+
+    setIsSummarizing(true);
+    setSummaryError("");
+
+    try {
+      const response = await fetch(apiUrl("/api/enquiries"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: sourceText,
+          instructions:
+            "Summarize the provided text clearly and faithfully. Keep the summary structured in one short paragraph followed by 3 concise bullet points. Do not invent claims. Preserve philosophical and clinical meaning.",
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to summarize the text.");
+      }
+
+      setSummaryReply(String(payload?.reply || "").trim());
+      setSummaryError("");
+    } catch (error) {
+      setSummaryReply("");
+      setSummaryError(
+        String(error?.message || "Unable to summarize the text right now."),
+      );
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   return (
     <article id="Login_article" className="fc" ref={articleRef}>
       <InspectionOverlay
@@ -1248,30 +1306,64 @@ const Login = ({ onLogin }) => {
                 </label>
               </div>
             </div>
-            <div
-              id="Login_realityEditor"
-              ref={realityEditorRef}
-                className="fc"
-              contentEditable
-              suppressContentEditableWarning
-              style={{
-                cursor: isHighlightEraseModeOn ? buildEraserCursor() : "text",
-              }}
-              onInput={(event) => {
-                setClinicalRealityHtml(
-                  sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
-                );
-              }}
-              onBlur={(event) => {
-                setClinicalRealityHtml(
-                  sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
-                );
-              }}
-              onMouseDown={handleRealityEditorMouseDown}
-              onMouseMove={handleRealityEditorMouseMove}
-              onBeforeInput={handleRealityEditorBeforeInput}
-              onPaste={handleRealityEditorPaste}
-            ></div>
+            <div id="Login_realityBody" className="fr">
+              <aside id="Login_summaryPanel" className="fc">
+                <div id="Login_summaryPanel_inner" className="fc">
+                  <p id="Login_summaryPanel_title">ChatGPT Summary</p>
+                  <textarea
+                    id="Login_summaryInput"
+                    value={summaryInput}
+                    placeholder="Paste text here, or leave this empty to summarize the article on the right."
+                    onChange={(event) => setSummaryInput(event.target.value)}
+                  />
+                  <button
+                    id="Login_summaryButton"
+                    type="button"
+                    onClick={summarizeClinicalReality}
+                    disabled={isSummarizing}
+                  >
+                    {isSummarizing ? "Summarizing..." : "Summarize"}
+                  </button>
+                  <div id="Login_summaryOutput" className="fc">
+                    {summaryError ? (
+                      <p id="Login_summaryError">{summaryError}</p>
+                    ) : summaryReply ? (
+                      <pre id="Login_summaryReply">{summaryReply}</pre>
+                    ) : (
+                      <p id="Login_summaryPlaceholder">
+                        The summary will appear here.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </aside>
+              <div id="Login_realityEditorColumn" className="fc">
+                <div
+                  id="Login_realityEditor"
+                  ref={realityEditorRef}
+                  className="fc"
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{
+                    cursor: isHighlightEraseModeOn ? buildEraserCursor() : "text",
+                  }}
+                  onInput={(event) => {
+                    setClinicalRealityHtml(
+                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                    );
+                  }}
+                  onBlur={(event) => {
+                    setClinicalRealityHtml(
+                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                    );
+                  }}
+                  onMouseDown={handleRealityEditorMouseDown}
+                  onMouseMove={handleRealityEditorMouseMove}
+                  onBeforeInput={handleRealityEditorBeforeInput}
+                  onPaste={handleRealityEditorPaste}
+                ></div>
+              </div>
+            </div>
             <p
               id="Login_realitySaveStatus"
               aria-live="polite"
