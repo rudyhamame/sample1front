@@ -39,7 +39,6 @@ class App extends React.Component {
       lectures: JSON.parse(sessionStorage.getItem("state")).lectures,
       app_is_loading: false,
       friend_target: null,
-      server_answer: null,
       friendID_selected: null,
       activeChatFriendId: null,
       activeChatFriendName: "",
@@ -66,8 +65,11 @@ class App extends React.Component {
       posts_updated: false,
       posts_deleted: false,
       image: null,
+      server_answer: "NO NEW SERVER REPLY",
+      has_active_server_reply: false,
     };
   }
+  serverReplyTimeout = null;
   realtimeSocket = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
@@ -105,6 +107,10 @@ class App extends React.Component {
   componentWillUnmount() {
     window.removeEventListener("pagehide", this.handlePageHide);
     window.removeEventListener("beforeunload", this.handleBeforeUnload);
+    if (this.serverReplyTimeout) {
+      window.clearTimeout(this.serverReplyTimeout);
+      this.serverReplyTimeout = null;
+    }
     if (this.realtimeSocket) {
       this.realtimeSocket.disconnect();
       this.realtimeSocket = null;
@@ -1755,13 +1761,25 @@ class App extends React.Component {
 
   //........Server answer..........
   serverReply = (answer) => {
-    document.getElementById("server_answer_message").textContent = answer;
+    const nextAnswer = String(answer || "").trim() || "NO NEW SERVER REPLY";
+    const isActiveReply = nextAnswer !== "NO NEW SERVER REPLY";
 
-    document.getElementById("server_answer").style.width = "fit-content";
-    setTimeout(() => {
-      document.getElementById("server_answer").style.width = "0";
-      document.getElementById("server_answer_message").textContent = "";
-    }, 8000);
+    if (this.serverReplyTimeout) {
+      window.clearTimeout(this.serverReplyTimeout);
+    }
+
+    this.setState({
+      server_answer: nextAnswer,
+      has_active_server_reply: isActiveReply,
+    });
+
+    this.serverReplyTimeout = window.setTimeout(() => {
+      this.setState({
+        server_answer: "NO NEW SERVER REPLY",
+        has_active_server_reply: false,
+      });
+      this.serverReplyTimeout = null;
+    }, Math.max(3000, 8000));
   };
 
   //.....loader function..........
@@ -2172,6 +2190,8 @@ class App extends React.Component {
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   makeNotificationsRead={this.makeNotificationsRead}
+                  serverAnswer={this.state.server_answer}
+                  hasActiveServerReply={this.state.has_active_server_reply}
                 />
               </main>
             </article>
@@ -2265,14 +2285,6 @@ class App extends React.Component {
         <Route path="/profile/:username">
           <Profile viewerState={this.state} logOut={this.logOut} />
         </Route>
-        <div
-          id="server_answer"
-          onClick={() => {
-            document.getElementById("server_answer").style.width = "0";
-          }}
-        >
-          <p id="server_answer_message"></p>
-        </div>
         {this.state.app_is_loading && (
           <div
             style={{
