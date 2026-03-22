@@ -562,12 +562,12 @@
 
   #Login_realityEditor {
     flex: 1 0 auto;
-    --login-reality-line-height: 1.65em;
+    --login-reality-line-height: 2em;
     gap: 0;
     min-height: 0;
     outline: none;
     color: rgba(26, 59, 67, 0.82);
-    font-size: 0.9rem;
+    font-size: 9pt;
     line-height: var(--login-reality-line-height);
     font-family: "IBM Plex Mono", monospace;
     padding: 14px 14px 18px;

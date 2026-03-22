@@ -76,6 +76,60 @@ const getRangeFromPoint = (x, y) => {
   return null;
 };
 
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const formatPastedPlainText = (plainText) => {
+  const normalizedText = String(plainText || "").replace(/\r\n?/g, "\n");
+  const blocks = normalizedText.split(/\n{2,}/).filter((block) => block.trim());
+
+  if (blocks.length === 0) {
+    return "";
+  }
+
+  return blocks
+    .map((block) => {
+      const htmlBlock = escapeHtml(block).replace(/\n/g, "<br>");
+      return `<p><span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;">${htmlBlock}</span></p>`;
+    })
+    .join("");
+};
+
+const sanitizeClinicalRealityHtml = (html) => {
+  if (typeof window === "undefined") {
+    return String(html || "");
+  }
+
+  const container = window.document.createElement("div");
+  container.innerHTML = String(html || "");
+
+  container.querySelectorAll("*").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+
+    if (element.tagName === "H3") {
+      element.style.removeProperty("line-height");
+      element.style.removeProperty("font-family");
+    } else {
+      element.style.removeProperty("font-size");
+      element.style.removeProperty("line-height");
+      element.style.removeProperty("font-family");
+    }
+
+    if (!element.getAttribute("style")?.trim()) {
+      element.removeAttribute("style");
+    }
+  });
+
+  return container.innerHTML;
+};
+
 const buildEraserCursor = () => {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -95,7 +149,7 @@ const saveClinicalRealityToDb = ({ token, html }) =>
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      html,
+      html: sanitizeClinicalRealityHtml(html),
     }),
   }).then((response) => {
     if (!response.ok) {
@@ -104,6 +158,10 @@ const saveClinicalRealityToDb = ({ token, html }) =>
 
     return response.json();
   });
+
+const insertHtmlAtCurrentSelection = (html) => {
+  document.execCommand("insertHTML", false, html);
+};
 
 const Login = ({ onLogin }) => {
   const articleRef = useRef(null);
@@ -428,8 +486,9 @@ const Login = ({ onLogin }) => {
         const dbHtml = String(payload?.clinicalReality?.html || "");
 
         if (dbHtml.trim()) {
-          clinicalRealityBaselineRef.current = dbHtml;
-          setClinicalRealityHtml(dbHtml);
+          const sanitizedDbHtml = sanitizeClinicalRealityHtml(dbHtml);
+          clinicalRealityBaselineRef.current = sanitizedDbHtml;
+          setClinicalRealityHtml(sanitizedDbHtml);
           setHasPendingAdminSave(false);
         } else {
           clinicalRealityBaselineRef.current = initialClinicalRealityHtml;
@@ -700,7 +759,9 @@ const Login = ({ onLogin }) => {
     document.execCommand(command, false, value);
 
     if (realityEditorRef.current) {
-      setClinicalRealityHtml(realityEditorRef.current.innerHTML);
+      setClinicalRealityHtml(
+        sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+      );
     }
   };
 
@@ -785,7 +846,7 @@ const Login = ({ onLogin }) => {
     selection.removeAllRanges();
     setHasRealitySelection(false);
     setSelectedRealityFontSizePt(null);
-    setClinicalRealityHtml(editorElement.innerHTML);
+    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
   };
 
   const handleRealityEditorMouseDown = (event) => {
@@ -823,8 +884,63 @@ const Login = ({ onLogin }) => {
     document.execCommand("styleWithCSS", false, true);
     document.execCommand("hiliteColor", false, "transparent");
     clearTransparentHighlightArtifacts();
-    setClinicalRealityHtml(editorElement.innerHTML);
+    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
   };
+
+  const handleRealityEditorPaste = (event) => {
+    event.preventDefault();
+
+    const plainText = event.clipboardData?.getData("text/plain") || "";
+    const htmlToInsert = formatPastedPlainText(plainText);
+
+    if (!htmlToInsert) {
+      return;
+    }
+
+    focusRealityEditor();
+    insertHtmlAtCurrentSelection(htmlToInsert);
+
+    if (realityEditorRef.current) {
+      setClinicalRealityHtml(
+        sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+      );
+    }
+  };
+
+  const handleRealityEditorBeforeInput = (event) => {
+    if (event.isComposing) {
+      return;
+    }
+
+    if (event.inputType === "insertText" && event.data) {
+      event.preventDefault();
+      focusRealityEditor();
+      insertHtmlAtCurrentSelection(
+        `<span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;">${escapeHtml(event.data)}</span>`,
+      );
+
+        if (realityEditorRef.current) {
+          setClinicalRealityHtml(
+            sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+          );
+        }
+        return;
+    }
+
+    if (event.inputType === "insertParagraph") {
+      event.preventDefault();
+      focusRealityEditor();
+      insertHtmlAtCurrentSelection(
+        `<p><span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;"><br></span></p>`,
+      );
+
+        if (realityEditorRef.current) {
+          setClinicalRealityHtml(
+            sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+          );
+        }
+      }
+    };
 
   const adjustSelectedFontSize = (delta) => {
     const selection = window.getSelection();
@@ -860,12 +976,27 @@ const Login = ({ onLogin }) => {
       window.getComputedStyle(parentElement).fontSize,
     );
     const computedFontSizePt = computedFontSizePx * 0.75;
-    const nextFontSizePt = Math.max(9, Math.min(31.5, computedFontSizePt + delta));
+    const roundedFontSizePt = Number(computedFontSizePt.toFixed(3));
+    const isWholePointSize = Number.isInteger(roundedFontSizePt);
+    let nextFontSizePt = roundedFontSizePt;
+
+    if (delta > 0) {
+      nextFontSizePt = isWholePointSize
+        ? roundedFontSizePt + delta
+        : Math.ceil(roundedFontSizePt);
+    } else if (delta < 0) {
+      nextFontSizePt = isWholePointSize
+        ? roundedFontSizePt + delta
+        : Math.floor(roundedFontSizePt);
+    }
+
+    nextFontSizePt = Math.max(9, Math.min(31.5, nextFontSizePt));
     const extractedContent = range.extractContents();
     const fragmentChildNodes = Array.from(extractedContent.childNodes);
     const sizeWrapper = document.createElement("span");
 
     sizeWrapper.style.fontSize = `${nextFontSizePt.toFixed(1)}pt`;
+    sizeWrapper.style.lineHeight = "inherit";
     sizeWrapper.appendChild(extractedContent);
     range.insertNode(sizeWrapper);
 
@@ -881,7 +1012,7 @@ const Login = ({ onLogin }) => {
 
     selection.addRange(updatedRange);
 
-    setClinicalRealityHtml(editorElement.innerHTML);
+    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
     setHasRealitySelection(true);
     setSelectedRealityFontSizePt(Number(nextFontSizePt.toFixed(1)));
   };
@@ -1127,13 +1258,19 @@ const Login = ({ onLogin }) => {
                 cursor: isHighlightEraseModeOn ? buildEraserCursor() : "text",
               }}
               onInput={(event) => {
-                setClinicalRealityHtml(event.currentTarget.innerHTML);
+                setClinicalRealityHtml(
+                  sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                );
               }}
               onBlur={(event) => {
-                setClinicalRealityHtml(event.currentTarget.innerHTML);
+                setClinicalRealityHtml(
+                  sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                );
               }}
               onMouseDown={handleRealityEditorMouseDown}
               onMouseMove={handleRealityEditorMouseMove}
+              onBeforeInput={handleRealityEditorBeforeInput}
+              onPaste={handleRealityEditorPaste}
             ></div>
             <p
               id="Login_realitySaveStatus"
