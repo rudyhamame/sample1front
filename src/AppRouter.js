@@ -2,14 +2,10 @@ import React, { useCallback, useState } from "react";
 import { BrowserRouter as Router, Redirect, Route, Switch } from "react-router-dom";
 import App from "./App/App";
 import Login from "./Login/Login";
+import { clearStoredSession, readStoredSession } from "./utils/sessionCleanup";
 
 const getStoredAuth = () => {
-  try {
-    const storedState = sessionStorage.getItem("state");
-    return storedState ? JSON.parse(storedState) : null;
-  } catch (error) {
-    return null;
-  }
+  return readStoredSession();
 };
 
 const AppRouter = () => {
@@ -21,8 +17,7 @@ const AppRouter = () => {
   }, []);
 
   const handleLogout = useCallback(() => {
-    sessionStorage.clear();
-    localStorage.clear();
+    clearStoredSession();
     setAuthState(null);
   }, []);
 
@@ -33,7 +28,7 @@ const AppRouter = () => {
           {isAuthenticated ? (
             <App key="app-home" path="/" onLogout={handleLogout} />
           ) : (
-            <Login onLogin={handleLogin} />
+            <Login onLogin={handleLogin} onForceLogout={handleLogout} />
           )}
         </Route>
         <Route path="/cooporation">

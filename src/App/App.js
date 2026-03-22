@@ -16,6 +16,7 @@ import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
 import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
 import Profile from "../Profile/Profile";
 import { connectRealtime } from "../realtime/socket";
+import { logoutStoredSession } from "../utils/sessionCleanup";
 //...........component..................
 class App extends React.Component {
   //..........states...........
@@ -51,6 +52,7 @@ class App extends React.Component {
       retrievingTerminology_DONE: false,
       retrievingStudySessions_DONE: false,
       notifications: [],
+      visitLogRefreshToken: 0,
       timer: {
         hours: 0,
         mins: 0,
@@ -84,6 +86,8 @@ class App extends React.Component {
     });
     this.updateUserInfo();
     this.connectRealtime();
+    window.addEventListener("pagehide", this.handlePageHide);
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -98,6 +102,8 @@ class App extends React.Component {
     }
   }
   componentWillUnmount() {
+    window.removeEventListener("pagehide", this.handlePageHide);
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
     if (this.realtimeSocket) {
       this.realtimeSocket.disconnect();
       this.realtimeSocket = null;
@@ -112,6 +118,18 @@ class App extends React.Component {
     //   this.availableToChat(false);
     // }
   }
+
+  handlePageHide = () => {
+    logoutStoredSession({
+      clear: false,
+    });
+  };
+
+  handleBeforeUnload = () => {
+    logoutStoredSession({
+      clear: false,
+    });
+  };
 
   //......MAKE YOURSELF AVAILABLE TO CHAT......
   connectRealtime = () => {
@@ -148,9 +166,52 @@ class App extends React.Component {
           },
         }));
       },
+      onVisitLog: ({ visitLog }) => {
+        if (this.state.username !== "rudyhamame" || !visitLog) {
+          return;
+        }
+
+        this.setState({
+          visitLogRefreshToken: Date.now(),
+        });
+
+        const visitedAt = new Date(visitLog.visitedAt);
+        const visitTimeLabel = `${visitedAt.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })} ${visitedAt.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })}`;
+
+        this.serverReply(
+          `New visit detected from ${visitLog.ip || "Unknown IP"} at ${visitTimeLabel}`
+        );
+
+        if (
+          typeof window !== "undefined" &&
+          "Notification" in window &&
+          window.Notification.permission === "granted"
+        ) {
+          new window.Notification("New visit detected", {
+            body: `${visitLog.ip || "Unknown IP"} at ${visitTimeLabel}`,
+          });
+        }
+      },
       onConnected: () => {
         if (this.state.isChatting && this.state.activeChatFriendId) {
           this.updateMyChatPresence(this.state.activeChatFriendId, true);
+        }
+
+        if (
+          this.state.username === "rudyhamame" &&
+          typeof window !== "undefined" &&
+          "Notification" in window &&
+          window.Notification.permission === "default"
+        ) {
+          window.Notification.requestPermission().catch(() => null);
         }
       },
     });
@@ -1252,7 +1313,7 @@ class App extends React.Component {
   markNotificationReadLocally = (notificationId) => {
     this.setState((prevState) => ({
       notifications: (prevState.notifications || []).map((notification) =>
-        String(notification?.id) === String(notificationId)
+        String(notification?._id || notification?.id) === String(notificationId)
           ? { ...notification, status: "read" }
           : notification
       ),
@@ -1354,11 +1415,7 @@ class App extends React.Component {
 
   makeNotificationsRead = (friend) => {
     let friend_trim = friend.slice(12, friend.length);
-    let url =
-      apiUrl("/api/user/editUserInfo/") +
-      this.state.my_id +
-      "/" +
-      friend_trim;
+    let url = apiUrl("/api/user/notifications/") + friend_trim + "/read";
 
     let options = {
       method: "PUT",
@@ -1380,7 +1437,12 @@ class App extends React.Component {
         this.markNotificationReadLocally(friend_trim);
         this.hideNotificationRow(friend_trim);
         this.serverReply("Done!");
+        return;
       }
+
+      this.serverReply("Unable to dismiss notification.");
+    }).catch(() => {
+      this.serverReply("Unable to dismiss notification.");
     });
   };
 
@@ -1599,7 +1661,7 @@ class App extends React.Component {
       this.notificaitons_array[i] = this.state.notifications[i]._id;
     }
 
-    bell.style.color = hasUnreadNotifications ? "yellow" : "";
+    bell.style.color = hasUnreadNotifications ? "#58b78a" : "";
   };
   ///////////////////////////////////////Counter////////////////////////////////////////////////
   counter = () => {

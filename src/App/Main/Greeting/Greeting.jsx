@@ -16,6 +16,15 @@ const Greeting = (props) => {
     message: "",
   });
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
+  const [visitLogEntries, setVisitLogEntries] = useState([]);
+  const [isVisitLogLoading, setIsVisitLogLoading] = useState(false);
+  const [visitLogError, setVisitLogError] = useState("");
+  const [isVisitLogDeleting, setIsVisitLogDeleting] = useState(false);
+  const [loginLogIndex, setLoginLogIndex] = useState(0);
+  const [visitLogIndex, setVisitLogIndex] = useState(0);
+
+  const isVisitLogOwner =
+    String(props.state?.username || "").toLowerCase() === "rudyhamame";
 
   const loginRecords = Array.isArray(props.state.login_record)
     ? [...props.state.login_record]
@@ -26,6 +35,95 @@ const Greeting = (props) => {
         )
         .slice(0, 20)
     : [];
+
+  const activeLoginRecord =
+    loginRecords.length > 0 ? loginRecords[loginLogIndex] : null;
+  const activeVisitLogRecord =
+    visitLogEntries.length > 0 ? visitLogEntries[visitLogIndex] : null;
+
+  React.useEffect(() => {
+    if (loginRecords.length === 0) {
+      if (loginLogIndex !== 0) {
+        setLoginLogIndex(0);
+      }
+      return;
+    }
+
+    if (loginLogIndex > loginRecords.length - 1) {
+      setLoginLogIndex(loginRecords.length - 1);
+    }
+  }, [loginLogIndex, loginRecords.length]);
+
+  React.useEffect(() => {
+    if (visitLogEntries.length === 0) {
+      if (visitLogIndex !== 0) {
+        setVisitLogIndex(0);
+      }
+      return;
+    }
+
+    if (visitLogIndex > visitLogEntries.length - 1) {
+      setVisitLogIndex(visitLogEntries.length - 1);
+    }
+  }, [visitLogEntries.length, visitLogIndex]);
+
+  React.useEffect(() => {
+    if (!isVisitLogOwner || !props.state?.token) {
+      setVisitLogEntries([]);
+      setVisitLogError("");
+      setIsVisitLogLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsVisitLogLoading(true);
+    setVisitLogError("");
+
+    fetch(apiUrl("/api/user/visit-log"), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${props.state.token}`,
+      },
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.message || "Unable to load the visit log right now."
+          );
+        }
+
+        return payload;
+      })
+      .then((payload) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setVisitLogEntries(
+          Array.isArray(payload?.visitLog) ? payload.visitLog : []
+        );
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setVisitLogError(
+          error?.message || "Unable to load the visit log right now."
+        );
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsVisitLogLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isVisitLogOwner, props.state?.token, props.state?.visitLogRefreshToken]);
 
   const updatePasswordField = (event) => {
     const { name, value } = event.target;
@@ -106,6 +204,49 @@ const Greeting = (props) => {
       });
     } finally {
       setIsPasswordSubmitting(false);
+    }
+  };
+
+  const clearVisitLog = async () => {
+    if (!isVisitLogOwner || !props.state?.token || isVisitLogDeleting) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Do you want to delete all visit log entries?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsVisitLogDeleting(true);
+    setVisitLogError("");
+
+    try {
+      const response = await fetch(apiUrl("/api/user/visit-log"), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to delete the visit log right now."
+        );
+      }
+
+      setVisitLogEntries([]);
+      setVisitLogIndex(0);
+    } catch (error) {
+      setVisitLogError(
+        error?.message || "Unable to delete the visit log right now."
+      );
+    } finally {
+      setIsVisitLogDeleting(false);
     }
   };
 
@@ -219,76 +360,208 @@ const Greeting = (props) => {
             exchange.
           </p>
           <div id="Greeting_preStart_actions" className="fc">
-            <button id="Greeting_preStart_button1" className="fr">
-              <Link to="/study">
-                <i className="fas fa-stopwatch"></i> Study tool
-              </Link>
-            </button>
-            <button id="Greeting_preStart_button2" className="fr">
-              <Link to="/studyplanner">
-                <i className="fas fa-layer-group"></i> Study organizer
-              </Link>
-            </button>
-            <button id="Greeting_preStart_button3" className="fr">
-              <Link to="/phenomedsocial">
-                <i className="fas fa-house-user"></i> Phenomed Social
-              </Link>
-            </button>
+            <p id="Greeting_preStart_actionsTitle">PhenoMed Sub-apps</p>
+            <ul id="Greeting_preStart_appList" className="fc">
+              <li>
+                <Link to="/study">
+                  <i className="fas fa-stopwatch"></i>
+                  <span>Phenomed Student</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/studyplanner">
+                  <i className="fas fa-layer-group"></i>
+                  <span>Study Organizer</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/phenomedsocial">
+                  <i className="fas fa-house-user"></i>
+                  <span>Phenomed Social</span>
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
+        <div id="Greeting_preStart_reports" className="fc">
+          <div id="Greeting_preStart_reportDiv" className="fc">
+            <h3>Log Record: Date and Time</h3>
+            <ul id="Greeting_studySessions_area" className="fc">
+              {activeLoginRecord === null ? (
+                <div>No login records to show yet</div>
+              ) : (
+                (() => {
+                  const loggedInAt = new Date(activeLoginRecord.loggedInAt);
+                  const loggedOutAt = activeLoginRecord.loggedOutAt
+                    ? new Date(activeLoginRecord.loggedOutAt)
+                    : null;
 
-        <div id="Greeting_preStart_reportDiv" className="fc">
-          <h3>Log Record: Date and Time</h3>
-          <ul id="Greeting_studySessions_area" className="fc">
-            {loginRecords.length === 0 ? (
-              <div>No login records to show yet</div>
-            ) : (
-              loginRecords.map((record, index) => {
-                const loggedInAt = new Date(record.loggedInAt);
-                const loggedOutAt = record.loggedOutAt
-                  ? new Date(record.loggedOutAt)
-                  : null;
+                  return (
+                    <li
+                      key={
+                        activeLoginRecord._id ||
+                        activeLoginRecord.loggedInAt ||
+                        loginLogIndex
+                      }
+                      className="Greeting_logRecordViewer"
+                    >
+                      <button
+                        type="button"
+                        className="Greeting_logRecordArrow"
+                        onClick={() =>
+                          setLoginLogIndex((currentIndex) =>
+                            Math.max(currentIndex - 1, 0)
+                          )
+                        }
+                        disabled={loginLogIndex === 0}
+                        aria-label="Show newer login record"
+                        title="Show newer login record"
+                      >
+                        <i className="fas fa-angle-up"></i>
+                      </button>
+                      <div className="Greeting_logRecordCard">
+                        <div className="Greeting_logRecordEntry fc">
+                          <span className="Greeting_logRecordLabel">Login:</span>
+                          <span className="Greeting_logRecordValue">
+                            {loggedInAt.toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}{" "}
+                            {loggedInAt.toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <div className="Greeting_logRecordEntry fc">
+                          <span className="Greeting_logRecordLabel">Logout:</span>
+                          <span className="Greeting_logRecordValue">
+                            {loggedOutAt
+                              ? `${loggedOutAt.toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })} ${loggedOutAt.toLocaleTimeString(undefined, {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}`
+                              : "Still active"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="Greeting_logRecordArrow"
+                        onClick={() =>
+                          setLoginLogIndex((currentIndex) =>
+                            Math.min(currentIndex + 1, loginRecords.length - 1)
+                          )
+                        }
+                        disabled={loginLogIndex === loginRecords.length - 1}
+                        aria-label="Show older login record"
+                        title="Show older login record"
+                      >
+                        <i className="fas fa-angle-down"></i>
+                      </button>
+                    </li>
+                  );
+                })()
+              )}
+            </ul>
+          </div>
 
-                return (
-                  <li key={record._id || record.loggedInAt || index}>
-                    <div className="Greeting_logRecordCard">
-                      <div className="Greeting_logRecordEntry fc">
-                        <span className="Greeting_logRecordLabel">Login:</span>
-                        <span className="Greeting_logRecordValue">
-                          {loggedInAt.toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}{" "}
-                          {loggedInAt.toLocaleTimeString(undefined, {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </span>
+          {isVisitLogOwner ? (
+            <div id="Greeting_preStart_reportDiv" className="fc">
+              <div className="Greeting_reportHeader fr">
+                <h3>Visit Log: App Entries</h3>
+                <button
+                  type="button"
+                  className="Greeting_reportDeleteButton"
+                  onClick={clearVisitLog}
+                  disabled={isVisitLogDeleting}
+                  aria-label="Delete all visit log entries"
+                  title="Delete all visit log entries"
+                >
+                  <i className="fas fa-trash-alt"></i>
+                </button>
+              </div>
+              <ul id="Greeting_studySessions_area" className="fc">
+              {isVisitLogLoading ? (
+                <div>Loading visit log...</div>
+              ) : visitLogError ? (
+                <div>{visitLogError}</div>
+              ) : activeVisitLogRecord === null ? (
+                <div>No visit records to show yet</div>
+              ) : (
+                (() => {
+                  const visitedAt = new Date(activeVisitLogRecord.visitedAt);
+
+                  return (
+                    <li
+                      key={`${activeVisitLogRecord._id || activeVisitLogRecord.ip || "visit"}-${activeVisitLogRecord.visitedAt || visitLogIndex}`}
+                      className="Greeting_logRecordViewer"
+                    >
+                      <button
+                        type="button"
+                        className="Greeting_logRecordArrow"
+                        onClick={() =>
+                          setVisitLogIndex((currentIndex) =>
+                            Math.max(currentIndex - 1, 0)
+                          )
+                        }
+                        disabled={visitLogIndex === 0}
+                        aria-label="Show newer visit record"
+                        title="Show newer visit record"
+                      >
+                        <i className="fas fa-angle-up"></i>
+                      </button>
+                      <div className="Greeting_logRecordCard Greeting_logRecordCard--stacked">
+                        <div className="Greeting_logRecordEntry fc">
+                          <span className="Greeting_logRecordLabel">IP:</span>
+                          <span className="Greeting_logRecordValue">
+                            {`${activeVisitLogRecord.ip || "Unknown IP"} (${activeVisitLogRecord.country || "Unknown"})`}
+                          </span>
+                        </div>
+                        <div className="Greeting_logRecordEntry fc">
+                          <span className="Greeting_logRecordLabel">Visited:</span>
+                          <span className="Greeting_logRecordValue">
+                            {visitedAt.toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}{" "}
+                            {visitedAt.toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="Greeting_logRecordEntry fc">
-                        <span className="Greeting_logRecordLabel">Logout:</span>
-                        <span className="Greeting_logRecordValue">
-                          {loggedOutAt
-                            ? `${loggedOutAt.toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })} ${loggedOutAt.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
-                              })}`
-                            : "Still active"}
-                        </span>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })
-            )}
-          </ul>
+                      <button
+                        type="button"
+                        className="Greeting_logRecordArrow"
+                        onClick={() =>
+                          setVisitLogIndex((currentIndex) =>
+                            Math.min(currentIndex + 1, visitLogEntries.length - 1)
+                          )
+                        }
+                        disabled={visitLogIndex === visitLogEntries.length - 1}
+                        aria-label="Show older visit record"
+                        title="Show older visit record"
+                      >
+                        <i className="fas fa-angle-down"></i>
+                      </button>
+                    </li>
+                  );
+                })()
+              )}
+            </ul>
+          </div>
+          ) : null}
         </div>
       </section>
     </article>

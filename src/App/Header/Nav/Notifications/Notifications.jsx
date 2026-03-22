@@ -81,14 +81,16 @@ const Notifications = (props) => {
                   key={notification._id || notification.id}
                   className="Notifications_row fr"
                 >
-                  <li id={notification.id}>
+                  <li id={notification._id || notification.id}>
                     <p>{notification.message}</p>
                   </li>
                   <i
-                    id={`decline_icon${notification.id}`}
+                    id={`decline_icon${notification._id || notification.id}`}
                     onClick={() =>
                       props.makeNotificationsRead &&
-                      props.makeNotificationsRead(`decline_icon${notification.id}`)
+                      props.makeNotificationsRead(
+                        `decline_icon${notification._id || notification.id}`
+                      )
                     }
                     className="fas fa-times"
                     title="Dismiss"

@@ -6,6 +6,7 @@ export const connectRealtime = ({
   onUserRefresh,
   onChatPresence,
   onTypingPresence,
+  onVisitLog,
   onConnected,
 }) => {
   if (!userId) {
@@ -40,6 +41,10 @@ export const connectRealtime = ({
 
   if (typeof onTypingPresence === "function") {
     socket.on("chat:typing", onTypingPresence);
+  }
+
+  if (typeof onVisitLog === "function") {
+    socket.on("visit-log:new", onVisitLog);
   }
 
   socket.connect();

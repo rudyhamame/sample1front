@@ -10,10 +10,11 @@
 }
 
 #Nav_article {
+  width: min-content;
   gap: 24px;
   align-items: center;
-  padding: 12px 14px;
-  min-height: 54px;
+  height: 54px;
+  padding: 0 14px;
   box-sizing: border-box;
   border-radius: 18px;
   background: linear-gradient(
@@ -45,5 +46,11 @@
   }
   #Nav_article {
     gap: 17px;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  #Nav_article {
+    height: 48px;
   }
 }

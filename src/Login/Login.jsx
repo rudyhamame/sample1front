@@ -7,6 +7,7 @@ import "../Login/login.min-601-max-900.css";
 import "../Login/login.max-width-500.css";
 import { apiUrl } from "../config/api";
 import InspectionOverlay from "../debug/InspectionOverlay";
+import { logoutStoredSession, readStoredSession } from "../utils/sessionCleanup";
 
 const clinicalRealityParagraphs = [
   "Phenomenon (trace-as-accessed) first exists in the mode of present appearing: it is an aspect of the phenomena-as-appearing to the subject, the 3D slice of appearance within experience. But once retained, it also becomes part of phenomena-as-stored, the 4D trajectory of experience, through which the subject gathers successive appearances into an experiential continuity.",
@@ -180,7 +181,7 @@ const extractPlainTextFromHtml = (html) => {
   return (container.textContent || container.innerText || "").trim();
 };
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, onForceLogout }) => {
   const articleRef = useRef(null);
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
@@ -231,6 +232,32 @@ const Login = ({ onLogin }) => {
       (signupMessage || "Please make sure you entered valid information")) ||
     (signup_ok === null && signupMessage) ||
     null;
+
+  useEffect(() => {
+    const storedSession = readStoredSession();
+
+    if (!storedSession?.my_id) {
+      fetch(apiUrl("/api/user/visit-log"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).catch(() => null);
+      return;
+    }
+
+    logoutStoredSession().finally(() => {
+      fetch(apiUrl("/api/user/visit-log"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).catch(() => null);
+      if (typeof onForceLogout === "function") {
+        onForceLogout();
+      }
+    });
+  }, [onForceLogout]);
 
   useEffect(() => {
     if (login_ok && authReport) {

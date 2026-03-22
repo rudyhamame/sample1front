@@ -37,17 +37,17 @@
   }
 
   .PhenomedSocial_headerAside {
-    flex: 0 0 320px;
-    min-width: 320px;
+    flex: 0 0 auto;
+    min-width: min-content;
     align-items: stretch;
     gap: 12px;
   }
 
   .PhenomedSocial_headerAside > #Nav_article {
-    align-self: stretch;
-    justify-content: space-between;
+    align-self: flex-end;
+    justify-content: flex-start;
     gap: 8px;
-    width: 100%;
+    width: min-content;
     padding: 10px 12px;
     border-radius: 18px;
   }

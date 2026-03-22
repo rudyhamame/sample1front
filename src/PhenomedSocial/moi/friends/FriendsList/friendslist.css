@@ -71,5 +71,19 @@
   cursor: pointer;
 }
 #FriendsList_friends_list i {
-  font-size: 14pt;
+  font-size: 22pt;
+}
+
+.FriendsList_actions {
+  gap: 12px;
+}
+
+.FriendsList_actions i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
 }

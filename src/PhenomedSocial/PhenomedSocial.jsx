@@ -11,6 +11,9 @@ import "./phenomedsocial.min-width-1000.css";
 const PhenomedSocial = (props) => {
   const [activePanel, setActivePanel] = React.useState("home");
   const [showNotificationsPage, setShowNotificationsPage] = React.useState(false);
+  const [viewportWidth, setViewportWidth] = React.useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
   const content = phenomedSocialEnglishContent;
   const unreadNotifications = (props.state?.notifications || []).filter(
     (notification) => notification.status !== "read"
@@ -89,6 +92,18 @@ const PhenomedSocial = (props) => {
     openPostsView();
   }, []);
 
+  React.useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   const togglePrimaryPanel = () => {
     if (activePanel === "home") {
       openFriendsView();
@@ -153,7 +168,7 @@ const PhenomedSocial = (props) => {
                           onClick={() =>
                             props.makeNotificationsRead &&
                             props.makeNotificationsRead(
-                              `decline_icon${notification.id}`
+                              `decline_icon${notification._id || notification.id}`
                             )
                           }
                         >
@@ -196,18 +211,24 @@ const PhenomedSocial = (props) => {
               makeNotificationsRead={props.makeNotificationsRead}
               notificationsOpen={showNotificationsPage}
               onNotificationsOpenChange={setShowNotificationsPage}
-              extraActions={[
-                {
-                  id: "phenomed-panel-toggle",
-                  label:
-                    activePanel === "home" ? content.metrics.friends : "Home",
-                  iconClass:
-                    activePanel === "home"
-                      ? "fas fa-users"
-                      : "far fa-newspaper",
-                  onClick: togglePrimaryPanel,
-                },
-              ]}
+              extraActions={
+                viewportWidth > 1000
+                  ? []
+                  : [
+                      {
+                        id: "phenomed-panel-toggle",
+                        label:
+                          activePanel === "home"
+                            ? content.metrics.friends
+                            : "Home",
+                        iconClass:
+                          activePanel === "home"
+                            ? "fas fa-users"
+                            : "far fa-newspaper",
+                        onClick: togglePrimaryPanel,
+                      },
+                    ]
+              }
             />
             <div className="PhenomedSocial_metrics fr">
               <div className="PhenomedSocial_notificationsCount fc">
