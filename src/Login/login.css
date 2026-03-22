@@ -408,9 +408,13 @@
     padding: 8px 24px 10px;
     border-bottom: 1px solid rgba(124, 157, 165, 0.14);
     background: transparent;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: hidden;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+  }
+
+  #Login_realityControls::-webkit-scrollbar {
+    display: none;
   }
 
   .Login_realityControlButton,
@@ -462,6 +466,15 @@
     font-size: 0.92rem;
   }
 
+  .Login_realityControlButton--erase {
+    min-width: 34px;
+    padding: 0 8px;
+  }
+
+  .Login_realityControlButton--erase i {
+    font-size: 0.86rem;
+  }
+
   .Login_realityControlButton--pen i {
     font-size: 1rem;
   }
@@ -472,6 +485,14 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.86),
       0 0 0 2px rgba(255, 241, 168, 0.38);
+  }
+
+  .Login_realityControlButton--erase.is-armed {
+    border-color: rgba(74, 104, 110, 0.34);
+    background: rgba(236, 245, 247, 0.98);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 0 0 2px rgba(200, 215, 219, 0.42);
   }
 
   .Login_realityControlField {
@@ -486,6 +507,28 @@
 
   .Login_realityControlField span {
     white-space: nowrap;
+  }
+
+  .Login_realityControlMonitor {
+    min-width: 46px;
+    height: 34px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(124, 157, 165, 0.18);
+    border-radius: 10px;
+    background: rgba(246, 250, 250, 0.86);
+    color: rgba(26, 59, 67, 0.54);
+    font-size: 0.68rem;
+    line-height: 1;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  .Login_realityControlMonitor.is-active {
+    border-color: rgba(56, 94, 101, 0.28);
+    background: rgba(255, 255, 255, 0.96);
+    color: #0f5058;
   }
 
   .Login_realityControlField input[type="color"] {
@@ -519,17 +562,29 @@
 
   #Login_realityEditor {
     flex: 1 0 auto;
-    gap: 12px;
+    --login-reality-line-height: 1.65em;
+    gap: 0;
     min-height: 0;
     outline: none;
     color: rgba(26, 59, 67, 0.82);
     font-size: 0.9rem;
-    line-height: 1.65;
+    line-height: var(--login-reality-line-height);
+    font-family: "IBM Plex Mono", monospace;
+    padding: 14px 14px 18px;
+    border-radius: 16px;
+    background-color: rgba(253, 252, 247, 0.96);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      inset 0 0 0 1px rgba(176, 196, 201, 0.18);
+  }
+
+  #Login_realityEditor,
+  #Login_realityEditor * {
     font-family: "IBM Plex Mono", monospace;
   }
 
   #Login_realityEditor h3 {
-    margin: 8px 0 0;
+    margin: 0 0 calc(var(--login-reality-line-height) * 0.5);
     color: #0f3f47;
     font-family: "IBM Plex Mono", monospace;
     font-size: clamp(1.02rem, 1.25vw, 1.34rem);
@@ -538,6 +593,8 @@
 
   #Login_realityEditor p {
     margin: 0;
+    padding: 0.08em 0 0.06em;
+    margin-bottom: calc(var(--login-reality-line-height) * 0.18);
   }
 
   #Login_realitySaveStatus {

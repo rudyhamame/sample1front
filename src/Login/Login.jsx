@@ -55,6 +55,38 @@ const getStoredAuthState = () => {
   }
 };
 
+const getRangeFromPoint = (x, y) => {
+  if (document.caretRangeFromPoint) {
+    return document.caretRangeFromPoint(x, y);
+  }
+
+  if (document.caretPositionFromPoint) {
+    const position = document.caretPositionFromPoint(x, y);
+
+    if (!position) {
+      return null;
+    }
+
+    const range = document.createRange();
+    range.setStart(position.offsetNode, position.offset);
+    range.collapse(true);
+    return range;
+  }
+
+  return null;
+};
+
+const buildEraserCursor = () => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+      <path d="M8 18l8-8 6 6-8 8H8l-4-4 8-8" fill="#f7fbfc" stroke="#35545b" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M14 24h8" stroke="#9db3b8" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  `.trim();
+
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 4 24, text`;
+};
+
 const saveClinicalRealityToDb = ({ token, html }) =>
   fetch(apiUrl("/api/user/clinical-reality"), {
     method: "PUT",
@@ -73,18 +105,6 @@ const saveClinicalRealityToDb = ({ token, html }) =>
     return response.json();
   });
 
-const buildHighlightCursor = (color) => {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-      <path d="M7 20l-1 5 5-1 10-10-4-4L7 20z" fill="${color}" stroke="#24434a" stroke-width="1.2" stroke-linejoin="round"/>
-      <path d="M15.8 7.2l4 4" stroke="#24434a" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M5 25h8" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
-    </svg>
-  `.trim();
-
-  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 4 24, text`;
-};
-
 const Login = ({ onLogin }) => {
   const articleRef = useRef(null);
   const footerRef = useRef(null);
@@ -93,6 +113,7 @@ const Login = ({ onLogin }) => {
   const hasSyncedRealityEditorRef = useRef(false);
   const hasCompletedClinicalRealityBootstrapRef = useRef(false);
   const hasSkippedInitialClinicalRealityPersistRef = useRef(false);
+  const clinicalRealityBaselineRef = useRef(initialClinicalRealityHtml);
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
@@ -106,13 +127,15 @@ const Login = ({ onLogin }) => {
   );
   const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
   const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
-  const [isHighlightModeOn, setIsHighlightModeOn] = useState(false);
+  const [isHighlightEraseModeOn, setIsHighlightEraseModeOn] = useState(false);
   const [hasRealitySelection, setHasRealitySelection] = useState(false);
+  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] = useState(null);
   const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
   const [savingDots, setSavingDots] = useState(".");
   const [canPersistClinicalReality, setCanPersistClinicalReality] = useState(
     Boolean(getStoredAuthState()?.token),
   );
+  const [hasPendingAdminSave, setHasPendingAdminSave] = useState(false);
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -405,7 +428,12 @@ const Login = ({ onLogin }) => {
         const dbHtml = String(payload?.clinicalReality?.html || "");
 
         if (dbHtml.trim()) {
+          clinicalRealityBaselineRef.current = dbHtml;
           setClinicalRealityHtml(dbHtml);
+          setHasPendingAdminSave(false);
+        } else {
+          clinicalRealityBaselineRef.current = initialClinicalRealityHtml;
+          setHasPendingAdminSave(false);
         }
       })
       .catch(() => {
@@ -440,6 +468,11 @@ const Login = ({ onLogin }) => {
 
       if (!storedAuthState?.token) {
         if (!ignoreSave) {
+          setHasPendingAdminSave(
+            clinicalRealityHtml !== clinicalRealityBaselineRef.current,
+          );
+        }
+        if (!ignoreSave) {
           setIsClinicalRealitySaving(false);
         }
         return;
@@ -449,6 +482,10 @@ const Login = ({ onLogin }) => {
         token: storedAuthState.token,
         html: clinicalRealityHtml,
       })
+        .then(() => {
+          clinicalRealityBaselineRef.current = clinicalRealityHtml;
+          setHasPendingAdminSave(false);
+        })
         .catch(() => {
           // DB save intentionally has no browser fallback.
         })
@@ -493,6 +530,10 @@ const Login = ({ onLogin }) => {
       token: authReport.token,
       html: clinicalRealityHtml,
     })
+      .then(() => {
+        clinicalRealityBaselineRef.current = clinicalRealityHtml;
+        setHasPendingAdminSave(false);
+      })
       .catch(() => {
         // DB save intentionally has no browser fallback.
       })
@@ -507,6 +548,7 @@ const Login = ({ onLogin }) => {
 
       if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
         setHasRealitySelection(false);
+        setSelectedRealityFontSizePt(null);
         return;
       }
 
@@ -518,6 +560,22 @@ const Login = ({ onLogin }) => {
         selection.toString().trim().length > 0;
 
       setHasRealitySelection(hasSelectionInsideEditor);
+
+      if (!hasSelectionInsideEditor) {
+        setSelectedRealityFontSizePt(null);
+        return;
+      }
+
+      const parentElement =
+        range.startContainer.nodeType === Node.TEXT_NODE
+          ? range.startContainer.parentElement
+          : range.startContainer;
+      const computedFontSizePx = Number.parseFloat(
+        window.getComputedStyle(parentElement).fontSize,
+      );
+      const computedFontSizePt = computedFontSizePx * 0.75;
+
+      setSelectedRealityFontSizePt(Number(computedFontSizePt.toFixed(1)));
     };
 
     document.addEventListener("selectionchange", syncRealitySelection);
@@ -588,6 +646,11 @@ const Login = ({ onLogin }) => {
               html:
                 realityEditorRef.current?.innerHTML || clinicalRealityHtml,
             })
+              .then(() => {
+                clinicalRealityBaselineRef.current =
+                  realityEditorRef.current?.innerHTML || clinicalRealityHtml;
+                setHasPendingAdminSave(false);
+              })
               .catch(() => {
                 // If this fails, we still allow login to continue.
               })
@@ -614,8 +677,25 @@ const Login = ({ onLogin }) => {
     }
   };
 
+  const hasActiveSelectionInsideEditor = () => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return false;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const range = selection.getRangeAt(0);
+
+    return (
+      !!editorElement && editorElement.contains(range.commonAncestorContainer)
+    );
+  };
+
   const applyEditorCommand = (command, value = null) => {
-    focusRealityEditor();
+    if (!hasActiveSelectionInsideEditor()) {
+      focusRealityEditor();
+    }
     document.execCommand("styleWithCSS", false, true);
     document.execCommand(command, false, value);
 
@@ -636,7 +716,114 @@ const Login = ({ onLogin }) => {
 
     if (editorElement && editorElement.contains(range.commonAncestorContainer)) {
       applyEditorCommand("hiliteColor", editorHighlightColor);
+      selection.removeAllRanges();
+      setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
     }
+  };
+
+  const clearTransparentHighlightArtifacts = () => {
+    if (!realityEditorRef.current) {
+      return;
+    }
+
+    realityEditorRef.current
+      .querySelectorAll(
+        '[style*="background-color: transparent"], [style*="background-color: rgba(0, 0, 0, 0)"]',
+      )
+      .forEach((element) => {
+        element.style.backgroundColor = "";
+
+        if (!element.getAttribute("style")?.trim()) {
+          element.removeAttribute("style");
+        }
+      });
+  };
+
+  const eraseHighlightAtPoint = (clientX, clientY) => {
+    const editorElement = realityEditorRef.current;
+
+    if (!editorElement) {
+      return;
+    }
+
+    const caretRange = getRangeFromPoint(clientX, clientY);
+
+    if (!caretRange || !editorElement.contains(caretRange.startContainer)) {
+      return;
+    }
+
+    const textNode =
+      caretRange.startContainer.nodeType === Node.TEXT_NODE
+        ? caretRange.startContainer
+        : null;
+
+    if (!textNode || !textNode.textContent) {
+      return;
+    }
+
+    const offset = Math.min(
+      caretRange.startOffset,
+      Math.max(textNode.textContent.length - 1, 0),
+    );
+
+    const charRange = document.createRange();
+    charRange.setStart(textNode, offset);
+    charRange.setEnd(textNode, Math.min(offset + 1, textNode.textContent.length));
+
+    const selection = window.getSelection();
+
+    if (!selection) {
+      return;
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(charRange);
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("hiliteColor", false, "transparent");
+    clearTransparentHighlightArtifacts();
+    selection.removeAllRanges();
+    setHasRealitySelection(false);
+    setSelectedRealityFontSizePt(null);
+    setClinicalRealityHtml(editorElement.innerHTML);
+  };
+
+  const handleRealityEditorMouseDown = (event) => {
+    if (!isHighlightEraseModeOn) {
+      return;
+    }
+
+    event.preventDefault();
+    eraseHighlightAtPoint(event.clientX, event.clientY);
+  };
+
+  const handleRealityEditorMouseMove = (event) => {
+    if (!isHighlightEraseModeOn || event.buttons !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+    eraseHighlightAtPoint(event.clientX, event.clientY);
+  };
+
+  const removeHighlightFromSelection = () => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const range = selection.getRangeAt(0);
+
+    if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
+      return;
+    }
+
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("hiliteColor", false, "transparent");
+    clearTransparentHighlightArtifacts();
+    setClinicalRealityHtml(editorElement.innerHTML);
   };
 
   const adjustSelectedFontSize = (delta) => {
@@ -644,6 +831,7 @@ const Login = ({ onLogin }) => {
 
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
       setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
       return;
     }
 
@@ -652,6 +840,7 @@ const Login = ({ onLogin }) => {
 
     if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
       setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
       return;
     }
 
@@ -659,6 +848,7 @@ const Login = ({ onLogin }) => {
 
     if (!selectedText.trim()) {
       setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
       return;
     }
 
@@ -693,6 +883,7 @@ const Login = ({ onLogin }) => {
 
     setClinicalRealityHtml(editorElement.innerHTML);
     setHasRealitySelection(true);
+    setSelectedRealityFontSizePt(Number(nextFontSizePt.toFixed(1)));
   };
 
   const signup = (event) => {
@@ -856,36 +1047,51 @@ const Login = ({ onLogin }) => {
                 </label>
                 <label className="Login_realityControlField">
                   <span>Highlight</span>
-                  <button
-                    type="button"
-                    className={`Login_realityControlButton Login_realityControlButton--pen${isHighlightModeOn ? " is-armed" : ""}`}
-                    title="Highlight mode"
-                    aria-label="Toggle highlight mode"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      focusRealityEditor();
-                      setIsHighlightModeOn((currentValue) => !currentValue);
-                    }}
+                    <button
+                      type="button"
+                      className="Login_realityControlButton Login_realityControlButton--pen"
+                      title="Apply highlight"
+                      aria-label="Apply highlight to selection"
+                      disabled={!hasRealitySelection}
+                      onMouseDown={(event) => event.preventDefault()}
+                    onClick={applyHighlightToSelection}
                   >
                     <i
                       className="fas fa-highlighter"
                       style={{ color: editorHighlightColor }}
                     ></i>
                   </button>
+                    <button
+                      type="button"
+                      className={`Login_realityControlButton Login_realityControlButton--erase${isHighlightEraseModeOn ? " is-armed" : ""}`}
+                      title="Remove highlight"
+                      aria-label="Remove highlight"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setIsHighlightEraseModeOn((currentValue) => !currentValue);
+                      }}
+                    >
+                      <i className="fas fa-eraser"></i>
+                    </button>
                   <input
                     type="color"
                     value={editorHighlightColor}
                     onMouseDown={(event) => event.preventDefault()}
                     onChange={(event) => {
                       setEditorHighlightColor(event.target.value);
-                      if (!isHighlightModeOn) {
-                        applyEditorCommand("hiliteColor", event.target.value);
-                      }
                     }}
                   />
                 </label>
                 <label className="Login_realityControlField">
                   <span>Size</span>
+                  <output
+                    className={`Login_realityControlMonitor${hasRealitySelection ? " is-active" : ""}`}
+                    aria-live="polite"
+                  >
+                    {hasRealitySelection && selectedRealityFontSizePt !== null
+                      ? `${selectedRealityFontSizePt}pt`
+                      : "--"}
+                  </output>
                   <button
                     type="button"
                     className="Login_realityControlButton Login_realityControlButton--size"
@@ -914,13 +1120,11 @@ const Login = ({ onLogin }) => {
             <div
               id="Login_realityEditor"
               ref={realityEditorRef}
-              className="fc"
+                className="fc"
               contentEditable
               suppressContentEditableWarning
               style={{
-                cursor: isHighlightModeOn
-                  ? buildHighlightCursor(editorHighlightColor)
-                  : "text",
+                cursor: isHighlightEraseModeOn ? buildEraserCursor() : "text",
               }}
               onInput={(event) => {
                 setClinicalRealityHtml(event.currentTarget.innerHTML);
@@ -928,16 +1132,8 @@ const Login = ({ onLogin }) => {
               onBlur={(event) => {
                 setClinicalRealityHtml(event.currentTarget.innerHTML);
               }}
-              onMouseUp={() => {
-                if (isHighlightModeOn) {
-                  applyHighlightToSelection();
-                }
-              }}
-              onKeyUp={() => {
-                if (isHighlightModeOn) {
-                  applyHighlightToSelection();
-                }
-              }}
+              onMouseDown={handleRealityEditorMouseDown}
+              onMouseMove={handleRealityEditorMouseMove}
             ></div>
             <p
               id="Login_realitySaveStatus"
@@ -948,7 +1144,9 @@ const Login = ({ onLogin }) => {
                 ? `Saving ${savingDots}`
                 : canPersistClinicalReality
                   ? "Saved"
-                  : "Not saved"}
+                  : hasPendingAdminSave
+                    ? "SAVED TEMPORARILY: CHANGES ARE WAITING FOR ADMIN TO LOG IN"
+                    : "NO CHANGES TO SAVE"}
             </p>
           </div>
         </section>
