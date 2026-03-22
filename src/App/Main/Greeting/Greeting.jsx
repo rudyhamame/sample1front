@@ -427,6 +427,12 @@ const Greeting = (props) => {
                 </Link>
               </li>
               <li>
+                <Link to="/ecg">
+                  <i className="fas fa-heartbeat"></i>
+                  <span>PhenoMed ECG</span>
+                </Link>
+              </li>
+              <li>
                 <Link to="/studyplanner">
                   <i className="fas fa-layer-group"></i>
                   <span>Study Organizer</span>

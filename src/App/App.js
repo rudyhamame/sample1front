@@ -11,6 +11,7 @@ import { Route } from "react-router-dom";
 import Greeting from "./Main/Greeting/Greeting";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
 import SchoolPlanner from "./SubApps/StudyPlannner/components/SchoolPlanner/SchoolPlanner";
+import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import { apiUrl } from "../config/api";
 import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
 import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
@@ -2199,6 +2200,19 @@ class App extends React.Component {
             memory={this.memory}
             serverReply={this.serverReply}
           />
+        </Route>
+        <Route path="/ecg">
+          <article id="app_page" className="fc">
+            <main id="Main_article" className="fr">
+              <PhenomedECG
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+                serverReply={this.serverReply}
+              />
+            </main>
+          </article>
         </Route>
         <Route exact path="/phenomedsocial/ar">
           <article id="app_page" className="fc">
