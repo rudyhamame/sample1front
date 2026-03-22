@@ -42,6 +42,7 @@ class App extends React.Component {
       activeChatFriendId: null,
       activeChatFriendName: "",
       isChatting: false,
+      isSendingMessage: false,
       friendChatPresence: {},
       friendTypingPresence: {},
       searching_on: false,
@@ -1084,12 +1085,14 @@ class App extends React.Component {
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
   RetrievingMySendingMessages = (friend_id) => {
     const ul = document.getElementById("Chat_messages");
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
 
     if (!ul || !friend_id) {
       return;
     }
 
     ul.innerHTML = "";
+    let previousDayKey = null;
 
     const seenDates = [];
     const chatHistory = Array.isArray(this.state.chat) ? this.state.chat : [];
@@ -1111,11 +1114,48 @@ class App extends React.Component {
     }
 
     matchingMessages.forEach((message) => {
-      const p = document.createElement("p");
+      const text = document.createElement("p");
+      const time = document.createElement("span");
       const li = document.createElement("li");
       const div = document.createElement("div");
+      const messageDate = new Date(message.date);
+      const messageDirection = arabicPattern.test(String(message.message || ""))
+        ? "rtl"
+        : "ltr";
+      const dayKey = Number.isNaN(messageDate.getTime())
+        ? "unknown-day"
+        : `${messageDate.getFullYear()}-${messageDate.getMonth()}-${messageDate.getDate()}`;
+      const dayLabel = Number.isNaN(messageDate.getTime())
+        ? ""
+        : messageDate.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+      const timestamp = Number.isNaN(messageDate.getTime())
+        ? ""
+        : messageDate.toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
 
-      p.textContent = message.message;
+      if (dayLabel && dayKey !== previousDayKey) {
+        const daySeparator = document.createElement("li");
+        const daySeparatorText = document.createElement("span");
+
+        daySeparator.className = "Chat_daySeparator";
+        daySeparatorText.className = "Chat_daySeparatorText";
+        daySeparatorText.textContent = dayLabel;
+        daySeparator.appendChild(daySeparatorText);
+        ul.appendChild(daySeparator);
+        previousDayKey = dayKey;
+      }
+
+      text.textContent = message.message;
+      time.textContent = timestamp;
+      time.className = "Chat_messageTimestamp";
+      li.setAttribute("dir", messageDirection);
       if (message.from === "me") {
         li.setAttribute("class", "sentMessagesLI");
         div.setAttribute("class", "sentMessagesDIV fc");
@@ -1123,8 +1163,12 @@ class App extends React.Component {
         li.setAttribute("class", "receivedMessagesLI");
         div.setAttribute("class", "receivedMessagesDIV fc");
       }
+      li.classList.add(
+        messageDirection === "rtl" ? "Chat_message--rtl" : "Chat_message--ltr"
+      );
 
-      li.appendChild(p);
+      li.appendChild(text);
+      li.appendChild(time);
       div.appendChild(li);
       ul.appendChild(div);
     });
@@ -1137,9 +1181,12 @@ class App extends React.Component {
     if (textarea) {
       textarea.style.height = "42px";
     }
+    if (this.state.isSendingMessage) {
+      return Promise.resolve(false);
+    }
     if (!this.state.friendID_selected) {
       this.serverReply("Select a doctor from your friends list first");
-      return;
+      return Promise.resolve(false);
     }
     if (message && message.trim() !== "") {
       let url =
@@ -1159,20 +1206,36 @@ class App extends React.Component {
         }),
       };
       let req = new Request(url, options);
-      fetch(req).then((result) => {
-        if (result.status === 201) {
-          if (textarea) {
-            textarea.value = "";
-            textarea.style.height = "42px";
-            textarea.focus();
-          }
-          this.updateMyTypingPresence(this.state.friendID_selected, false);
-        } else {
-          this.serverReply("Unable to send message");
-        }
+      this.setState({
+        isSendingMessage: true,
       });
+      return fetch(req)
+        .then((result) => {
+          if (result.status === 201) {
+            if (textarea) {
+              textarea.value = "";
+              textarea.style.height = "42px";
+              textarea.focus();
+            }
+            this.updateMyTypingPresence(this.state.friendID_selected, false);
+            return true;
+          } else {
+            this.serverReply("Unable to send message");
+            return false;
+          }
+        })
+        .catch(() => {
+          this.serverReply("Unable to send message");
+          return false;
+        })
+        .finally(() => {
+          this.setState({
+            isSendingMessage: false,
+          });
+        });
     } else {
       this.serverReply("You can't send an empty message");
+      return Promise.resolve(false);
     }
   };
 
@@ -1194,6 +1257,41 @@ class App extends React.Component {
           : notification
       ),
     }));
+  };
+
+  markChatNotificationsRead = (friendId) => {
+    if (!friendId || !this.state?.token || !this.state?.my_id) {
+      return;
+    }
+
+    const hasUnreadChatNotification = (this.state.notifications || []).some(
+      (notification) =>
+        String(notification?.id) === String(friendId) &&
+        notification?.type === "chat_message" &&
+        notification?.status !== "read"
+    );
+
+    if (!hasUnreadChatNotification) {
+      return;
+    }
+
+    const url =
+      apiUrl("/api/user/editUserInfo/") + this.state.my_id + "/" + friendId;
+
+    fetch(
+      new Request(url, {
+        method: "PUT",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.state.token,
+          "Content-Type": "application/json",
+        },
+      })
+    ).then((response) => {
+      if (response.status === 200) {
+        this.markNotificationReadLocally(friendId);
+      }
+    });
   };
 
   acceptFriend = (friend) => {
@@ -1384,6 +1482,7 @@ class App extends React.Component {
 
     this.updateMyChatPresence(friendID, true);
     this.updateMyTypingPresence(friendID, false);
+    this.markChatNotificationsRead(friendID);
     this.RetrievingMySendingMessages(friendID);
   };
 

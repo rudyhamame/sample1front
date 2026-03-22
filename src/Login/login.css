@@ -1040,3 +1040,13 @@
   line-height: 1.5;
   color: rgba(0, 0, 0, 0.68);
 }
+
+#Login_lastUpdated_text {
+  margin: 8px auto 0;
+  max-width: 680px;
+  font-size: 7.4pt;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  color: rgba(0, 0, 0, 0.34);
+  font-weight: 300;
+}

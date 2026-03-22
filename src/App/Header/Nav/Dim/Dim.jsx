@@ -24,10 +24,25 @@ const Dim = () => {
     return true;
   };
 
+  const toggleGreetingTheme = (isDark) => {
+    const article = document.getElementById("Greeting_studysessions_article");
+
+    if (!article) {
+      return false;
+    }
+
+    article.classList.toggle("Greeting_themeDark", isDark);
+    return true;
+  };
+
   const dim = () => {
     syncIcons(true);
 
     if (togglePhenomedSocialTheme(true)) {
+      return;
+    }
+
+    if (toggleGreetingTheme(true)) {
       return;
     }
 
@@ -55,6 +70,10 @@ const Dim = () => {
     syncIcons(false);
 
     if (togglePhenomedSocialTheme(false)) {
+      return;
+    }
+
+    if (toggleGreetingTheme(false)) {
       return;
     }
 

@@ -83,6 +83,10 @@ const FriendChat = ({
   }, [isEmojiPickerOpen]);
 
   const handleSend = () => {
+    if (state?.isSendingMessage) {
+      return;
+    }
+
     const textarea = document.getElementById("Chat_textarea_input");
     const message = textarea ? textarea.value : "";
 
@@ -174,7 +178,6 @@ const FriendChat = ({
               }}
             ></i>
             <div id="Chat_title_copy" className="fc">
-              <p id="Chat_app_title">Noga Chat</p>
               <h1 id="Chat_title_text">
                 {state?.activeChatFriendName || chatContent?.title || "Chat"}
               </h1>
@@ -257,6 +260,7 @@ const FriendChat = ({
                 <button
                   id="Chat_submit_button"
                   type="button"
+                  disabled={Boolean(state?.isSendingMessage)}
                   onMouseDown={keepTextareaFocus}
                   onTouchStart={keepTextareaFocus}
                   onClick={handleSend}

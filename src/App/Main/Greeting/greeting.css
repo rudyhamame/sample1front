@@ -6,11 +6,18 @@
   min-height: 100dvh;
   justify-content: center;
   align-items: stretch;
-  overflow: auto;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(34, 207, 187, 0.12), transparent 28%),
     radial-gradient(circle at 85% 18%, rgba(15, 162, 147, 0.12), transparent 24%),
     linear-gradient(180deg, #f7fbfc 0%, #edf6f6 48%, #e7f0f1 100%);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark {
+  background:
+    radial-gradient(circle at top left, rgba(20, 78, 88, 0.22), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(10, 116, 105, 0.18), transparent 24%),
+    linear-gradient(180deg, #09161b 0%, #0d2026 46%, #122930 100%);
 }
 
 #Greeting_topControls {
@@ -35,6 +42,8 @@
   width: min(100%, 1240px);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
+  height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
   margin: 0 auto;
   padding: 108px 28px 54px;
   box-sizing: border-box;
@@ -42,11 +51,14 @@
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.8fr);
   align-items: stretch;
   gap: 26px;
+  overflow: hidden;
 }
 
 #Greeting_preStart_intro,
 #Greeting_preStart_reportDiv {
+  max-width: 100%;
   min-width: 0;
+  min-height: 0;
   border-radius: 30px;
   border: 1px solid rgba(124, 157, 165, 0.16);
   background: linear-gradient(
@@ -59,54 +71,93 @@
     0 22px 48px rgba(94, 124, 133, 0.1);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_intro,
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_reportDiv {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.96),
+    rgba(12, 31, 39, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 48px rgba(0, 0, 0, 0.24);
+}
+
 #Greeting_preStart_intro {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   justify-content: center;
   align-items: flex-start;
-  padding: 36px 38px;
+  max-width: 100%;
+  min-height: 0;
+  padding: 44px 46px;
   gap: 18px;
+  overflow: hidden;
+  box-sizing: border-box;
+  container-type: inline-size;
 }
 
 #Greeting_preStart_eyebrow {
   margin: 0;
+  max-width: 100%;
   color: rgba(30, 82, 90, 0.62);
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: 0.74rem;
+  font-size: clamp(0.66rem, 1.4cqi, 0.86rem);
   font-weight: 700;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_eyebrow {
+  color: rgba(185, 219, 226, 0.62);
 }
 
 #Greeting_preStart h1 {
   margin: 0;
+  max-width: 100%;
   color: #0f5058;
   font-family: "Raleway", sans-serif;
-  font-size: clamp(2.4rem, 4.8vw, 4.4rem);
+  font-size: clamp(1.8rem, 7.6cqi, 4rem);
   line-height: 0.98;
   letter-spacing: -0.03em;
   background: transparent;
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart h1 {
+  color: #eef9fb;
+}
+
 #Greeting_preStart_subtitle {
+  width: 100%;
   max-width: 34rem;
   margin: 0;
   color: rgba(26, 59, 67, 0.76);
-  font-size: clamp(1rem, 1.3vw, 1.08rem);
-  line-height: 1.75;
+  font-size: clamp(0.84rem, 2cqi, 1.02rem);
+  line-height: 1.6;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_subtitle {
+  color: rgba(216, 232, 237, 0.82);
 }
 
 #Greeting_preStart_actions {
   width: 100%;
-  max-width: 34rem;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 18px;
+  max-width: min(100%, 28rem);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
   margin-top: 10px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 #Greeting_preStart_button1,
 #Greeting_preStart_button2,
 #Greeting_preStart_button3 {
-  flex: 1 1 0;
+  width: 100%;
+  max-width: 100%;
   justify-content: center;
   align-items: center;
   padding: 0;
@@ -119,36 +170,53 @@
     0 14px 28px rgba(15, 108, 113, 0.14);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_button1,
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_button2,
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_button3 {
+  background: linear-gradient(180deg, rgba(20, 109, 114, 0.98), rgba(12, 80, 88, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.26);
+}
+
 #Greeting_preStart_button1 a,
 #Greeting_preStart_button2 a,
 #Greeting_preStart_button3 a {
   width: 100%;
+  min-width: 0;
+  max-width: 7.8rem;
+  margin: 0 auto;
   aspect-ratio: 1 / 1;
   display: inline-flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  padding: 16px;
+  gap: clamp(5px, 0.9cqi, 8px);
+  padding: clamp(7px, 1.3cqi, 11px);
   color: #fff;
   text-decoration: none;
   font-family: "Raleway", sans-serif;
-  font-size: 0.9rem;
+  font-size: clamp(0.62rem, 1.25cqi, 0.82rem);
   font-weight: 700;
   letter-spacing: 0.01em;
   text-align: center;
-  line-height: 1.35;
+  line-height: 1.24;
+  box-sizing: border-box;
 }
 
 #Greeting_preStart_button1 a i,
 #Greeting_preStart_button2 a i,
 #Greeting_preStart_button3 a i {
-  font-size: 1.3rem;
+  font-size: clamp(0.82rem, 1.8cqi, 1.08rem);
 }
 
 #Greeting_preStart_reportDiv {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 28px 26px 24px;
   gap: 14px;
+  overflow: hidden;
 }
 
 #Greeting_preStart_reportDiv h3 {
@@ -161,39 +229,105 @@
   text-transform: uppercase;
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_preStart_reportDiv h3 {
+  color: #eef9fb;
+}
+
 #Greeting_studySessions_area {
   flex: 1 1 auto;
-  min-height: 180px;
-  max-height: none;
+  min-height: 0;
+  max-height: 100%;
   margin: 0;
   padding: 14px 0;
   color: rgba(26, 59, 67, 0.82);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-top: 1px solid rgba(124, 157, 165, 0.14);
   border-bottom: 1px solid rgba(124, 157, 165, 0.14);
 }
 
-#Greeting_studySessions_area li {
-  list-style: none;
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_studySessions_area {
+  color: rgba(216, 232, 237, 0.86);
+  border-top-color: rgba(110, 168, 180, 0.16);
+  border-bottom-color: rgba(110, 168, 180, 0.16);
 }
 
-#Greeting_studySessions_area div {
-  padding: 16px;
-  border-radius: 16px;
+#Greeting_studySessions_area li {
+  list-style: none;
+  margin: 0;
+}
+
+#Greeting_studySessions_area > div {
+  padding: 8px 12px;
+  border-radius: 12px;
   text-align: center;
   background: rgba(250, 252, 252, 0.88);
   border: 1px dashed rgba(124, 157, 165, 0.22);
 }
 
-.Greeting_logRecordCard {
-  gap: 4px;
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_studySessions_area > div {
+  background: rgba(14, 39, 46, 0.94);
+  border-color: rgba(110, 168, 180, 0.18);
 }
 
-.Greeting_logRecordCard p {
+.Greeting_logRecordCard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(250, 252, 252, 0.88);
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_logRecordCard {
+  background: rgba(14, 39, 46, 0.96);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.Greeting_logRecordEntry {
+  min-width: 0;
   margin: 0;
-  color: rgba(26, 59, 67, 0.8);
-  font-size: 0.88rem;
-  line-height: 1.55;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(240, 247, 247, 0.92);
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  text-align: left;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.Greeting_logRecordLabel {
+  color: rgba(30, 82, 90, 0.74);
+  font-size: clamp(0.5rem, 7cqi, 0.62rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_logRecordLabel {
+  color: rgba(182, 214, 221, 0.68);
+}
+
+.Greeting_logRecordValue {
+  display: block;
+  min-width: 0;
+  color: rgba(26, 59, 67, 0.82);
+  font-size: clamp(0.58rem, 8.2cqi, 0.74rem);
+  line-height: 1.34;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_logRecordValue {
+  color: rgba(236, 245, 247, 0.9);
 }
 
 #Greeting_totalDuration_li {
@@ -223,9 +357,25 @@
     0 12px 26px rgba(87, 118, 127, 0.12);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_button {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.98),
+    rgba(12, 31, 39, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 26px rgba(0, 0, 0, 0.24);
+}
+
 #Greeting_userMenu_i {
   font-size: 28px;
   color: #0f7f78;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_i {
+  color: #7ad5d8;
 }
 
 #Greeting_userMenu_div {
@@ -246,6 +396,10 @@
   display: none;
 }
 
+.Greeting_userMenu_content_div--open {
+  display: flex !important;
+}
+
 #Greeting_userMenu_personalInfo_div {
   padding: 16px;
   border-radius: 22px;
@@ -260,6 +414,18 @@
     0 22px 40px rgba(94, 124, 133, 0.14);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_personalInfo_div {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.98),
+    rgba(12, 31, 39, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 40px rgba(0, 0, 0, 0.24);
+}
+
 #Greeting_userMenu_personalInfo_content_div {
   padding-top: 12px;
   gap: 10px;
@@ -268,6 +434,11 @@
 #Greeting_userMenu_personalInfo_div label,
 .Greeting_userMenu_title_label {
   color: rgba(30, 82, 90, 0.76);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_personalInfo_div label,
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_userMenu_title_label {
+  color: rgba(182, 214, 221, 0.76);
 }
 
 .Greeting_userMenu_title_label {
@@ -286,6 +457,11 @@
   color: rgba(26, 59, 67, 0.82);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_div label,
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_div p {
+  color: rgba(236, 245, 247, 0.88);
+}
+
 .Greeting_userMenu_contentDivs {
   justify-content: space-between;
   align-items: center;
@@ -293,6 +469,114 @@
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(248, 251, 251, 0.88);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_userMenu_contentDivs {
+  background: rgba(14, 39, 46, 0.92);
+}
+
+.Greeting_changePasswordToggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #0f7f78;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_changePasswordToggle {
+  color: #7ad5d8;
+}
+
+.Greeting_passwordFeedback {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.Greeting_passwordFeedback--success {
+  color: #11635f;
+  background: rgba(34, 207, 187, 0.12);
+  border: 1px solid rgba(34, 207, 187, 0.24);
+}
+
+.Greeting_passwordFeedback--error {
+  color: #8f2f48;
+  background: rgba(232, 102, 124, 0.1);
+  border: 1px solid rgba(232, 102, 124, 0.2);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_passwordFeedback--success {
+  color: #9ff0e0;
+  background: rgba(24, 105, 99, 0.24);
+  border-color: rgba(86, 197, 186, 0.22);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_passwordFeedback--error {
+  color: #ffc3d0;
+  background: rgba(123, 42, 63, 0.26);
+  border-color: rgba(221, 122, 145, 0.2);
+}
+
+#Greeting_changePassword_form {
+  margin-top: 12px;
+  gap: 10px;
+}
+
+#Greeting_changePassword_form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid rgba(124, 157, 165, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(26, 59, 67, 0.9);
+  font-size: 0.82rem;
+  outline: none;
+}
+
+#Greeting_changePassword_form input:focus {
+  border-color: rgba(15, 127, 120, 0.44);
+  box-shadow: 0 0 0 3px rgba(34, 207, 187, 0.12);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_changePassword_form input {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+}
+
+.Greeting_changePasswordSubmit {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(15, 127, 120, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(34, 207, 187, 0.98),
+    rgba(15, 162, 147, 0.98)
+  );
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.Greeting_changePasswordSubmit:disabled {
+  cursor: wait;
+  opacity: 0.76;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Greeting_changePasswordSubmit {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 109, 114, 0.98),
+    rgba(12, 80, 88, 0.98)
+  );
 }
 
 #timer_container {
@@ -363,12 +647,18 @@ input[type="file"] {
     border-radius: 24px;
   }
 
+  #Greeting_preStart_intro {
+    padding: 30px 28px;
+  }
+
   #Greeting_preStart h1 {
-    font-size: clamp(2rem, 8vw, 3.2rem);
+    font-size: clamp(1.9rem, 9cqi, 3.2rem);
   }
 
   #Greeting_preStart_actions {
     max-width: 100%;
+    min-width: 0;
+    gap: 12px;
   }
 }
 
@@ -397,7 +687,7 @@ input[type="file"] {
   }
 
   #Greeting_preStart_intro {
-    padding: 26px 22px;
+    padding: 24px 20px;
   }
 
   #Greeting_preStart_reportDiv {

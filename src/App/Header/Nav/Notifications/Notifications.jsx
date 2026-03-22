@@ -93,15 +93,17 @@ const Notifications = (props) => {
                     className="fas fa-times"
                     title="Dismiss"
                   ></i>
-                  <i
-                    id={`accept_icon${notification.id}`}
-                    onClick={() =>
-                      props.acceptFriend &&
-                      props.acceptFriend(`accept_icon${notification.id}`)
-                    }
-                    className="fas fa-user-check"
-                    title="Accept"
-                  ></i>
+                  {notification.type === "friend_request" ? (
+                    <i
+                      id={`accept_icon${notification.id}`}
+                      onClick={() =>
+                        props.acceptFriend &&
+                        props.acceptFriend(`accept_icon${notification.id}`)
+                      }
+                      className="fas fa-user-check"
+                      title="Accept"
+                    ></i>
+                  ) : null}
                 </div>
               ))
             )}

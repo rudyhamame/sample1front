@@ -40,6 +40,13 @@ const initialClinicalRealityHtml = [
   ...clinicalRealityParagraphs.map((paragraph) => `<p>${paragraph}</p>`),
 ].join("");
 const clinicalRealityPublicOwnerUsername = "rudyhamame";
+const loginAppLastUpdatedLabel = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+}).format(new Date("2026-03-22T12:00:00+03:00"));
 
 const getStoredAuthState = () => {
   try {
@@ -1557,6 +1564,9 @@ const Login = ({ onLogin }) => {
           <p id="Login_poweredBy_text">
             Powered by OpenAI API to support intelligent medical knowledge and
             enquiry experiences.
+          </p>
+          <p id="Login_lastUpdated_text">
+            App last updated: {loginAppLastUpdatedLabel}
           </p>
         </section>
       </footer>

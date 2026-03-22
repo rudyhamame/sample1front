@@ -159,16 +159,18 @@ const PhenomedSocial = (props) => {
                         >
                           Dismiss
                         </button>
-                        <button
-                          type="button"
-                          className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--accept"
-                          onClick={() =>
-                            props.acceptFriend &&
-                            props.acceptFriend(`accept_icon${notification.id}`)
-                          }
-                        >
-                          Accept
-                        </button>
+                        {notification.type === "friend_request" ? (
+                          <button
+                            type="button"
+                            className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--accept"
+                            onClick={() =>
+                              props.acceptFriend &&
+                              props.acceptFriend(`accept_icon${notification.id}`)
+                            }
+                          >
+                            Accept
+                          </button>
+                        ) : null}
                       </div>
                     </li>
                   ))
