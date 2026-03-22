@@ -162,18 +162,18 @@ const PhenomedSocial = (props) => {
                         <p>{notification.message}</p>
                       </div>
                       <div className="fr PhenomedSocial_notificationActions">
-                        <button
-                          type="button"
-                          className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--dismiss"
-                          onClick={() =>
-                            props.makeNotificationsRead &&
-                            props.makeNotificationsRead(
-                              `decline_icon${notification._id || notification.id}`
-                            )
-                          }
-                        >
-                          Dismiss
-                        </button>
+                          <button
+                            type="button"
+                            className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--dismiss"
+                            onClick={() =>
+                              props.makeNotificationsRead &&
+                              props.makeNotificationsRead(
+                                notification._id || notification.id
+                              )
+                            }
+                          >
+                            Dismiss
+                          </button>
                         {notification.type === "friend_request" ? (
                           <button
                             type="button"

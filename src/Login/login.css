@@ -105,26 +105,6 @@
   display: none;
 }
 
-#Login_logoRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-#Login_logoStack {
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
 #Login_realityToggle {
   display: none;
   align-items: center;
@@ -158,21 +138,20 @@
     0 8px 16px rgba(87, 118, 127, 0.1);
 }
 #Login_loginLogo_container {
-  --login-logo-main-size: clamp(3rem, 28cqi, 7.2rem);
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
-  gap: 0;
+  gap: 0.08em;
   height: min-content;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   padding: 0 12px 12px;
   box-sizing: border-box;
-  container-type: inline-size;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 /* Mode Navigation */
@@ -212,19 +191,16 @@
 /* Brand */
 #Login_loginLogo_text {
   font-family: "Arial Black", "Archivo Black", sans-serif;
-  font-size: min(var(--login-logo-main-size), 12.5cqi);
+  font-size: min(19cqi, 9rem);
   font-weight: 900;
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  flex-wrap: wrap;
-  column-gap: 0.16em;
-  row-gap: 0.06em;
+  display: block;
   letter-spacing: 0.04em;
   text-align: center;
   line-height: 0.92;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  width: 100%;
   max-width: 100%;
   margin: 0;
   color: #01796f;
@@ -250,7 +226,7 @@
 }
 #Login_loginLogo_cloneText {
   font-family: "Exo", sans-serif;
-  font-size: min(calc(var(--login-logo-main-size) * 0.4), 5.4cqi);
+  font-size: min(7.4cqi, 3.5rem);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -258,8 +234,9 @@
   align-self: center;
   width: 100%;
   max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   margin: 0;
   color: #15b9a8;
   text-shadow:
@@ -268,7 +245,7 @@
 }
 #Login_subLoginLogo_text {
   font-family: "Playwrite DK Uloopet Guides", cursive;
-  font-size: min(calc(var(--login-logo-main-size) * 0.1), 1.9cqi);
+  font-size: min(2.2cqi, 1.1rem);
   font-weight: 400;
   font-style: normal;
   color: var(black);
@@ -277,10 +254,9 @@
   align-self: center;
   width: 100%;
   max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
   white-space: nowrap;
-  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
   margin: 0;
 }
 
@@ -343,7 +319,7 @@
 @media screen and (min-width: 1001px) {
   #Login_main {
     display: grid;
-    grid-template-columns: minmax(240px, 0.78fr) minmax(320px, 0.98fr);
+    grid-template-columns: minmax(280px, 1.02fr) minmax(320px, 0.92fr);
     grid-auto-rows: minmax(0, 1fr);
     position: relative;
     align-items: stretch;
@@ -353,6 +329,12 @@
     margin: 0 auto;
     min-height: 0;
     height: 100%;
+  }
+
+  #Login_loginLogo_container {
+    align-items: stretch;
+    justify-content: center;
+    padding: 0;
   }
 
   #Login_main:not(.Login_main--reality-open) {
@@ -908,11 +890,6 @@
     top: 28px;
     left: 12px;
     transform: none;
-  }
-
-  #Login_logoRow {
-    align-items: center;
-    justify-content: flex-start;
   }
 
   #Login_logoStack {

@@ -22,76 +22,78 @@ const AppRouter = () => {
   }, []);
 
   return (
-    <Router>
-      <Switch>
-        <Route exact path="/">
-          {isAuthenticated ? (
-            <App key="app-home" path="/" onLogout={handleLogout} />
-          ) : (
-            <Login onLogin={handleLogin} onForceLogout={handleLogout} />
-          )}
-        </Route>
-        <Route path="/cooporation">
-          {isAuthenticated ? (
-            <App
-              key="app-cooporation"
-              path="/cooporation"
-              onLogout={handleLogout}
-            />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Route path="/study">
-          {isAuthenticated ? (
-            <App key="app-study" path="/study" onLogout={handleLogout} />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Route path="/studyplanner">
-          {isAuthenticated ? (
-            <App
-              key="app-studyplanner"
-              path="/studyplanner"
-              onLogout={handleLogout}
-            />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Route exact path="/phenomedsocial/ar">
-          {isAuthenticated ? (
-            <App
-              key="app-phenomedsocial-ar"
-              path="/phenomedsocial/ar"
-              onLogout={handleLogout}
-            />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Route exact path="/phenomedsocial">
-          {isAuthenticated ? (
-            <App
-              key="app-phenomedsocial"
-              path="/phenomedsocial"
-              onLogout={handleLogout}
-            />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Route path="/profile/:username">
-          {isAuthenticated ? (
-            <App key="app-profile" path="/profile" onLogout={handleLogout} />
-          ) : (
-            <Redirect to="/" />
-          )}
-        </Route>
-        <Redirect to="/" />
-      </Switch>
-    </Router>
+    <div id="App_viewportScale">
+      <Router>
+        <Switch>
+          <Route exact path="/">
+            {isAuthenticated ? (
+              <App key="app-home" path="/" onLogout={handleLogout} />
+            ) : (
+              <Login onLogin={handleLogin} onForceLogout={handleLogout} />
+            )}
+          </Route>
+          <Route path="/cooporation">
+            {isAuthenticated ? (
+              <App
+                key="app-cooporation"
+                path="/cooporation"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route path="/study">
+            {isAuthenticated ? (
+              <App key="app-study" path="/study" onLogout={handleLogout} />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route path="/studyplanner">
+            {isAuthenticated ? (
+              <App
+                key="app-studyplanner"
+                path="/studyplanner"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route exact path="/phenomedsocial/ar">
+            {isAuthenticated ? (
+              <App
+                key="app-phenomedsocial-ar"
+                path="/phenomedsocial/ar"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route exact path="/phenomedsocial">
+            {isAuthenticated ? (
+              <App
+                key="app-phenomedsocial"
+                path="/phenomedsocial"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route path="/profile/:username">
+            {isAuthenticated ? (
+              <App key="app-profile" path="/profile" onLogout={handleLogout} />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Redirect to="/" />
+        </Switch>
+      </Router>
+    </div>
   );
 };
 

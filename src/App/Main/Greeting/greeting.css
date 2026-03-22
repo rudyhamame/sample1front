@@ -14,6 +14,12 @@
     linear-gradient(180deg, #f7fbfc 0%, #edf6f6 48%, #e7f0f1 100%);
 }
 
+@media screen and (min-width: 1001px) {
+  #Greeting_studysessions_article {
+    min-height: calc(100dvh / 0.9);
+  }
+}
+
 #Greeting_studysessions_article.Greeting_themeDark {
   background:
     radial-gradient(circle at top left, rgba(20, 78, 88, 0.22), transparent 28%),
@@ -668,15 +674,17 @@
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
 }
 
 #Greeting_userMenu_div label,
 #Greeting_userMenu_div p {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.64rem;
   color: rgba(26, 59, 67, 0.82);
+  font-family: "IBM Plex Mono", monospace;
 }
 
 #Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_div label,
@@ -685,12 +693,39 @@
 }
 
 .Greeting_userMenu_contentDivs {
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(248, 251, 251, 0.88);
+}
+
+#Greeting_userMenu_personalInfo_div label:not(.Greeting_userMenu_title_label) {
+  flex: 0 0 88px;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(30, 82, 90, 0.68);
+  text-align: left;
+}
+
+#Greeting_userMenu_personalInfo_div p {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(22, 52, 59, 0.9);
+  text-align: left;
+  flex: 1 1 auto;
+}
+
+#Greeting_studysessions_article.Greeting_themeDark
+  #Greeting_userMenu_personalInfo_div
+  label:not(.Greeting_userMenu_title_label) {
+  color: rgba(182, 214, 221, 0.7);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Greeting_userMenu_personalInfo_div p {
+  color: rgba(236, 245, 247, 0.88);
 }
 
 #Greeting_studysessions_article.Greeting_themeDark .Greeting_userMenu_contentDivs {
@@ -702,9 +737,12 @@
   padding: 0;
   background: transparent;
   color: #0f7f78;
-  font-size: 0.8rem;
+  font-size: 0.62rem;
   font-weight: 700;
   cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 #Greeting_studysessions_article.Greeting_themeDark .Greeting_changePasswordToggle {
@@ -715,8 +753,9 @@
   margin: 12px 0 0;
   padding: 10px 12px;
   border-radius: 12px;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .Greeting_passwordFeedback--success {
@@ -751,12 +790,14 @@
 #Greeting_changePassword_form input {
   width: 100%;
   box-sizing: border-box;
-  padding: 11px 13px;
+  padding: 10px 12px;
   border: 1px solid rgba(124, 157, 165, 0.22);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(250, 252, 252, 0.94);
   color: rgba(26, 59, 67, 0.9);
-  font-size: 0.82rem;
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
   outline: none;
 }
 
@@ -773,7 +814,7 @@
 
 .Greeting_changePasswordSubmit {
   width: 100%;
-  padding: 11px 14px;
+  padding: 10px 12px;
   border: 1px solid rgba(15, 127, 120, 0.18);
   border-radius: 14px;
   background: linear-gradient(
@@ -782,8 +823,11 @@
     rgba(15, 162, 147, 0.98)
   );
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.62rem;
   font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   cursor: pointer;
 }
 

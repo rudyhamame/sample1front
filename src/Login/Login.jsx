@@ -41,13 +41,18 @@ const initialClinicalRealityHtml = [
   ...clinicalRealityParagraphs.map((paragraph) => `<p>${paragraph}</p>`),
 ].join("");
 const clinicalRealityPublicOwnerUsername = "rudyhamame";
-const loginAppLastUpdatedLabel = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-}).format(new Date("2026-03-22T12:00:00+03:00"));
+const formatAppLastUpdatedLabel = (value) =>
+  new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const loginAppLastUpdatedFallbackLabel = formatAppLastUpdatedLabel(
+  "2026-03-22T12:00:00+03:00"
+);
 
 const getStoredAuthState = () => {
   try {
@@ -138,6 +143,82 @@ const sanitizeClinicalRealityHtml = (html) => {
   return container.innerHTML;
 };
 
+const Login = ({ onLogin, onForceLogout }) => {
+  const articleRef = useRef(null);
+  const footerRef = useRef(null);
+  const loginFormRef = useRef(null);
+  const realityEditorRef = useRef(null);
+  const hasSyncedRealityEditorRef = useRef(false);
+  const hasCompletedClinicalRealityBootstrapRef = useRef(false);
+  const hasSkippedInitialClinicalRealityPersistRef = useRef(false);
+  const clinicalRealityBaselineRef = useRef(initialClinicalRealityHtml);
+  const [is_loading, setIs_loading] = useState(null);
+  const [signup_ok, setSignup_ok] = useState(null);
+  const [login_ok, setLogin_ok] = useState(null);
+  const [authReport, setAuthReport] = useState(null);
+  const [signupMessage, setSignupMessage] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
+  const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
+  const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(false);
+  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(
+    initialClinicalRealityHtml,
+  );
+  const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
+  const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
+  const [isHighlightEraseModeOn, setIsHighlightEraseModeOn] = useState(false);
+  const [hasRealitySelection, setHasRealitySelection] = useState(false);
+  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] = useState(null);
+  const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
+  const [savingDots, setSavingDots] = useState(".");
+  const [canPersistClinicalReality, setCanPersistClinicalReality] = useState(
+    Boolean(getStoredAuthState()?.token),
+  );
+  const [hasPendingAdminSave, setHasPendingAdminSave] = useState(false);
+  const [summaryInput, setSummaryInput] = useState("");
+  const [summaryReply, setSummaryReply] = useState("");
+  const [summaryError, setSummaryError] = useState("");
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [viewportSize, setViewportSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
+  const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
+    loginAppLastUpdatedFallbackLabel
+  );
+  const isWideLoginLayout = viewportSize.width > 1000;
+  const feedbackMessage =
+    (login_ok === false &&
+      "The password you entered is not correct, please try again") ||
+    (signup_ok === true &&
+      (signupMessage || "You have successfully signed up!")) ||
+    (signup_ok === false &&
+      (signupMessage || "Please make sure you entered valid information")) ||
+    (signup_ok === null && signupMessage) ||
+    null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch(apiUrl("/api/user/app-last-updated"))
+      .then((response) => response.json().catch(() => ({})))
+      .then((payload) => {
+        if (!isMounted || !payload?.committedAt) {
+          return;
+        }
+
+        setLoginAppLastUpdatedLabel(
+          formatAppLastUpdatedLabel(payload.committedAt)
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
 const buildEraserCursor = () => {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -180,58 +261,6 @@ const extractPlainTextFromHtml = (html) => {
   container.innerHTML = String(html || "");
   return (container.textContent || container.innerText || "").trim();
 };
-
-const Login = ({ onLogin, onForceLogout }) => {
-  const articleRef = useRef(null);
-  const footerRef = useRef(null);
-  const loginFormRef = useRef(null);
-  const realityEditorRef = useRef(null);
-  const hasSyncedRealityEditorRef = useRef(false);
-  const hasCompletedClinicalRealityBootstrapRef = useRef(false);
-  const hasSkippedInitialClinicalRealityPersistRef = useRef(false);
-  const clinicalRealityBaselineRef = useRef(initialClinicalRealityHtml);
-  const [is_loading, setIs_loading] = useState(null);
-  const [signup_ok, setSignup_ok] = useState(null);
-  const [login_ok, setLogin_ok] = useState(null);
-  const [authReport, setAuthReport] = useState(null);
-  const [signupMessage, setSignupMessage] = useState(null);
-  const [authMode, setAuthMode] = useState("login");
-  const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
-  const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
-  const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(false);
-  const [clinicalRealityHtml, setClinicalRealityHtml] = useState(
-    initialClinicalRealityHtml,
-  );
-  const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
-  const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
-  const [isHighlightEraseModeOn, setIsHighlightEraseModeOn] = useState(false);
-  const [hasRealitySelection, setHasRealitySelection] = useState(false);
-  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] = useState(null);
-  const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
-  const [savingDots, setSavingDots] = useState(".");
-  const [canPersistClinicalReality, setCanPersistClinicalReality] = useState(
-    Boolean(getStoredAuthState()?.token),
-  );
-  const [hasPendingAdminSave, setHasPendingAdminSave] = useState(false);
-  const [summaryInput, setSummaryInput] = useState("");
-  const [summaryReply, setSummaryReply] = useState("");
-  const [summaryError, setSummaryError] = useState("");
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [viewportSize, setViewportSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-  const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
-  const isWideLoginLayout = viewportSize.width > 1000;
-  const feedbackMessage =
-    (login_ok === false &&
-      "The password you entered is not correct, please try again") ||
-    (signup_ok === true &&
-      (signupMessage || "You have successfully signed up!")) ||
-    (signup_ok === false &&
-      (signupMessage || "Please make sure you entered valid information")) ||
-    (signup_ok === null && signupMessage) ||
-    null;
 
   useEffect(() => {
     const storedSession = readStoredSession();
@@ -1474,21 +1503,17 @@ const Login = ({ onLogin, onForceLogout }) => {
           id="Login_loginLogo_container"
           className={isClinicalRealityOpen && isWideLoginLayout ? "is-collapsed" : ""}
         >
-          <div id="Login_logoRow" className="fr">
-            <div id="Login_logoStack" className="fc">
-              <h1 id="Login_loginLogo_text">
-                <span className="Login_loginLogo_mark">H</span>
-                <span className="Login_loginLogo_divider" aria-hidden="true">
-                  &middot;
-                </span>
-                <span className="Login_loginLogo_name">MCTOS</span>
-              </h1>
-              <h2 id="Login_loginLogo_cloneText">PhenoMed</h2>
-              <h4 id="Login_subLoginLogo_text">
-                From Clinical-related Phenomena to Diagnosis
-              </h4>
-            </div>
-          </div>
+          <h1 id="Login_loginLogo_text">
+            <span className="Login_loginLogo_mark">H</span>
+            <span className="Login_loginLogo_divider" aria-hidden="true">
+              &middot;
+            </span>
+            <span className="Login_loginLogo_name">MCTOS</span>
+          </h1>
+          <h2 id="Login_loginLogo_cloneText">PhenoMed</h2>
+          <h4 id="Login_subLoginLogo_text">
+            From Clinical-related Phenomena to Diagnosis
+          </h4>
         </section>
         <section
           id="Login_loginForm_container"

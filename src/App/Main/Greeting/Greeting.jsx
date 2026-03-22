@@ -16,6 +16,9 @@ const Greeting = (props) => {
     message: "",
   });
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
+  const [loginLogEntries, setLoginLogEntries] = useState([]);
+  const [isLoginLogDeleting, setIsLoginLogDeleting] = useState(false);
+  const [loginLogError, setLoginLogError] = useState("");
   const [visitLogEntries, setVisitLogEntries] = useState([]);
   const [isVisitLogLoading, setIsVisitLogLoading] = useState(false);
   const [visitLogError, setVisitLogError] = useState("");
@@ -23,11 +26,17 @@ const Greeting = (props) => {
   const [loginLogIndex, setLoginLogIndex] = useState(0);
   const [visitLogIndex, setVisitLogIndex] = useState(0);
 
+  React.useEffect(() => {
+    setLoginLogEntries(
+      Array.isArray(props.state?.login_record) ? props.state.login_record : []
+    );
+  }, [props.state?.login_record]);
+
   const isVisitLogOwner =
     String(props.state?.username || "").toLowerCase() === "rudyhamame";
 
-  const loginRecords = Array.isArray(props.state.login_record)
-    ? [...props.state.login_record]
+  const loginRecords = Array.isArray(loginLogEntries)
+    ? [...loginLogEntries]
         .sort(
           (firstRecord, secondRecord) =>
             new Date(secondRecord.loggedInAt || 0).getTime() -
@@ -250,6 +259,49 @@ const Greeting = (props) => {
     }
   };
 
+  const clearLoginLog = async () => {
+    if (!props.state?.token || isLoginLogDeleting) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Do you want to delete all login log entries?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsLoginLogDeleting(true);
+    setLoginLogError("");
+
+    try {
+      const response = await fetch(apiUrl("/api/user/login-log"), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to delete the login log right now."
+        );
+      }
+
+      setLoginLogEntries([]);
+      setLoginLogIndex(0);
+    } catch (error) {
+      setLoginLogError(
+        error?.message || "Unable to delete the login log right now."
+      );
+    } finally {
+      setIsLoginLogDeleting(false);
+    }
+  };
+
   return (
     <article id="Greeting_studysessions_article" className="fc">
       <div id="Greeting_topControls" className="fr">
@@ -347,7 +399,13 @@ const Greeting = (props) => {
           </div>
         </div>
         <div id="Greeting_navWrap">
-          <Nav path="/" state={props.state} logOut={props.logOut} />
+          <Nav
+            path="/"
+            state={props.state}
+            logOut={props.logOut}
+            acceptFriend={props.acceptFriend}
+            makeNotificationsRead={props.makeNotificationsRead}
+          />
         </div>
       </div>
 
@@ -385,9 +443,23 @@ const Greeting = (props) => {
         </div>
         <div id="Greeting_preStart_reports" className="fc">
           <div id="Greeting_preStart_reportDiv" className="fc">
-            <h3>Log Record: Date and Time</h3>
+            <div className="Greeting_reportHeader fr">
+              <h3>Log Record: Date and Time</h3>
+              <button
+                type="button"
+                className="Greeting_reportDeleteButton"
+                onClick={clearLoginLog}
+                disabled={isLoginLogDeleting}
+                aria-label="Delete all login log entries"
+                title="Delete all login log entries"
+              >
+                <i className="fas fa-trash-alt"></i>
+              </button>
+            </div>
             <ul id="Greeting_studySessions_area" className="fc">
-              {activeLoginRecord === null ? (
+              {loginLogError ? (
+                <div>{loginLogError}</div>
+              ) : activeLoginRecord === null ? (
                 <div>No login records to show yet</div>
               ) : (
                 (() => {

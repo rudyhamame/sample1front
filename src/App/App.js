@@ -1413,9 +1413,19 @@ class App extends React.Component {
   };
   ////////////////////////Decline Request/////////////////////////////////////////////
 
-  makeNotificationsRead = (friend) => {
-    let friend_trim = friend.slice(12, friend.length);
-    let url = apiUrl("/api/user/notifications/") + friend_trim + "/read";
+  makeNotificationsRead = (notificationTarget) => {
+    const notificationId = String(notificationTarget || "").startsWith(
+      "decline_icon"
+    )
+      ? String(notificationTarget).slice(12)
+      : String(notificationTarget || "");
+
+    if (!notificationId) {
+      this.serverReply("Unable to dismiss notification.");
+      return Promise.resolve(false);
+    }
+
+    let url = apiUrl("/api/user/notifications/") + notificationId + "/read";
 
     let options = {
       method: "PUT",
@@ -1426,24 +1436,28 @@ class App extends React.Component {
       },
     };
     let req = new Request(url, options);
-    fetch(req).then((response) => {
-      const notificationRow = document.getElementById(friend_trim);
+    return fetch(req)
+      .then((response) => {
+        const notificationRow = document.getElementById(notificationId);
 
-      if (notificationRow) {
-        notificationRow.style.backgroundColor = "var(--black)";
-      }
+        if (notificationRow) {
+          notificationRow.style.backgroundColor = "var(--black)";
+        }
 
-      if (response.status === 200) {
-        this.markNotificationReadLocally(friend_trim);
-        this.hideNotificationRow(friend_trim);
-        this.serverReply("Done!");
-        return;
-      }
+        if (response.status === 200) {
+          this.markNotificationReadLocally(notificationId);
+          this.hideNotificationRow(notificationId);
+          this.serverReply("Done!");
+          return true;
+        }
 
-      this.serverReply("Unable to dismiss notification.");
-    }).catch(() => {
-      this.serverReply("Unable to dismiss notification.");
-    });
+        this.serverReply("Unable to dismiss notification.");
+        return false;
+      })
+      .catch(() => {
+        this.serverReply("Unable to dismiss notification.");
+        return false;
+      });
   };
 
   //////////////////////////////BUILD FRIENDS LIST////////////////
@@ -2150,12 +2164,17 @@ class App extends React.Component {
     return (
       <React.Fragment>
         <Route exact path="/">
-          <article id="app_page" className="fc">
-            <main id="Main_article" className="fr">
-              <Greeting state={this.state} logOut={this.logOut} />
-            </main>
-          </article>
-        </Route>
+            <article id="app_page" className="fc">
+              <main id="Main_article" className="fr">
+                <Greeting
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  makeNotificationsRead={this.makeNotificationsRead}
+                />
+              </main>
+            </article>
+          </Route>
         <Route path="/study">
           <article id="app_page" className="fc">
             <main id="Main_article" className="fr">

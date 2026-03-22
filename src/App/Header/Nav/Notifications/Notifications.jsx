@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 
 const Notifications = (props) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [dismissingId, setDismissingId] = useState("");
+  const [dismissingLabel, setDismissingLabel] = useState(".");
   const isControlled = typeof props.isOpen === "boolean";
   const isOpen = isControlled ? props.isOpen : internalIsOpen;
   const unreadNotifications = (props.state?.notifications || []).filter(
@@ -47,6 +49,40 @@ const Notifications = (props) => {
     updateOpenState(false);
   }
 
+  useEffect(() => {
+    if (!dismissingId) {
+      return undefined;
+    }
+
+    const labels = [".", "..", "..."];
+    let index = 0;
+
+    const intervalId = window.setInterval(() => {
+      index = (index + 1) % labels.length;
+      setDismissingLabel(labels[index]);
+    }, 280);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [dismissingId]);
+
+  const handleDismiss = (notificationId) => {
+    if (!notificationId || dismissingId) {
+      return;
+    }
+
+    setDismissingId(String(notificationId));
+    setDismissingLabel(".");
+
+    Promise.resolve(
+      props.makeNotificationsRead && props.makeNotificationsRead(notificationId)
+    ).finally(() => {
+      setDismissingId("");
+      setDismissingLabel(".");
+    });
+  };
+
   return (
     <section id="Notifications_article">
       <div id="Notification_icons_container">
@@ -84,17 +120,25 @@ const Notifications = (props) => {
                   <li id={notification._id || notification.id}>
                     <p>{notification.message}</p>
                   </li>
-                  <i
-                    id={`decline_icon${notification._id || notification.id}`}
-                    onClick={() =>
-                      props.makeNotificationsRead &&
-                      props.makeNotificationsRead(
-                        `decline_icon${notification._id || notification.id}`
-                      )
-                    }
-                    className="fas fa-times"
-                    title="Dismiss"
-                  ></i>
+                  {String(dismissingId) ===
+                  String(notification._id || notification.id) ? (
+                    <span
+                      className="Notifications_dismissLoading"
+                      aria-label="Dismissing notification"
+                      title="Dismissing notification"
+                    >
+                      {dismissingLabel}
+                    </span>
+                  ) : (
+                    <i
+                      id={`decline_icon${notification._id || notification.id}`}
+                      onClick={() =>
+                        handleDismiss(notification._id || notification.id)
+                      }
+                      className="fas fa-times"
+                      title="Dismiss"
+                    ></i>
+                  )}
                   {notification.type === "friend_request" ? (
                     <i
                       id={`accept_icon${notification.id}`}

@@ -23,6 +23,19 @@
     0 10px 22px rgba(90, 121, 130, 0.1);
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container,
+#PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container {
+  background: linear-gradient(
+    180deg,
+    rgba(22, 53, 61, 0.98),
+    rgba(15, 37, 43, 0.94)
+  );
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 24px rgba(0, 0, 0, 0.2);
+}
+
 #Notification_icons_container > i {
   align-items: center;
   justify-content: center;
@@ -34,9 +47,19 @@
   transition: color 160ms ease, transform 160ms ease;
 }
 
+#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container > i,
+#PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container > i {
+  color: rgba(226, 242, 244, 0.88);
+}
+
 #Notification_icons_container > i:hover {
   color: #0b6a64;
   transform: translateY(-1px);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container > i:hover,
+#PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container > i:hover {
+  color: #7ad5d8;
 }
 
 #Notifications_content_container {
@@ -113,6 +136,22 @@
   border: 1px solid rgba(118, 151, 160, 0.14);
 }
 
+.Notifications_dismissLoading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(246, 250, 250, 0.98);
+  border: 1px solid rgba(118, 151, 160, 0.14);
+  color: #0f7f78;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
 #Notifications_empty_state {
   justify-content: center;
   text-align: center;
@@ -145,6 +184,13 @@
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notifications_dropMenu_container i {
   background: rgba(32, 38, 42, 0.96);
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+#Greeting_studysessions_article.Greeting_themeDark .Notifications_dismissLoading,
+#PhenomedSocial_article.PhenomedSocial_themeDark .Notifications_dismissLoading {
+  background: rgba(32, 38, 42, 0.96);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(226, 242, 244, 0.88);
 }
 
 #Greeting_studysessions_article.Greeting_themeDark #Notifications_empty_state,
