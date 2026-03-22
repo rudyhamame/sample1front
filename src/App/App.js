@@ -70,6 +70,7 @@ class App extends React.Component {
     };
   }
   serverReplyTimeout = null;
+  notificationAudioContext = null;
   realtimeSocket = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
@@ -110,6 +111,10 @@ class App extends React.Component {
     if (this.serverReplyTimeout) {
       window.clearTimeout(this.serverReplyTimeout);
       this.serverReplyTimeout = null;
+    }
+    if (this.notificationAudioContext) {
+      this.notificationAudioContext.close().catch(() => null);
+      this.notificationAudioContext = null;
     }
     if (this.realtimeSocket) {
       this.realtimeSocket.disconnect();
@@ -1759,6 +1764,51 @@ class App extends React.Component {
       });
   };
 
+  playServerReplySound = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) {
+      return;
+    }
+
+    try {
+      if (!this.notificationAudioContext) {
+        this.notificationAudioContext = new AudioContextClass();
+      }
+
+      const context = this.notificationAudioContext;
+
+      if (context.state === "suspended") {
+        context.resume().catch(() => null);
+      }
+
+      const now = context.currentTime;
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(740, now);
+      oscillator.frequency.exponentialRampToValueAtTime(988, now + 0.18);
+
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.045, now + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.34);
+    } catch (error) {
+      console.log("server reply sound unavailable");
+    }
+  };
+
   //........Server answer..........
   serverReply = (answer) => {
     const nextAnswer = String(answer || "").trim() || "NO NEW SERVER REPLY";
@@ -1772,6 +1822,10 @@ class App extends React.Component {
       server_answer: nextAnswer,
       has_active_server_reply: isActiveReply,
     });
+
+    if (isActiveReply) {
+      this.playServerReplySound();
+    }
 
     this.serverReplyTimeout = window.setTimeout(() => {
       this.setState({
