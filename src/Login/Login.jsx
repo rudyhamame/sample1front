@@ -190,6 +190,7 @@ const Login = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("login");
   const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
   const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
+  const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(false);
   const [clinicalRealityHtml, setClinicalRealityHtml] = useState(
     initialClinicalRealityHtml,
   );
@@ -279,7 +280,8 @@ const Login = ({ onLogin }) => {
     }
 
     // Keep footer:rest-of-page at 1:6, so footer is 1/7 of total visible height.
-    const visibleFooterHeight = viewportSize.height / 7;
+    const visibleFooterHeight =
+      isClinicalRealityOpen && isWideLoginLayout ? 0 : viewportSize.height / 7;
     const scaledFooterHeight = visibleFooterHeight * zoomScale;
 
     articleRef.current.style.setProperty(
@@ -298,7 +300,7 @@ const Login = ({ onLogin }) => {
       "--login-footer-scale",
       `${1 / zoomScale}`,
     );
-  }, [viewportSize.height, zoomScale]);
+  }, [isClinicalRealityOpen, isWideLoginLayout, viewportSize.height, zoomScale]);
 
   useEffect(() => {
     if (!loginFormRef.current || isLoginTransitioning) {
@@ -709,6 +711,7 @@ const Login = ({ onLogin }) => {
               friend_requests: userdata.user.friend_requests,
               notifications: userdata.user.notifications,
               posts: userdata.user.posts,
+              login_record: userdata.user.login_record || [],
               courses: userdata.user.schoolPlanner.courses,
               lectures: userdata.user.schoolPlanner.lectures,
             };
@@ -1144,7 +1147,11 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <article id="Login_article" className="fc" ref={articleRef}>
+    <article
+      id="Login_article"
+      className={`fc${isClinicalRealityOpen && isWideLoginLayout ? " Login_article--reality-open" : ""}`}
+      ref={articleRef}
+    >
       <InspectionOverlay
         rootId="Login_article"
         debugClassName="Login_debugBordersOn"
@@ -1152,19 +1159,69 @@ const Login = ({ onLogin }) => {
         hoveredBadgeId="Login_hoveredIdBadge"
         copiedBadgeId="Login_copiedIdBadge"
       />
+      {!isClinicalRealityOpen && (
+        <button
+          id="Login_realityToggle"
+          type="button"
+          aria-label="Show clinical reality note"
+          aria-expanded={false}
+          onClick={() => {
+            if (isWideLoginLayout) {
+              setIsClinicalRealityOpen(true);
+            }
+          }}
+        >
+          <i className="fas fa-brain"></i>
+        </button>
+      )}
       <main
         id="Login_main"
         className={`fc${isClinicalRealityOpen ? " Login_main--reality-open" : ""}`}
       >
-        <section
-          id="Login_realityPanel"
-          className={isClinicalRealityOpen ? "is-open" : ""}
-          aria-hidden={!isClinicalRealityOpen}
+          <section
+            id="Login_realityPanel"
+            className={isClinicalRealityOpen ? "is-open" : ""}
+            aria-hidden={!isClinicalRealityOpen}
         >
-          <div id="Login_realityPanel_inner" className="fc">
-            <div id="Login_realityStickyHeader" className="fc">
-              <p id="Login_realityPanel_eyebrow">How I See The Clinical Reality</p>
-              <div id="Login_realityControls" className="fr">
+            <div id="Login_realityPanel_inner" className="fc">
+              <div id="Login_realityStickyHeader" className="fc">
+                <div id="Login_realityPanel_eyebrowRow" className="fr">
+                  <button
+                    id="Login_realityPanelBackButton"
+                    type="button"
+                    aria-label="Hide clinical reality note"
+                    onClick={() => setIsClinicalRealityOpen(false)}
+                  >
+                    <i className="fas fa-arrow-left"></i>
+                  </button>
+                  <p id="Login_realityPanel_eyebrow">How I See The Clinical Reality</p>
+                  <button
+                    id="Login_realityToolbarToggle"
+                    type="button"
+                    aria-label={
+                      isRealityToolbarOpen
+                        ? "Hide text editing tools"
+                        : "Show text editing tools"
+                    }
+                    aria-expanded={isRealityToolbarOpen}
+                    onClick={() =>
+                      setIsRealityToolbarOpen((currentValue) => !currentValue)
+                    }
+                  >
+                    <i
+                      className={
+                        isRealityToolbarOpen
+                          ? "fas fa-edit"
+                          : "far fa-edit"
+                      }
+                    ></i>
+                  </button>
+                </div>
+                <div
+                  id="Login_realityControls"
+                  className={`fr${isRealityToolbarOpen ? " is-open" : ""}`}
+                  aria-hidden={!isRealityToolbarOpen}
+                >
                 <button
                   type="button"
                   className="Login_realityControlButton"
@@ -1379,31 +1436,11 @@ const Login = ({ onLogin }) => {
             </p>
           </div>
         </section>
-        <section id="Login_loginLogo_container">
+        <section
+          id="Login_loginLogo_container"
+          className={isClinicalRealityOpen && isWideLoginLayout ? "is-collapsed" : ""}
+        >
           <div id="Login_logoRow" className="fr">
-            <button
-              id="Login_realityToggle"
-              type="button"
-              aria-label={
-                isClinicalRealityOpen
-                  ? "Hide clinical reality note"
-                  : "Show clinical reality note"
-              }
-              aria-expanded={isClinicalRealityOpen}
-              onClick={() => {
-                if (isWideLoginLayout) {
-                  setIsClinicalRealityOpen((currentValue) => !currentValue);
-                }
-              }}
-            >
-              <i
-                className={
-                  isClinicalRealityOpen
-                    ? "fas fa-chevron-left"
-                    : "fas fa-chevron-right"
-                }
-              ></i>
-            </button>
             <div id="Login_logoStack" className="fc">
               <h1 id="Login_loginLogo_text">
                 <span className="Login_loginLogo_mark">H</span>
@@ -1510,7 +1547,11 @@ const Login = ({ onLogin }) => {
           </section>
         </section>
       </main>
-      <footer id="Login_footer" ref={footerRef}>
+      <footer
+        id="Login_footer"
+        className={isClinicalRealityOpen && isWideLoginLayout ? "is-hidden" : ""}
+        ref={footerRef}
+      >
         <section id="Login_copyright_container">
           <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
           <p id="Login_poweredBy_text">

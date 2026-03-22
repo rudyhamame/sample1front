@@ -21,6 +21,7 @@
   --login-footer-height: calc(100dvh / 7);
   --login-hover-x: 0px;
   --login-hover-y: 0px;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -110,6 +111,8 @@
   justify-content: center;
   gap: 14px;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 #Login_logoStack {
@@ -118,6 +121,7 @@
   gap: 0;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -136,13 +140,22 @@
   );
   color: rgba(21, 84, 92, 0.88);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 12px 24px rgba(87, 118, 127, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(126, 151, 158, 0.12),
+    0 6px 14px rgba(87, 118, 127, 0.08);
   cursor: pointer;
+  z-index: 3;
 }
 
 #Login_realityToggle i {
   font-size: 0.92rem;
+}
+
+#Login_realityToggle:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(126, 151, 158, 0.14),
+    0 8px 16px rgba(87, 118, 127, 0.1);
 }
 #Login_loginLogo_container {
   --login-logo-main-size: clamp(3rem, 28cqi, 7.2rem);
@@ -153,12 +166,13 @@
   height: min-content;
   justify-content: flex-start;
   align-items: center;
-  width: auto;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   padding: 0 12px 12px;
   box-sizing: border-box;
   container-type: inline-size;
+  overflow: hidden;
 }
 
 /* Mode Navigation */
@@ -198,16 +212,19 @@
 /* Brand */
 #Login_loginLogo_text {
   font-family: "Arial Black", "Archivo Black", sans-serif;
-  font-size: min(var(--login-logo-main-size), 15cqi);
+  font-size: min(var(--login-logo-main-size), 12.5cqi);
   font-weight: 900;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
+  flex-wrap: wrap;
   column-gap: 0.16em;
+  row-gap: 0.06em;
   letter-spacing: 0.04em;
   text-align: center;
   line-height: 0.92;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   max-width: 100%;
   margin: 0;
   color: #01796f;
@@ -233,13 +250,16 @@
 }
 #Login_loginLogo_cloneText {
   font-family: "Exo", sans-serif;
-  font-size: min(calc(var(--login-logo-main-size) * 0.4), 6.2cqi);
+  font-size: min(calc(var(--login-logo-main-size) * 0.4), 5.4cqi);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-align: center;
   align-self: center;
+  width: 100%;
   max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   margin: 0;
   color: #15b9a8;
   text-shadow:
@@ -248,13 +268,17 @@
 }
 #Login_subLoginLogo_text {
   font-family: "Playwrite DK Uloopet Guides", cursive;
-  font-size: min(calc(var(--login-logo-main-size) * 0.1), 2.3cqi);
+  font-size: min(calc(var(--login-logo-main-size) * 0.1), 1.9cqi);
   font-weight: 400;
   font-style: normal;
   color: var(black);
   height: min-content;
   text-align: center;
   align-self: center;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   white-space: nowrap;
   max-width: 100%;
   margin: 0;
@@ -320,21 +344,44 @@
   #Login_main {
     display: grid;
     grid-template-columns: minmax(240px, 0.78fr) minmax(320px, 0.98fr);
+    grid-auto-rows: minmax(0, 1fr);
+    position: relative;
     align-items: stretch;
     justify-content: center;
     gap: 22px;
     width: min(100%, 1440px);
     margin: 0 auto;
+    min-height: 0;
+    height: 100%;
+  }
+
+  #Login_main:not(.Login_main--reality-open) {
+    align-items: center;
+  }
+
+  #Login_main:not(.Login_main--reality-open) #Login_loginLogo_container,
+  #Login_main:not(.Login_main--reality-open) #Login_loginForm_container {
+    align-self: center;
+    height: auto;
+  }
+
+  #Login_article.Login_article--reality-open #Login_main {
+    padding-top: 28px;
+    padding-bottom: 20px;
   }
 
   #Login_main.Login_main--reality-open {
-    grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   #Login_realityPanel {
     display: flex;
+    align-self: stretch;
     grid-column: 1;
+    flex: 1 1 auto;
     min-width: 0;
+    min-height: 0;
+    height: 100%;
     width: 0;
     max-width: 0;
     opacity: 0;
@@ -359,9 +406,13 @@
   #Login_realityPanel_inner {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    align-self: stretch;
     height: 100%;
-    min-height: 100%;
+    min-height: 0;
     max-height: 100%;
+    min-width: 0;
+    max-width: 100%;
     padding: 26px 24px;
     border-radius: 26px;
     border: 1px solid rgba(124, 157, 165, 0.18);
@@ -376,7 +427,7 @@
     justify-content: flex-start;
     align-items: stretch;
     gap: 12px;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   #Login_realityStickyHeader {
@@ -388,24 +439,45 @@
   }
 
   #Login_realityBody {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 3.1fr);
     align-items: stretch;
     gap: 14px;
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   #Login_summaryPanel {
-    flex: 0 0 320px;
-    min-width: 280px;
-    max-width: 360px;
+    display: flex;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
     min-height: 0;
+    max-width: 100%;
+    overflow: visible;
   }
 
   #Login_summaryPanel_inner {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    width: 100%;
     gap: 10px;
-    min-height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    position: sticky;
+    top: 92px;
     padding: 14px;
-    border-radius: 18px;
+    box-sizing: border-box;
+    border-radius: 18px 18px 22px 22px;
     border: 1px solid rgba(124, 157, 165, 0.2);
     background: linear-gradient(
       180deg,
@@ -437,8 +509,8 @@
     border: 1px solid rgba(124, 157, 165, 0.22);
     background: rgba(255, 255, 255, 0.96);
     color: rgba(26, 59, 67, 0.86);
-    font-size: 0.82rem;
-    line-height: 1.55;
+    font-size: 0.74rem;
+    line-height: 1.45;
     font-family: "IBM Plex Mono", monospace;
     outline: none;
   }
@@ -469,6 +541,8 @@
   #Login_summaryOutput {
     flex: 1 1 auto;
     min-height: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 12px;
     border-radius: 14px;
     border: 1px solid rgba(124, 157, 165, 0.18);
@@ -481,8 +555,8 @@
   #Login_summaryReply {
     margin: 0;
     color: rgba(26, 59, 67, 0.76);
-    font-size: 0.8rem;
-    line-height: 1.6;
+    font-size: 0.72rem;
+    line-height: 1.5;
     font-family: "IBM Plex Mono", monospace;
     white-space: pre-wrap;
   }
@@ -492,15 +566,52 @@
   }
 
   #Login_realityEditorColumn {
-    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     min-height: 0;
+    max-width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    padding-bottom: 4px;
+    box-sizing: border-box;
+  }
+
+  #Login_realityPanel_eyebrowRow {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 26px 24px 14px;
+    border-bottom: 1px solid rgba(124, 157, 165, 0.22);
+    background: transparent;
+  }
+
+  #Login_realityPanelBackButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(124, 157, 165, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: rgba(30, 82, 90, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    cursor: pointer;
+  }
+
+  #Login_realityPanelBackButton i {
+    font-size: 0.82rem;
   }
 
   #Login_realityPanel_eyebrow {
     margin: 0;
-    padding: 26px 24px 14px;
-    border-bottom: 1px solid rgba(124, 157, 165, 0.22);
+    padding: 0;
+    border-bottom: none;
     color: rgba(30, 82, 90, 0.64);
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -508,6 +619,27 @@
     font-weight: 700;
     font-family: "IBM Plex Mono", monospace;
     background: transparent;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  #Login_realityToolbarToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(124, 157, 165, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: rgba(30, 82, 90, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    cursor: pointer;
+  }
+
+  #Login_realityToolbarToggle i {
+    font-size: 0.82rem;
   }
 
   #Login_realityControls {
@@ -515,16 +647,32 @@
     align-items: center;
     gap: 6px;
     margin: 0;
-    padding: 8px 24px 10px;
-    border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+    max-height: 0;
+    padding: 0 24px;
+    border-bottom: 0 solid rgba(124, 157, 165, 0.14);
     background: transparent;
     overflow-x: hidden;
     overflow-y: hidden;
     scrollbar-width: none;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      max-height 180ms ease,
+      padding 180ms ease,
+      opacity 140ms ease,
+      border-bottom-width 180ms ease;
   }
 
   #Login_realityControls::-webkit-scrollbar {
     display: none;
+  }
+
+  #Login_realityControls.is-open {
+    max-height: 54px;
+    padding: 8px 24px 10px;
+    border-bottom-width: 1px;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .Login_realityControlButton,
@@ -675,13 +823,15 @@
     --login-reality-line-height: 2em;
     gap: 0;
     min-height: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     outline: none;
     color: rgba(26, 59, 67, 0.82);
     font-size: 9pt;
     line-height: var(--login-reality-line-height);
     font-family: "IBM Plex Mono", monospace;
     padding: 14px 14px 18px;
-    border-radius: 16px;
+    border-radius: 16px 16px 22px 22px;
     background-color: rgba(253, 252, 247, 0.96);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.92),
@@ -715,6 +865,9 @@
     padding: 10px 24px 26px;
     border-top: 1px solid rgba(124, 157, 165, 0.14);
     background: rgba(238, 246, 247, 1);
+    border-bottom-left-radius: 26px;
+    border-bottom-right-radius: 26px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
     color: rgba(30, 82, 90, 0.58);
     font-size: 0.7rem;
     line-height: 1.4;
@@ -725,20 +878,36 @@
 
   #Login_realityToggle {
     display: inline-flex;
-    flex: 0 0 auto;
+    position: absolute;
+    top: 50%;
+    left: max(12px, calc((100% - min(100%, 1440px)) / 2 - 8px));
+    transform: translateY(-50%);
+    margin-left: 0;
   }
 
   #Login_loginLogo_container {
+    --login-logo-main-size: clamp(2.4rem, 16cqi, 5rem);
     grid-column: 1;
     justify-content: center;
     height: 100%;
     min-width: 0;
+    min-height: 0;
     padding: 0;
     width: 100%;
+    max-width: min(100%, 34rem);
+    justify-self: center;
+    overflow: hidden;
   }
 
-  #Login_main.Login_main--reality-open #Login_loginLogo_container {
-    grid-column: 2;
+  #Login_main.Login_main--reality-open #Login_loginLogo_container,
+  #Login_loginLogo_container.is-collapsed {
+    display: none;
+  }
+
+  #Login_article.Login_article--reality-open #Login_realityToggle {
+    top: 28px;
+    left: 12px;
+    transform: none;
   }
 
   #Login_logoRow {
@@ -748,12 +917,17 @@
 
   #Login_logoStack {
     align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   #Login_loginForm_container {
     grid-column: 2;
     height: 100%;
     min-width: 0;
+    min-height: 0;
     padding: 0;
     width: 100%;
     justify-self: stretch;
@@ -847,6 +1021,10 @@
   box-sizing: border-box;
   transform: scale(var(--login-footer-scale));
   transform-origin: bottom center;
+}
+
+#Login_footer.is-hidden {
+  display: none;
 }
 
 #Login_copyright_text {

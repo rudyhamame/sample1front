@@ -38,7 +38,8 @@
   }
 
   #Login_loginForm_container {
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
     padding: 0;
   }
 

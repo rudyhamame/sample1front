@@ -1,7 +1,7 @@
 /*Nav*/
 #Nav_article i {
   font-size: 15pt;
-  color: rgba(38, 77, 89, 0.92);
+  color: #0f7f78;
   cursor: pointer;
   transition:
     color 160ms ease,
@@ -13,7 +13,9 @@
   gap: 24px;
   align-items: center;
   padding: 12px 14px;
-  border-radius: 999px;
+  min-height: 54px;
+  box-sizing: border-box;
+  border-radius: 18px;
   background: linear-gradient(
     180deg,
     rgba(248, 251, 252, 0.98),
@@ -24,7 +26,7 @@
 }
 
 #Nav_article i:hover {
-  color: #176673;
+  color: #0b6a64;
   transform: scale(0.96);
 }
 

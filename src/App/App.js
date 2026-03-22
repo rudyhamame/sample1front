@@ -56,6 +56,7 @@ class App extends React.Component {
         secs: 0,
       },
       study_session: null,
+      login_record: JSON.parse(sessionStorage.getItem("state")).login_record || [],
       profile: false,
       friendAddedSuccessfully: null,
       posts_updated: false,
@@ -1468,6 +1469,7 @@ class App extends React.Component {
           notifications: jsonData.notifications,
           terminology: jsonData.terminology,
           study_session: jsonData.study_session,
+          login_record: jsonData.login_record || [],
           isOnline: jsonData.isOnline,
         });
         for (var i = 0; i < jsonData.SchoolPlanner.courses.length; i++) {

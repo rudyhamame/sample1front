@@ -1,11 +1,298 @@
 #Greeting_studysessions_article {
+  position: relative;
   order: 2;
   width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  justify-content: center;
+  align-items: stretch;
+  overflow: auto;
+  background:
+    radial-gradient(circle at top left, rgba(34, 207, 187, 0.12), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(15, 162, 147, 0.12), transparent 24%),
+    linear-gradient(180deg, #f7fbfc 0%, #edf6f6 48%, #e7f0f1 100%);
+}
+
+#Greeting_topControls {
+  position: fixed;
+  top: 26px;
+  left: 30px;
+  right: 30px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+#Greeting_userMenuCluster,
+#Greeting_navWrap {
+  pointer-events: auto;
+}
+
+#Greeting_preStart {
+  width: min(100%, 1240px);
+  min-height: calc(100vh - 120px);
+  min-height: calc(100dvh - 120px);
+  margin: 0 auto;
+  padding: 108px 28px 54px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.8fr);
+  align-items: stretch;
+  gap: 26px;
+}
+
+#Greeting_preStart_intro,
+#Greeting_preStart_reportDiv {
+  min-width: 0;
+  border-radius: 30px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(244, 250, 249, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 22px 48px rgba(94, 124, 133, 0.1);
+}
+
+#Greeting_preStart_intro {
+  justify-content: center;
+  align-items: flex-start;
+  padding: 36px 38px;
+  gap: 18px;
+}
+
+#Greeting_preStart_eyebrow {
+  margin: 0;
+  color: rgba(30, 82, 90, 0.62);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+#Greeting_preStart h1 {
+  margin: 0;
+  color: #0f5058;
+  font-family: "Raleway", sans-serif;
+  font-size: clamp(2.4rem, 4.8vw, 4.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  background: transparent;
+}
+
+#Greeting_preStart_subtitle {
+  max-width: 34rem;
+  margin: 0;
+  color: rgba(26, 59, 67, 0.76);
+  font-size: clamp(1rem, 1.3vw, 1.08rem);
+  line-height: 1.75;
+}
+
+#Greeting_preStart_actions {
+  width: 100%;
+  max-width: 34rem;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 18px;
+  margin-top: 10px;
+}
+
+#Greeting_preStart_button1,
+#Greeting_preStart_button2,
+#Greeting_preStart_button3 {
+  flex: 1 1 0;
   justify-content: center;
   align-items: center;
-  background-color: var(--white);
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(34, 207, 187, 0.98), rgba(15, 162, 147, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 14px 28px rgba(15, 108, 113, 0.14);
+}
+
+#Greeting_preStart_button1 a,
+#Greeting_preStart_button2 a,
+#Greeting_preStart_button3 a {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  color: #fff;
+  text-decoration: none;
+  font-family: "Raleway", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.35;
+}
+
+#Greeting_preStart_button1 a i,
+#Greeting_preStart_button2 a i,
+#Greeting_preStart_button3 a i {
+  font-size: 1.3rem;
+}
+
+#Greeting_preStart_reportDiv {
+  padding: 28px 26px 24px;
+  gap: 14px;
+}
+
+#Greeting_preStart_reportDiv h3 {
+  margin: 0;
+  color: #0f5058;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#Greeting_studySessions_area {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: none;
+  margin: 0;
+  padding: 14px 0;
+  color: rgba(26, 59, 67, 0.82);
   overflow: auto;
-  height: 100vh;
+  border-top: 1px solid rgba(124, 157, 165, 0.14);
+  border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+}
+
+#Greeting_studySessions_area li {
+  list-style: none;
+}
+
+#Greeting_studySessions_area div {
+  padding: 16px;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(250, 252, 252, 0.88);
+  border: 1px dashed rgba(124, 157, 165, 0.22);
+}
+
+.Greeting_logRecordCard {
+  gap: 4px;
+}
+
+.Greeting_logRecordCard p {
+  margin: 0;
+  color: rgba(26, 59, 67, 0.8);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+#Greeting_totalDuration_li {
+  list-style: none;
+  margin: 0;
+  text-align: center;
+  color: rgba(30, 82, 90, 0.72);
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+#Greeting_userMenu_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(124, 157, 165, 0.2);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 252, 252, 0.98),
+    rgba(235, 244, 245, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 26px rgba(87, 118, 127, 0.12);
+}
+
+#Greeting_userMenu_i {
+  font-size: 28px;
+  color: #0f7f78;
+}
+
+#Greeting_userMenu_div {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  width: min(92vw, 310px);
+}
+
+#Greeting_navWrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+#Greeting_userMenu_content_div {
+  display: none;
+}
+
+#Greeting_userMenu_personalInfo_div {
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.97),
+    rgba(242, 248, 248, 0.95)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 22px 40px rgba(94, 124, 133, 0.14);
+}
+
+#Greeting_userMenu_personalInfo_content_div {
+  padding-top: 12px;
+  gap: 10px;
+}
+
+#Greeting_userMenu_personalInfo_div label,
+.Greeting_userMenu_title_label {
+  color: rgba(30, 82, 90, 0.76);
+}
+
+.Greeting_userMenu_title_label {
+  display: block;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+#Greeting_userMenu_div label,
+#Greeting_userMenu_div p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(26, 59, 67, 0.82);
+}
+
+.Greeting_userMenu_contentDivs {
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(248, 251, 251, 0.88);
 }
 
 #timer_container {
@@ -14,136 +301,25 @@
   padding: 10px;
 }
 
-#Greeting_studySessions_area {
-  color: var(--black);
-  overflow: auto;
-  max-height: 200px;
-  padding: 10px 0;
-}
-#Greeting_preStart_reportDiv {
-  padding: 20px;
-  text-align: center;
-}
-#Greeting_totalDuration_li {
-  font-size: 14pt;
-}
-#Greeting_studySessions_area div {
-  padding: 10px;
-  text-align: center;
-}
-
-#Greeting_preStart {
-  padding-top: 50px;
-  border-radius: 100px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-grow: 1;
-}
-#Greeting_preStart h1 {
-  font-family: "Raleway", sans-serif;
-  text-align: center;
-  font-size: 45pt;
-  padding: 10px;
-  background-color: white;
-}
-#Greeting_preStart h2 {
-  font-family: "Raleway", sans-serif;
-  padding: 10px;
-  text-align: center;
-  font-size: 30pt;
-  background-color: white;
-}
-#Greeting_preStart_button1,
-#Greeting_preStart_button2,
-#Greeting_preStart_button3 {
-  justify-content: center;
-  align-content: center;
-  gap: 10px;
-  font-family: "Roboto", sans-serif;
-  padding: 10px 20px;
-  text-align: center;
-  font-size: 14pt;
-  background-color: var(--blue4);
-  color: var(--white);
-  border-radius: 40px;
-  margin-top: 30px;
-}
-#Greeting_preStart_button1 a,
-#Greeting_preStart_button2 a,
-#Greeting_preStart_button3 a {
-  color: inherit;
-  text-decoration: none;
-}
-#Greeting_userMenu_personalInfo_content_div{
-  background-color: var(--white);
-  padding: 10px;
-  gap: 5px;
-}
-
-#Greeting_userMenu_personalInfo_div{
-  background-color: var(--white2);
-  padding: 10px;
-}
-#Greeting_userMenu_personalInfo_div label{
-  color: var(--special_black2);
-}
-.Greeting_userMenu_title_label{
-  color: var(--special_black2) !important;
-  text-align: center;
-}
-
-#Greeting_userMenu_div{
-  position: absolute;
-  top: 30px;
-  left: 50px;
-}
-#Greeting_userMenu_div label,
-#Greeting_userMenu_div p
-{
-font-size: 12px;
-color: var(--black2);
-}
-#Greeting_userMenu_button{
-  border: solid 4px var(--blue4) ;
-  padding: 5px;
-  width: min-content;
-  border-bottom-left-radius: 0px !important;
-  border-bottom-right-radius: 0px !important;
-  border-top-left-radius: 10px !important;
-  border-top-right-radius: 10px !important;
-  background-color: var(--white2);
-
-
-}
-#Greeting_userMenu_i{
-  font-size: 30px;
-  color: var(--blue4);
-}
-#Greeting_userMenu_content_div{
-  display: none;
-}
-.Greeting_userMenu_contentDivs{
-  gap: 10px;
-}
 #profile_pic input,
-#profile_pic button
-{
+#profile_pic button {
   font-size: 10px;
   padding: 5px;
 }
+
 input[type="file"] {
   display: none;
 }
+
 .custom-file-upload {
   display: inline-block;
   padding: 6px 12px;
   cursor: pointer;
   height: min-content;
   overflow: hidden;
-
 }
-.custom-file-upload_profilePic_div{
+
+.custom-file-upload_profilePic_div {
   overflow: hidden;
   width: 100px;
   height: 100px;
@@ -151,122 +327,97 @@ input[type="file"] {
   place-content: center;
   background-color: var(--special_black2);
   border-radius: 50%;
-
 }
-.custom-file-upload_profilePic{
+
+.custom-file-upload_profilePic {
   width: 100px;
 }
-#profile_pic_button{
+
+#profile_pic_button {
   height: min-content;
   background-color: var(--blue4);
   color: var(--white);
   font-size: 12px;
 }
-#profile_pic_i{
+
+#profile_pic_i {
   font-size: 20px;
   color: var(--blue4);
   position: absolute;
   bottom: 40px;
   right: 10px;
 }
-#profile_pic_section{
+
+#profile_pic_section {
   position: relative;
 }
 
-@media screen and (max-height: 700px) {
+@media screen and (max-width: 980px) {
   #Greeting_preStart {
-    transform: scale(0.8);
-  }
-  #Greeting_preStart h1 {
-    font-size: 30pt;
-  }
-  #Greeting_preStart h2 {
-    font-size: 20pt;
-  }
-  #Greeting_preStart_button {
-    font-size: 15pt;
-    white-space: nowrap;
-  }
-  #Greeting_studySessions_area div {
-    font-size: 10pt;
-  }
-  #Greeting_studySessions_area {
-    max-height: 150px;
-  }
-}
-@media screen and (max-height: 600px) {
-  #Greeting_preStart h1 {
-    font-size: 25pt;
-  }
-  #Greeting_preStart h2 {
-    font-size: 15pt;
-  }
-  #Greeting_preStart_button {
-    font-size: 10pt;
-    white-space: nowrap;
-  }
-  #Greeting_studySessions_area div {
-    font-size: 10pt;
-  }
-  #Greeting_studySessions_area {
-    max-height: 100px;
-  }
-  #i_nav_logout {
-    font-size: 14pt !important;
-  }
-}
-@media screen and (max-width: 1200px) {
-  #Greeting_preStart h1 {
-    font-size: 40pt;
-  }
-  #Greeting_preStart h2 {
-    font-size: 20pt;
-  }
-  #Greeting_preStart_button {
-    font-size: 14pt;
-    white-space: nowrap;
-  }
-  #Greeting_studySessions_area div {
-    font-size: 12pt;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 100px 20px 40px;
   }
 
-  #i_nav_logout {
-    font-size: 18pt !important;
+  #Greeting_preStart_intro,
+  #Greeting_preStart_reportDiv {
+    border-radius: 24px;
   }
-  #Greeting_studysessions_article {
+
+  #Greeting_preStart h1 {
+    font-size: clamp(2rem, 8vw, 3.2rem);
   }
-  #Greeting_preStart_reportDiv h3 {
-    font-size: 12pt;
-  }
-  #Greeting_totalDuration_li {
-    font-size: 12pt;
+
+  #Greeting_preStart_actions {
+    max-width: 100%;
   }
 }
 
 @media screen and (max-width: 600px) {
-  #Greeting_preStart h1 {
-    font-size: 25pt;
-  }
-  #Greeting_preStart h2 {
-    font-size: 16pt;
-  }
-  #Greeting_preStart_button {
-    font-size: 10pt;
-    white-space: nowrap;
-  }
-  #Greeting_studySessions_area div {
-    font-size: 10pt;
+  #Greeting_topControls {
+    top: 18px;
+    left: 18px;
+    right: 18px;
+    gap: 10px;
   }
 
-  #i_nav_logout {
-    font-size: 18pt !important;
+  #Greeting_userMenu_button {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
   }
-  #Greeting_studysessions_article {
+
+  #Greeting_userMenu_div {
+    width: min(92vw, 300px);
   }
-  #Greeting_preStart_reportDiv h3 {
-    font-size: 12pt;
+
+  #Greeting_preStart {
+    min-height: auto;
+    padding: 88px 14px 28px;
+    gap: 18px;
   }
-  #Greeting_totalDuration_li {
-    font-size: 12pt;
+
+  #Greeting_preStart_intro {
+    padding: 26px 22px;
+  }
+
+  #Greeting_preStart_reportDiv {
+    padding: 22px 18px 20px;
+  }
+
+  #Greeting_preStart_actions {
+    gap: 12px;
+  }
+
+  #Greeting_preStart_button1 a,
+  #Greeting_preStart_button2 a,
+  #Greeting_preStart_button3 a {
+    font-size: 0.76rem;
+    padding: 12px;
+  }
+
+  #Greeting_preStart_button1 a i,
+  #Greeting_preStart_button2 a i,
+  #Greeting_preStart_button3 a i {
+    font-size: 1.08rem;
   }
 }

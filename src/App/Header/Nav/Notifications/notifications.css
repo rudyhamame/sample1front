@@ -12,11 +12,15 @@
   width: 42px;
   height: 42px;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(24, 27, 30, 0.98), rgba(16, 18, 21, 0.99));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.98),
+    rgba(233, 241, 243, 0.98)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
   box-shadow:
-    inset 0 -10px 16px rgba(0, 0, 0, 0.28),
-    0 10px 22px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
 }
 
 #Notification_icons_container > i {
@@ -24,14 +28,14 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  color: rgba(240, 242, 245, 0.9);
+  color: #0f7f78;
   font-size: 0.96rem;
   cursor: pointer;
   transition: color 160ms ease, transform 160ms ease;
 }
 
 #Notification_icons_container > i:hover {
-  color: rgba(184, 244, 255, 0.96);
+  color: #0b6a64;
   transform: translateY(-1px);
 }
 
