@@ -69,6 +69,8 @@
   align-content: start;
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 #Greeting_preStart_intro,
@@ -106,7 +108,7 @@
   flex-direction: column;
   flex: 1 1 auto;
   position: relative;
-  z-index: 2;
+  z-index: 4;
   justify-content: center;
   align-items: flex-start;
   max-width: 100%;
@@ -173,6 +175,8 @@
   margin-top: 10px;
   min-width: 0;
   box-sizing: border-box;
+  position: relative;
+  z-index: 5;
 }
 
 #Greeting_preStart_actionsTitle {
@@ -203,7 +207,7 @@
 
 #Greeting_preStart_appList a {
   position: relative;
-  z-index: 3;
+  z-index: 6;
   pointer-events: auto;
   width: 100%;
   min-width: 0;
