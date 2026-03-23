@@ -1189,6 +1189,8 @@ class App extends React.Component {
     matchingMessages.forEach((message) => {
       const text = document.createElement("p");
       const time = document.createElement("span");
+      const meta = document.createElement("span");
+      const status = document.createElement("span");
       const li = document.createElement("li");
       const div = document.createElement("div");
       const messageDate = new Date(message.date);
@@ -1228,10 +1230,23 @@ class App extends React.Component {
       text.textContent = message.message;
       time.textContent = timestamp;
       time.className = "Chat_messageTimestamp";
+      meta.className = "Chat_messageMeta";
       li.setAttribute("dir", messageDirection);
       if (message.from === "me") {
         li.setAttribute("class", "sentMessagesLI");
         div.setAttribute("class", "sentMessagesDIV fc");
+        status.className = "Chat_messageStatus";
+
+        if (message.status === "read") {
+          status.textContent = ">>";
+          status.classList.add("Chat_messageStatus--read");
+        } else if (message.status === "received") {
+          status.textContent = ">>";
+          status.classList.add("Chat_messageStatus--received");
+        } else {
+          status.textContent = ">";
+          status.classList.add("Chat_messageStatus--sent");
+        }
       } else {
         li.setAttribute("class", "receivedMessagesLI");
         div.setAttribute("class", "receivedMessagesDIV fc");
@@ -1241,7 +1256,11 @@ class App extends React.Component {
       );
 
       li.appendChild(text);
-      li.appendChild(time);
+      meta.appendChild(time);
+      if (message.from === "me") {
+        meta.appendChild(status);
+      }
+      li.appendChild(meta);
       div.appendChild(li);
       ul.appendChild(div);
     });
@@ -2234,22 +2253,52 @@ class App extends React.Component {
   };
   //.....Reander Login HTML..........
   render() {
+    const serverAnswerFooter = (
+      <footer
+        id="server_answer"
+        className={
+          this.state.has_active_server_reply
+            ? "server_answer--active"
+            : ""
+        }
+      >
+        <span
+          id="server_answer_light"
+          className={
+            this.state.has_active_server_reply
+              ? "server_answer_light--active"
+              : ""
+          }
+          aria-hidden="true"
+        ></span>
+        <p
+          id="server_answer_message"
+          className={
+            this.state.server_answer === "NO NEW SERVER REPLY"
+              ? "server_answer_message--idle"
+              : ""
+          }
+        >
+          {this.state.server_answer}
+        </p>
+      </footer>
+    );
+
     return (
       <React.Fragment>
         <Route exact path="/">
-            <article id="app_page" className="fc">
-              <main id="Main_article" className="fr">
-                <Greeting
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  makeNotificationsRead={this.makeNotificationsRead}
-                  serverAnswer={this.state.server_answer}
-                  hasActiveServerReply={this.state.has_active_server_reply}
-                />
-              </main>
-            </article>
-          </Route>
+          <article id="app_page" className="fc">
+            <main id="Main_article" className="fr">
+              <Greeting
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+              />
+            </main>
+            {serverAnswerFooter}
+          </article>
+        </Route>
         <Route path="/study">
           <article id="app_page" className="fc">
             <main id="Main_article" className="fr">
@@ -2262,18 +2311,22 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />{" "}
             </main>
+            {serverAnswerFooter}
           </article>
         </Route>
         <Route path="/studyplanner">
-          <SchoolPlanner
-            state={this.state}
-            logOut={this.logOut}
-            acceptFriend={this.acceptFriend}
-            type={this.type}
-            show_profile={this.show_profile}
-            memory={this.memory}
-            serverReply={this.serverReply}
-          />
+          <article id="app_page" className="fc">
+            <SchoolPlanner
+              state={this.state}
+              logOut={this.logOut}
+              acceptFriend={this.acceptFriend}
+              type={this.type}
+              show_profile={this.show_profile}
+              memory={this.memory}
+              serverReply={this.serverReply}
+            />
+            {serverAnswerFooter}
+          </article>
         </Route>
         <Route path="/ecg">
           <article id="app_page" className="fc">
@@ -2286,6 +2339,7 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
+            {serverAnswerFooter}
           </article>
         </Route>
         <Route exact path="/phenomedsocial/ar">
@@ -2308,10 +2362,10 @@ class App extends React.Component {
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}
-                serverAnswer={this.state.server_answer}
-                hasActiveServerReply={this.state.has_active_server_reply}
+                serverReply={this.serverReply}
               />
             </main>
+            {serverAnswerFooter}
           </article>
         </Route>
         <Route exact path="/phenomedsocial">
@@ -2334,14 +2388,17 @@ class App extends React.Component {
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}
-                serverAnswer={this.state.server_answer}
-                hasActiveServerReply={this.state.has_active_server_reply}
+                serverReply={this.serverReply}
               />
             </main>
+            {serverAnswerFooter}
           </article>
         </Route>
         <Route path="/profile/:username">
-          <Profile viewerState={this.state} logOut={this.logOut} />
+          <article id="app_page" className="fc">
+            <Profile viewerState={this.state} logOut={this.logOut} />
+            {serverAnswerFooter}
+          </article>
         </Route>
         {this.state.app_is_loading && (
           <div

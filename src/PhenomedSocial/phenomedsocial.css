@@ -136,9 +136,8 @@
 
 #PhenomedSocial_article {
   position: relative;
-  min-height: 100vh;
-  min-height: 100svh;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   gap: 6px;
   padding: 8px;
@@ -640,105 +639,6 @@
   gap: 10px;
 }
 
-.PhenomedSocial_serverReply_footer {
-  display: none;
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(121, 154, 163, 0.16);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.76),
-    rgba(241, 247, 248, 0.92)
-  );
-  box-shadow: 0 14px 28px rgba(91, 121, 130, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-#PhenomedSocial_article.PhenomedSocial_themeDark .PhenomedSocial_serverReply_footer {
-  border-color: rgba(111, 166, 178, 0.14);
-  background: linear-gradient(
-    180deg,
-    rgba(10, 25, 31, 0.94),
-    rgba(12, 31, 38, 0.96)
-  );
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
-}
-
-.PhenomedSocial_serverReply_light {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
-  border-radius: 999px;
-  background: rgba(117, 141, 148, 0.34);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
-}
-
-#PhenomedSocial_article.PhenomedSocial_themeDark .PhenomedSocial_serverReply_light {
-  background: rgba(173, 201, 208, 0.24);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.PhenomedSocial_serverReply_light--active {
-  background: #21c86f;
-  box-shadow:
-    0 0 0 3px rgba(33, 200, 111, 0.14),
-    0 0 18px rgba(33, 200, 111, 0.48);
-  animation: PhenomedSocial_serverReplyBlink 0.9s ease-in-out infinite;
-}
-
-.PhenomedSocial_serverReply_message {
-  margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-  color: #46636b;
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.6;
-  letter-spacing: 0.01em;
-  text-align: left;
-  overflow-wrap: anywhere;
-  font-family: "IBM Plex Mono", monospace;
-}
-
-#PhenomedSocial_article.PhenomedSocial_themeDark .PhenomedSocial_serverReply_message {
-  color: rgba(226, 242, 244, 0.82);
-}
-
-.PhenomedSocial_serverReply_message--idle {
-  font-size: 0.64rem;
-  opacity: 0.72;
-}
-
-.PhenomedSocial--arabic .PhenomedSocial_serverReply_footer {
-  flex-direction: row-reverse;
-}
-
-.PhenomedSocial--arabic .PhenomedSocial_serverReply_message {
-  text-align: right;
-}
-
-@keyframes PhenomedSocial_serverReplyBlink {
-  0% {
-    opacity: 0.45;
-    transform: scale(0.94);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-
-  100% {
-    opacity: 0.45;
-    transform: scale(0.94);
-  }
-}
-
 #PhenomedSocial_article .PhenomedSocial_workspace > #Main_article {
   flex: 1;
 }
@@ -1079,6 +979,8 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  width: fit-content;
+  min-width: fit-content;
   gap: 10px;
 }
 
@@ -1142,10 +1044,12 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  width: fit-content;
+  min-width: fit-content;
   padding: 0;
   gap: 10px;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 #PhenomedSocial_article #FriendsList_friends_list li,
@@ -1614,13 +1518,21 @@
 
 #PhenomedSocial_article .Chat_messageTimestamp {
   display: block;
-  margin-top: -6px;
-  padding: 0 10px 3px;
+  margin-top: 0;
+  padding: 0;
   font-size: 0.5rem;
   line-height: 1.3;
   letter-spacing: 0.04em;
   opacity: 0.76;
   font-family: "IBM Plex Mono", monospace;
+}
+
+#PhenomedSocial_article .Chat_messageMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -6px;
+  padding: 0 10px 3px;
 }
 
 #PhenomedSocial_article .sentMessagesLI .Chat_messageTimestamp {
@@ -1637,6 +1549,27 @@
 
 #PhenomedSocial_article .Chat_message--ltr .Chat_messageTimestamp {
   text-align: left;
+}
+
+#PhenomedSocial_article .Chat_messageStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  font-size: 0.54rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+}
+
+#PhenomedSocial_article .Chat_messageStatus--sent,
+#PhenomedSocial_article .Chat_messageStatus--received {
+  color: rgba(92, 112, 118, 0.72);
+}
+
+#PhenomedSocial_article .Chat_messageStatus--read {
+  color: #1fb96b;
 }
 
 #PhenomedSocial_article #Chat_form {
@@ -2040,14 +1973,6 @@
   }
 }
 
-@media screen and (min-width: 1000px) {
-  .PhenomedSocial_serverReply_footer {
-    display: flex;
-    margin-top: auto;
-  }
-}
-
-
 @media screen and (min-width: 901px) and (max-width: 1200px) {
   #PhenomedSocial_article {
     padding: 10px;
@@ -2115,6 +2040,8 @@
 @media screen and (max-width: 900px) {
   #PhenomedSocial_article {
     width: 100%;
+    height: 100%;
+    min-height: 0;
     padding: 16px;
     transform: none;
   }
@@ -2233,18 +2160,6 @@
   .PhenomedSocial_notificationsCount,
   .PhenomedSocial_metricCard {
     min-width: 0;
-  }
-
-  .PhenomedSocial_serverReply_footer {
-    padding: 9px 12px 10px;
-  }
-
-  .PhenomedSocial_serverReply_message {
-    font-size: 0.72rem;
-  }
-
-  .PhenomedSocial_serverReply_message--idle {
-    font-size: 0.58rem;
   }
 
   #PhenomedSocial_article #MountPosts_content_container,

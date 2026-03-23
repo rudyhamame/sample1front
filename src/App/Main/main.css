@@ -1,5 +1,6 @@
 #Main_article {
   flex-grow: 1;
+  min-height: 0;
   width: 100%;
   order: 1;
   overflow: hidden;

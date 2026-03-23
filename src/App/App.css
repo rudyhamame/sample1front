@@ -14,6 +14,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Playwrite+DK+Uloopet+Guides&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 * {
   padding: 0;
   margin: 0;
@@ -71,6 +72,8 @@ body {
   --transient-surface-border: rgba(124, 157, 165, 0.22);
 }
 #root {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100svh;
   height: 100dvh;
@@ -83,6 +86,68 @@ body {
 #app_page {
   flex-grow: 1;
   overflow: hidden;
+}
+
+#server_answer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  max-height: none;
+  padding: 10px 24px 12px;
+  border-top: 1px solid rgba(124, 157, 165, 0.14);
+  background: rgba(238, 246, 247, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: rgba(30, 82, 90, 0.58);
+  justify-content: flex-start;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#server_answer_light {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 999px;
+  background: rgba(117, 141, 148, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+#server_answer_light.server_answer_light--active {
+  background: #21c86f;
+  box-shadow:
+    0 0 0 3px rgba(33, 200, 111, 0.14),
+    0 0 18px rgba(33, 200, 111, 0.48);
+  animation: App_serverReplyBlink 0.9s ease-in-out infinite;
+}
+
+#server_answer_message {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: rgba(30, 82, 90, 0.58);
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#server_answer_message.server_answer_message--idle {
+  font-size: 0.7rem;
+  opacity: 0.72;
 }
 /* ...........loader.............. */
 .loaderImg_div {
@@ -164,17 +229,27 @@ button:hover {
 }
 
 @media screen and (max-width: 1000px) {
+  #server_answer {
+    padding: 8px 14px 10px;
+  }
+
+  #server_answer_message {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+
+  #server_answer_message.server_answer_message--idle {
+    font-size: 0.62rem;
+  }
 }
 
 @media screen and (min-width: 1001px) {
   #App_viewportScale {
     display: flex;
     flex-direction: column;
-    width: calc(100% / 0.9);
-    height: calc(100dvh / 0.9);
-    min-height: calc(100dvh / 0.9);
-    transform: scale(0.9);
-    transform-origin: top left;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
   }
 
   #App_viewportScale > * {
@@ -247,6 +322,23 @@ button:hover {
   100% {
     -webkit-transform: translateY(0px);
     transform: translateY(0px);
+  }
+}
+
+@keyframes App_serverReplyBlink {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 0.45;
+    transform: scale(0.94);
   }
 }
 

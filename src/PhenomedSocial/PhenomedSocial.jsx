@@ -14,10 +14,6 @@ const PhenomedSocial = (props) => {
   const [viewportWidth, setViewportWidth] = React.useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
-  const serverReplyMessage =
-    String(props.serverAnswer || "").trim() || "NO NEW SERVER REPLY";
-  const isIdleServerReply = serverReplyMessage === "NO NEW SERVER REPLY";
-  const hasActiveServerReply = Boolean(props.hasActiveServerReply);
   const content = phenomedSocialEnglishContent;
   const unreadNotifications = (props.state?.notifications || []).filter(
     (notification) => notification.status !== "read"
@@ -266,23 +262,9 @@ const PhenomedSocial = (props) => {
           type={props.type}
           counter={props.counter}
           updateBeforeLeave={props.updateBeforeLeave}
+          serverReply={props.serverReply}
         />
       </section>
-      <footer className="PhenomedSocial_serverReply_footer">
-        <span
-          className={`PhenomedSocial_serverReply_light${
-            hasActiveServerReply ? " PhenomedSocial_serverReply_light--active" : ""
-          }`}
-          aria-hidden="true"
-        ></span>
-        <p
-          className={`PhenomedSocial_serverReply_message${
-            isIdleServerReply ? " PhenomedSocial_serverReply_message--idle" : ""
-          }`}
-        >
-          {serverReplyMessage}
-        </p>
-      </footer>
     </article>
   );
 };

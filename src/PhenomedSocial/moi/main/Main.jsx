@@ -35,6 +35,7 @@ const Main = (props) => {
         sendToThemMessage={props.sendToThemMessage}
         updateMyTypingPresence={props.updateMyTypingPresence}
         dbUpdate_user_connected={props.dbUpdate_user_connected}
+        serverReply={props.serverReply}
       />
     </main>
   );

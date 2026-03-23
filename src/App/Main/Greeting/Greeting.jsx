@@ -4,10 +4,6 @@ import React, { useState } from "react";
 import { apiUrl } from "../../../config/api";
 
 const Greeting = (props) => {
-  const serverReplyMessage =
-    String(props.serverAnswer || "").trim() || "NO NEW SERVER REPLY";
-  const isIdleServerReply = serverReplyMessage === "NO NEW SERVER REPLY";
-  const hasActiveServerReply = Boolean(props.hasActiveServerReply);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
   const [passwordFields, setPasswordFields] = useState({
@@ -646,19 +642,6 @@ const Greeting = (props) => {
           ) : null}
         </div>
       </section>
-      <footer id="Greeting_serverReply_footer">
-        <span
-          id="Greeting_serverReply_light"
-          className={hasActiveServerReply ? "Greeting_serverReply_light--active" : ""}
-          aria-hidden="true"
-        ></span>
-        <p
-          id="Greeting_serverReply_message"
-          className={isIdleServerReply ? "Greeting_serverReply_message--idle" : ""}
-        >
-          {serverReplyMessage}
-        </p>
-      </footer>
     </article>
   );
 };

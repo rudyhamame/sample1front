@@ -104,23 +104,11 @@ class Friends extends React.Component {
     fetch(req).then((response) => {
       if (response.status === 201) {
         response.json().then((result) => {
-          document.getElementById("server_answer").style.width = "fit-content";
-          document.getElementById("server_answer_message").textContent =
-            result.message;
-          setTimeout(() => {
-            document.getElementById("server_answer").style.width = "0";
-            document.getElementById("server_answer_message").textContent = "";
-          }, 5000);
+          this.props.serverReply?.(result.message || "Friend request sent.");
         });
-        document.getElementById(friend_username).children[1].remove(); //So the icon will disappear
+        document.getElementById(friend_username)?.children[1]?.remove(); //So the icon will disappear
       } else {
-        document.getElementById("server_answer").style.width = "fit-content";
-        document.getElementById("server_answer_message").textContent =
-          "Request failed";
-        setTimeout(() => {
-          document.getElementById("server_answer").style.width = "0";
-          document.getElementById("server_answer_message").textContent = "";
-        }, 5000);
+        this.props.serverReply?.("Request failed");
       }
     });
   };
