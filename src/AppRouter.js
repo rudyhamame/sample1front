@@ -61,6 +61,13 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
+          <Route path="/ecg">
+            {isAuthenticated ? (
+              <App key="app-ecg" path="/ecg" onLogout={handleLogout} />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
           <Route exact path="/phenomedsocial/ar">
             {isAuthenticated ? (
               <App

@@ -1122,3 +1122,194 @@ justify-content: space-between;
     left:50%;
     padding: 10px;
 }
+
+/* Visual refresh */
+#schoolPlanner_article {
+    --planner-ink: #16333a;
+    --planner-accent: #1f6a70;
+    --planner-accent-soft: #e7f4f3;
+    --planner-surface: #f7fbfb;
+    --planner-card: #ffffff;
+    --planner-border: rgba(22, 51, 58, 0.12);
+    --planner-shadow: 0 18px 38px rgba(20, 48, 52, 0.08);
+    background:
+      radial-gradient(circle at top left, rgba(110, 176, 163, 0.10), transparent 24%),
+      linear-gradient(180deg, #f8fcfc 0%, #edf6f5 100%);
+}
+
+#schoolPlanner_article,
+#schoolPlanner_article input,
+#schoolPlanner_article select,
+#schoolPlanner_article textarea,
+#schoolPlanner_article button {
+    font-family: "IBM Plex Mono", monospace;
+}
+
+#schoolPlanner_courses_aside,
+#schoolPlanner_lectures_section,
+#schoolPlanner_plan_wrapper {
+    background: transparent;
+}
+
+#schoolPlanner_coursesDoor_div,
+#schoolPlanner_planDoor_div {
+    background: var(--planner-accent);
+    border-radius: 16px;
+    box-shadow: var(--planner-shadow);
+}
+
+#schoolPlanner_courses_nav,
+#schoolPlanner_lectures_nav,
+#schoolPlanner_lectures_tableLabels_section,
+#schoolPlanner_courses_ulLabels_div {
+    background: var(--planner-ink);
+}
+
+#schoolPlanner_courses_nav button,
+#schoolPlanner_lectures_nav button {
+    background: transparent;
+    color: #f5fbfb;
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+    min-height: 42px;
+    transition: background-color 160ms ease;
+}
+
+#schoolPlanner_courses_nav button:hover,
+#schoolPlanner_lectures_nav button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#schoolPlanner_courses_select,
+#schoolPlanner_courses_details_div,
+.schoolPlanner_lectures_li,
+.schoolPlanner_courses_li,
+.schoolPlanner_plan_days_div,
+#schoolPlanner_addLecture_div,
+#schoolPlanner_addCourse_div {
+    background: var(--planner-card);
+    border: 1px solid var(--planner-border);
+    box-shadow: var(--planner-shadow);
+}
+
+#schoolPlanner_courses_select {
+    border-radius: 16px;
+    color: var(--planner-ink);
+    background: #ffffff;
+}
+
+#schoolPlanner_courses_details_div {
+    border-radius: 20px;
+}
+
+.schoolPlanner_lectures_li,
+.schoolPlanner_courses_li {
+    border-radius: 18px;
+    color: var(--planner-ink);
+}
+
+#schoolPlanner_lectures_section ul li p,
+.schoolPlanner_courseDetail_row p,
+#schoolPlanner_courses_emptyState,
+#schoolPlanner_courses_examEmpty,
+#schoolPlanner_addCourse_exams_ul p,
+#schoolPlanner_addLecture_outlines_ul p,
+#schoolPlanner_addCourse_instructorsNames_ul p,
+#schoolPlanner_addCourse_dayAndTime_ul p {
+    color: var(--planner-ink);
+}
+
+.schoolPlanner_courses_sectionTitle,
+.schoolPlanner_courseDetail_row p:first-child,
+.schoolPlanner_addCourse_examFieldLabel {
+    color: var(--planner-accent);
+}
+
+#schoolPlanner_courses_actions button,
+#schoolPlanner_addCourse_addButton_label,
+#schoolPlanner_addCourse_closeButton,
+#schoolPlanner_addCourse_dayAndTime_label,
+#schoolPlanner_addCourse_exam_label,
+#schoolPlanner_addCourse_instructorsNames_div > div:last-child,
+#schoolPlanner_addLecture_addButton_label,
+#schoolPlanner_addLecture_div > label:first-child,
+#schoolPlanner_addLecture_outlines_div > div:last-child {
+    background: var(--planner-accent);
+    color: #ffffff;
+}
+
+#schoolPlanner_addCourse_div,
+#schoolPlanner_addLecture_div {
+    color: var(--planner-ink);
+    border-radius: 24px;
+}
+
+#schoolPlanner_addCourse_div input,
+#schoolPlanner_addCourse_div select,
+#schoolPlanner_addCourse_div textarea,
+#schoolPlanner_addLecture_div input,
+#schoolPlanner_addLecture_div select,
+#schoolPlanner_addLecture_div textarea {
+    background: var(--planner-surface);
+    color: var(--planner-ink);
+    border: 1px solid rgba(31, 106, 112, 0.16);
+}
+
+#schoolPlanner_addCourse_exam_input_section > div:first-child,
+#schoolPlanner_addCourse_dayAndTime_input_section > div:first-child,
+#schoolPlanner_addCourse_instructorName_section {
+    background: #ffffff;
+    border-color: rgba(31, 106, 112, 0.16);
+    box-shadow: none;
+}
+
+#schoolPlanner_addCourse_dayAndTime_ul,
+#schoolPlanner_addCourse_exams_ul,
+#schoolPlanner_addLecture_outlines_ul,
+#schoolPlanner_addCourse_instructorsNames_ul {
+    background: var(--planner-surface);
+}
+
+.schoolPlanner_addCourse_exams_div {
+    border-bottom-color: rgba(31, 106, 112, 0.12);
+}
+
+#schoolPlanner_lectures_num_div,
+#schoolPlanner_courses_refresh_div,
+.div_progression,
+.div_partOfPlan {
+    background: var(--planner-accent-soft);
+    color: var(--planner-ink);
+    border-radius: 16px;
+}
+
+#schoolPlanner_lectures_num_div p,
+#schoolPlanner_courses_refresh_i,
+#schoolPlanner_planDoor_div i {
+    color: var(--planner-accent);
+}
+
+.div_indicator_progression {
+    background: var(--planner-accent);
+}
+
+.div_indicatorBox_progression {
+    border-color: rgba(31, 106, 112, 0.18);
+}
+
+#schoolPlanner_plan_days_wrapper {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.schoolPlanner_plan_days_div {
+    height: auto;
+    min-height: 300px;
+    border: 1px solid rgba(31, 106, 112, 0.18);
+    border-radius: 22px;
+    box-shadow: var(--planner-shadow);
+}
+
+.ul_pages_finished p {
+    border-color: rgba(31, 106, 112, 0.24);
+    border-radius: 12px;
+    background: #ffffff;
+}

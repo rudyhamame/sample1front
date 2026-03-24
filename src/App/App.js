@@ -67,11 +67,13 @@ class App extends React.Component {
       image: null,
       server_answer: "NO NEW SERVER REPLY",
       has_active_server_reply: false,
+      backend_health_status: "checking",
     };
   }
   serverReplyTimeout = null;
   notificationAudioContext = null;
   realtimeSocket = null;
+  backendHealthPollInterval = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -90,6 +92,11 @@ class App extends React.Component {
     });
     this.updateUserInfo();
     this.connectRealtime();
+    this.pollBackendHealth();
+    this.backendHealthPollInterval = window.setInterval(
+      this.pollBackendHealth,
+      30000,
+    );
     window.addEventListener("pagehide", this.handlePageHide);
     window.addEventListener("beforeunload", this.handleBeforeUnload);
   }
@@ -100,7 +107,8 @@ class App extends React.Component {
     if (
       this.state.friendID_selected &&
       (prevState.chat !== this.state.chat ||
-        prevState.friendID_selected !== this.state.friendID_selected)
+        prevState.friendID_selected !== this.state.friendID_selected ||
+        prevState.friendTypingPresence !== this.state.friendTypingPresence)
     ) {
       this.RetrievingMySendingMessages(this.state.friendID_selected);
     }
@@ -119,6 +127,10 @@ class App extends React.Component {
     if (this.realtimeSocket) {
       this.realtimeSocket.disconnect();
       this.realtimeSocket = null;
+    }
+    if (this.backendHealthPollInterval) {
+      window.clearInterval(this.backendHealthPollInterval);
+      this.backendHealthPollInterval = null;
     }
     // if (this.props.path === "/study") {
     //   let input = window.confirm(
@@ -141,6 +153,29 @@ class App extends React.Component {
     logoutStoredSession({
       clear: false,
     });
+  };
+
+  pollBackendHealth = () => {
+    fetch(apiUrl("/api/health"), {
+      method: "GET",
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        const nextStatus = String(payload?.status || "").trim().toLowerCase();
+
+        if (!response.ok) {
+          throw new Error(nextStatus || "offline");
+        }
+
+        this.setState({
+          backend_health_status: nextStatus || "healthy",
+        });
+      })
+      .catch(() => {
+        this.setState({
+          backend_health_status: "offline",
+        });
+      });
   };
 
   //......MAKE YOURSELF AVAILABLE TO CHAT......
@@ -1157,8 +1192,11 @@ class App extends React.Component {
   };
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
   RetrievingMySendingMessages = (friend_id) => {
-    const ul = document.getElementById("Chat_messages");
-    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+      const ul = document.getElementById("Chat_messages");
+      const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+      const friendReadyToReply = Boolean(
+        this.state.friendTypingPresence?.[friend_id]
+      );
 
     if (!ul || !friend_id) {
       return;
@@ -1232,22 +1270,26 @@ class App extends React.Component {
       time.className = "Chat_messageTimestamp";
       meta.className = "Chat_messageMeta";
       li.setAttribute("dir", messageDirection);
-      if (message.from === "me") {
-        li.setAttribute("class", "sentMessagesLI");
-        div.setAttribute("class", "sentMessagesDIV fc");
-        status.className = "Chat_messageStatus";
+        if (message.from === "me") {
+          li.setAttribute("class", "sentMessagesLI");
+          div.setAttribute("class", "sentMessagesDIV fc");
+          status.className = "Chat_messageStatus";
 
         if (message.status === "read") {
-          status.textContent = ">>";
+          status.textContent = "✓✓";
           status.classList.add("Chat_messageStatus--read");
         } else if (message.status === "received") {
-          status.textContent = ">>";
+          status.textContent = "✓✓";
           status.classList.add("Chat_messageStatus--received");
+          } else {
+            status.textContent = "✓";
+            status.classList.add("Chat_messageStatus--sent");
+          }
+
+          if (friendReadyToReply) {
+            status.classList.add("Chat_messageStatus--replying");
+          }
         } else {
-          status.textContent = ">";
-          status.classList.add("Chat_messageStatus--sent");
-        }
-      } else {
         li.setAttribute("class", "receivedMessagesLI");
         div.setAttribute("class", "receivedMessagesDIV fc");
       }
@@ -2262,6 +2304,18 @@ class App extends React.Component {
             : ""
         }
       >
+        <span
+          id="server_answer_backend_status"
+          className={`server_answer_backend_status--${this.state.backend_health_status}`}
+        >
+          {this.state.backend_health_status === "checking"
+            ? "BACKEND CHECKING"
+            : this.state.backend_health_status === "healthy"
+              ? "BACKEND HEALTHY"
+              : this.state.backend_health_status === "degraded"
+                ? "BACKEND DEGRADED"
+                : "BACKEND OFFLINE"}
+        </span>
         <span
           id="server_answer_light"
           className={

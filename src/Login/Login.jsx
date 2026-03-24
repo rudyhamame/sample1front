@@ -155,6 +155,7 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
+  const [loginMessage, setLoginMessage] = useState(null);
   const [authReport, setAuthReport] = useState(null);
   const [signupMessage, setSignupMessage] = useState(null);
   const [authMode, setAuthMode] = useState("login");
@@ -190,7 +191,7 @@ const Login = ({ onLogin, onForceLogout }) => {
   const isWideLoginLayout = viewportSize.width > 1000;
   const feedbackMessage =
     (login_ok === false &&
-      "The password you entered is not correct, please try again") ||
+      (loginMessage || "The password you entered is not correct, please try again")) ||
     (signup_ok === true &&
       (signupMessage || "You have successfully signed up!")) ||
     (signup_ok === false &&
@@ -725,6 +726,7 @@ const extractPlainTextFromHtml = (html) => {
   const formControl = (text) => {
     setAuthMode(text);
     setLogin_ok(null);
+    setLoginMessage(null);
     setSignup_ok(null);
     setSignupMessage(null);
   };
@@ -736,6 +738,7 @@ const extractPlainTextFromHtml = (html) => {
 
     if (Login_password_input.value && Login_username_input.value) {
       setIs_loading(true);
+      setLoginMessage(null);
       let url = apiUrl("/api/user/login/");
       let req = new Request(url, {
         method: "POST",
@@ -754,10 +757,14 @@ const extractPlainTextFromHtml = (html) => {
             return response.json(response);
           }
           if (response.status === 401) {
+            setLoginMessage("The password you entered is not correct, please try again");
             setLogin_ok(false);
             setIs_loading(false);
             return response.json(response);
           }
+          throw new Error(
+            "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+          );
         })
         .then((userdata) => {
           if (userdata && login === true) {
@@ -797,14 +804,24 @@ const extractPlainTextFromHtml = (html) => {
                 setIsClinicalRealitySaving(false);
                 setCanPersistClinicalReality(true);
                 setAuthReport(nextAuthReport);
+                setLoginMessage(null);
                 setLogin_ok(true);
               });
           } else {
+            setLoginMessage("The password you entered is not correct, please try again");
             setLogin_ok(false);
             setIs_loading(false);
           }
+        })
+        .catch(() => {
+          setLoginMessage(
+            "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+          );
+          setLogin_ok(false);
+          setIs_loading(false);
         });
     } else {
+      setLoginMessage("The password you entered is not correct, please try again");
       setLogin_ok(false);
       setIs_loading(false);
     }

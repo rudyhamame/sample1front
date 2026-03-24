@@ -140,6 +140,24 @@ const FriendChat = ({
     }
   };
 
+  const handleTextareaFocus = () => {
+    if (!state?.activeChatFriendId || !updateMyTypingPresence) {
+      return;
+    }
+
+    updateMyTypingPresence(state.activeChatFriendId, true);
+  };
+
+  const handleTextareaBlur = (event) => {
+    resetChatTextareaHeight(event.target);
+
+    if (!state?.activeChatFriendId || !updateMyTypingPresence) {
+      return;
+    }
+
+    updateMyTypingPresence(state.activeChatFriendId, false);
+  };
+
   return (
     <section id="FriendChat_article" className="fc">
       <div id="FriendChat_content_container" className="fc">
@@ -246,6 +264,8 @@ const FriendChat = ({
                   id="Chat_textarea_input"
                   placeholder={chatContent?.inputPlaceholder || "Write a message"}
                   rows="1"
+                  onFocus={handleTextareaFocus}
+                  onBlur={handleTextareaBlur}
                   onChange={handleTypingChange}
                   onInput={(event) => {
                     resizeChatTextarea(event.target);

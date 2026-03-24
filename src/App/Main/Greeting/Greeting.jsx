@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import Nav from "../../Header/Nav/Nav";
 import React, { useState } from "react";
 import { apiUrl } from "../../../config/api";
 
 const Greeting = (props) => {
+  const history = useHistory();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
   const [passwordFields, setPasswordFields] = useState({
@@ -427,10 +428,14 @@ const Greeting = (props) => {
                 </Link>
               </li>
               <li>
-                <Link to="/ecg">
+                <button
+                  type="button"
+                  className="Greeting_preStart_linkButton"
+                  onClick={() => history.push("/ecg")}
+                >
                   <i className="fas fa-heartbeat"></i>
                   <span>PhenoMed ECG</span>
-                </Link>
+                </button>
               </li>
               <li>
                 <Link to="/studyplanner">

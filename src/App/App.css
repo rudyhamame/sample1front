@@ -128,6 +128,40 @@ body {
   animation: App_serverReplyBlink 0.9s ease-in-out infinite;
 }
 
+#server_answer_backend_status {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(248, 251, 251, 0.92);
+  color: rgba(30, 82, 90, 0.72);
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#server_answer_backend_status.server_answer_backend_status--healthy {
+  color: #116a4d;
+  border-color: rgba(17, 106, 77, 0.22);
+  background: rgba(232, 247, 240, 0.96);
+}
+
+#server_answer_backend_status.server_answer_backend_status--degraded,
+#server_answer_backend_status.server_answer_backend_status--checking {
+  color: #8b6507;
+  border-color: rgba(139, 101, 7, 0.18);
+  background: rgba(250, 245, 223, 0.96);
+}
+
+#server_answer_backend_status.server_answer_backend_status--offline {
+  color: #9a2d1a;
+  border-color: rgba(154, 45, 26, 0.2);
+  background: rgba(252, 236, 232, 0.96);
+}
+
 #server_answer_message {
   margin: 0;
   flex: 1 1 auto;
@@ -231,6 +265,11 @@ button:hover {
 @media screen and (max-width: 1000px) {
   #server_answer {
     padding: 8px 14px 10px;
+  }
+
+  #server_answer_backend_status {
+    font-size: 0.54rem;
+    padding: 2px 6px;
   }
 
   #server_answer_message {

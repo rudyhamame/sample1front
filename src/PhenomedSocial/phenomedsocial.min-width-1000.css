@@ -1,12 +1,12 @@
 @media screen and (min-width: 1000px) {
   #PhenomedSocial_article {
-    gap: 14px;
-    padding: 14px 16px 16px;
+    gap: 18px;
+    padding: 18px;
   }
 
   .PhenomedSocial_intro {
-    gap: 14px;
-    padding: 18px 20px;
+    gap: 18px;
+    padding: 22px;
     border-radius: 24px;
   }
 
@@ -20,16 +20,16 @@
     flex: 1 1 auto;
     min-width: 0;
     max-width: 760px;
-    gap: 10px;
+    gap: 12px;
   }
 
   .PhenomedSocial_headingCopy h1 {
-    font-size: clamp(1.45rem, 1.9vw, 2.2rem);
+    font-size: clamp(1.45rem, 1.9vw, 2.35rem);
   }
 
   .PhenomedSocial_headingCopy p {
-    font-size: 0.84rem;
-    line-height: 1.55;
+    font-size: 0.8rem;
+    line-height: 1.65;
   }
 
   .PhenomedSocial_doctorName {
@@ -44,11 +44,12 @@
   }
 
   .PhenomedSocial_headerAside > #Nav_article {
-    align-self: flex-end;
+    align-self: flex-start;
     justify-content: flex-start;
-    gap: 8px;
-    width: min-content;
-    padding: 10px 12px;
+    gap: 0;
+    width: auto;
+    min-width: 0;
+    padding: 0;
     border-radius: 18px;
   }
 
@@ -58,7 +59,7 @@
     justify-content: center;
     gap: 6px;
     min-width: 0;
-    height: 34px;
+    height: 42px;
     padding: 0 14px;
   }
 
@@ -77,7 +78,7 @@
 
   .PhenomedSocial_metrics .PhenomedSocial_notificationsCount {
     min-width: 0;
-    padding: 10px 12px;
+    padding: 14px;
     border-radius: 16px;
   }
 
@@ -86,32 +87,32 @@
   }
 
   .PhenomedSocial_metrics .PhenomedSocial_notificationsCount strong {
-    font-size: 1.08rem;
+    font-size: 1.18rem;
   }
 
   #PhenomedSocial_article #Main_article {
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    gap: 14px;
+    gap: 18px;
     height: 100%;
   }
 
   #PhenomedSocial_article #Terminology_article {
-    flex: 0 0 260px;
-    width: 260px;
-    min-width: 260px;
+    flex: 0 0 280px;
+    width: 280px;
+    min-width: 280px;
   }
 
   #PhenomedSocial_article #Friends_article {
-    flex: 0 0 auto;
-    width: fit-content;
-    min-width: fit-content;
-    max-width: 100%;
+    flex: 0 0 360px;
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
   }
 
   #PhenomedSocial_article #Posts_article {
-    flex: 1 1 min(620px, 100%);
+    flex: 1 1 auto;
     min-width: 0;
   }
 
@@ -138,7 +139,7 @@
   }
 
   #PhenomedSocial_article #Terminology_title {
-    padding: 10px 12px;
+    padding: 12px 14px;
     font-size: 0.7rem;
   }
 
@@ -151,7 +152,7 @@
   }
 
   #PhenomedSocial_article #MountPosts_content_container {
-    gap: 12px;
+    gap: 10px;
   }
 
   #PhenomedSocial_article #MountPosts_content_container p,
