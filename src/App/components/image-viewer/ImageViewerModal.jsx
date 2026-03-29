@@ -119,9 +119,9 @@ const ImageViewerModal = ({
                 position: "absolute",
                 left: 0,
                 top: 0,
-                width: '100%',
-                height: '100%',
-                touchAction: 'none',
+                width: "100%",
+                height: "100%",
+                touchAction: "none",
                 borderRadius: "18px",
                 zIndex: 2,
               }}
