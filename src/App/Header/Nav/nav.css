@@ -13,10 +13,9 @@
   width: min-content;
   gap: 24px;
   align-items: center;
-  height: 54px;
   padding: 0 14px;
   box-sizing: border-box;
-  border-radius: 18px;
+  border-radius: 18px 18px 0px 0px;
   background: linear-gradient(
     180deg,
     rgba(248, 251, 252, 0.98),
@@ -35,6 +34,26 @@
   border: none;
   background: transparent;
   color: inherit;
+}
+
+#app_page.app_page--has-background-pattern #Nav_article {
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 14px 28px rgba(156, 97, 84, 0.14);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article i {
+  color: var(--home-pattern-button-icon);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article i:hover {
+  color: var(--home-pattern-button-hover-text);
 }
 
 @media screen and (max-width: 1200px) {

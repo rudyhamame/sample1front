@@ -58,20 +58,20 @@
 
   #Login_loginFrom_form input,
   #Login_loginFrom_form button {
-    min-height: 24px;
-    font-size: 0.52rem;
-    padding: 4px 6px;
+    min-height: 36px;
+    font-size: 0.9rem;
+    padding: 8px 10px;
   }
 
   #Login_modeNav h4 {
-    font-size: 8px;
-    padding: 4px 3px 5px;
+    font-size: 0.85rem;
+    padding: 8px 6px 9px;
   }
 
   #Login_loginFrom_form h4,
   #Login_feedback_text {
-    font-size: 0.5rem;
-    line-height: 1.15;
+    font-size: 0.85rem;
+    line-height: 1.35;
   }
 
   #Login_feedback_text {

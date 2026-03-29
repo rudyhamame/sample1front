@@ -8,15 +8,39 @@ import "./phenomedsocial.css";
 import "./phenomedsocial.max-width-500.css";
 import "./phenomedsocial.min-width-1000.css";
 
+const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
+  "phenomedSocial_chat_messages_background";
+
+const buildChatBackgroundLayerValue = (rawValue) => {
+  const normalizedValue = String(rawValue || "").trim();
+
+  if (!normalizedValue) {
+    return "";
+  }
+
+  return `url("${normalizedValue.replace(/"/g, '\\"')}")`;
+};
+
 const PhenomedSocial = (props) => {
   const [activePanel, setActivePanel] = React.useState("home");
-  const [showNotificationsPage, setShowNotificationsPage] = React.useState(false);
+  const [showNotificationsPage, setShowNotificationsPage] =
+    React.useState(false);
   const [viewportWidth, setViewportWidth] = React.useState(
-    typeof window !== "undefined" ? window.innerWidth : 1200
+    typeof window !== "undefined" ? window.innerWidth : 1200,
   );
+  const [chatMessagesBackgroundUrl, setChatMessagesBackgroundUrl] =
+    React.useState(() => {
+      if (typeof window === "undefined") {
+        return "";
+      }
+
+      return String(
+        window.localStorage.getItem(PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY) || "",
+      ).trim();
+    });
   const content = phenomedSocialEnglishContent;
   const unreadNotifications = (props.state?.notifications || []).filter(
-    (notification) => notification.status !== "read"
+    (notification) => notification.status !== "read",
   );
 
   const openPostsView = () => {
@@ -104,6 +128,44 @@ const PhenomedSocial = (props) => {
     };
   }, []);
 
+  React.useEffect(() => {
+    const articleElement = document.getElementById("PhenomedSocial_article");
+    if (!articleElement) {
+      return undefined;
+    }
+
+    const layerValue = buildChatBackgroundLayerValue(chatMessagesBackgroundUrl);
+
+    if (layerValue) {
+      articleElement.style.setProperty(
+        "--phenomed-chat-messages-custom-bg",
+        layerValue,
+      );
+    } else {
+      articleElement.style.removeProperty("--phenomed-chat-messages-custom-bg");
+    }
+
+    return () => {
+      articleElement.style.removeProperty("--phenomed-chat-messages-custom-bg");
+    };
+  }, [chatMessagesBackgroundUrl]);
+
+  React.useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY) {
+        return;
+      }
+
+      setChatMessagesBackgroundUrl(String(event.newValue || "").trim());
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
   const togglePrimaryPanel = () => {
     if (activePanel === "home") {
       openFriendsView();
@@ -162,25 +224,27 @@ const PhenomedSocial = (props) => {
                         <p>{notification.message}</p>
                       </div>
                       <div className="fr PhenomedSocial_notificationActions">
-                          <button
-                            type="button"
-                            className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--dismiss"
-                            onClick={() =>
-                              props.makeNotificationsRead &&
-                              props.makeNotificationsRead(
-                                notification._id || notification.id
-                              )
-                            }
-                          >
-                            Dismiss
-                          </button>
+                        <button
+                          type="button"
+                          className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--dismiss"
+                          onClick={() =>
+                            props.makeNotificationsRead &&
+                            props.makeNotificationsRead(
+                              notification._id || notification.id,
+                            )
+                          }
+                        >
+                          Dismiss
+                        </button>
                         {notification.type === "friend_request" ? (
                           <button
                             type="button"
                             className="PhenomedSocial_notificationButton PhenomedSocial_notificationButton--accept"
                             onClick={() =>
                               props.acceptFriend &&
-                              props.acceptFriend(`accept_icon${notification.id}`)
+                              props.acceptFriend(
+                                `accept_icon${notification.id}`,
+                              )
                             }
                           >
                             Accept
@@ -270,4 +334,3 @@ const PhenomedSocial = (props) => {
 };
 
 export default PhenomedSocial;
-

@@ -1,5 +1,10 @@
 import React, { useCallback, useState } from "react";
-import { BrowserRouter as Router, Redirect, Route, Switch } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Redirect,
+  Route,
+  Switch,
+} from "react-router-dom";
 import App from "./App/App";
 import Login from "./Login/Login";
 import { clearStoredSession, readStoredSession } from "./utils/sessionCleanup";
@@ -50,11 +55,33 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
-          <Route path="/studyplanner">
+          <Route path="/phenomed/schoolplanner/nogaplan">
+            {isAuthenticated ? (
+              <App
+                key="app-nogaplan"
+                path="/phenomed/schoolplanner/nogaplan"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route exact path="/phenomed/schoolplanner/ar">
+            {isAuthenticated ? (
+              <App
+                key="app-studyplanner-ar"
+                path="/phenomed/schoolplanner/ar"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route path="/phenomed/schoolplanner">
             {isAuthenticated ? (
               <App
                 key="app-studyplanner"
-                path="/studyplanner"
+                path="/phenomed/schoolplanner"
                 onLogout={handleLogout}
               />
             ) : (

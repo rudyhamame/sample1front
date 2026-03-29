@@ -1,4 +1,4 @@
-#Notifications_article {
+﻿#Notifications_article {
   position: relative;
   display: flex;
   align-items: center;
@@ -23,7 +23,19 @@
     0 10px 22px rgba(90, 121, 130, 0.1);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container,
+#app_page.app_page--has-background-pattern #Notification_icons_container {
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#Home_studysessions_article.Home_themeDark #Notification_icons_container,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container {
   background: linear-gradient(
     180deg,
@@ -47,7 +59,11 @@
   transition: color 160ms ease, transform 160ms ease;
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container > i,
+#app_page.app_page--has-background-pattern #Notification_icons_container > i {
+  color: var(--home-pattern-button-icon);
+}
+
+#Home_studysessions_article.Home_themeDark #Notification_icons_container > i,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container > i {
   color: rgba(226, 242, 244, 0.88);
 }
@@ -57,7 +73,11 @@
   transform: translateY(-1px);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notification_icons_container > i:hover,
+#app_page.app_page--has-background-pattern #Notification_icons_container > i:hover {
+  color: var(--home-pattern-button-hover-text);
+}
+
+#Home_studysessions_article.Home_themeDark #Notification_icons_container > i:hover,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notification_icons_container > i:hover {
   color: #7ad5d8;
 }
@@ -66,7 +86,7 @@
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  z-index: 25;
+  z-index: 1200;
 }
 
 #Notifications_dropMenu_container {
@@ -90,6 +110,19 @@
     0 24px 48px rgba(90, 121, 130, 0.16);
 }
 
+#app_page.app_page--has-background-pattern #Notifications_dropMenu_container {
+  color: var(--home-pattern-button-text);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 242, 0.98),
+    rgba(250, 236, 227, 0.98)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 24px 48px rgba(156, 97, 84, 0.2);
+}
+
 #Notifications_dropMenu_container li {
   width: 100%;
   padding: 14px 16px;
@@ -102,6 +135,13 @@
   background: rgba(246, 250, 250, 0.98);
   border: 1px solid rgba(118, 151, 160, 0.14);
   box-shadow: 0 12px 22px rgba(90, 121, 130, 0.1);
+}
+
+#app_page.app_page--has-background-pattern #Notifications_dropMenu_container li {
+  color: var(--home-pattern-button-text);
+  background: rgba(255, 248, 243, 0.96);
+  border-color: rgba(215, 140, 121, 0.34);
+  box-shadow: 0 12px 22px rgba(156, 97, 84, 0.14);
 }
 
 #Notifications_dropMenu_container li p {
@@ -136,6 +176,12 @@
   border: 1px solid rgba(118, 151, 160, 0.14);
 }
 
+#app_page.app_page--has-background-pattern #Notifications_dropMenu_container i {
+  background: rgba(255, 248, 243, 0.96);
+  border-color: rgba(215, 140, 121, 0.34);
+  color: var(--home-pattern-button-icon);
+}
+
 .Notifications_dismissLoading {
   display: inline-flex;
   align-items: center;
@@ -152,13 +198,23 @@
   letter-spacing: 0.06em;
 }
 
+#app_page.app_page--has-background-pattern .Notifications_dismissLoading {
+  background: rgba(255, 248, 243, 0.96);
+  border-color: rgba(215, 140, 121, 0.34);
+  color: var(--home-pattern-button-icon);
+}
+
 #Notifications_empty_state {
   justify-content: center;
   text-align: center;
   color: rgba(21, 57, 64, 0.62);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notifications_dropMenu_container,
+#app_page.app_page--has-background-pattern #Notifications_empty_state {
+  color: rgba(104, 60, 49, 0.66);
+}
+
+#Home_studysessions_article.Home_themeDark #Notifications_dropMenu_container,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notifications_dropMenu_container {
   color: rgba(240, 242, 245, 0.94);
   background: linear-gradient(
@@ -172,7 +228,7 @@
     0 24px 48px rgba(0, 0, 0, 0.34);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notifications_dropMenu_container li,
+#Home_studysessions_article.Home_themeDark #Notifications_dropMenu_container li,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notifications_dropMenu_container li {
   color: rgba(240, 242, 245, 0.94);
   background: rgba(30, 36, 40, 0.95);
@@ -180,20 +236,20 @@
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.16);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notifications_dropMenu_container i,
+#Home_studysessions_article.Home_themeDark #Notifications_dropMenu_container i,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notifications_dropMenu_container i {
   background: rgba(32, 38, 42, 0.96);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark .Notifications_dismissLoading,
+#Home_studysessions_article.Home_themeDark .Notifications_dismissLoading,
 #PhenomedSocial_article.PhenomedSocial_themeDark .Notifications_dismissLoading {
   background: rgba(32, 38, 42, 0.96);
   border-color: rgba(255, 255, 255, 0.08);
   color: rgba(226, 242, 244, 0.88);
 }
 
-#Greeting_studysessions_article.Greeting_themeDark #Notifications_empty_state,
+#Home_studysessions_article.Home_themeDark #Notifications_empty_state,
 #PhenomedSocial_article.PhenomedSocial_themeDark #Notifications_empty_state {
   color: rgba(240, 242, 245, 0.68);
 }
@@ -216,3 +272,4 @@
     width: min(320px, 88vw);
   }
 }
+

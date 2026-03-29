@@ -3,6 +3,7 @@ import Dim from "./Dim/Dim";
 import Logout from "./Logout/Logout";
 import Notifications from "./Notifications/Notifications";
 import Refresh from "./Refresh/Refresh";
+import SubApps from "./SubApps/SubApps";
 
 const Nav = (props) => {
   return (
@@ -24,6 +25,7 @@ const Nav = (props) => {
             </button>
           ))
         : null}
+      <SubApps subApps={props.subApps} />
       <Logout logOut={props.logOut} />
       <Notifications
         state={props.state}

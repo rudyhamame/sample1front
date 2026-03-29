@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 const Dim = () => {
   const syncIcons = (isDark) => {
@@ -24,14 +24,14 @@ const Dim = () => {
     return true;
   };
 
-  const toggleGreetingTheme = (isDark) => {
-    const article = document.getElementById("Greeting_studysessions_article");
+  const toggleHomeTheme = (isDark) => {
+    const article = document.getElementById("Home_studysessions_article");
 
     if (!article) {
       return false;
     }
 
-    article.classList.toggle("Greeting_themeDark", isDark);
+    article.classList.toggle("Home_themeDark", isDark);
     return true;
   };
 
@@ -42,7 +42,7 @@ const Dim = () => {
       return;
     }
 
-    if (toggleGreetingTheme(true)) {
+    if (toggleHomeTheme(true)) {
       return;
     }
 
@@ -73,7 +73,7 @@ const Dim = () => {
       return;
     }
 
-    if (toggleGreetingTheme(false)) {
+    if (toggleHomeTheme(false)) {
       return;
     }
 
@@ -114,3 +114,4 @@ const Dim = () => {
 };
 
 export default Dim;
+

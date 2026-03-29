@@ -287,8 +287,8 @@
 }
 
 #Login_loginFrom_form {
-  --login-form-text-size: clamp(9.5pt, 1vw, 10.5pt);
-  --login-form-strong-text-size: clamp(10pt, 1.1vw, 11pt);
+  --login-form-text-size: 0.95rem;
+  --login-form-strong-text-size: 0.98rem;
   justify-content: center;
   align-items: center;
   gap: clamp(8px, 1.2vh, 10px);
@@ -920,7 +920,7 @@
   font-size: var(--login-form-text-size);
   width: 100%;
   box-sizing: border-box;
-  min-height: clamp(38px, 4.2vh, 42px);
+  min-height: 42px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(1, 121, 111, 0.2);
@@ -935,7 +935,7 @@
   font-weight: bold;
   font-size: var(--login-form-strong-text-size);
   width: 100%;
-  min-height: clamp(38px, 4.2vh, 42px);
+  min-height: 42px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     inset 0 -2px 0 rgba(10, 116, 105, 0.26),

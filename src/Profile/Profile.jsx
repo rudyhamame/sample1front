@@ -85,6 +85,19 @@ const Profile = ({ viewerState, logOut }) => {
             backgroundColor: "var(--white2)",
           }}
         >
+          {profile?.profilePicture ? (
+            <img
+              src={profile.profilePicture}
+              alt={`${profile.firstname} ${profile.lastname}`}
+              style={{
+                width: "104px",
+                height: "104px",
+                borderRadius: "24px",
+                objectFit: "cover",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
+              }}
+            />
+          ) : null}
           <p style={{ margin: 0, color: "var(--black2)" }}>Doctor profile</p>
           <h1 style={{ margin: 0 }}>
             {profile ? `Dr. ${profile.firstname} ${profile.lastname}` : "Profile"}

@@ -1,7 +1,6 @@
 //..............IMPORT................
 import React, { Component } from "react";
 import "./schoolPlanner.css";
-import { fas } from "@fortawesome/free-solid-svg-icons";
 import { apiUrl } from "../../../../../config/api";
 //.........VARIABLES................
 var courses = [];
@@ -154,6 +153,135 @@ const getCourseDueText = (course) => {
 
 //..................................
 
+const COURSE_PRINT_SOUND_START_OFFSET = 0.109;
+const COURSE_PRINT_SOUND_BASE_DURATION = 26.204;
+const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
+const NAGHAM_COURSE_LIST_STORAGE_KEY = "schoolPlanner_nagham_course_list";
+const SCHOOLPLANNER_MUSIC_STORAGE_KEY = "schoolPlanner_music_archive_items";
+const DEFAULT_NAGHAM_COURSE_LETTER =
+  "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
+const TELEGRAM_DISPLAY_TIMEZONE = "Asia/Damascus";
+const INTERNET_ARCHIVE_CLASSICAL_ITEMS = [
+  {
+    identifier: "MoonlightSonata_755",
+    fallbackTitle: "Moonlight Sonata",
+    fallbackCreator: "Beethoven",
+  },
+  {
+    identifier: "fur-elise-by-beethoven-beethoven",
+    fallbackTitle: "Fur Elise",
+    fallbackCreator: "Beethoven",
+  },
+  {
+    identifier: "gymnopedie-no.-1",
+    fallbackTitle: "Gymnopedie No. 1",
+    fallbackCreator: "Erik Satie",
+  },
+  {
+    identifier: "NocturneCSharpMinor",
+    fallbackTitle: "Nocturne in C# Minor",
+    fallbackCreator: "Chopin",
+  },
+];
+
+const buildInternetArchiveDownloadUrl = (identifier, fileName) =>
+  `https://archive.org/download/${encodeURIComponent(identifier)}/${encodeURIComponent(fileName)}`;
+
+const getInternetArchivePlayableFile = (files = []) => {
+  const preferredFile = files.find((file) => {
+    const format = String(file?.format || "").toLowerCase();
+    const name = String(file?.name || "").toLowerCase();
+
+    return (
+      name.endsWith(".mp3") &&
+      !name.endsWith(".zip") &&
+      !name.endsWith(".m3u") &&
+      (format.includes("vbr mp3") ||
+        format.includes("192kbps mp3") ||
+        format.includes("64kbps mp3") ||
+        format.includes("mp3"))
+    );
+  });
+
+  return preferredFile || null;
+};
+
+const buildInternetArchiveSearchUrl = (queryText) => {
+  const normalizedQuery = String(queryText || "").trim();
+  const searchQuery = `mediatype:audio AND collection:opensource_audio AND (${[
+    `identifier:"${normalizedQuery}"`,
+    `title:"${normalizedQuery}"`,
+    `subject:"${normalizedQuery}"`,
+    `creator:"${normalizedQuery}"`,
+  ].join(" OR ")})`;
+
+  return `https://archive.org/advancedsearch.php?q=${encodeURIComponent(
+    searchQuery,
+  )}&fl[]=identifier,title,creator&sort[]=downloads desc&rows=1&page=1&output=json`;
+};
+
+const buildResolvedArchiveTrack = (item, payload) => {
+  const playableFile = getInternetArchivePlayableFile(payload?.files);
+
+  if (!playableFile?.name) {
+    return null;
+  }
+
+  const title =
+    playableFile.title ||
+    payload?.metadata?.title ||
+    item.fallbackTitle ||
+    item.identifier;
+  const artist =
+    playableFile.creator ||
+    playableFile.artist ||
+    payload?.metadata?.creator ||
+    item.fallbackCreator ||
+    "Internet Archive";
+
+  return {
+    identifier: item.identifier,
+    title,
+    artist: Array.isArray(artist) ? artist.join(", ") : artist,
+    src: buildInternetArchiveDownloadUrl(item.identifier, playableFile.name),
+  };
+};
+
+const getConfiguredInternetArchiveItems = () => {
+  if (typeof window === "undefined") {
+    return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
+  }
+
+  try {
+    const storedIdentifiers = JSON.parse(
+      window.localStorage.getItem(SCHOOLPLANNER_MUSIC_STORAGE_KEY) || "[]",
+    );
+
+    if (!Array.isArray(storedIdentifiers) || storedIdentifiers.length === 0) {
+      return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
+    }
+
+    return storedIdentifiers
+      .map((identifier) => String(identifier || "").trim())
+      .filter(Boolean)
+      .map((identifier) => {
+        const matchingDefaultItem = INTERNET_ARCHIVE_CLASSICAL_ITEMS.find(
+          (item) => item.identifier === identifier,
+        );
+
+        return (
+          matchingDefaultItem || {
+            identifier,
+            fallbackTitle: identifier.replace(/[-_]+/g, " "),
+            fallbackCreator: "Internet Archive",
+          }
+        );
+      });
+  } catch (error) {
+    return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
+  }
+};
+
 export default class SchoolPlanner extends Component {
   constructor(props) {
     super(props);
@@ -163,13 +291,675 @@ export default class SchoolPlanner extends Component {
       courses: [],
       course_isLoading: false,
       lecture_isLoading: false,
+      music_isPlaying: false,
+      music_volume: 0.42,
+      music_trackTitle: "Archive Classics",
+      music_trackArtist: "Internet Archive",
+      music_isLoading: false,
+      telegram_isLoading: false,
+      telegram_error: "",
+      telegram_messages: [],
+      telegram_groupTitle: "Telegram Group",
+      telegram_groupReference: "",
+      telegram_groupInput: "",
+      telegram_feedback: "",
+      telegram_isSaving: false,
+      telegram_limit: 20,
+      telegram_hasMore: true,
     };
+
+    this.coursePrintAudio = null;
+    this.coursePrintSoundTimeouts = [];
+    this.courseDetailsTypingTimeouts = [];
+    this.musicAudioRef = React.createRef();
+    this.musicPlaylist = [];
+    this.musicTrackIndex = 0;
+    this.musicLibraryPromise = null;
+    this.isComponentMounted = false;
   }
 
   componentDidMount() {
+    this.isComponentMounted = true;
     this.retrieveLectures();
     this.retrieveCourses();
+    if (this.musicAudioRef.current) {
+      this.musicAudioRef.current.volume = this.state.music_volume;
+    }
+    this.loadPlannerMusicLibrary();
+    this.fetchTelegramConfig();
   }
+
+  componentWillUnmount() {
+    this.coursePrintSoundTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.coursePrintSoundTimeouts = [];
+    this.courseDetailsTypingTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.courseDetailsTypingTimeouts = [];
+    this.isComponentMounted = false;
+    this.stopCoursePrintSound();
+    if (this.musicAudioRef.current) {
+      this.musicAudioRef.current.pause();
+      this.musicAudioRef.current.currentTime = 0;
+      this.musicAudioRef.current.removeAttribute("src");
+      this.musicAudioRef.current.load();
+    }
+  }
+
+  resolveInternetArchiveTrack = async (item) => {
+    try {
+      const metadataResponse = await fetch(
+        `https://archive.org/metadata/${encodeURIComponent(item.identifier)}`,
+      );
+
+      if (metadataResponse.ok) {
+        const metadataPayload = await metadataResponse.json();
+        const resolvedFromIdentifier = buildResolvedArchiveTrack(
+          item,
+          metadataPayload,
+        );
+
+        if (resolvedFromIdentifier) {
+          return resolvedFromIdentifier;
+        }
+      }
+    } catch (error) {
+      // Fall through to search mode.
+    }
+
+    try {
+      const searchResponse = await fetch(
+        buildInternetArchiveSearchUrl(
+          item.fallbackTitle || item.identifier || item.fallbackCreator,
+        ),
+      );
+
+      if (!searchResponse.ok) {
+        return null;
+      }
+
+      const searchPayload = await searchResponse.json();
+      const matchedDoc = searchPayload?.response?.docs?.[0];
+
+      if (!matchedDoc?.identifier) {
+        return null;
+      }
+
+      const matchedIdentifier = String(matchedDoc.identifier).trim();
+      const metadataResponse = await fetch(
+        `https://archive.org/metadata/${encodeURIComponent(matchedIdentifier)}`,
+      );
+
+      if (!metadataResponse.ok) {
+        return null;
+      }
+
+      const metadataPayload = await metadataResponse.json();
+
+      return buildResolvedArchiveTrack(
+        {
+          ...item,
+          identifier: matchedIdentifier,
+          fallbackTitle:
+            matchedDoc.title || item.fallbackTitle || matchedIdentifier,
+          fallbackCreator:
+            matchedDoc.creator || item.fallbackCreator || "Internet Archive",
+        },
+        metadataPayload,
+      );
+    } catch (error) {
+      return null;
+    }
+  };
+
+  loadPlannerMusicLibrary = async () => {
+    if (this.musicPlaylist.length > 0) {
+      return this.musicPlaylist;
+    }
+
+    if (this.musicLibraryPromise) {
+      return this.musicLibraryPromise;
+    }
+
+    this.setState({
+      music_isLoading: true,
+    });
+
+    const configuredArchiveItems = getConfiguredInternetArchiveItems();
+
+    this.musicLibraryPromise = Promise.all(
+      configuredArchiveItems.map((item) =>
+        this.resolveInternetArchiveTrack(item),
+      ),
+    )
+      .then((tracks) => tracks.filter(Boolean))
+      .catch(() => [])
+      .finally(() => {
+        this.musicLibraryPromise = null;
+      });
+
+    const resolvedTracks = await this.musicLibraryPromise;
+
+    if (!this.isComponentMounted) {
+      return resolvedTracks;
+    }
+
+    this.musicPlaylist = resolvedTracks;
+    this.setState({
+      music_isLoading: false,
+    });
+
+    if (this.musicPlaylist.length > 0 && this.musicAudioRef.current) {
+      this.setPlannerMusicTrack(0);
+    } else if (this.isComponentMounted) {
+      this.setState({
+        music_trackTitle: "Archive Unavailable",
+        music_trackArtist: "Try again later",
+      });
+    }
+
+    return this.musicPlaylist;
+  };
+
+  setPlannerMusicTrack = (trackIndex, autoplay = false) => {
+    const musicAudio = this.musicAudioRef.current;
+    const track = this.musicPlaylist[trackIndex];
+
+    if (!musicAudio || !track) return;
+
+    this.musicTrackIndex = trackIndex;
+    musicAudio.pause();
+    musicAudio.src = track.src;
+    musicAudio.load();
+    musicAudio.volume = this.state.music_volume;
+
+    this.setState({
+      music_trackTitle: track.title,
+      music_trackArtist: track.artist,
+    });
+
+    if (autoplay) {
+      musicAudio.play().catch(() => {});
+    }
+  };
+
+  playPreviousPlannerMusicTrack = async (autoplay = true) => {
+    const playlist =
+      this.musicPlaylist.length > 0
+        ? this.musicPlaylist
+        : await this.loadPlannerMusicLibrary();
+
+    if (!playlist || playlist.length === 0) {
+      return;
+    }
+
+    const previousIndex =
+      (this.musicTrackIndex - 1 + playlist.length) % playlist.length;
+    this.setPlannerMusicTrack(previousIndex, autoplay);
+  };
+
+  playNextPlannerMusicTrack = async (autoplay = true) => {
+    const playlist =
+      this.musicPlaylist.length > 0
+        ? this.musicPlaylist
+        : await this.loadPlannerMusicLibrary();
+
+    if (!playlist || playlist.length === 0) {
+      return;
+    }
+
+    const nextIndex = (this.musicTrackIndex + 1) % playlist.length;
+    this.setPlannerMusicTrack(nextIndex, autoplay);
+  };
+
+  togglePlannerMusic = async () => {
+    const musicAudio = this.musicAudioRef.current;
+    if (!musicAudio) return;
+
+    if (musicAudio.paused) {
+      if (!musicAudio.src) {
+        const playlist = await this.loadPlannerMusicLibrary();
+        if (!playlist || playlist.length === 0) {
+          return;
+        }
+      }
+      musicAudio.volume = this.state.music_volume;
+      musicAudio.play().catch(() => {});
+    } else {
+      musicAudio.pause();
+    }
+  };
+
+  updatePlannerMusicVolume = (event) => {
+    const nextVolume = Number(event.target.value);
+
+    this.setState({
+      music_volume: nextVolume,
+    });
+
+    if (this.musicAudioRef.current) {
+      this.musicAudioRef.current.volume = nextVolume;
+    }
+  };
+
+  fetchTelegramConfig = async () => {
+    if (!this.props.state?.token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(apiUrl("/api/telegram/config"), {
+        method: "GET",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${this.props.state.token}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load Telegram config.");
+      }
+
+      if (this.isComponentMounted) {
+        this.setState(
+          {
+            telegram_groupReference: String(payload?.groupReference || ""),
+            telegram_groupInput: String(payload?.groupReference || ""),
+            telegram_groupTitle: payload?.groupReference
+              ? String(payload.groupReference)
+              : "Telegram Group",
+          },
+          () => {
+            this.fetchTelegramGroupMessages();
+          },
+        );
+      }
+    } catch (error) {
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_error:
+            error?.message || "Unable to load Telegram configuration.",
+        });
+      }
+    }
+  };
+
+  fetchTelegramGroupMessages = async () => {
+    if (!this.props.state?.token) {
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_isLoading: false,
+          telegram_error: "Telegram messages need a valid login token.",
+          telegram_messages: [],
+          telegram_groupTitle: "Telegram Group",
+          telegram_hasMore: false,
+        });
+      }
+      return;
+    }
+
+    if (this.isComponentMounted) {
+      this.setState({
+        telegram_isLoading: true,
+        telegram_error: "",
+      });
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl(
+          `/api/telegram/group-messages?limit=${encodeURIComponent(
+            this.state.telegram_limit,
+          )}`,
+        ),
+        {
+          method: "GET",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${this.props.state.token}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to load Telegram group messages.",
+        );
+      }
+
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_isLoading: false,
+          telegram_error: "",
+          telegram_messages: Array.isArray(payload?.messages)
+            ? payload.messages
+            : [],
+          telegram_hasMore:
+            Array.isArray(payload?.messages) &&
+            payload.messages.length >= this.state.telegram_limit &&
+            this.state.telegram_limit < 100,
+          telegram_groupTitle:
+            payload?.group?.title ||
+            payload?.group?.username ||
+            "Telegram Group",
+        });
+      }
+    } catch (error) {
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_isLoading: false,
+          telegram_error:
+            error?.message || "Unable to load Telegram group messages.",
+          telegram_messages: [],
+          telegram_hasMore: false,
+        });
+      }
+    }
+  };
+
+  loadMoreTelegramMessages = () => {
+    if (this.state.telegram_isLoading || !this.state.telegram_hasMore) {
+      return;
+    }
+
+    this.setState(
+      (currentState) => ({
+        telegram_limit: Math.min(100, currentState.telegram_limit + 20),
+      }),
+      () => {
+        this.fetchTelegramGroupMessages();
+      },
+    );
+  };
+
+  updateTelegramGroupInput = (event) => {
+    const nextValue = String(event.target.value || "");
+
+    this.setState((currentState) => ({
+      telegram_groupInput: nextValue,
+      telegram_feedback:
+        currentState.telegram_feedback &&
+        currentState.telegram_feedback.startsWith("Saved")
+          ? ""
+          : currentState.telegram_feedback,
+    }));
+  };
+
+  saveTelegramConfig = async () => {
+    if (!this.props.state?.token || this.state.telegram_isSaving) {
+      return;
+    }
+
+    this.setState({
+      telegram_isSaving: true,
+      telegram_feedback: "",
+    });
+
+    try {
+      const response = await fetch(apiUrl("/api/telegram/config"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.props.state.token}`,
+        },
+        body: JSON.stringify({
+          groupReference: String(this.state.telegram_groupInput || "").trim(),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to save Telegram settings.",
+        );
+      }
+
+      if (this.isComponentMounted) {
+        this.setState(
+          {
+            telegram_isSaving: false,
+            telegram_feedback:
+              payload?.message || "Saved SchoolPlanner Telegram settings.",
+            telegram_groupReference: String(payload?.groupReference || ""),
+            telegram_groupInput: String(payload?.groupReference || ""),
+            telegram_groupTitle: payload?.groupReference
+              ? String(payload.groupReference)
+              : this.state.telegram_groupTitle,
+          },
+          () => {
+            this.fetchTelegramGroupMessages();
+          },
+        );
+      }
+    } catch (error) {
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_isSaving: false,
+          telegram_feedback:
+            error?.message || "Unable to save Telegram settings.",
+        });
+      }
+    }
+  };
+
+  getTelegramMessageDate = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const normalizedValue =
+        Math.abs(value) < 1000000000000 ? value * 1000 : value;
+      return new Date(normalizedValue);
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const nextDate = new Date(value);
+      return Number.isNaN(nextDate.getTime()) ? null : nextDate;
+    }
+
+    return null;
+  };
+
+  formatTelegramDayLabel = (value) => {
+    const nextDate = this.getTelegramMessageDate(value);
+
+    if (!nextDate) {
+      return "Unknown day";
+    }
+
+    return nextDate.toLocaleDateString(undefined, {
+      timeZone: TELEGRAM_DISPLAY_TIMEZONE,
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  formatTelegramDateTime = (value) => {
+    const nextDate = this.getTelegramMessageDate(value);
+
+    if (!nextDate) {
+      return "";
+    }
+
+    return nextDate.toLocaleString(undefined, {
+      timeZone: TELEGRAM_DISPLAY_TIMEZONE,
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  groupTelegramMessagesByDay = (messages = []) => {
+    const groupedMessagesMap = new Map();
+
+    messages.forEach((message) => {
+      const dayKey = this.formatTelegramDayLabel(message?.date);
+
+      if (!groupedMessagesMap.has(dayKey)) {
+        groupedMessagesMap.set(dayKey, []);
+      }
+
+      groupedMessagesMap.get(dayKey).push(message);
+    });
+
+    return Array.from(groupedMessagesMap.entries()).map(
+      ([dayLabel, items]) => ({
+        dayLabel,
+        items,
+      }),
+    );
+  };
+
+  playCoursePrintSound = (printDurationMs = 0) => {
+    if (!this.coursePrintAudio) {
+      this.coursePrintAudio = new Audio("/sounds/schoolplanner-typing.wav");
+      this.coursePrintAudio.preload = "auto";
+    }
+
+    this.coursePrintSoundTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.coursePrintSoundTimeouts = [];
+
+    this.coursePrintAudio.pause();
+    this.coursePrintAudio.currentTime = COURSE_PRINT_SOUND_START_OFFSET;
+    this.coursePrintAudio.volume = 0.42;
+    if (printDurationMs > 0) {
+      const printDurationSeconds = printDurationMs / 1000;
+      const playbackRate = Math.min(
+        2.5,
+        Math.max(0.45, COURSE_PRINT_SOUND_BASE_DURATION / printDurationSeconds),
+      );
+      this.coursePrintAudio.playbackRate = playbackRate;
+      this.coursePrintAudio.loop =
+        printDurationSeconds > COURSE_PRINT_SOUND_BASE_DURATION / playbackRate;
+    } else {
+      this.coursePrintAudio.playbackRate = 1;
+      this.coursePrintAudio.loop = true;
+    }
+    this.coursePrintAudio.play().catch(() => {});
+  };
+
+  stopCoursePrintSound = () => {
+    this.coursePrintSoundTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.coursePrintSoundTimeouts = [];
+
+    if (!this.coursePrintAudio) return;
+
+    this.coursePrintAudio.pause();
+    this.coursePrintAudio.currentTime = COURSE_PRINT_SOUND_START_OFFSET;
+  };
+
+  getNaghamCourseLetter = (course) => {
+    if (typeof window === "undefined") {
+      return DEFAULT_NAGHAM_COURSE_LETTER;
+    }
+
+    try {
+      const storedLetters = JSON.parse(
+        window.localStorage.getItem(NAGHAM_COURSE_LETTERS_STORAGE_KEY) || "{}",
+      );
+
+      return (
+        storedLetters?.[course?._id] ||
+        storedLetters?.[course?.course_name] ||
+        ""
+      );
+    } catch (error) {
+      return "";
+    }
+  };
+
+  updateCoursePrintReveal = (node, immediate = false) => {
+    let detailsDiv = document.getElementById(
+      "schoolPlanner_courses_details_div",
+    );
+    if (!detailsDiv) return;
+
+    if (!node) {
+      detailsDiv.style.transition = immediate
+        ? "none"
+        : "clip-path 130ms ease-out, opacity 100ms linear, filter 120ms linear";
+      detailsDiv.style.clipPath = "inset(0 0 100% 0)";
+      detailsDiv.style.opacity = "0.42";
+      detailsDiv.style.filter = "saturate(0.7) brightness(1.08)";
+      return;
+    }
+
+    const detailsRect = detailsDiv.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    const trailingPaperSpace =
+      detailsDiv
+        .querySelector(".schoolPlanner_courses_printSpacer")
+        ?.getBoundingClientRect().height || 56;
+    const revealedHeight = Math.max(
+      0,
+      nodeRect.bottom - detailsRect.top + 12 + trailingPaperSpace,
+    );
+    const hiddenBottom = Math.max(0, detailsRect.height - revealedHeight);
+
+    const targetOpacity = hiddenBottom > 0 ? "0.78" : "1";
+    const targetFilter =
+      hiddenBottom > 0
+        ? "saturate(0.88) brightness(1.03)"
+        : "saturate(1) brightness(1)";
+
+    if (immediate) {
+      detailsDiv.style.transition = "none";
+      detailsDiv.style.clipPath = `inset(0 0 ${hiddenBottom}px 0)`;
+      detailsDiv.style.opacity = targetOpacity;
+      detailsDiv.style.filter = targetFilter;
+      return;
+    }
+
+    const hesitationBottom = Math.max(0, hiddenBottom + 10);
+    detailsDiv.style.transition =
+      "clip-path 58ms ease-out, opacity 58ms linear, filter 58ms linear";
+    detailsDiv.style.clipPath = `inset(0 0 ${hesitationBottom}px 0)`;
+    detailsDiv.style.opacity = targetOpacity;
+    detailsDiv.style.filter = targetFilter;
+
+    const timeoutId = window.setTimeout(() => {
+      detailsDiv.style.transition =
+        "clip-path 92ms ease-out, opacity 92ms linear, filter 92ms linear";
+      detailsDiv.style.clipPath = `inset(0 0 ${hiddenBottom}px 0)`;
+      detailsDiv.style.opacity = targetOpacity;
+      detailsDiv.style.filter = targetFilter;
+    }, 72);
+    this.courseDetailsTypingTimeouts.push(timeoutId);
+  };
+
+  keepCoursePrintLineVisible = (node) => {
+    let detailsDiv = document.getElementById(
+      "schoolPlanner_courses_details_div",
+    );
+    if (!detailsDiv || !node) return;
+
+    let actionsMount = document.getElementById(
+      "schoolPlanner_courses_actions_mount",
+    );
+    const detailsRect = detailsDiv.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    const actionsRect = actionsMount
+      ? actionsMount.getBoundingClientRect()
+      : null;
+    const visibleTop = detailsRect.top + 12;
+    const visibleBottom = actionsRect
+      ? Math.min(detailsRect.bottom, actionsRect.top - 12)
+      : detailsRect.bottom - 12;
+
+    if (nodeRect.bottom > visibleBottom) {
+      detailsDiv.scrollTop += nodeRect.bottom - visibleBottom;
+    } else if (nodeRect.top < visibleTop) {
+      detailsDiv.scrollTop -= visibleTop - nodeRect.top;
+    }
+  };
 
   setPageFinishLecture = async (lecture, pageNum, boolean) => {
     let div_progression = document.getElementById("div_progression");
@@ -282,11 +1072,223 @@ export default class SchoolPlanner extends Component {
   };
 
   calculateLectureNum = () => {
-    let ul_lectures_array = document.getElementById(
-      "schoolPlanner_lectures_ul",
-    ).children;
-    let p_num = document.getElementById("schoolPlanner_lectures_num_p");
-    p_num.textContent = Number(ul_lectures_array.length);
+    return;
+  };
+
+  appendLectureRow = (tbody, lecture, progressionStats, interactivePages) => {
+    let titleCell = document.createElement("td");
+    let courseCell = document.createElement("td");
+    let instructorCell = document.createElement("td");
+    let writerCell = document.createElement("td");
+    let dateCell = document.createElement("td");
+
+    let progressionText = document.createElement("p");
+    let div_indicatorBox_progression = document.createElement("div");
+    let div_indicator_progression = document.createElement("div");
+    let ul_pages_finished = document.createElement("ul");
+    let div_progression = document.createElement("div");
+
+    let div_outline = document.createElement("div");
+    let checkBox_partOfPlan = document.createElement("input");
+    let div_partOfPlan = document.createElement("div");
+
+    let row = document.createElement("tr");
+    let menuCell = document.createElement("td");
+    let progressionCell = document.createElement("td");
+    let planCell = document.createElement("td");
+    let menu_editIcon = document.createElement("i");
+    let titleText = document.createElement("p");
+
+    titleText.textContent = lecture.lecture_name;
+    courseCell.textContent = lecture.lecture_course;
+    instructorCell.textContent = lecture.lecture_instructor;
+    writerCell.textContent = lecture.lecture_writer;
+    dateCell.textContent = lecture.lecture_date;
+    progressionText.textContent = String(
+      progressionStats.length +
+        " (" +
+        progressionStats.progress +
+        " : " +
+        progressionStats.remaining +
+        " | " +
+        progressionStats.percent +
+        "%)",
+    );
+
+    for (var i = 0; i < lecture.lecture_outlines.length; i++) {
+      let p = document.createElement("p");
+      p.textContent = Number(i + 1) + ") " + lecture.lecture_outlines[i];
+      div_outline.append(p);
+    }
+
+    row.setAttribute("class", "menuLi_div schoolPlanner_lecture_row");
+    row.setAttribute("id", lecture._id + "li");
+    menuCell.setAttribute("class", "lecuturesTable_menu_div");
+    progressionCell.setAttribute(
+      "class",
+      "schoolPlanner_lecture_progressionCell",
+    );
+    planCell.setAttribute("class", "schoolPlanner_lecture_planCell");
+    titleCell.setAttribute("class", "schoolPlanner_lecture_titleCell");
+    titleText.setAttribute("class", "schoolPlanner_lecture_titleText");
+    menu_editIcon.setAttribute("class", "fi fi-rr-pencil");
+    menu_editIcon.setAttribute("title", "Edit lecture");
+    menu_editIcon.setAttribute("id", lecture._id + "menu_editIcon");
+    div_outline.setAttribute("class", "div_outline fc");
+
+    checkBox_partOfPlan.type = "checkbox";
+    div_partOfPlan.setAttribute("class", "div_partOfPlan fc");
+    checkBox_partOfPlan.setAttribute("id", lecture._id + "checkBox_partOfPlan");
+    checkBox_partOfPlan.setAttribute(
+      "class",
+      "schoolPlanner_partOfPlan_checkbox",
+    );
+
+    if (lecture.lecture_partOfPlan === true) checkBox_partOfPlan.checked = true;
+
+    div_indicatorBox_progression.setAttribute(
+      "class",
+      "div_indicatorBox_progression",
+    );
+    div_indicator_progression.setAttribute(
+      "class",
+      "div_indicator_progression",
+    );
+    div_indicator_progression.setAttribute(
+      "id",
+      lecture._id + "div_indicator_progression",
+    );
+    ul_pages_finished.setAttribute("class", "ul_pages_finished");
+    div_progression.setAttribute("class", "div_progression fc");
+    div_progression.setAttribute("id", lecture._id + "div_progression");
+
+    div_indicator_progression.style.width =
+      progressionStats.indicatorWidth + "px";
+    if (progressionStats.percent < 50)
+      div_indicator_progression.style.backgroundColor = "var(--red2)";
+
+    for (var pageIndex = 0; pageIndex < lecture.lecture_length; pageIndex++) {
+      let pagenumber = Number(pageIndex + 1);
+      let p_num = document.createElement("p");
+      p_num.textContent = Number(pageIndex + 1);
+
+      if (interactivePages === true) {
+        p_num.addEventListener("click", () => {
+          this.setState({
+            lecture_isLoading: true,
+          });
+          setTimeout(() => {
+            if (lecture.lecture_pagesFinished.indexOf(pagenumber) == -1) {
+              this.setPageFinishLecture(lecture, pagenumber, true);
+              p_num.style.backgroundColor = "var(--green4)";
+              p_num.style.color = "var(--white)";
+              p_num.style.fontWeight = "bold";
+            } else {
+              this.setPageFinishLecture(lecture, p_num.textContent, false);
+              p_num.style.backgroundColor = "var(--white2)";
+              p_num.style.color = "black";
+              p_num.style.fontWeight = "normal";
+            }
+          }, 3000);
+        });
+      }
+
+      for (var j = 0; j < lecture.lecture_pagesFinished.length; j++) {
+        if (lecture.lecture_pagesFinished.indexOf(pagenumber) !== -1) {
+          p_num.style.backgroundColor = "var(--green4)";
+          p_num.style.color = "var(--white)";
+          p_num.style.fontWeight = "bold";
+        }
+      }
+      ul_pages_finished.append(p_num);
+    }
+
+    menu_editIcon.addEventListener("click", () => {
+      lectureInEdit = lecture;
+      this.openAddLectureForm({
+        buttonName: "Edit",
+        _id: lecture._id,
+        lecture_name: lecture.lecture_name,
+        lecture_course: lecture.lecture_course,
+        lecture_instructor: lecture.lecture_instructor,
+        lecture_writer: lecture.lecture_writer,
+        lecture_date: lecture.lecture_date,
+        lecture_length: lecture.lecture_length,
+        lecture_progress: lecture.lecture_progress,
+        lecture_outlines: lecture.lecture_outlines,
+        lecture_partOfPlan: lecture.lecture_partOfPlan,
+        lecture_hidden: lecture.lecture_hidden,
+      });
+    });
+
+    checkBox_partOfPlan.addEventListener("click", () => {
+      this.editLecture({
+        _id: lecture._id,
+        lecture_name: lecture.lecture_name,
+        lecture_course: lecture.lecture_course,
+        lecture_instructor: lecture.lecture_instructor,
+        lecture_writer: lecture.lecture_writer,
+        lecture_date: lecture.lecture_date,
+        lecture_length: lecture.lecture_length,
+        lecture_progress: lecture.lecture_progress,
+        lecture_pagesFinished: lecture.lecture_pagesFinished,
+        lecture_outlines: lecture.lecture_outlines,
+        lecture_partOfPlan: checkBox_partOfPlan.checked === true,
+        lecture_hidden: lecture.lecture_hidden,
+      });
+    });
+
+    if (interactivePages === true) {
+      div_progression.addEventListener("click", () => {
+        let div_progressionInHTML = document.getElementById(
+          lecture._id + "div_progression",
+        );
+        let i_close = document.createElement("i");
+        i_close.setAttribute("class", "fi fi-rr-cross-circle");
+        div_progressionInHTML.innerHTML = "";
+        i_close.addEventListener("click", () => {
+          ul_pages_finished.style.padding = "0px";
+          div_progressionInHTML.append(
+            progressionText,
+            div_indicatorBox_progression,
+            ul_pages_finished,
+          );
+        });
+        ul_pages_finished.style.height = "fit-content";
+        ul_pages_finished.style.padding = "10px";
+        div_progressionInHTML.style.display = "flex";
+        div_progressionInHTML.append(
+          i_close,
+          progressionText,
+          div_indicatorBox_progression,
+          ul_pages_finished,
+        );
+      });
+    }
+
+    titleCell.append(titleText);
+    if (lecture.lecture_outlines.length > 0) titleCell.append(div_outline);
+    menuCell.append(menu_editIcon);
+    div_indicatorBox_progression.append(div_indicator_progression);
+    div_progression.append(
+      progressionText,
+      div_indicatorBox_progression,
+      ul_pages_finished,
+    );
+    progressionCell.append(div_progression);
+    div_partOfPlan.appendChild(checkBox_partOfPlan);
+    planCell.append(div_partOfPlan);
+    row.append(
+      menuCell,
+      titleCell,
+      courseCell,
+      instructorCell,
+      writerCell,
+      dateCell,
+      progressionCell,
+      planCell,
+    );
+    tbody.prepend(row);
   };
 
   openAddLectureForm = (object) => {
@@ -588,7 +1590,7 @@ export default class SchoolPlanner extends Component {
 
       p.textContent = courseDayAndTime[i].day + " " + courseDayAndTime[i].time;
 
-      deleteIcon.setAttribute("class", "fa fa-close");
+      deleteIcon.setAttribute("class", "fi fi-rr-x");
       deleteIcon.setAttribute("id", i + "DIdayAndTime");
       div_dayAndTime.setAttribute(
         "class",
@@ -626,7 +1628,7 @@ export default class SchoolPlanner extends Component {
         "class",
         "schoolPlanner_addCourse_outlines_div fr",
       );
-      deleteIcon.setAttribute("class", "fa fa-close");
+      deleteIcon.setAttribute("class", "fi fi-rr-x");
       deleteIcon.setAttribute("id", i + "DIlectureOutlines");
       deleteIcon.addEventListener("click", () => {
         deleteIcon.parentElement.remove();
@@ -648,7 +1650,7 @@ export default class SchoolPlanner extends Component {
 
       p.textContent = courseInstructorsNames[i];
 
-      deleteIcon.setAttribute("class", "fa fa-close");
+      deleteIcon.setAttribute("class", "fi fi-rr-x");
       deleteIcon.setAttribute("id", i + "DIinstructorsNames");
       div_instructorsNames.setAttribute(
         "class",
@@ -685,7 +1687,7 @@ export default class SchoolPlanner extends Component {
         "/" +
         courseExams[i].course_fullGrade;
 
-      deleteIcon.setAttribute("class", "fa fa-close");
+      deleteIcon.setAttribute("class", "fi fi-rr-x");
       div_exam.setAttribute("class", "schoolPlanner_addCourse_exams_div fr");
 
       const removeCourseExamItem = () => {
@@ -707,15 +1709,16 @@ export default class SchoolPlanner extends Component {
     let detailsDiv = document.getElementById(
       "schoolPlanner_courses_details_div",
     );
+    let actionsMount = document.getElementById(
+      "schoolPlanner_courses_actions_mount",
+    );
     if (!detailsDiv) return;
 
     detailsDiv.innerHTML = "";
+    if (actionsMount) actionsMount.innerHTML = "";
 
     if (!course) {
-      let emptyState = document.createElement("p");
-      emptyState.setAttribute("id", "schoolPlanner_courses_emptyState");
-      emptyState.textContent = "Select a course to view its details.";
-      detailsDiv.appendChild(emptyState);
+      this.hideCourseDetailsPanels();
       return;
     }
 
@@ -815,7 +1818,7 @@ export default class SchoolPlanner extends Component {
     });
 
     actionsRow.append(editButton, deleteButton, planButton);
-    detailsDiv.appendChild(actionsRow);
+    if (actionsMount) actionsMount.appendChild(actionsRow);
 
     let courseSectionTitle = document.createElement("h3");
     courseSectionTitle.setAttribute(
@@ -905,19 +1908,189 @@ export default class SchoolPlanner extends Component {
     }
 
     detailsDiv.appendChild(examBlock);
+
+    if (
+      String(this.props.state?.username || "").toLowerCase() === "naghamtrkmani"
+    ) {
+      const assignedLetter = this.getNaghamCourseLetter(course);
+
+      if (assignedLetter) {
+        let noteBlock = document.createElement("div");
+        noteBlock.setAttribute("class", "schoolPlanner_courseLetterBlock");
+
+        let noteText = document.createElement("p");
+        noteText.setAttribute("class", "schoolPlanner_courseLetterText");
+        noteText.textContent = assignedLetter;
+
+        noteBlock.appendChild(noteText);
+        detailsDiv.appendChild(noteBlock);
+      }
+    }
+
+    this.playCourseDetailsPrintAnimation();
   };
 
   renderCourseDetailsLoader = () => {
     let detailsDiv = document.getElementById(
       "schoolPlanner_courses_details_div",
     );
+    let actionsMount = document.getElementById(
+      "schoolPlanner_courses_actions_mount",
+    );
     if (!detailsDiv) return;
 
+    detailsDiv.classList.remove("schoolPlanner_courses_panel--hidden");
+    if (actionsMount) {
+      actionsMount.classList.remove("schoolPlanner_courses_panel--hidden");
+    }
     detailsDiv.innerHTML = `
       <div id="schoolPlanner_courses_details_loader" class="fc">
         <img src="/img/loader.gif" alt="" width="50px" />
       </div>
     `;
+  };
+
+  hideCourseDetailsPanels = () => {
+    let detailsDiv = document.getElementById(
+      "schoolPlanner_courses_details_div",
+    );
+    let actionsMount = document.getElementById(
+      "schoolPlanner_courses_actions_mount",
+    );
+
+    this.courseDetailsTypingTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.courseDetailsTypingTimeouts = [];
+    this.stopCoursePrintSound();
+    if (detailsDiv) {
+      detailsDiv.classList.remove("schoolPlanner_courses_panel--printing");
+      detailsDiv.classList.add("schoolPlanner_courses_panel--hidden");
+      detailsDiv.innerHTML = "";
+      detailsDiv.style.transition = "";
+      detailsDiv.style.clipPath = "";
+      detailsDiv.style.opacity = "";
+      detailsDiv.style.filter = "";
+    }
+
+    if (actionsMount) {
+      actionsMount.classList.remove("schoolPlanner_courses_panel--printing");
+      actionsMount.classList.remove("schoolPlanner_courses_panel--hidden");
+      actionsMount.innerHTML = `
+        <div id="schoolPlanner_courses_actions" class="fr schoolPlanner_courses_actions--idle">
+          <button type="button" disabled>Edit</button>
+          <button type="button" disabled>Delete</button>
+          <button type="button" disabled>Plan</button>
+        </div>
+      `;
+    }
+  };
+
+  playCourseDetailsPrintAnimation = () => {
+    let detailsDiv = document.getElementById(
+      "schoolPlanner_courses_details_div",
+    );
+    let actionsMount = document.getElementById(
+      "schoolPlanner_courses_actions_mount",
+    );
+
+    if (detailsDiv) {
+      detailsDiv.classList.remove("schoolPlanner_courses_panel--hidden");
+      detailsDiv.classList.remove("schoolPlanner_courses_panel--printing");
+      detailsDiv.scrollTop = 0;
+      this.updateCoursePrintReveal(null, true);
+    }
+
+    if (actionsMount) {
+      actionsMount.classList.remove("schoolPlanner_courses_panel--hidden");
+      actionsMount.classList.remove("schoolPlanner_courses_panel--printing");
+    }
+
+    let textTargets = [];
+    [detailsDiv].forEach((panel) => {
+      if (!panel) return;
+      panel.querySelectorAll("h3, p, button").forEach((node) => {
+        const fullText = node.textContent || "";
+        node.dataset.printText = fullText;
+        node.textContent = "";
+        textTargets.push(node);
+      });
+    });
+    textTargets.sort((a, b) => {
+      return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+    });
+
+    let endLineSpacer = null;
+    if (detailsDiv) {
+      const existingSpacer = detailsDiv.querySelector(
+        ".schoolPlanner_courses_printSpacer",
+      );
+      if (existingSpacer) existingSpacer.remove();
+
+      endLineSpacer = document.createElement("div");
+      endLineSpacer.className = "schoolPlanner_courses_printSpacer";
+      detailsDiv.append(endLineSpacer);
+    }
+
+    const characterDelay = 95;
+    const nodeGapDelay = 140;
+    const initialDelay = 36;
+    const totalChars = textTargets.reduce((count, node) => {
+      return count + (node.dataset.printText || "").length;
+    }, 0);
+    const totalTypingDuration =
+      initialDelay +
+      totalChars * characterDelay +
+      Math.max(0, textTargets.length - 1) * nodeGapDelay;
+    let step = 0;
+    const printNext = () => {
+      if (step >= textTargets.length) {
+        this.stopCoursePrintSound();
+        if (detailsDiv) {
+          this.updateCoursePrintReveal(endLineSpacer || detailsDiv);
+          detailsDiv.style.transition =
+            "clip-path 130ms ease-out, opacity 100ms linear, filter 120ms linear";
+          detailsDiv.style.clipPath = "inset(0 0 0 0)";
+          detailsDiv.style.opacity = "1";
+          detailsDiv.style.filter = "saturate(1) brightness(1)";
+        }
+        return;
+      }
+      const node = textTargets[step];
+      const fullText = node.dataset.printText || "";
+      let charIndex = 0;
+
+      this.updateCoursePrintReveal(node, step === 0);
+
+      const typeCharacter = () => {
+        node.textContent = fullText.slice(0, charIndex + 1);
+        this.keepCoursePrintLineVisible(node);
+        charIndex += 1;
+
+        if (charIndex < fullText.length) {
+          const timeoutId = window.setTimeout(typeCharacter, characterDelay);
+          this.courseDetailsTypingTimeouts.push(timeoutId);
+        } else {
+          step += 1;
+          const timeoutId = window.setTimeout(printNext, nodeGapDelay);
+          this.courseDetailsTypingTimeouts.push(timeoutId);
+        }
+      };
+
+      if (fullText.length === 0) {
+        step += 1;
+        printNext();
+        return;
+      }
+
+      typeCharacter();
+    };
+
+    if (totalChars > 0) {
+      this.playCoursePrintSound(totalTypingDuration);
+    }
+    const timeoutId = window.setTimeout(printNext, initialDelay);
+    this.courseDetailsTypingTimeouts.push(timeoutId);
   };
 
   retrieveLecturesSearched = (searchKeyword) => {
@@ -958,264 +2131,7 @@ export default class SchoolPlanner extends Component {
                 lecture.lecture_length,
               );
               lecture_courses.push(lecture.lecture_course);
-              let p1 = document.createElement("p");
-              let p2 = document.createElement("p");
-              let p3 = document.createElement("p");
-              let p4 = document.createElement("p");
-              let p5 = document.createElement("p");
-
-              let p_progression = document.createElement("p");
-              let div_indicatorBox_progression = document.createElement("div");
-              let div_indicator_progression = document.createElement("div");
-              let ul_pages_finished = document.createElement("ul");
-              let div_progression = document.createElement("div");
-
-              let div_outline = document.createElement("div");
-              let checkBox_partOfPlan = document.createElement("input");
-              let div_partOfPlan = document.createElement("div");
-              let div_pLi = document.createElement("div");
-
-              let li = document.createElement("li");
-              let menu_div = document.createElement("div");
-              let menu_subdiv = document.createElement("div");
-              let menu_showIcon = document.createElement("i");
-              let menu_selectIcon = document.createElement("i");
-              let menu_deleteIcon = document.createElement("i");
-              let menu_editIcon = document.createElement("i");
-              let menuLi_div = document.createElement("div");
-
-              p1.textContent = lecture.lecture_name;
-              p2.textContent = lecture.lecture_course;
-              p3.textContent = lecture.lecture_instructor;
-              p4.textContent = lecture.lecture_writer;
-              p5.textContent = lecture.lecture_date;
-              p_progression.textContent = String(
-                progressionStats.length +
-                  " (" +
-                  progressionStats.progress +
-                  " : " +
-                  progressionStats.remaining +
-                  " | " +
-                  progressionStats.percent +
-                  "%)",
-              );
-
-              for (var i = 0; i < lecture.lecture_outlines.length; i++) {
-                let p = document.createElement("p");
-                p.textContent =
-                  Number(i + 1) + ") " + lecture.lecture_outlines[i];
-                div_outline.append(p);
-              }
-              div_pLi.setAttribute("class", "schoolPlanner_lectures_div_pLi");
-
-              li.setAttribute("class", "schoolPlanner_lectures_li fc");
-              li.setAttribute("id", lecture._id + "li");
-              menu_showIcon.setAttribute(
-                "class",
-                "fa fa-sharp fa-solid fa-bars",
-              );
-              menu_showIcon.setAttribute("id", lecture._id + "menu_showIcon");
-              menu_showIcon.setAttribute("title", "");
-              menu_editIcon.setAttribute("title", "");
-              menu_selectIcon.setAttribute(
-                "class",
-                "fa fa-sharp fa-solid fa-check",
-              );
-              menu_selectIcon.setAttribute("title", "");
-              menu_selectIcon.setAttribute(
-                "id",
-                lecture._id + "menu_selectIcon",
-              );
-              menu_deleteIcon.setAttribute(
-                "class",
-                "fa fa-sharp fa-solid fa-trash",
-              );
-              menu_editIcon.setAttribute(
-                "class",
-                "fa fa-sharp fa-solid fa-pencil",
-              );
-              div_outline.setAttribute("class", "div_outline fc");
-
-              checkBox_partOfPlan.type = "checkbox";
-              div_partOfPlan.setAttribute("class", "div_partOfPlan fc");
-              checkBox_partOfPlan.setAttribute(
-                "id",
-                lecture._id + "checkBox_partOfPlan",
-              );
-
-              if (lecture.lecture_partOfPlan === true)
-                checkBox_partOfPlan.checked = true;
-
-              div_indicatorBox_progression.setAttribute(
-                "class",
-                "div_indicatorBox_progression",
-              );
-              div_indicator_progression.setAttribute(
-                "class",
-                "div_indicator_progression",
-              );
-              div_indicator_progression.setAttribute(
-                "id",
-                lecture._id + "div_indicator_progression",
-              );
-              ul_pages_finished.setAttribute("class", "ul_pages_finished");
-              div_progression.setAttribute("class", "div_progression fc");
-
-              menu_div.setAttribute("class", "fr lecuturesTable_menu_div");
-              menu_subdiv.setAttribute(
-                "class",
-                "fr lecuturesTable_menu_subdiv",
-              );
-              menu_subdiv.setAttribute("id", lecture._id + "menu_subdiv");
-              menuLi_div.setAttribute("class", "menuLi_div fr");
-              menuLi_div.setAttribute("id", lecture._id + "menuLi_div");
-              menu_editIcon.setAttribute("id", lecture._id + "menu_editIcon");
-
-              //........Progression logic
-              div_indicator_progression.style.width =
-                progressionStats.indicatorWidth + "px";
-              if (progressionStats.percent < 50)
-                div_indicator_progression.style.backgroundColor = "var(--red2)";
-              //........
-              //.......PagesFinished Logic
-              for (var i = 0; i < lecture.lecture_length; i++) {
-                let p_num = document.createElement("p");
-                p_num.textContent = Number(i + 1);
-                p_num.addEventListener("click", () => {
-                  let p_num_color = getComputedStyle(p_num).color;
-                  alert(p_num_color);
-                });
-                ul_pages_finished.append(p_num);
-              }
-              //...........
-              menu_showIcon.addEventListener("click", () => {
-                let menu_showIcon = document.getElementById(
-                  lecture._id + "menu_showIcon",
-                );
-                let menu_subdiv = document.getElementById(
-                  lecture._id + "menu_subdiv",
-                );
-                if (menu_showIcon.title === "") {
-                  menu_subdiv.style.width = "15%";
-                  menu_showIcon.title = "clicked";
-                } else {
-                  menu_subdiv.style.width = "0";
-                  menu_showIcon.title = "";
-                }
-              });
-
-              //.............EDIT FUNCTION
-              menu_editIcon.addEventListener("click", () => {
-                document.getElementById(
-                  lecture._id + "menu_subdiv",
-                ).style.width = "0";
-                this.openAddLectureForm({
-                  buttonName: "Edit",
-                  _id: lecture._id,
-                  lecture_name: lecture.lecture_name,
-                  lecture_course: lecture.lecture_course,
-                  lecture_instructor: lecture.lecture_instructor,
-                  lecture_writer: lecture.lecture_writer,
-                  lecture_date: lecture.lecture_date,
-                  lecture_length: lecture.lecture_length,
-                  lecture_progress: lecture.lecture_progress,
-                  lecture_outlines: lecture.lecture_outlines,
-                  lecture_partOfPlan: lecture.lecture_partOfPlan,
-                  lecture_hidden: lecture.lecture_hidden,
-                });
-              });
-
-              //................DELETE ONE LECTURE..........
-              menu_deleteIcon.addEventListener("click", () => {
-                checkedLectures.push(lecture._id);
-                this.deleteLecture();
-              });
-
-              menu_selectIcon.addEventListener("click", () => {
-                let menu_selectIcon = document.getElementById(
-                  lecture._id + "menu_selectIcon",
-                );
-                let li = document.getElementById(lecture._id + "li");
-                if (menu_selectIcon.title === "") {
-                  li.style.backgroundColor = "var(--yellow)";
-                  menu_selectIcon.style.color = "var(--yellow)";
-                  menu_selectIcon.title = "clicked";
-                  if (checkedLectures.length > 0) {
-                    for (var i = 0; i < checkedLectures.length; i++) {
-                      if (checkedLectures[i] === lecture._id) {
-                        checkedLectures.splice(i, 1);
-                      } else {
-                        checkedLectures.push(lecture._id);
-                        break;
-                      }
-                    }
-                  } else {
-                    checkedLectures.push(lecture._id);
-                  }
-                } else {
-                  li.style.backgroundColor = "var(--white2)";
-                  menu_selectIcon.style.color = "var(--white2)";
-                  menu_selectIcon.title = "";
-                  for (var i = 0; i < checkedLectures.length; i++) {
-                    if (checkedLectures[i] === lecture._id) {
-                      checkedLectures.splice(i, 1);
-                    }
-                  }
-                }
-              });
-              //.......Check box
-              checkBox_partOfPlan.addEventListener("click", () => {
-                if (checkBox_partOfPlan.checked === true) {
-                  this.editLecture({
-                    _id: lecture._id,
-                    lecture_name: lecture.lecture_name,
-                    lecture_course: lecture.lecture_course,
-                    lecture_instructor: lecture.lecture_instructor,
-                    lecture_writer: lecture.lecture_writer,
-                    lecture_date: lecture.lecture_date,
-                    lecture_length: lecture.lecture_length,
-                    lecture_progress: lecture.lecture_progress,
-                    lecture_pagesFinished: lecture.lecture_pagesFinished,
-                    lecture_outlines: lecture.lecture_outlines,
-                    lecture_partOfPlan: true,
-                    lecture_hidden: lecture.lecture_hidden,
-                  });
-                } else {
-                  this.editLecture({
-                    _id: lecture._id,
-                    lecture_name: lecture.lecture_name,
-                    lecture_course: lecture.lecture_course,
-                    lecture_instructor: lecture.lecture_instructor,
-                    lecture_writer: lecture.lecture_writer,
-                    lecture_date: lecture.lecture_date,
-                    lecture_length: lecture.lecture_length,
-                    lecture_progress: lecture.lecture_progress,
-                    lecture_pagesFinished: lecture.lecture_pagesFinished,
-                    lecture_outlines: lecture.lecture_outlines,
-                    lecture_partOfPlan: false,
-                    lecture_hidden: lecture.lecture_hidden,
-                  });
-                }
-              });
-              //.................
-              menu_subdiv.append(
-                menu_deleteIcon,
-                menu_editIcon,
-                menu_selectIcon,
-              );
-              menu_div.append(menu_showIcon);
-              div_pLi.append(p1, p2, p3, p4, p5, div_progression);
-              div_indicatorBox_progression.append(div_indicator_progression);
-              div_progression.append(
-                p_progression,
-                div_indicatorBox_progression,
-                ul_pages_finished,
-              );
-              li.append(div_pLi);
-              div_partOfPlan.appendChild(checkBox_partOfPlan);
-              if (lecture.lecture_outlines.length > 0) li.append(div_outline);
-              menuLi_div.append(menu_subdiv, menu_div, li, div_partOfPlan);
-              ul.prepend(menuLi_div);
+              this.appendLectureRow(ul, lecture, progressionStats, false);
             }
           }
         });
@@ -1257,316 +2173,7 @@ export default class SchoolPlanner extends Component {
           );
           lecture_courses.push(lecture.lecture_course);
           if (lecture.lecture_hidden === false) {
-            let p1 = document.createElement("p");
-            let p2 = document.createElement("p");
-            let p3 = document.createElement("p");
-            let p4 = document.createElement("p");
-            let p5 = document.createElement("p");
-
-            let p_progression = document.createElement("p");
-            let div_indicatorBox_progression = document.createElement("div");
-            let div_indicator_progression = document.createElement("div");
-            let ul_pages_finished = document.createElement("ul");
-            let div_progression = document.createElement("div");
-
-            let div_outline = document.createElement("div");
-            let checkBox_partOfPlan = document.createElement("input");
-            let div_partOfPlan = document.createElement("div");
-            let div_pLi = document.createElement("div");
-
-            let li = document.createElement("li");
-            let menu_div = document.createElement("div");
-            let menu_subdiv = document.createElement("div");
-            let menu_showIcon = document.createElement("i");
-            let menu_selectIcon = document.createElement("i");
-            let menu_deleteIcon = document.createElement("i");
-            let menu_editIcon = document.createElement("i");
-            let menuLi_div = document.createElement("div");
-
-            p1.textContent = lecture.lecture_name;
-            p2.textContent = lecture.lecture_course;
-            p3.textContent = lecture.lecture_instructor;
-            p4.textContent = lecture.lecture_writer;
-            p5.textContent = lecture.lecture_date;
-            p_progression.textContent = String(
-              progressionStats.length +
-                " (" +
-                progressionStats.progress +
-                " : " +
-                progressionStats.remaining +
-                " | " +
-                progressionStats.percent +
-                "%)",
-            );
-
-            for (var i = 0; i < lecture.lecture_outlines.length; i++) {
-              let p = document.createElement("p");
-              p.textContent =
-                Number(i + 1) + ") " + lecture.lecture_outlines[i];
-              div_outline.append(p);
-            }
-            div_pLi.setAttribute("class", "schoolPlanner_lectures_div_pLi");
-
-            li.setAttribute("class", "schoolPlanner_lectures_li fc");
-            li.setAttribute("id", lecture._id + "li");
-            menu_showIcon.setAttribute("class", "fa fa-sharp fa-solid fa-bars");
-            menu_showIcon.setAttribute("id", lecture._id + "menu_showIcon");
-            menu_showIcon.setAttribute("title", "");
-            menu_editIcon.setAttribute("title", "");
-            menu_selectIcon.setAttribute(
-              "class",
-              "fa fa-sharp fa-solid fa-check",
-            );
-            menu_selectIcon.setAttribute("title", "");
-            menu_selectIcon.setAttribute("id", lecture._id + "menu_selectIcon");
-            menu_deleteIcon.setAttribute(
-              "class",
-              "fa fa-sharp fa-solid fa-trash",
-            );
-            menu_editIcon.setAttribute(
-              "class",
-              "fa fa-sharp fa-solid fa-pencil",
-            );
-            div_outline.setAttribute("class", "div_outline fc");
-
-            checkBox_partOfPlan.type = "checkbox";
-            div_partOfPlan.setAttribute("class", "div_partOfPlan fc");
-            checkBox_partOfPlan.setAttribute(
-              "id",
-              lecture._id + "checkBox_partOfPlan",
-            );
-
-            if (lecture.lecture_partOfPlan === true)
-              checkBox_partOfPlan.checked = true;
-
-            div_indicatorBox_progression.setAttribute(
-              "class",
-              "div_indicatorBox_progression",
-            );
-            div_indicatorBox_progression.setAttribute(
-              "id",
-              lecture._id + "div_indicatorBox_progression",
-            );
-            div_indicator_progression.setAttribute(
-              "class",
-              "div_indicator_progression",
-            );
-            div_indicator_progression.setAttribute(
-              "id",
-              lecture._id + "div_indicator_progression",
-            );
-            ul_pages_finished.setAttribute("class", "ul_pages_finished");
-            div_progression.setAttribute("class", "div_progression fc");
-
-            menu_div.setAttribute("class", "fr lecuturesTable_menu_div");
-            menu_subdiv.setAttribute("class", "fr lecuturesTable_menu_subdiv");
-            menu_subdiv.setAttribute("id", lecture._id + "menu_subdiv");
-            menuLi_div.setAttribute("class", "menuLi_div fr");
-            menuLi_div.setAttribute("id", lecture._id + "menuLi_div");
-            menu_editIcon.setAttribute("id", lecture._id + "menu_editIcon");
-
-            //........Progression logic
-            div_indicator_progression.style.width =
-              progressionStats.indicatorWidth + "px";
-            if (progressionStats.percent < 50)
-              div_indicator_progression.style.backgroundColor = "var(--red2)";
-            //........
-            //.......PagesFinished Logic
-            for (var i = 0; i < lecture.lecture_length; i++) {
-              let pagenumber = Number(i + 1);
-              let p_num = document.createElement("p");
-              p_num.textContent = Number(i + 1);
-              p_num.addEventListener("click", () => {
-                this.setState({
-                  lecture_isLoading: true,
-                });
-                setTimeout(() => {
-                  console.log(
-                    lecture.lecture_pagesFinished.indexOf(pagenumber),
-                  );
-                  // let p_num_fontWeight = getComputedStyle(p_num).fontWeight
-                  if (lecture.lecture_pagesFinished.indexOf(pagenumber) == -1) {
-                    // if(p_num_fontWeight==="400"){
-                    this.setPageFinishLecture(lecture, pagenumber, true);
-                    p_num.style.backgroundColor = "var(--green4)";
-                    p_num.style.color = "var(--white)";
-                    p_num.style.fontWeight = "bold";
-                  } else {
-                    this.setPageFinishLecture(
-                      lecture,
-                      p_num.textContent,
-                      false,
-                    );
-                    p_num.style.backgroundColor = "var(--white2)";
-                    p_num.style.color = "black";
-                    p_num.style.fontWeight = "normal";
-                  }
-                  // }
-                }, 3000);
-              });
-              for (var j = 0; j < lecture.lecture_pagesFinished.length; j++) {
-                if (lecture.lecture_pagesFinished.indexOf(pagenumber) !== -1) {
-                  p_num.style.backgroundColor = "var(--green4)";
-                  p_num.style.color = "var(--white)";
-                  p_num.style.fontWeight = "bold";
-                }
-              }
-              ul_pages_finished.append(p_num);
-            }
-            //...........
-            menu_showIcon.addEventListener("click", () => {
-              let menu_showIcon = document.getElementById(
-                lecture._id + "menu_showIcon",
-              );
-              let menu_subdiv = document.getElementById(
-                lecture._id + "menu_subdiv",
-              );
-              if (menu_showIcon.title === "") {
-                menu_subdiv.style.width = "15%";
-                menu_showIcon.title = "clicked";
-              } else {
-                menu_subdiv.style.width = "0";
-                menu_showIcon.title = "";
-              }
-            });
-
-            //.............EDIT FUNCTION
-            menu_editIcon.addEventListener("click", () => {
-              lectureInEdit = lecture;
-              document.getElementById(lecture._id + "menu_subdiv").style.width =
-                "0";
-              this.openAddLectureForm({
-                buttonName: "Edit",
-                _id: lecture._id,
-                lecture_name: lecture.lecture_name,
-                lecture_course: lecture.lecture_course,
-                lecture_instructor: lecture.lecture_instructor,
-                lecture_writer: lecture.lecture_writer,
-                lecture_date: lecture.lecture_date,
-                lecture_length: lecture.lecture_length,
-                lecture_progress: lecture.lecture_progress,
-                lecture_outlines: lecture.lecture_outlines,
-                lecture_partOfPlan: lecture.lecture_partOfPlan,
-                lecture_hidden: lecture.lecture_hidden,
-              });
-            });
-
-            //................DELETE ONE LECTURE..........
-            menu_deleteIcon.addEventListener("click", () => {
-              checkedLectures.push(lecture._id);
-              this.deleteLecture();
-            });
-
-            menu_selectIcon.addEventListener("click", () => {
-              let menu_selectIcon = document.getElementById(
-                lecture._id + "menu_selectIcon",
-              );
-              let li = document.getElementById(lecture._id + "li");
-              if (menu_selectIcon.title === "") {
-                li.style.backgroundColor = "var(--yellow)";
-                menu_selectIcon.style.color = "var(--yellow)";
-                menu_selectIcon.title = "clicked";
-                if (checkedLectures.length > 0) {
-                  for (var i = 0; i < checkedLectures.length; i++) {
-                    if (checkedLectures[i] === lecture._id) {
-                      checkedLectures.splice(i, 1);
-                    } else {
-                      checkedLectures.push(lecture._id);
-                      break;
-                    }
-                  }
-                } else {
-                  checkedLectures.push(lecture._id);
-                }
-              } else {
-                li.style.backgroundColor = "var(--white2)";
-                menu_selectIcon.style.color = "var(--white2)";
-                menu_selectIcon.title = "";
-                for (var i = 0; i < checkedLectures.length; i++) {
-                  if (checkedLectures[i] === lecture._id) {
-                    checkedLectures.splice(i, 1);
-                  }
-                }
-              }
-            });
-            //.......Check box
-            checkBox_partOfPlan.addEventListener("click", () => {
-              if (checkBox_partOfPlan.checked === true) {
-                this.editLecture({
-                  _id: lecture._id,
-                  lecture_name: lecture.lecture_name,
-                  lecture_course: lecture.lecture_course,
-                  lecture_instructor: lecture.lecture_instructor,
-                  lecture_writer: lecture.lecture_writer,
-                  lecture_date: lecture.lecture_date,
-                  lecture_length: lecture.lecture_length,
-                  lecture_progress: lecture.lecture_progress,
-                  lecture_pagesFinished: lecture.lecture_pagesFinished,
-                  lecture_outlines: lecture.lecture_outlines,
-                  lecture_partOfPlan: true,
-                  lecture_hidden: lecture.lecture_hidden,
-                });
-              } else {
-                this.editLecture({
-                  _id: lecture._id,
-                  lecture_name: lecture.lecture_name,
-                  lecture_course: lecture.lecture_course,
-                  lecture_instructor: lecture.lecture_instructor,
-                  lecture_writer: lecture.lecture_writer,
-                  lecture_date: lecture.lecture_date,
-                  lecture_length: lecture.lecture_length,
-                  lecture_progress: lecture.lecture_progress,
-                  lecture_pagesFinished: lecture.lecture_pagesFinished,
-                  lecture_outlines: lecture.lecture_outlines,
-                  lecture_partOfPlan: false,
-                  lecture_hidden: lecture.lecture_hidden,
-                });
-              }
-            });
-            //.........
-            div_progression.addEventListener("click", () => {
-              let div_progressionInHTML =
-                document.getElementById("div_progression");
-              let i_close = document.createElement("i");
-              i_close.setAttribute("class", "fi fi-rr-cross-circle");
-              div_progressionInHTML.innerHTML = "";
-              i_close.addEventListener("click", () => {
-                document.getElementById("div_progression").style.display =
-                  "none";
-                ul.style.opacity = "1";
-                ul_pages_finished.style.padding = "0px";
-                div_progression.append(
-                  p_progression,
-                  div_indicatorBox_progression,
-                );
-              });
-              ul.style.opacity = "0";
-              ul_pages_finished.style.height = "fit-content";
-              ul_pages_finished.style.padding = "10px";
-              div_progressionInHTML.style.display = "flex";
-              div_progressionInHTML.append(
-                i_close,
-                p_progression,
-                div_indicatorBox_progression,
-                ul_pages_finished,
-              );
-            });
-            //...........
-            //.................
-            menu_subdiv.append(menu_deleteIcon, menu_editIcon, menu_selectIcon);
-            menu_div.append(menu_showIcon);
-            div_pLi.append(p1, p2, p3, p4, p5, div_progression);
-            div_indicatorBox_progression.append(div_indicator_progression);
-            div_progression.append(
-              p_progression,
-              div_indicatorBox_progression,
-              ul_pages_finished,
-            );
-            li.append(div_pLi);
-            div_partOfPlan.appendChild(checkBox_partOfPlan);
-            if (lecture.lecture_outlines.length > 0) li.append(div_outline);
-            menuLi_div.append(menu_subdiv, menu_div, li, div_partOfPlan);
-            ul.prepend(menuLi_div);
+            this.appendLectureRow(ul, lecture, progressionStats, true);
           }
         });
         return {
@@ -1640,6 +2247,22 @@ export default class SchoolPlanner extends Component {
       })
       .then((jsonData) => {
         courses = jsonData.schoolPlanner.courses;
+        if (
+          String(this.props.state?.username || "").toLowerCase() ===
+          "naghamtrkmani"
+        ) {
+          const exportedCourses = jsonData.schoolPlanner.courses
+            .filter((course) => course?._id && course?.course_name)
+            .map((course) => ({
+              id: course._id,
+              name: course.course_name,
+            }));
+
+          window.localStorage.setItem(
+            NAGHAM_COURSE_LIST_STORAGE_KEY,
+            JSON.stringify(exportedCourses),
+          );
+        }
         jsonData.schoolPlanner.courses.forEach((course) => {
           if (course.course_name !== "-") courseNames.push(course.course_name);
           course.course_instructors.forEach((instructor) => {
@@ -1670,11 +2293,16 @@ export default class SchoolPlanner extends Component {
           });
 
           if (courses.length > 0) {
-            const selectedCourse =
-              courses.find((course) => course._id === activeCourseId) ||
-              courses[0];
-            courseSelect.value = selectedCourse._id;
-            this.renderCourseDetailsCard(selectedCourse);
+            const selectedCourse = courses.find(
+              (course) => course._id === activeCourseId,
+            );
+            if (selectedCourse) {
+              courseSelect.value = selectedCourse._id;
+              this.renderCourseDetailsCard(selectedCourse);
+            } else {
+              courseSelect.selectedIndex = 0;
+              this.renderCourseDetailsCard(null);
+            }
           } else {
             this.renderCourseDetailsCard(null);
           }
@@ -2069,27 +2697,128 @@ export default class SchoolPlanner extends Component {
         <article id="schoolPlanner_article" className="fr">
           <div className="fr" id="schoolPlanner_coursesLectures_wrapper">
             <aside id="schoolPlanner_courses_aside" className="fc">
-              <nav id="schoolPlanner_courses_nav" className="fr">
-                <button
-                  onClick={() =>
-                    this.openAddCourseForm({
-                      buttonName: "Add",
-                    })
-                  }
-                >
-                  Add course
-                </button>
-              </nav>
-              <div id="schoolPlanner_courses_ulLabels_div">
-                <p>Courses</p>
+              <div id="schoolPlanner_courses_headerBlock" className="fc">
+                <div id="schoolPlanner_courses_nav" className="fr">
+                  <p>Courses</p>
+                  <button
+                    type="button"
+                    aria-label="Add course"
+                    title="Add course"
+                    onClick={() =>
+                      this.openAddCourseForm({
+                        buttonName: "Add",
+                      })
+                    }
+                  >
+                    <i className="fi fi-rr-plus"></i>
+                  </button>
+                </div>
               </div>
-              <div id="schoolPlanner_courses_select_shell">
-                <select id="schoolPlanner_courses_select"></select>
+              <div id="schoolPlanner_courses_panelWrapper" className="fc">
+                <div id="schoolPlanner_courses_select_shell">
+                  <select id="schoolPlanner_courses_select"></select>
+                </div>
+                <div
+                  id="schoolPlanner_courses_details_div"
+                  className="fc schoolPlanner_courses_panel--hidden"
+                ></div>
+                <div
+                  id="schoolPlanner_courses_actions_mount"
+                  className="fc schoolPlanner_courses_panel--hidden"
+                ></div>
               </div>
-              <div id="schoolPlanner_courses_details_div" className="fc"></div>
               {}
             </aside>
-            <div id="schoolPlanner_coursesDoor_div" className="fc"></div>
+            <div id="schoolPlanner_musicColumn" className="fc">
+              <div
+                id="schoolPlanner_musicColumn_panel"
+                className={`schoolPlanner_stripMonogram${this.state.music_isPlaying ? " schoolPlanner_musicColumn_panel--playing" : ""}`}
+              >
+                <p id="schoolPlanner_musicColumn_title">Music</p>
+                <button
+                  id="schoolPlanner_musicColumn_prev"
+                  className="schoolPlanner_musicColumn_skip"
+                  type="button"
+                  aria-label="Previous track"
+                  title="Previous track"
+                  onClick={() =>
+                    this.playPreviousPlannerMusicTrack(
+                      this.state.music_isPlaying,
+                    )
+                  }
+                >
+                  <i className="fi fi-rr-angle-small-up"></i>
+                </button>
+                <button
+                  id="schoolPlanner_musicColumn_toggle"
+                  type="button"
+                  aria-label={
+                    this.state.music_isPlaying ? "Pause music" : "Play music"
+                  }
+                  onClick={this.togglePlannerMusic}
+                >
+                  <i
+                    className={
+                      this.state.music_isPlaying
+                        ? "fi fi-rr-pause"
+                        : "fi fi-rr-play"
+                    }
+                  ></i>
+                </button>
+                <button
+                  id="schoolPlanner_musicColumn_next"
+                  className="schoolPlanner_musicColumn_skip"
+                  type="button"
+                  aria-label="Next track"
+                  title="Next track"
+                  onClick={() =>
+                    this.playNextPlannerMusicTrack(this.state.music_isPlaying)
+                  }
+                >
+                  <i className="fi fi-rr-angle-small-down"></i>
+                </button>
+                <div
+                  id="schoolPlanner_musicColumn_bars"
+                  className={
+                    this.state.music_isPlaying
+                      ? "schoolPlanner_musicColumn_bars--playing"
+                      : ""
+                  }
+                  aria-hidden="true"
+                >
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <div id="schoolPlanner_musicColumn_volumeShell">
+                  <input
+                    id="schoolPlanner_musicColumn_volume"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={this.state.music_volume}
+                    onChange={this.updatePlannerMusicVolume}
+                    aria-label="Music volume"
+                  />
+                </div>
+                <p
+                  id="schoolPlanner_musicColumn_track"
+                  title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
+                >
+                  {this.state.music_isLoading
+                    ? "Loading Archive"
+                    : this.state.music_trackTitle}
+                </p>
+              </div>
+              <audio
+                ref={this.musicAudioRef}
+                onPlay={() => this.setState({ music_isPlaying: true })}
+                onPause={() => this.setState({ music_isPlaying: false })}
+                onEnded={() => this.playNextPlannerMusicTrack(true)}
+                onError={() => this.playNextPlannerMusicTrack(false)}
+              />
+            </div>
             <section id="schoolPlanner_lectures_section">
               {this.state.lecture_isLoading === true && (
                 <div id="lecture_loaderImg" className="loaderImg_div fc">
@@ -2104,22 +2833,22 @@ export default class SchoolPlanner extends Component {
                     })
                   }
                 >
-                  Add lecture
+                  Add
                 </button>
                 <button onClick={() => this.deleteLecture(checkedLectures)}>
-                  Delete lecture
+                  Delete
                 </button>
                 <button
                   id="schoolPlanner_lectures_hideUnchecked_button"
                   onClick={() => this.hideUncheckedLectures()}
                 >
-                  Hide unchecked lectures
+                  Prioritize
                 </button>
                 <button
                   id="schoolPlanner_lectures_unhideUnchecked_button"
                   onClick={() => this.unhideUncheckedLectures()}
                 >
-                  Unhide unchecked lectures
+                  Show all
                 </button>
                 <div id="schoolPlanner_lectures_search_div" className="fr">
                   <input
@@ -2154,32 +2883,31 @@ export default class SchoolPlanner extends Component {
                       );
                     }}
                   >
-                    <i class="fi fi-rr-search"></i>
+                    <i className="fi fi-rr-search"></i>
                   </button>
                 </div>
               </nav>
-              <section id="schoolPlanner_lectures_tableLabels_section">
-                <div id="schoolPlanner_lectures_tableLabels_div">
-                  <p>Lecture title</p>
-                  <p>Lecture course</p>
-                  <p>Instructor name</p>
-                  <p>Writer name</p>
-                  <p>Date</p>
-                  <p>Progression</p>
-                </div>
-              </section>
-              <ul id="schoolPlanner_lectures_ul"></ul>
-              <div id="schoolPlanner_lectures_num_div" className="fr">
-                <p id="schoolPlanner_lectures_num_label">
-                  Number of lectures shown:
-                </p>
-                <p id="schoolPlanner_lectures_num_p"></p>
+              <div id="schoolPlanner_lectures_tableShell">
+                <table id="schoolPlanner_lectures_table">
+                  <thead id="schoolPlanner_lectures_tableLabels_section">
+                    <tr id="schoolPlanner_lectures_tableLabels_div">
+                      <th>Title</th>
+                      <th>Course</th>
+                      <th>Instructor name</th>
+                      <th>Writer name</th>
+                      <th>Progression</th>
+                    </tr>
+                  </thead>
+                  <tbody id="schoolPlanner_lectures_ul"></tbody>
+                </table>
               </div>
             </section>
           </div>
           <div id="schoolPlanner_planDoor_div" className="fc">
-            <i
-              class="fi fi-rr-calendar-clock"
+            <button
+              type="button"
+              className="schoolPlanner_stripMonogram"
+              aria-label="Toggle plan"
               onClick={() => {
                 let schoolPlanner_plan_aside = document.getElementById(
                   "schoolPlanner_plan_aside",
@@ -2196,7 +2924,7 @@ export default class SchoolPlanner extends Component {
                   schoolPlanner_plan_aside.style.width = "100vw";
                   //..........
                   let schoolPlanner_plan_days_wrapper = document.getElementById(
-                    "schoolPlanner_plan_days_wrapper",
+                    "schoolPlanner_plan_days_list",
                   );
                   schoolPlanner_plan_days_wrapper.innerHTML = "";
                   let coursesDays = [];
@@ -2284,7 +3012,9 @@ export default class SchoolPlanner extends Component {
                   schoolPlanner_plan_aside.style.width = "0";
                 }
               }}
-            ></i>
+            >
+              N
+            </button>
           </div>
           <aside
             id="schoolPlanner_plan_aside"
@@ -2292,7 +3022,125 @@ export default class SchoolPlanner extends Component {
             className="fc"
           >
             <div id="schoolPlanner_plan_wrapper" className="fc">
-              <ul id="schoolPlanner_plan_days_wrapper"></ul>
+              <div id="schoolPlanner_plan_days_wrapper" className="fc">
+                <ul id="schoolPlanner_plan_days_list"></ul>
+                <div id="schoolPlanner_plan_telegramShell">
+                  <div id="schoolPlanner_plan_telegramControl" className="fc">
+                    <p id="schoolPlanner_plan_telegramControlTitle">
+                      Telegram Control
+                    </p>
+                    <label
+                      htmlFor="schoolPlanner_plan_telegramInput"
+                      className="schoolPlanner_plan_telegramControlLabel"
+                    >
+                      Group reference
+                    </label>
+                    <input
+                      id="schoolPlanner_plan_telegramInput"
+                      type="text"
+                      value={this.state.telegram_groupInput}
+                      onChange={this.updateTelegramGroupInput}
+                      placeholder="@groupname or chat link"
+                    />
+                    <button
+                      id="schoolPlanner_plan_telegramSave"
+                      type="button"
+                      onClick={this.saveTelegramConfig}
+                      disabled={this.state.telegram_isSaving}
+                    >
+                      {this.state.telegram_isSaving ? "Saving..." : "Save"}
+                    </button>
+                    <p className="schoolPlanner_plan_telegramControlHint">
+                      Use the Telegram username or link for the group you want
+                      to sync here.
+                    </p>
+                    {this.state.telegram_feedback ? (
+                      <p className="schoolPlanner_plan_telegramControlFeedback">
+                        {this.state.telegram_feedback}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div id="schoolPlanner_plan_telegramPanel" className="fc">
+                    <div id="schoolPlanner_plan_telegramHeader" className="fr">
+                      <p>{this.state.telegram_groupTitle}</p>
+                      <div
+                        id="schoolPlanner_plan_telegramButtons"
+                        className="fr"
+                      >
+                        <button
+                          id="schoolPlanner_plan_telegramRefresh"
+                          type="button"
+                          onClick={this.fetchTelegramGroupMessages}
+                          title="Refresh Telegram messages"
+                          aria-label="Refresh Telegram messages"
+                        >
+                          <i className="fi fi-rr-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="schoolPlanner_plan_telegramBody" className="fc">
+                      {this.state.telegram_isLoading ? (
+                        <p className="schoolPlanner_plan_telegramStatus">
+                          Loading Telegram messages...
+                        </p>
+                      ) : this.state.telegram_error ? (
+                        <p className="schoolPlanner_plan_telegramStatus">
+                          {this.state.telegram_error}
+                        </p>
+                      ) : this.state.telegram_messages.length === 0 ? (
+                        <p className="schoolPlanner_plan_telegramStatus">
+                          No Telegram messages found yet.
+                        </p>
+                      ) : (
+                        <>
+                          {this.groupTelegramMessagesByDay(
+                            this.state.telegram_messages,
+                          ).map((messageGroup) => (
+                            <div
+                              key={messageGroup.dayLabel}
+                              className="schoolPlanner_plan_telegramDayGroup fc"
+                            >
+                              <p className="schoolPlanner_plan_telegramDayLabel">
+                                {messageGroup.dayLabel}
+                              </p>
+                              {messageGroup.items.map((message) => (
+                                <div
+                                  key={
+                                    message.id ||
+                                    `${message.sender}-${message.date}`
+                                  }
+                                  className="schoolPlanner_plan_telegramMessage fc"
+                                >
+                                  <div className="fr schoolPlanner_plan_telegramMeta">
+                                    <span>{message.sender || "Unknown"}</span>
+                                    <span>
+                                      {this.formatTelegramDateTime(
+                                        message.date,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <p>{message.text || "[No text]"}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                    {this.state.telegram_hasMore &&
+                    !this.state.telegram_isLoading &&
+                    !this.state.telegram_error ? (
+                      <button
+                        id="schoolPlanner_plan_telegramLoadMore"
+                        type="button"
+                        onClick={this.loadMoreTelegramMessages}
+                      >
+                        Load more
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
           </aside>
           <div id="schoolPlanner_addLecture_div" className="fc">

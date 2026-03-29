@@ -7,7 +7,10 @@ import "../Login/login.min-601-max-900.css";
 import "../Login/login.max-width-500.css";
 import { apiUrl } from "../config/api";
 import InspectionOverlay from "../debug/InspectionOverlay";
-import { logoutStoredSession, readStoredSession } from "../utils/sessionCleanup";
+import {
+  logoutStoredSession,
+  readStoredSession,
+} from "../utils/sessionCleanup";
 
 const clinicalRealityParagraphs = [
   "Phenomenon (trace-as-accessed) first exists in the mode of present appearing: it is an aspect of the phenomena-as-appearing to the subject, the 3D slice of appearance within experience. But once retained, it also becomes part of phenomena-as-stored, the 4D trajectory of experience, through which the subject gathers successive appearances into an experiential continuity.",
@@ -51,7 +54,7 @@ const formatAppLastUpdatedLabel = (value) =>
   }).format(new Date(value));
 
 const loginAppLastUpdatedFallbackLabel = formatAppLastUpdatedLabel(
-  "2026-03-22T12:00:00+03:00"
+  "2026-03-22T12:00:00+03:00",
 );
 
 const getStoredAuthState = () => {
@@ -169,7 +172,8 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
   const [isHighlightEraseModeOn, setIsHighlightEraseModeOn] = useState(false);
   const [hasRealitySelection, setHasRealitySelection] = useState(false);
-  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] = useState(null);
+  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] =
+    useState(null);
   const [isClinicalRealitySaving, setIsClinicalRealitySaving] = useState(false);
   const [savingDots, setSavingDots] = useState(".");
   const [canPersistClinicalReality, setCanPersistClinicalReality] = useState(
@@ -186,12 +190,13 @@ const Login = ({ onLogin, onForceLogout }) => {
   });
   const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
   const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
-    loginAppLastUpdatedFallbackLabel
+    loginAppLastUpdatedFallbackLabel,
   );
   const isWideLoginLayout = viewportSize.width > 1000;
   const feedbackMessage =
     (login_ok === false &&
-      (loginMessage || "The password you entered is not correct, please try again")) ||
+      (loginMessage ||
+        "The password you entered is not correct, please try again")) ||
     (signup_ok === true &&
       (signupMessage || "You have successfully signed up!")) ||
     (signup_ok === false &&
@@ -205,13 +210,15 @@ const Login = ({ onLogin, onForceLogout }) => {
     fetch(apiUrl("/api/user/app-last-updated"))
       .then((response) => response.json().catch(() => ({})))
       .then((payload) => {
-        if (!isMounted || !payload?.committedAt) {
+        if (!isMounted) {
           return;
         }
 
-        setLoginAppLastUpdatedLabel(
-          formatAppLastUpdatedLabel(payload.committedAt)
-        );
+        if (payload?.committedAt) {
+          setLoginAppLastUpdatedLabel(
+            formatAppLastUpdatedLabel(payload.committedAt),
+          );
+        }
       })
       .catch(() => {});
 
@@ -220,48 +227,48 @@ const Login = ({ onLogin, onForceLogout }) => {
     };
   }, []);
 
-const buildEraserCursor = () => {
-  const svg = `
+  const buildEraserCursor = () => {
+    const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
       <path d="M8 18l8-8 6 6-8 8H8l-4-4 8-8" fill="#f7fbfc" stroke="#35545b" stroke-width="1.2" stroke-linejoin="round"/>
       <path d="M14 24h8" stroke="#9db3b8" stroke-width="1.6" stroke-linecap="round"/>
     </svg>
   `.trim();
 
-  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 4 24, text`;
-};
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 4 24, text`;
+  };
 
-const saveClinicalRealityToDb = ({ token, html }) =>
-  fetch(apiUrl("/api/user/clinical-reality"), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      html: sanitizeClinicalRealityHtml(html),
-    }),
-  }).then((response) => {
-    if (!response.ok) {
-      throw new Error("Unable to save clinical reality content.");
+  const saveClinicalRealityToDb = ({ token, html }) =>
+    fetch(apiUrl("/api/user/clinical-reality"), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        html: sanitizeClinicalRealityHtml(html),
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("Unable to save clinical reality content.");
+      }
+
+      return response.json();
+    });
+
+  const insertHtmlAtCurrentSelection = (html) => {
+    document.execCommand("insertHTML", false, html);
+  };
+
+  const extractPlainTextFromHtml = (html) => {
+    if (typeof window === "undefined") {
+      return String(html || "").replace(/<[^>]+>/g, " ");
     }
 
-    return response.json();
-  });
-
-const insertHtmlAtCurrentSelection = (html) => {
-  document.execCommand("insertHTML", false, html);
-};
-
-const extractPlainTextFromHtml = (html) => {
-  if (typeof window === "undefined") {
-    return String(html || "").replace(/<[^>]+>/g, " ");
-  }
-
-  const container = window.document.createElement("div");
-  container.innerHTML = String(html || "");
-  return (container.textContent || container.innerText || "").trim();
-};
+    const container = window.document.createElement("div");
+    container.innerHTML = String(html || "");
+    return (container.textContent || container.innerText || "").trim();
+  };
 
   useEffect(() => {
     const storedSession = readStoredSession();
@@ -364,154 +371,11 @@ const extractPlainTextFromHtml = (html) => {
       "--login-footer-scale",
       `${1 / zoomScale}`,
     );
-  }, [isClinicalRealityOpen, isWideLoginLayout, viewportSize.height, zoomScale]);
-
-  useEffect(() => {
-    if (!loginFormRef.current || isLoginTransitioning) {
-      return;
-    }
-
-    const formEl = loginFormRef.current;
-    const selectors = [
-      "input",
-      "button",
-      "#Login_modeNav h4",
-      "#Login_loginFrom_form h4",
-      "#Login_feedback_text",
-    ].join(", ");
-
-    const resetScaledStyles = () => {
-      formEl.querySelectorAll(selectors).forEach((element) => {
-        element.style.removeProperty("font-size");
-        element.style.removeProperty("min-height");
-        element.style.removeProperty("line-height");
-        element.style.removeProperty("padding-top");
-        element.style.removeProperty("padding-right");
-        element.style.removeProperty("padding-bottom");
-        element.style.removeProperty("padding-left");
-      });
-    };
-
-    const collectMetrics = () =>
-      Array.from(formEl.querySelectorAll(selectors)).map((element) => {
-        const styles = window.getComputedStyle(element);
-        const parseValue = (value) => {
-          const parsed = Number.parseFloat(value);
-          return Number.isFinite(parsed) ? parsed : null;
-        };
-
-        return {
-          element,
-          fontSize: parseValue(styles.fontSize),
-          minHeight: parseValue(styles.minHeight),
-          lineHeight:
-            styles.lineHeight === "normal"
-              ? null
-              : parseValue(styles.lineHeight),
-          paddingTop: parseValue(styles.paddingTop),
-          paddingRight: parseValue(styles.paddingRight),
-          paddingBottom: parseValue(styles.paddingBottom),
-          paddingLeft: parseValue(styles.paddingLeft),
-        };
-      });
-
-    const applyScale = (metrics, scale) => {
-      metrics.forEach((metric) => {
-        if (metric.fontSize) {
-          metric.element.style.setProperty(
-            "font-size",
-            `${Math.max(metric.fontSize * scale, 6)}px`,
-            "important",
-          );
-        }
-
-        if (metric.minHeight && metric.minHeight > 0) {
-          metric.element.style.setProperty(
-            "min-height",
-            `${Math.max(metric.minHeight * scale, 16)}px`,
-            "important",
-          );
-        }
-
-        if (metric.lineHeight) {
-          metric.element.style.setProperty(
-            "line-height",
-            `${Math.max(metric.lineHeight * scale, 1)}px`,
-            "important",
-          );
-        }
-
-        if (metric.paddingTop !== null) {
-          metric.element.style.setProperty(
-            "padding-top",
-            `${Math.max(metric.paddingTop * scale, 0)}px`,
-            "important",
-          );
-        }
-
-        if (metric.paddingRight !== null) {
-          metric.element.style.setProperty(
-            "padding-right",
-            `${Math.max(metric.paddingRight * scale, 0)}px`,
-            "important",
-          );
-        }
-
-        if (metric.paddingBottom !== null) {
-          metric.element.style.setProperty(
-            "padding-bottom",
-            `${Math.max(metric.paddingBottom * scale, 0)}px`,
-            "important",
-          );
-        }
-
-        if (metric.paddingLeft !== null) {
-          metric.element.style.setProperty(
-            "padding-left",
-            `${Math.max(metric.paddingLeft * scale, 0)}px`,
-            "important",
-          );
-        }
-      });
-    };
-
-    const fitLoginForm = () => {
-      resetScaledStyles();
-      const metrics = collectMetrics();
-      let scale = 1;
-
-      applyScale(metrics, scale);
-
-      while (
-        (formEl.scrollHeight > formEl.clientHeight + 1 ||
-          formEl.scrollWidth > formEl.clientWidth + 1) &&
-        scale > 0.4
-      ) {
-        scale -= 0.04;
-        applyScale(metrics, scale);
-      }
-    };
-
-    const runFit = () => window.requestAnimationFrame(fitLoginForm);
-    const resizeObserver = new ResizeObserver(runFit);
-
-    resizeObserver.observe(formEl);
-    if (articleRef.current) {
-      resizeObserver.observe(articleRef.current);
-    }
-
-    runFit();
-
-    return () => {
-      resizeObserver.disconnect();
-      resetScaledStyles();
-    };
   }, [
-    authMode,
-    feedbackMessage,
-    isLoginTransitioning,
+    isClinicalRealityOpen,
+    isWideLoginLayout,
     viewportSize.height,
-    viewportSize.width,
+    zoomScale,
   ]);
 
   useEffect(() => {
@@ -521,9 +385,13 @@ const extractPlainTextFromHtml = (html) => {
 
     const editorElement = realityEditorRef.current;
     const shouldHydrateEditor =
-      !hasSyncedRealityEditorRef.current || document.activeElement !== editorElement;
+      !hasSyncedRealityEditorRef.current ||
+      document.activeElement !== editorElement;
 
-    if (shouldHydrateEditor && editorElement.innerHTML !== clinicalRealityHtml) {
+    if (
+      shouldHydrateEditor &&
+      editorElement.innerHTML !== clinicalRealityHtml
+    ) {
       editorElement.innerHTML = clinicalRealityHtml;
     }
 
@@ -658,7 +526,10 @@ const extractPlainTextFromHtml = (html) => {
   }, [isClinicalRealitySaving]);
 
   useEffect(() => {
-    if (!authReport?.token || !hasCompletedClinicalRealityBootstrapRef.current) {
+    if (
+      !authReport?.token ||
+      !hasCompletedClinicalRealityBootstrapRef.current
+    ) {
       return;
     }
 
@@ -757,7 +628,9 @@ const extractPlainTextFromHtml = (html) => {
             return response.json(response);
           }
           if (response.status === 401) {
-            setLoginMessage("The password you entered is not correct, please try again");
+            setLoginMessage(
+              "The password you entered is not correct, please try again",
+            );
             setLogin_ok(false);
             setIs_loading(false);
             return response.json(response);
@@ -773,6 +646,15 @@ const extractPlainTextFromHtml = (html) => {
               username: userdata.user.info.username,
               firstname: userdata.user.info.firstname,
               lastname: userdata.user.info.lastname,
+              program: userdata.user.info.program || "",
+              university: userdata.user.info.university || "",
+              studyYear: userdata.user.info.studyYear || "",
+              term: userdata.user.info.term || "",
+              aiProvider: userdata.user.info.aiProvider || "openai",
+              profilePicture: userdata.user.media?.profilePicture?.url || "",
+              imageGallery: Array.isArray(userdata.user.media?.imageGallery)
+                ? userdata.user.media.imageGallery
+                : [],
               dob: userdata.user.info.dob,
               token: userdata.token,
               isConnected: true,
@@ -789,8 +671,7 @@ const extractPlainTextFromHtml = (html) => {
             setIsClinicalRealitySaving(true);
             saveClinicalRealityToDb({
               token: userdata.token,
-              html:
-                realityEditorRef.current?.innerHTML || clinicalRealityHtml,
+              html: realityEditorRef.current?.innerHTML || clinicalRealityHtml,
             })
               .then(() => {
                 clinicalRealityBaselineRef.current =
@@ -808,7 +689,9 @@ const extractPlainTextFromHtml = (html) => {
                 setLogin_ok(true);
               });
           } else {
-            setLoginMessage("The password you entered is not correct, please try again");
+            setLoginMessage(
+              "The password you entered is not correct, please try again",
+            );
             setLogin_ok(false);
             setIs_loading(false);
           }
@@ -821,7 +704,9 @@ const extractPlainTextFromHtml = (html) => {
           setIs_loading(false);
         });
     } else {
-      setLoginMessage("The password you entered is not correct, please try again");
+      setLoginMessage(
+        "The password you entered is not correct, please try again",
+      );
       setLogin_ok(false);
       setIs_loading(false);
     }
@@ -872,7 +757,10 @@ const extractPlainTextFromHtml = (html) => {
     const editorElement = realityEditorRef.current;
     const range = selection.getRangeAt(0);
 
-    if (editorElement && editorElement.contains(range.commonAncestorContainer)) {
+    if (
+      editorElement &&
+      editorElement.contains(range.commonAncestorContainer)
+    ) {
       applyEditorCommand("hiliteColor", editorHighlightColor);
       selection.removeAllRanges();
       setHasRealitySelection(false);
@@ -927,7 +815,10 @@ const extractPlainTextFromHtml = (html) => {
 
     const charRange = document.createRange();
     charRange.setStart(textNode, offset);
-    charRange.setEnd(textNode, Math.min(offset + 1, textNode.textContent.length));
+    charRange.setEnd(
+      textNode,
+      Math.min(offset + 1, textNode.textContent.length),
+    );
 
     const selection = window.getSelection();
 
@@ -943,7 +834,9 @@ const extractPlainTextFromHtml = (html) => {
     selection.removeAllRanges();
     setHasRealitySelection(false);
     setSelectedRealityFontSizePt(null);
-    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+    setClinicalRealityHtml(
+      sanitizeClinicalRealityHtml(editorElement.innerHTML),
+    );
   };
 
   const handleRealityEditorMouseDown = (event) => {
@@ -974,14 +867,19 @@ const extractPlainTextFromHtml = (html) => {
     const editorElement = realityEditorRef.current;
     const range = selection.getRangeAt(0);
 
-    if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
+    if (
+      !editorElement ||
+      !editorElement.contains(range.commonAncestorContainer)
+    ) {
       return;
     }
 
     document.execCommand("styleWithCSS", false, true);
     document.execCommand("hiliteColor", false, "transparent");
     clearTransparentHighlightArtifacts();
-    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+    setClinicalRealityHtml(
+      sanitizeClinicalRealityHtml(editorElement.innerHTML),
+    );
   };
 
   const handleRealityEditorPaste = (event) => {
@@ -1016,12 +914,12 @@ const extractPlainTextFromHtml = (html) => {
         `<span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;">${escapeHtml(event.data)}</span>`,
       );
 
-        if (realityEditorRef.current) {
-          setClinicalRealityHtml(
-            sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
-          );
-        }
-        return;
+      if (realityEditorRef.current) {
+        setClinicalRealityHtml(
+          sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+        );
+      }
+      return;
     }
 
     if (event.inputType === "insertParagraph") {
@@ -1031,13 +929,13 @@ const extractPlainTextFromHtml = (html) => {
         `<p><span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;"><br></span></p>`,
       );
 
-        if (realityEditorRef.current) {
-          setClinicalRealityHtml(
-            sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
-          );
-        }
+      if (realityEditorRef.current) {
+        setClinicalRealityHtml(
+          sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+        );
       }
-    };
+    }
+  };
 
   const adjustSelectedFontSize = (delta) => {
     const selection = window.getSelection();
@@ -1051,7 +949,10 @@ const extractPlainTextFromHtml = (html) => {
     const editorElement = realityEditorRef.current;
     const range = selection.getRangeAt(0);
 
-    if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
+    if (
+      !editorElement ||
+      !editorElement.contains(range.commonAncestorContainer)
+    ) {
       setHasRealitySelection(false);
       setSelectedRealityFontSizePt(null);
       return;
@@ -1102,14 +1003,18 @@ const extractPlainTextFromHtml = (html) => {
 
     if (fragmentChildNodes.length > 0) {
       updatedRange.setStartBefore(fragmentChildNodes[0]);
-      updatedRange.setEndAfter(fragmentChildNodes[fragmentChildNodes.length - 1]);
+      updatedRange.setEndAfter(
+        fragmentChildNodes[fragmentChildNodes.length - 1],
+      );
     } else {
       updatedRange.selectNodeContents(sizeWrapper);
     }
 
     selection.addRange(updatedRange);
 
-    setClinicalRealityHtml(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+    setClinicalRealityHtml(
+      sanitizeClinicalRealityHtml(editorElement.innerHTML),
+    );
     setHasRealitySelection(true);
     setSelectedRealityFontSizePt(Number(nextFontSizePt.toFixed(1)));
   };
@@ -1203,6 +1108,7 @@ const extractPlainTextFromHtml = (html) => {
         },
         body: JSON.stringify({
           message: sourceText,
+          aiProvider: "openai",
           instructions:
             "Summarize the provided text clearly and faithfully. Keep the summary structured in one short paragraph followed by 3 concise bullet points. Do not invent claims. Preserve philosophical and clinical meaning.",
         }),
@@ -1258,50 +1164,50 @@ const extractPlainTextFromHtml = (html) => {
         id="Login_main"
         className={`fc${isClinicalRealityOpen ? " Login_main--reality-open" : ""}`}
       >
-          <section
-            id="Login_realityPanel"
-            className={isClinicalRealityOpen ? "is-open" : ""}
-            aria-hidden={!isClinicalRealityOpen}
+        <section
+          id="Login_realityPanel"
+          className={isClinicalRealityOpen ? "is-open" : ""}
+          aria-hidden={!isClinicalRealityOpen}
         >
-            <div id="Login_realityPanel_inner" className="fc">
-              <div id="Login_realityStickyHeader" className="fc">
-                <div id="Login_realityPanel_eyebrowRow" className="fr">
-                  <button
-                    id="Login_realityPanelBackButton"
-                    type="button"
-                    aria-label="Hide clinical reality note"
-                    onClick={() => setIsClinicalRealityOpen(false)}
-                  >
-                    <i className="fas fa-arrow-left"></i>
-                  </button>
-                  <p id="Login_realityPanel_eyebrow">How I See The Clinical Reality</p>
-                  <button
-                    id="Login_realityToolbarToggle"
-                    type="button"
-                    aria-label={
-                      isRealityToolbarOpen
-                        ? "Hide text editing tools"
-                        : "Show text editing tools"
-                    }
-                    aria-expanded={isRealityToolbarOpen}
-                    onClick={() =>
-                      setIsRealityToolbarOpen((currentValue) => !currentValue)
-                    }
-                  >
-                    <i
-                      className={
-                        isRealityToolbarOpen
-                          ? "fas fa-edit"
-                          : "far fa-edit"
-                      }
-                    ></i>
-                  </button>
-                </div>
-                <div
-                  id="Login_realityControls"
-                  className={`fr${isRealityToolbarOpen ? " is-open" : ""}`}
-                  aria-hidden={!isRealityToolbarOpen}
+          <div id="Login_realityPanel_inner" className="fc">
+            <div id="Login_realityStickyHeader" className="fc">
+              <div id="Login_realityPanel_eyebrowRow" className="fr">
+                <button
+                  id="Login_realityPanelBackButton"
+                  type="button"
+                  aria-label="Hide clinical reality note"
+                  onClick={() => setIsClinicalRealityOpen(false)}
                 >
+                  <i className="fas fa-arrow-left"></i>
+                </button>
+                <p id="Login_realityPanel_eyebrow">
+                  How I See The Clinical Reality
+                </p>
+                <button
+                  id="Login_realityToolbarToggle"
+                  type="button"
+                  aria-label={
+                    isRealityToolbarOpen
+                      ? "Hide text editing tools"
+                      : "Show text editing tools"
+                  }
+                  aria-expanded={isRealityToolbarOpen}
+                  onClick={() =>
+                    setIsRealityToolbarOpen((currentValue) => !currentValue)
+                  }
+                >
+                  <i
+                    className={
+                      isRealityToolbarOpen ? "fas fa-edit" : "far fa-edit"
+                    }
+                  ></i>
+                </button>
+              </div>
+              <div
+                id="Login_realityControls"
+                className={`fr${isRealityToolbarOpen ? " is-open" : ""}`}
+                aria-hidden={!isRealityToolbarOpen}
+              >
                 <button
                   type="button"
                   className="Login_realityControlButton"
@@ -1373,13 +1279,13 @@ const extractPlainTextFromHtml = (html) => {
                 </label>
                 <label className="Login_realityControlField">
                   <span>Highlight</span>
-                    <button
-                      type="button"
-                      className="Login_realityControlButton Login_realityControlButton--pen"
-                      title="Apply highlight"
-                      aria-label="Apply highlight to selection"
-                      disabled={!hasRealitySelection}
-                      onMouseDown={(event) => event.preventDefault()}
+                  <button
+                    type="button"
+                    className="Login_realityControlButton Login_realityControlButton--pen"
+                    title="Apply highlight"
+                    aria-label="Apply highlight to selection"
+                    disabled={!hasRealitySelection}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={applyHighlightToSelection}
                   >
                     <i
@@ -1387,18 +1293,20 @@ const extractPlainTextFromHtml = (html) => {
                       style={{ color: editorHighlightColor }}
                     ></i>
                   </button>
-                    <button
-                      type="button"
-                      className={`Login_realityControlButton Login_realityControlButton--erase${isHighlightEraseModeOn ? " is-armed" : ""}`}
-                      title="Remove highlight"
-                      aria-label="Remove highlight"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        setIsHighlightEraseModeOn((currentValue) => !currentValue);
-                      }}
-                    >
-                      <i className="fas fa-eraser"></i>
-                    </button>
+                  <button
+                    type="button"
+                    className={`Login_realityControlButton Login_realityControlButton--erase${isHighlightEraseModeOn ? " is-armed" : ""}`}
+                    title="Remove highlight"
+                    aria-label="Remove highlight"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setIsHighlightEraseModeOn(
+                        (currentValue) => !currentValue,
+                      );
+                    }}
+                  >
+                    <i className="fas fa-eraser"></i>
+                  </button>
                   <input
                     type="color"
                     value={editorHighlightColor}
@@ -1482,16 +1390,22 @@ const extractPlainTextFromHtml = (html) => {
                   contentEditable
                   suppressContentEditableWarning
                   style={{
-                    cursor: isHighlightEraseModeOn ? buildEraserCursor() : "text",
+                    cursor: isHighlightEraseModeOn
+                      ? buildEraserCursor()
+                      : "text",
                   }}
                   onInput={(event) => {
                     setClinicalRealityHtml(
-                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                      sanitizeClinicalRealityHtml(
+                        event.currentTarget.innerHTML,
+                      ),
                     );
                   }}
                   onBlur={(event) => {
                     setClinicalRealityHtml(
-                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                      sanitizeClinicalRealityHtml(
+                        event.currentTarget.innerHTML,
+                      ),
                     );
                   }}
                   onMouseDown={handleRealityEditorMouseDown}
@@ -1518,7 +1432,9 @@ const extractPlainTextFromHtml = (html) => {
         </section>
         <section
           id="Login_loginLogo_container"
-          className={isClinicalRealityOpen && isWideLoginLayout ? "is-collapsed" : ""}
+          className={
+            isClinicalRealityOpen && isWideLoginLayout ? "is-collapsed" : ""
+          }
         >
           <h1 id="Login_loginLogo_text">
             <span className="Login_loginLogo_mark">H</span>
@@ -1625,7 +1541,9 @@ const extractPlainTextFromHtml = (html) => {
       </main>
       <footer
         id="Login_footer"
-        className={isClinicalRealityOpen && isWideLoginLayout ? "is-hidden" : ""}
+        className={
+          isClinicalRealityOpen && isWideLoginLayout ? "is-hidden" : ""
+        }
         ref={footerRef}
       >
         <section id="Login_copyright_container">

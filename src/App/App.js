@@ -1,4 +1,4 @@
-//...........import..................
+﻿//...........import..................
 import React from "react";
 
 //........import CSS...........
@@ -6,37 +6,60 @@ import "./App.css";
 import "./Main/main.css";
 import "./Header/Nav/Notifications/notifications.css";
 import "./Header/Nav/nav.css";
-import "./Main/Greeting/greeting.css";
+import "../home.css";
 import { Route } from "react-router-dom";
-import Greeting from "./Main/Greeting/Greeting";
+import Home from "../Home";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import SchoolPlanner from "./SubApps/StudyPlannner/components/SchoolPlanner/SchoolPlanner";
+import NogaPlan from "../SchoolPlanner/NogaPlanner";
+import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import { apiUrl } from "../config/api";
 import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
 import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
 import Profile from "../Profile/Profile";
 import { connectRealtime } from "../realtime/socket";
-import { logoutStoredSession } from "../utils/sessionCleanup";
+import {
+  logoutStoredSession,
+  readStoredSession,
+} from "../utils/sessionCleanup";
+
+const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 //...........component..................
 class App extends React.Component {
   //..........states...........
   constructor(props) {
     super(props);
+    const storedSession = readStoredSession() || {};
+    const hideFooterPreference =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(APP_HIDE_FOOTER_STORAGE_KEY) === "true";
     this.state = {
-      my_id: JSON.parse(sessionStorage.getItem("state")).my_id,
-      username: JSON.parse(sessionStorage.getItem("state")).username,
-      firstname: JSON.parse(sessionStorage.getItem("state")).firstname,
-      lastname: JSON.parse(sessionStorage.getItem("state")).lastname,
-      dob: JSON.parse(sessionStorage.getItem("state")).dob,
-      token: JSON.parse(sessionStorage.getItem("state")).token,
-      isConnected: true,
+      my_id: storedSession.my_id || null,
+      username: storedSession.username || "",
+      firstname: storedSession.firstname || "",
+      lastname: storedSession.lastname || "",
+      program: storedSession.program || "",
+      university: storedSession.university || "",
+      studyYear: storedSession.studyYear || "",
+      term: storedSession.term || "",
+      aiProvider: storedSession.aiProvider || "openai",
+      profilePicture: storedSession.profilePicture || "",
+      imageGallery: Array.isArray(storedSession.imageGallery)
+        ? storedSession.imageGallery
+        : [],
+      dob: storedSession.dob || null,
+      token: storedSession.token || "",
+      isConnected: Boolean(storedSession.isConnected ?? true),
       isOnline: false,
-      friends: JSON.parse(sessionStorage.getItem("state")).friends,
+      friends: Array.isArray(storedSession.friends)
+        ? storedSession.friends
+        : [],
       chat: [],
       terminology: [],
-      posts: JSON.parse(sessionStorage.getItem("state")).posts,
-      lectures: JSON.parse(sessionStorage.getItem("state")).lectures,
+      posts: Array.isArray(storedSession.posts) ? storedSession.posts : [],
+      lectures: Array.isArray(storedSession.lectures)
+        ? storedSession.lectures
+        : [],
       app_is_loading: false,
       friend_target: null,
       friendID_selected: null,
@@ -59,7 +82,9 @@ class App extends React.Component {
         secs: 0,
       },
       study_session: null,
-      login_record: JSON.parse(sessionStorage.getItem("state")).login_record || [],
+      login_record: Array.isArray(storedSession.login_record)
+        ? storedSession.login_record
+        : [],
       profile: false,
       friendAddedSuccessfully: null,
       posts_updated: false,
@@ -68,6 +93,13 @@ class App extends React.Component {
       server_answer: "NO NEW SERVER REPLY",
       has_active_server_reply: false,
       backend_health_status: "checking",
+      ai_connection_statuses: {
+        openai: "checking",
+        gemini: "checking",
+        telegram: "checking",
+        cloudinary: "checking",
+      },
+      hide_app_footer: hideFooterPreference,
     };
   }
   serverReplyTimeout = null;
@@ -82,13 +114,23 @@ class App extends React.Component {
   };
   /////////////////////////////////////////////////////Lifecycle//////////////////////////
   componentDidMount() {
+    const storedSession = readStoredSession() || {};
     this.setState({
-      my_id: JSON.parse(sessionStorage.getItem("state")).my_id,
-      username: JSON.parse(sessionStorage.getItem("state")).username,
-      firstname: JSON.parse(sessionStorage.getItem("state")).firstname,
-      lastname: JSON.parse(sessionStorage.getItem("state")).lastname,
-      dob: JSON.parse(sessionStorage.getItem("state")).dob,
-      token: JSON.parse(sessionStorage.getItem("state")).token,
+      my_id: storedSession.my_id || null,
+      username: storedSession.username || "",
+      firstname: storedSession.firstname || "",
+      lastname: storedSession.lastname || "",
+      program: storedSession.program || "",
+      university: storedSession.university || "",
+      studyYear: storedSession.studyYear || "",
+      term: storedSession.term || "",
+      aiProvider: storedSession.aiProvider || "openai",
+      profilePicture: storedSession.profilePicture || "",
+      imageGallery: Array.isArray(storedSession.imageGallery)
+        ? storedSession.imageGallery
+        : [],
+      dob: storedSession.dob || null,
+      token: storedSession.token || "",
     });
     this.updateUserInfo();
     this.connectRealtime();
@@ -158,10 +200,17 @@ class App extends React.Component {
   pollBackendHealth = () => {
     fetch(apiUrl("/api/health"), {
       method: "GET",
+      headers: this.state.token
+        ? {
+            Authorization: `Bearer ${this.state.token}`,
+          }
+        : undefined,
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}));
-        const nextStatus = String(payload?.status || "").trim().toLowerCase();
+        const nextStatus = String(payload?.status || "")
+          .trim()
+          .toLowerCase();
 
         if (!response.ok) {
           throw new Error(nextStatus || "offline");
@@ -169,11 +218,31 @@ class App extends React.Component {
 
         this.setState({
           backend_health_status: nextStatus || "healthy",
+          ai_connection_statuses: {
+            openai: String(payload?.ai?.openai || "offline")
+              .trim()
+              .toLowerCase(),
+            gemini: String(payload?.ai?.gemini || "offline")
+              .trim()
+              .toLowerCase(),
+            telegram: String(payload?.ai?.telegram || "offline")
+              .trim()
+              .toLowerCase(),
+            cloudinary: String(payload?.ai?.cloudinary || "offline")
+              .trim()
+              .toLowerCase(),
+          },
         });
       })
       .catch(() => {
         this.setState({
           backend_health_status: "offline",
+          ai_connection_statuses: {
+            openai: "offline",
+            gemini: "offline",
+            telegram: "offline",
+            cloudinary: "offline",
+          },
         });
       });
   };
@@ -234,7 +303,7 @@ class App extends React.Component {
         })}`;
 
         this.serverReply(
-          `New visit detected from ${visitLog.ip || "Unknown IP"} at ${visitTimeLabel}`
+          `New visit detected from ${visitLog.ip || "Unknown IP"} at ${visitTimeLabel}`,
         );
 
         if (
@@ -343,17 +412,17 @@ class App extends React.Component {
           this.state.posts[i].comments.length !== this.state.posts_comments[i]
         ) {
           let commentlist_ul = document.getElementById(
-            "commentlist_ul" + this.state.posts[i]._id
+            "commentlist_ul" + this.state.posts[i]._id,
           );
           if (this.state.posts[i].comments.length === 1) {
             let commentlist_ul = document.createElement("ul");
             commentlist_ul.setAttribute(
               "id",
-              "commentlist_ul" + this.state.posts[i]._id
+              "commentlist_ul" + this.state.posts[i]._id,
             );
             commentlist_ul.setAttribute("class", "fc commentlist_ul");
             let comments_div = document.getElementById(
-              "commentDiv" + this.state.posts[i]._id
+              "commentDiv" + this.state.posts[i]._id,
             );
             let li = document.createElement("li");
             li.setAttribute("class", "comment_li");
@@ -424,12 +493,12 @@ class App extends React.Component {
             });
 
             p_edit.addEventListener("click", () =>
-              this.editPost(options_div.id)
+              this.editPost(options_div.id),
             );
             note_options_div.appendChild(options_div);
             options_div.setAttribute(
               "class",
-              "fc MountPosts_postOptionsContainer"
+              "fc MountPosts_postOptionsContainer",
             );
             options_div.setAttribute("id", this.state.posts[i]._id);
           } else {
@@ -467,16 +536,16 @@ class App extends React.Component {
           comments_div.setAttribute("class", "fc comments_div");
           comments_div.setAttribute(
             "id",
-            "commentDiv" + this.state.posts[i]._id
+            "commentDiv" + this.state.posts[i]._id,
           );
           comment_input.setAttribute(
             "id",
-            "comment_input" + this.state.posts[i]._id
+            "comment_input" + this.state.posts[i]._id,
           );
           comment_input.setAttribute("class", "comment_input");
           commentlist_ul.setAttribute(
             "id",
-            "commentlist_ul" + this.state.posts[i]._id
+            "commentlist_ul" + this.state.posts[i]._id,
           );
           comment_input.setAttribute("placeholder", "Enter a comment");
           comment_input.addEventListener("keypress", (event) => {
@@ -537,17 +606,17 @@ class App extends React.Component {
                 this.state.posts_comments[i]
             ) {
               let commentlist_ul = document.getElementById(
-                "commentlist_ul" + this.state.posts[i]._id
+                "commentlist_ul" + this.state.posts[i]._id,
               );
               if (this.state.posts[i].comments.length === 1) {
                 let commentlist_ul = document.createElement("ul");
                 commentlist_ul.setAttribute(
                   "id",
-                  "commentlist_ul" + this.state.posts[i]._id
+                  "commentlist_ul" + this.state.posts[i]._id,
                 );
                 commentlist_ul.setAttribute("class", "fc commentlist_ul");
                 let comments_div = document.getElementById(
-                  "commentDiv" + this.state.posts[i]._id
+                  "commentDiv" + this.state.posts[i]._id,
                 );
                 let li = document.createElement("li");
                 li.setAttribute("class", "comment_li");
@@ -616,15 +685,15 @@ class App extends React.Component {
               options_div.appendChild(p_delete);
               options_div.appendChild(p_edit);
               p_delete.addEventListener("click", () =>
-                this.deletePost(options_div.id)
+                this.deletePost(options_div.id),
               );
               p_edit.addEventListener("click", () =>
-                this.editPost(options_div.id)
+                this.editPost(options_div.id),
               );
               note_options_div.appendChild(options_div);
               options_div.setAttribute(
                 "class",
-                "fc MountPosts_postOptionsContainer"
+                "fc MountPosts_postOptionsContainer",
               );
               options_div.setAttribute("id", this.state.posts[i]._id);
 
@@ -658,16 +727,16 @@ class App extends React.Component {
               comments_div.setAttribute("class", "fc comments_div");
               comments_div.setAttribute(
                 "id",
-                "commentDiv" + this.state.posts[i]._id
+                "commentDiv" + this.state.posts[i]._id,
               );
               comment_input.setAttribute(
                 "id",
-                "comment_input" + this.state.posts[i]._id
+                "comment_input" + this.state.posts[i]._id,
               );
               comment_input.setAttribute("class", "comment_input");
               commentlist_ul.setAttribute(
                 "id",
-                "commentlist_ul" + this.state.posts[i]._id
+                "commentlist_ul" + this.state.posts[i]._id,
               );
               comment_input.setAttribute("placeholder", "Enter a comment");
               comment_input.addEventListener("keypress", (event) => {
@@ -731,7 +800,7 @@ class App extends React.Component {
     // && ul to fix unknown problem
     if (this.state.study_session) {
       for (var i = 0; i < this.state.study_session.length; i++) {
-        let ul = document.getElementById("Greeting_studySessions_area");
+        let ul = document.getElementById("Home_studySessions_area");
         let p1 = document.createElement("p");
         let p2 = document.createElement("p");
         let li = document.createElement("li");
@@ -797,7 +866,7 @@ class App extends React.Component {
         if (total_mins < 10) total_mins = "0" + total_mins;
         if (total_hours < 10) total_hours = "0" + total_hours;
       }
-      let li = document.getElementById("Greeting_totalDuration_li");
+      let li = document.getElementById("Home_totalDuration_li");
       let p = document.createElement("p");
       p.style.fontWeight = "600";
       p.style.padding = "10px";
@@ -872,10 +941,7 @@ class App extends React.Component {
   ////////////////////////////Delete terminology////////////////////////////
   deleteTerminology = (term_id) => {
     let url =
-      apiUrl("/api/user/deleteTerminology/") +
-      term_id +
-      "/" +
-      this.state.my_id;
+      apiUrl("/api/user/deleteTerminology/") + term_id + "/" + this.state.my_id;
     let options = {
       method: "DELETE",
       mode: "cors",
@@ -921,7 +987,7 @@ class App extends React.Component {
       document.getElementById("li_term" + term_id).children[5].textContent =
         "Cancel?";
       document.getElementById(
-        "li_term" + term_id
+        "li_term" + term_id,
       ).children[5].style.backgroundColor = "var(--black)";
       document.getElementById("Terminology_post_button").textContent = "Edit";
       //.......
@@ -935,7 +1001,7 @@ class App extends React.Component {
         "inline";
       //...........
       document.getElementById(
-        "li_term" + term_id
+        "li_term" + term_id,
       ).children[5].style.backgroundColor = "var(--red)";
       document.getElementById("li_term" + term_id).children[5].textContent =
         "Edit";
@@ -955,8 +1021,7 @@ class App extends React.Component {
       this.setState({
         app_is_loading: true,
       });
-      let url =
-        apiUrl("/api/user/newTerminology/") + this.state.my_id;
+      let url = apiUrl("/api/user/newTerminology/") + this.state.my_id;
       let options = {
         method: "POST",
         mode: "cors",
@@ -983,7 +1048,7 @@ class App extends React.Component {
             this.serverReply("Posted successfully!");
           } else {
             this.serverReply(
-              "Posting failed. Please make sure you select a category and/or a subject for your note"
+              "Posting failed. Please make sure you select a category and/or a subject for your note",
             );
             this.setState({
               app_is_loading: false,
@@ -1087,34 +1152,34 @@ class App extends React.Component {
               "Post";
 
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[0].textContent =
               document.getElementById("Terminology_term").value;
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[1].textContent = document.getElementById(
-              "Terminology_meaning"
+              "Terminology_meaning",
             ).value;
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[2].textContent = document.getElementById(
-              "Terminology_category"
+              "Terminology_category",
             ).value;
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[3].textContent = document.getElementById(
-              "Terminology_subject"
+              "Terminology_subject",
             ).value;
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[5].textContent = "Edit";
             document.getElementById(
-              "li_term" + this.termIdSelected
+              "li_term" + this.termIdSelected,
             ).children[5].style.backgroundColor = "var(--red)";
             this.serverReply("term modified");
           } else {
             this.serverReply(
-              "modifying failed. Please make sure you select a category and/or a subject for your note"
+              "modifying failed. Please make sure you select a category and/or a subject for your note",
             );
           }
         })
@@ -1192,11 +1257,11 @@ class App extends React.Component {
   };
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
   RetrievingMySendingMessages = (friend_id) => {
-      const ul = document.getElementById("Chat_messages");
-      const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
-      const friendReadyToReply = Boolean(
-        this.state.friendTypingPresence?.[friend_id]
-      );
+    const ul = document.getElementById("Chat_messages");
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+    const friendReadyToReply = Boolean(
+      this.state.friendTypingPresence?.[friend_id],
+    );
 
     if (!ul || !friend_id) {
       return;
@@ -1270,31 +1335,31 @@ class App extends React.Component {
       time.className = "Chat_messageTimestamp";
       meta.className = "Chat_messageMeta";
       li.setAttribute("dir", messageDirection);
-        if (message.from === "me") {
-          li.setAttribute("class", "sentMessagesLI");
-          div.setAttribute("class", "sentMessagesDIV fc");
-          status.className = "Chat_messageStatus";
+      if (message.from === "me") {
+        li.setAttribute("class", "sentMessagesLI");
+        div.setAttribute("class", "sentMessagesDIV fc");
+        status.className = "Chat_messageStatus";
 
         if (message.status === "read") {
-          status.textContent = "✓✓";
+          status.textContent = "âœ“âœ“";
           status.classList.add("Chat_messageStatus--read");
         } else if (message.status === "received") {
-          status.textContent = "✓✓";
+          status.textContent = "âœ“âœ“";
           status.classList.add("Chat_messageStatus--received");
-          } else {
-            status.textContent = "✓";
-            status.classList.add("Chat_messageStatus--sent");
-          }
-
-          if (friendReadyToReply) {
-            status.classList.add("Chat_messageStatus--replying");
-          }
         } else {
+          status.textContent = "âœ“";
+          status.classList.add("Chat_messageStatus--sent");
+        }
+
+        if (friendReadyToReply) {
+          status.classList.add("Chat_messageStatus--replying");
+        }
+      } else {
         li.setAttribute("class", "receivedMessagesLI");
         div.setAttribute("class", "receivedMessagesDIV fc");
       }
       li.classList.add(
-        messageDirection === "rtl" ? "Chat_message--rtl" : "Chat_message--ltr"
+        messageDirection === "rtl" ? "Chat_message--rtl" : "Chat_message--ltr",
       );
 
       li.appendChild(text);
@@ -1388,7 +1453,7 @@ class App extends React.Component {
       notifications: (prevState.notifications || []).map((notification) =>
         String(notification?._id || notification?.id) === String(notificationId)
           ? { ...notification, status: "read" }
-          : notification
+          : notification,
       ),
     }));
   };
@@ -1402,7 +1467,7 @@ class App extends React.Component {
       (notification) =>
         String(notification?.id) === String(friendId) &&
         notification?.type === "chat_message" &&
-        notification?.status !== "read"
+        notification?.status !== "read",
     );
 
     if (!hasUnreadChatNotification) {
@@ -1420,7 +1485,7 @@ class App extends React.Component {
           Authorization: "Bearer " + this.state.token,
           "Content-Type": "application/json",
         },
-      })
+      }),
     ).then((response) => {
       if (response.status === 200) {
         this.markNotificationReadLocally(friendId);
@@ -1438,10 +1503,7 @@ class App extends React.Component {
 
     this.serverReply("Adding ...");
     let url =
-      apiUrl("/api/user/acceptFriend/") +
-      this.state.my_id +
-      "/" +
-      friend_trim;
+      apiUrl("/api/user/acceptFriend/") + this.state.my_id + "/" + friend_trim;
     let options = {
       method: "POST",
       mode: "cors",
@@ -1488,7 +1550,7 @@ class App extends React.Component {
 
   makeNotificationsRead = (notificationTarget) => {
     const notificationId = String(notificationTarget || "").startsWith(
-      "decline_icon"
+      "decline_icon",
     )
       ? String(notificationTarget).slice(12)
       : String(notificationTarget || "");
@@ -1578,7 +1640,7 @@ class App extends React.Component {
               this.get_current_friend_chat_id(li.id);
 
               document.getElementById(
-                "DropHorizontally_article"
+                "DropHorizontally_article",
               ).style.display = "none";
             });
             li.setAttribute("class", "fr");
@@ -1669,7 +1731,7 @@ class App extends React.Component {
       if (response.ok) {
         this.setState((currentState) => ({
           friends: (currentState.friends || []).filter(
-            (friend) => friend?._id !== friendId
+            (friend) => friend?._id !== friendId,
           ),
           activeChatFriendId:
             currentState.activeChatFriendId === friendId
@@ -1710,7 +1772,22 @@ class App extends React.Component {
         }
       })
       .then((jsonData) => {
+        const nextProfilePicture = String(
+          jsonData?.media?.profilePicture?.url || "",
+        ).trim();
+        const nextImageGallery = Array.isArray(jsonData?.media?.imageGallery)
+          ? jsonData.media.imageGallery
+          : [];
+
         this.setState({
+          username: jsonData.info?.username || this.state.username,
+          firstname: jsonData.info?.firstname || this.state.firstname,
+          lastname: jsonData.info?.lastname || this.state.lastname,
+          program: jsonData.info?.program || "",
+          university: jsonData.info?.university || "",
+          studyYear: jsonData.info?.studyYear || "",
+          term: jsonData.info?.term || "",
+          aiProvider: jsonData.info?.aiProvider || "openai",
           friends: jsonData.friends,
           posts: jsonData.posts,
           chat: jsonData.chat,
@@ -1719,9 +1796,31 @@ class App extends React.Component {
           study_session: jsonData.study_session,
           login_record: jsonData.login_record || [],
           isOnline: jsonData.isOnline,
+          profilePicture: nextProfilePicture,
+          imageGallery: nextImageGallery,
         });
-        for (var i = 0; i < jsonData.SchoolPlanner.courses.length; i++) {
-          this.memory.courses.push(jsonData.SchoolPlanner.courses[i]);
+        this.persistStoredSession({
+          username: jsonData.info?.username || this.state.username,
+          firstname: jsonData.info?.firstname || this.state.firstname,
+          lastname: jsonData.info?.lastname || this.state.lastname,
+          program: jsonData.info?.program || "",
+          university: jsonData.info?.university || "",
+          studyYear: jsonData.info?.studyYear || "",
+          term: jsonData.info?.term || "",
+          aiProvider: jsonData.info?.aiProvider || "openai",
+          profilePicture: nextProfilePicture,
+          imageGallery: nextImageGallery,
+          friends: jsonData.friends,
+          posts: jsonData.posts,
+          notifications: jsonData.notifications,
+          login_record: jsonData.login_record || [],
+        });
+        for (
+          var i = 0;
+          i < (jsonData.schoolPlanner?.courses || []).length;
+          i++
+        ) {
+          this.memory.courses.push(jsonData.schoolPlanner.courses[i]);
           console.log(this.memory.courses[i]);
         }
       })
@@ -1729,6 +1828,138 @@ class App extends React.Component {
         if (err.message === "Cannot read property 'credentials' of null")
           console.log("Error", err.message);
       });
+  };
+
+  persistStoredSession = (partialState = {}) => {
+    try {
+      const storedSession = readStoredSession() || {};
+      sessionStorage.setItem(
+        "state",
+        JSON.stringify({
+          ...storedSession,
+          ...partialState,
+        }),
+      );
+    } catch (error) {
+      // Ignore storage write errors.
+    }
+  };
+
+  setUserAcademicInfo = (nextInfo = {}) => {
+    this.setState(
+      (currentState) => ({
+        firstname:
+          nextInfo?.firstname !== undefined
+            ? String(nextInfo?.firstname || "").trim()
+            : currentState.firstname,
+        lastname:
+          nextInfo?.lastname !== undefined
+            ? String(nextInfo?.lastname || "").trim()
+            : currentState.lastname,
+        username:
+          nextInfo?.username !== undefined
+            ? String(nextInfo?.username || "").trim()
+            : currentState.username,
+        program: String(nextInfo?.program || "").trim(),
+        university: String(nextInfo?.university || "").trim(),
+        studyYear: String(nextInfo?.studyYear || "").trim(),
+        term: String(nextInfo?.term || "").trim(),
+        aiProvider: ["openai", "gemini"].includes(
+          String(nextInfo?.aiProvider || "")
+            .trim()
+            .toLowerCase(),
+        )
+          ? String(nextInfo?.aiProvider || "")
+              .trim()
+              .toLowerCase()
+          : "openai",
+      }),
+      () => {
+        this.persistStoredSession({
+          firstname: this.state.firstname,
+          lastname: this.state.lastname,
+          username: this.state.username,
+          program: this.state.program,
+          university: this.state.university,
+          studyYear: this.state.studyYear,
+          term: this.state.term,
+          aiProvider: this.state.aiProvider,
+        });
+      },
+    );
+  };
+
+  setUserMediaInfo = (nextMedia = {}) => {
+    const nextProfilePicture = String(nextMedia?.profilePicture || "").trim();
+    const nextImageGallery = Array.isArray(nextMedia?.imageGallery)
+      ? nextMedia.imageGallery
+      : [];
+
+    this.setState(
+      {
+        profilePicture: nextProfilePicture,
+        imageGallery: nextImageGallery,
+      },
+      () => {
+        this.persistStoredSession({
+          profilePicture: this.state.profilePicture,
+          imageGallery: this.state.imageGallery,
+        });
+      },
+    );
+  };
+
+  setSelectedAiProvider = (provider) => {
+    const nextProvider = ["openai", "gemini"].includes(
+      String(provider || "")
+        .trim()
+        .toLowerCase(),
+    )
+      ? String(provider || "")
+          .trim()
+          .toLowerCase()
+      : "openai";
+
+    if (this.state.aiProvider === nextProvider) {
+      return;
+    }
+
+    this.setState({
+      aiProvider: nextProvider,
+    });
+
+    try {
+      const storedSession = readStoredSession() || {};
+      sessionStorage.setItem(
+        "state",
+        JSON.stringify({
+          ...storedSession,
+          aiProvider: nextProvider,
+        }),
+      );
+    } catch (error) {
+      // Ignore storage errors and keep runtime state update.
+    }
+
+    if (!this.state.token) {
+      return;
+    }
+
+    fetch(apiUrl("/api/user/profile"), {
+      method: "PUT",
+      mode: "cors",
+      headers: {
+        Authorization: `Bearer ${this.state.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        program: String(this.state.program || "").trim(),
+        university: String(this.state.university || "").trim(),
+        studyYear: String(this.state.studyYear || "").trim(),
+        term: String(this.state.term || "").trim(),
+        aiProvider: nextProvider,
+      }),
+    }).catch(() => undefined);
   };
 
   ////////////////////////////////////BUILD NOTIFICATIONS////////////////////////
@@ -1792,8 +2023,7 @@ class App extends React.Component {
   ////////////////////////////////////////////////////UPDATE isConnect on databae////////////////////////////////
 
   updateBeforeLeave = () => {
-    let url =
-      apiUrl("/api/user/updateBeforeLeave/") + this.state.my_id;
+    let url = apiUrl("/api/user/updateBeforeLeave/") + this.state.my_id;
     let options = {
       method: "PUT",
       mode: "cors",
@@ -1830,8 +2060,7 @@ class App extends React.Component {
       return;
     }
 
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
     if (!AudioContextClass) {
       return;
@@ -1888,13 +2117,16 @@ class App extends React.Component {
       this.playServerReplySound();
     }
 
-    this.serverReplyTimeout = window.setTimeout(() => {
-      this.setState({
-        server_answer: "NO NEW SERVER REPLY",
-        has_active_server_reply: false,
-      });
-      this.serverReplyTimeout = null;
-    }, Math.max(3000, 8000));
+    this.serverReplyTimeout = window.setTimeout(
+      () => {
+        this.setState({
+          server_answer: "NO NEW SERVER REPLY",
+          has_active_server_reply: false,
+        });
+        this.serverReplyTimeout = null;
+      },
+      Math.max(3000, 8000),
+    );
   };
 
   //.....loader function..........
@@ -1939,7 +2171,7 @@ class App extends React.Component {
       () => {
         if (this.props.path === "/study") {
           let input = window.confirm(
-            "Do you want this study session to be counted?"
+            "Do you want this study session to be counted?",
           );
           if (input) {
             this.updateBeforeLeave();
@@ -1949,7 +2181,7 @@ class App extends React.Component {
         this.availableToChat(false)
           .catch(() => null)
           .finally(finishLogout);
-      }
+      },
     );
   };
 
@@ -2043,7 +2275,7 @@ class App extends React.Component {
             .includes(
               keyword.toLowerCase() &&
                 post.subject === subject &&
-                post.category === category
+                post.category === category,
             )
         ) {
           array.push(post);
@@ -2103,7 +2335,7 @@ class App extends React.Component {
             .includes(
               keyword.toLowerCase() &&
                 term.subject === subject &&
-                term.category === category
+                term.category === category,
             )
         ) {
           array_term.push(term);
@@ -2165,7 +2397,7 @@ class App extends React.Component {
           note_options_div.appendChild(options_div);
           options_div.setAttribute(
             "class",
-            "fc MountPosts_postOptionsContainer"
+            "fc MountPosts_postOptionsContainer",
           );
           options_div.setAttribute("id", array[i]._id);
         } else {
@@ -2293,16 +2525,44 @@ class App extends React.Component {
       profile: boolean,
     });
   };
+  setAppFooterHidden = (shouldHide) => {
+    const nextValue = Boolean(shouldHide);
+    this.setState({
+      hide_app_footer: nextValue,
+    });
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        APP_HIDE_FOOTER_STORAGE_KEY,
+        nextValue ? "true" : "false",
+      );
+    }
+  };
   //.....Reander Login HTML..........
   render() {
+    const isNogaPlanRoute =
+      typeof window !== "undefined" &&
+      window.location.pathname.includes("/phenomed/schoolplanner/nogaplan");
+    const normalizedUsername = String(this.state.username || "").toLowerCase();
+    const isNaghamNogaFooter =
+      isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
+    const showServerAnswerFooter = !this.state.hide_app_footer;
+    const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
+    const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
+    const currentPath =
+      typeof window !== "undefined" ? window.location.pathname : "";
+    const isArabicSchoolPlannerRoute =
+      currentPath === "/phenomed/schoolplanner/ar";
+    const openArabicSchoolPlanner = () => {
+      if (typeof window === "undefined" || isArabicSchoolPlannerRoute) {
+        return;
+      }
+
+      window.location.assign("/phenomed/schoolplanner/ar");
+    };
     const serverAnswerFooter = (
       <footer
         id="server_answer"
-        className={
-          this.state.has_active_server_reply
-            ? "server_answer--active"
-            : ""
-        }
+        className={`${this.state.has_active_server_reply ? "server_answer--active " : ""}${isNaghamNogaFooter ? "server_answer--noga" : ""}`.trim()}
       >
         <span
           id="server_answer_backend_status"
@@ -2315,6 +2575,50 @@ class App extends React.Component {
               : this.state.backend_health_status === "degraded"
                 ? "BACKEND DEGRADED"
                 : "BACKEND OFFLINE"}
+        </span>
+        <button
+          type="button"
+          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.openai || "offline"}${this.state.aiProvider === "openai" ? " server_answer_ai_status--selected" : ""}`}
+          onClick={() => this.setSelectedAiProvider("openai")}
+          aria-pressed={this.state.aiProvider === "openai"}
+          title="Select OpenAI"
+        >
+          {this.state.ai_connection_statuses?.openai === "connected"
+            ? "OPENAI CONNECTED"
+            : this.state.ai_connection_statuses?.openai === "checking"
+              ? "OPENAI CHECKING"
+              : "OPENAI OFFLINE"}
+        </button>
+        <button
+          type="button"
+          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.gemini || "offline"}${this.state.aiProvider === "gemini" ? " server_answer_ai_status--selected" : ""}`}
+          onClick={() => this.setSelectedAiProvider("gemini")}
+          aria-pressed={this.state.aiProvider === "gemini"}
+          title="Select Gemini"
+        >
+          {this.state.ai_connection_statuses?.gemini === "connected"
+            ? "GEMINI CONNECTED"
+            : this.state.ai_connection_statuses?.gemini === "checking"
+              ? "GEMINI CHECKING"
+              : "GEMINI OFFLINE"}
+        </button>
+        <span
+          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.telegram || "offline"}`}
+        >
+          {this.state.ai_connection_statuses?.telegram === "connected"
+            ? "TELEGRAM CONNECTED"
+            : this.state.ai_connection_statuses?.telegram === "checking"
+              ? "TELEGRAM CHECKING"
+              : "TELEGRAM OFFLINE"}
+        </span>
+        <span
+          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.cloudinary || "offline"}`}
+        >
+          {this.state.ai_connection_statuses?.cloudinary === "connected"
+            ? "CLOUDINARY CONNECTED"
+            : this.state.ai_connection_statuses?.cloudinary === "checking"
+              ? "CLOUDINARY CHECKING"
+              : "CLOUDINARY OFFLINE"}
         </span>
         <span
           id="server_answer_light"
@@ -2335,26 +2639,40 @@ class App extends React.Component {
         >
           {this.state.server_answer}
         </p>
+        <button
+          type="button"
+          className={`server_answer_locale_button${isArabicSchoolPlannerRoute ? " server_answer_locale_button--active" : ""}`}
+          onClick={openArabicSchoolPlanner}
+          aria-label="Open Arabic School Planner"
+          title="Arabic School Planner"
+          disabled={isArabicSchoolPlannerRoute}
+        >
+          Ar
+        </button>
       </footer>
     );
 
     return (
       <React.Fragment>
         <Route exact path="/">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
-              <Greeting
+              <Home
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
                 makeNotificationsRead={this.makeNotificationsRead}
+                serverReply={this.serverReply}
+                setAppFooterHidden={this.setAppFooterHidden}
+                setUserAcademicInfo={this.setUserAcademicInfo}
+                setUserMediaInfo={this.setUserMediaInfo}
               />
             </main>
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         <Route path="/study">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <Study
                 state={this.state}
@@ -2365,25 +2683,60 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />{" "}
             </main>
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
-        <Route path="/studyplanner">
-          <article id="app_page" className="fc">
-            <SchoolPlanner
-              state={this.state}
-              logOut={this.logOut}
-              acceptFriend={this.acceptFriend}
-              type={this.type}
-              show_profile={this.show_profile}
-              memory={this.memory}
-              serverReply={this.serverReply}
-            />
-            {serverAnswerFooter}
+        <Route exact path="/phenomed/schoolplanner/nogaplan">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <NogaPlan
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/schoolplanner/ar">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <StudyPlanner
+                locale="ar"
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/schoolplanner">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <StudyPlanner
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         <Route path="/ecg">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <PhenomedECG
                 state={this.state}
@@ -2393,11 +2746,11 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         <Route exact path="/phenomedsocial/ar">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <PhenomedSocialArabic
                 state={this.state}
@@ -2419,11 +2772,11 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         <Route exact path="/phenomedsocial">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <PhenomedSocial
                 state={this.state}
@@ -2445,13 +2798,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         <Route path="/profile/:username">
-          <article id="app_page" className="fc">
+          <article id="app_page" className={appPageClassName}>
             <Profile viewerState={this.state} logOut={this.logOut} />
-            {serverAnswerFooter}
+            {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
         {this.state.app_is_loading && (

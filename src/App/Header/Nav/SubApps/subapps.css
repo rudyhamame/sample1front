@@ -1,0 +1,226 @@
+#SubApps_article {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#SubApps_icon_container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.98),
+    rgba(233, 241, 243, 0.98)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#app_page.app_page--has-background-pattern #SubApps_icon_container {
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_icon_container,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container {
+  background: linear-gradient(
+    180deg,
+    rgba(22, 53, 61, 0.98),
+    rgba(15, 37, 43, 0.94)
+  );
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 24px rgba(0, 0, 0, 0.2);
+}
+
+#SubApps_icon_container > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #0f7f78;
+  font-size: 0.96rem;
+  cursor: pointer;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+#app_page.app_page--has-background-pattern #SubApps_icon_container > i {
+  color: var(--home-pattern-button-icon);
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_icon_container > i,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i {
+  color: rgba(226, 242, 244, 0.88);
+}
+
+#SubApps_icon_container > i:hover {
+  color: #0b6a64;
+  transform: translateY(-1px);
+}
+
+#app_page.app_page--has-background-pattern #SubApps_icon_container > i:hover {
+  color: var(--home-pattern-button-hover-text);
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_icon_container > i:hover,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i:hover {
+  color: #7ad5d8;
+}
+
+#SubApps_content_container {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 1200;
+}
+
+#SubApps_dropMenu_container {
+  display: none;
+  width: min(240px, 72vw);
+  padding: 10px;
+  gap: 6px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(250, 252, 252, 0.98),
+    rgba(239, 247, 248, 0.98)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 24px 48px rgba(90, 121, 130, 0.16);
+}
+
+#app_page.app_page--has-background-pattern #SubApps_dropMenu_container {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 242, 0.98),
+    rgba(250, 236, 227, 0.98)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 24px 48px rgba(156, 97, 84, 0.2);
+}
+
+#SubApps_dropMenu_container li {
+  width: 100%;
+  list-style: none;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+#SubApps_dropMenu_container li a.SubApps_row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(21, 57, 64, 0.92);
+  background: rgba(246, 250, 250, 0.98);
+  border: 1px solid rgba(118, 151, 160, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(90, 121, 130, 0.07);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+#app_page.app_page--has-background-pattern #SubApps_dropMenu_container li a.SubApps_row {
+  color: var(--home-pattern-button-text);
+  background: rgba(255, 248, 243, 0.96);
+  border-color: rgba(215, 140, 121, 0.34);
+}
+
+#SubApps_dropMenu_container li a.SubApps_row:hover {
+  background: rgba(236, 246, 247, 0.99);
+  color: #0b6a64;
+  transform: translateX(2px);
+}
+
+#app_page.app_page--has-background-pattern #SubApps_dropMenu_container li a.SubApps_row:hover {
+  color: var(--home-pattern-button-hover-text);
+  background: rgba(255, 240, 232, 0.99);
+}
+
+#SubApps_dropMenu_container li a.SubApps_row i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #0f7f78;
+  background: rgba(15, 127, 120, 0.08);
+  border: 1px solid rgba(15, 127, 120, 0.14);
+}
+
+#app_page.app_page--has-background-pattern #SubApps_dropMenu_container li a.SubApps_row i {
+  color: var(--home-pattern-button-icon);
+  background: rgba(255, 248, 243, 0.96);
+  border-color: rgba(215, 140, 121, 0.34);
+}
+
+#SubApps_empty_state {
+  text-align: center;
+  padding: 14px;
+  color: rgba(21, 57, 64, 0.62);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+}
+
+/* Dark mode */
+#Home_studysessions_article.Home_themeDark #SubApps_dropMenu_container,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_dropMenu_container {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 24, 27, 0.98),
+    rgba(12, 15, 17, 0.99)
+  );
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 48px rgba(0, 0, 0, 0.34);
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_dropMenu_container li a.SubApps_row,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_dropMenu_container li a.SubApps_row {
+  color: rgba(240, 242, 245, 0.94);
+  background: rgba(30, 36, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_dropMenu_container li a.SubApps_row:hover,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_dropMenu_container li a.SubApps_row:hover {
+  background: rgba(38, 46, 50, 0.98);
+  color: #7ad5d8;
+}
+
+#Home_studysessions_article.Home_themeDark #SubApps_dropMenu_container li a.SubApps_row i,
+#PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_dropMenu_container li a.SubApps_row i {
+  color: rgba(122, 213, 216, 0.88);
+  background: rgba(32, 38, 42, 0.96);
+  border-color: rgba(255, 255, 255, 0.08);
+}
