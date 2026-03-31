@@ -13,9 +13,8 @@
   width: min-content;
   gap: 24px;
   align-items: center;
-  padding: 0 14px;
+  padding: 5px 14px;
   box-sizing: border-box;
-  border-radius: 18px 18px 0px 0px;
   background: linear-gradient(
     180deg,
     rgba(248, 251, 252, 0.98),
@@ -23,6 +22,7 @@
   );
   border: 1px solid rgba(118, 151, 160, 0.18);
   box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
+  border-radius: 0 0px 20px 20px;
 }
 
 #Nav_article i:hover {
@@ -31,9 +31,63 @@
 }
 
 #Nav_article .Nav_actionButton {
-  border: none;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.98),
+    rgba(233, 241, 243, 0.98)
+  );
   color: inherit;
+  cursor: pointer;
+  font: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#Nav_article .Nav_actionButton span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#Nav_article .Nav_actionButton--active {
+  border-color: rgba(15, 127, 120, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(236, 248, 248, 0.98),
+    rgba(225, 240, 241, 0.98)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#Nav_article .Nav_actionButton i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.96rem;
+}
+
+#Nav_article .Nav_actionButton:hover i {
+  color: #0b6a64;
+  transform: translateY(-1px);
 }
 
 #app_page.app_page--has-background-pattern #Nav_article {
@@ -50,6 +104,32 @@
 
 #app_page.app_page--has-background-pattern #Nav_article i {
   color: var(--home-pattern-button-icon);
+}
+
+#app_page.app_page--has-background-pattern
+  #Nav_article
+  .Nav_actionButton--active {
+  border-color: rgba(169, 90, 72, 0.34);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article .Nav_actionButton {
+  border-color: var(--home-pattern-button-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
 }
 
 #app_page.app_page--has-background-pattern #Nav_article i:hover {

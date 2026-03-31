@@ -2662,6 +2662,10 @@ class App extends React.Component {
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
                 makeNotificationsRead={this.makeNotificationsRead}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                sendToThemMessage={this.sendToThemMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
                 serverReply={this.serverReply}
                 setAppFooterHidden={this.setAppFooterHidden}
                 setUserAcademicInfo={this.setUserAcademicInfo}

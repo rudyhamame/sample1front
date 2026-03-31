@@ -5,6 +5,7 @@ import { apiUrl } from "./config/api";
 import { compressVideo } from "./utils/video-compress";
 import ImageViewerModal from "./App/components/image-viewer/ImageViewerModal";
 import FriendChat from "./PhenomedSocial/moi/friends/FriendChat/FriendChat";
+import { phenomedSocialEnglishContent } from "./PhenomedSocial/content";
 
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
 const NAGHAM_COURSE_LIST_STORAGE_KEY = "schoolPlanner_nagham_course_list";
@@ -71,118 +72,7 @@ const isVideoGalleryItem = (item) => {
   return url.includes("/video/upload/");
 };
 
-const HOME_GALLERY_UPLOAD_DB_NAME = "home_media_uploads";
-const HOME_GALLERY_UPLOAD_STORE_NAME = "pending_uploads";
-
-const openHomeGalleryUploadDb = () =>
-  new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !window.indexedDB) {
-      resolve(null);
-      return;
-    }
-
-    const request = window.indexedDB.open(HOME_GALLERY_UPLOAD_DB_NAME, 1);
-
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(HOME_GALLERY_UPLOAD_STORE_NAME)) {
-        database.createObjectStore(HOME_GALLERY_UPLOAD_STORE_NAME, {
-          keyPath: "id",
-        });
-      }
-    };
-
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-
-    request.onerror = () => {
-      reject(request.error || new Error("Unable to open upload storage."));
-    };
-  });
-
-const getPendingGalleryUploads = async () => {
-  const database = await openHomeGalleryUploadDb();
-  if (!database) {
-    return [];
-  }
-
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(
-      HOME_GALLERY_UPLOAD_STORE_NAME,
-      "readonly",
-    );
-    const store = transaction.objectStore(HOME_GALLERY_UPLOAD_STORE_NAME);
-    const request = store.getAll();
-
-    request.onsuccess = () => {
-      const uploads = Array.isArray(request.result) ? request.result : [];
-      uploads.sort(
-        (firstUpload, secondUpload) =>
-          new Date(firstUpload?.createdAt || 0).getTime() -
-          new Date(secondUpload?.createdAt || 0).getTime(),
-      );
-      resolve(uploads);
-    };
-
-    request.onerror = () => {
-      reject(request.error || new Error("Unable to read pending uploads."));
-    };
-  });
-};
-
-const savePendingGalleryUpload = async (uploadTask) => {
-  const database = await openHomeGalleryUploadDb();
-  if (!database || !uploadTask?.id) {
-    return;
-  }
-
-  await new Promise((resolve, reject) => {
-    const transaction = database.transaction(
-      HOME_GALLERY_UPLOAD_STORE_NAME,
-      "readwrite",
-    );
-    const store = transaction.objectStore(HOME_GALLERY_UPLOAD_STORE_NAME);
-    const request = store.put(uploadTask);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () =>
-      reject(request.error || new Error("Unable to persist upload task."));
-  });
-};
-
-const deletePendingGalleryUpload = async (uploadTaskId) => {
-  const database = await openHomeGalleryUploadDb();
-  if (!database || !uploadTaskId) {
-    return;
-  }
-
-  await new Promise((resolve, reject) => {
-    const transaction = database.transaction(
-      HOME_GALLERY_UPLOAD_STORE_NAME,
-      "readwrite",
-    );
-    const store = transaction.objectStore(HOME_GALLERY_UPLOAD_STORE_NAME);
-    const request = store.delete(uploadTaskId);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () =>
-      reject(request.error || new Error("Unable to clear upload task."));
-  });
-};
-
-const clearPendingGalleryUploads = async () => {
-  const pendingUploads = await getPendingGalleryUploads();
-  const pendingUploadIds = pendingUploads
-    .map((uploadTask) => String(uploadTask?.id || "").trim())
-    .filter(Boolean);
-
-  for (const uploadId of pendingUploadIds) {
-    await deletePendingGalleryUpload(uploadId);
-  }
-
-  return pendingUploadIds.length;
-};
+// ...existing code...
 
 const buildInternetArchiveSearchUrl = (queryText) => {
   const normalizedQuery = String(queryText || "").trim();
@@ -209,21 +99,15 @@ function Home(props) {
     import.meta.env.BASE_URL
       ? import.meta.env.BASE_URL
       : "/";
-  const homeBackgroundStyle = !isNaghamtrkmani
-    ? {
-        backgroundImage: `url(${baseUrl}img/brushstroke-texture-modern-design.jpg)`,
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-        minHeight: "100vh",
-      }
-    : {};
+  // Style moved to CSS: .Home_root--bg
+  const homeBackgroundStyle = undefined;
   // State to track which friend's chat is open
   const [openChatFriendId, setOpenChatFriendId] = useState(null);
   const history = useHistory();
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
   const profilePictureWrapperRef = React.useRef(null);
+  const profilePictureImageRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
     mode: "idle",
     startX: 0,
@@ -233,6 +117,7 @@ function Home(props) {
     startDistance: 0,
     startScale: 1,
   });
+  // (Fixed: removed misplaced JSX here)
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   const [isImageGalleryDeletingPublicId, setIsImageGalleryDeletingPublicId] =
     useState("");
@@ -392,6 +277,9 @@ function Home(props) {
   const [telegramAuthStage, setTelegramAuthStage] = useState("idle");
   const [openReportSections, setOpenReportSections] = useState({});
   const [isReportsWrapperOpen, setIsReportsWrapperOpen] = useState(false);
+  const [showGalleryInRightColumn, setShowGalleryInRightColumn] =
+    useState(false);
+  const [isGalleryTopRowVisible, setIsGalleryTopRowVisible] = useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
   const [profilePictureViewport, setProfilePictureViewport] = useState(() => {
@@ -427,6 +315,187 @@ function Home(props) {
       ...currentSections,
       [sectionKey]: !currentSections?.[sectionKey],
     }));
+  };
+
+  const introWrapRef = React.useRef(null);
+  const settingsPanelMountRef = React.useRef(null);
+  const settingsPanelHostRef = React.useRef(null);
+  const settingsPanelRef = React.useRef(null);
+  const separatorDraggingRef = React.useRef(false);
+  const separatorStartXRef = React.useRef(0);
+  const separatorStartWidthRef = React.useRef(0);
+  const [leftColumnWidthPercent, setLeftColumnWidthPercent] = useState(66);
+  const HOME_INTRO_SEPARATOR_WIDTH = 38;
+  const HOME_LEFT_COLUMN_MIN_WIDTH = 520;
+  const HOME_RIGHT_COLUMN_MIN_WIDTH = 300;
+  const HOME_LEFT_COLUMN_MAX_WIDTH_RATIO = 0.82;
+
+  const touchMoveOptions = React.useMemo(() => ({ passive: false }), []);
+
+  const clampLeftColumnWidthPercent = React.useCallback((nextWidthPercent) => {
+    const containerWidth =
+      introWrapRef.current?.getBoundingClientRect().width || 1;
+    const availableWidth = Math.max(
+      containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
+      1,
+    );
+    const minWidthPercent = (HOME_LEFT_COLUMN_MIN_WIDTH / availableWidth) * 100;
+    const maxWidthPercent = Math.min(
+      ((availableWidth - HOME_RIGHT_COLUMN_MIN_WIDTH) / availableWidth) * 100,
+      HOME_LEFT_COLUMN_MAX_WIDTH_RATIO * 100,
+    );
+    const nextWidth = Math.min(
+      maxWidthPercent,
+      Math.max(minWidthPercent, nextWidthPercent),
+    );
+    return Number.isFinite(nextWidth) ? nextWidth : 66;
+  }, []);
+
+  const handlePointerMove = React.useCallback(
+    (event) => {
+      if (!separatorDraggingRef.current) {
+        return;
+      }
+
+      const pageX =
+        (event.touches && event.touches[0] && event.touches[0].pageX) ||
+        event.pageX;
+      const containerWidth =
+        introWrapRef.current?.getBoundingClientRect().width || 1;
+      const availableWidth = Math.max(
+        containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
+        1,
+      );
+      const deltaPercent =
+        ((pageX - separatorStartXRef.current) / availableWidth) * 100;
+
+      setLeftColumnWidthPercent(
+        clampLeftColumnWidthPercent(
+          separatorStartWidthRef.current + deltaPercent,
+        ),
+      );
+      event.preventDefault();
+    },
+    [clampLeftColumnWidthPercent],
+  );
+
+  const handlePointerUp = React.useCallback(() => {
+    if (!separatorDraggingRef.current) {
+      return;
+    }
+    separatorDraggingRef.current = false;
+    document.removeEventListener("mousemove", handlePointerMove);
+    document.removeEventListener(
+      "touchmove",
+      handlePointerMove,
+      touchMoveOptions,
+    );
+    document.removeEventListener("mouseup", handlePointerUp);
+    document.removeEventListener("touchend", handlePointerUp);
+    document.removeEventListener("touchcancel", handlePointerUp);
+  }, [handlePointerMove]);
+
+  const startSeparatorDrag = React.useCallback(
+    (event) => {
+      event.preventDefault();
+      separatorDraggingRef.current = true;
+      separatorStartXRef.current =
+        (event.touches && event.touches[0] && event.touches[0].pageX) ||
+        event.pageX;
+      separatorStartWidthRef.current = leftColumnWidthPercent;
+      document.addEventListener("mousemove", handlePointerMove);
+      document.addEventListener(
+        "touchmove",
+        handlePointerMove,
+        touchMoveOptions,
+      );
+      document.addEventListener("mouseup", handlePointerUp);
+      document.addEventListener("touchend", handlePointerUp);
+      document.addEventListener("touchcancel", handlePointerUp);
+    },
+    [handlePointerMove, handlePointerUp, leftColumnWidthPercent],
+  );
+
+  React.useEffect(() => {
+    return () => {
+      document.removeEventListener("mousemove", handlePointerMove);
+      document.removeEventListener(
+        "touchmove",
+        handlePointerMove,
+        touchMoveOptions,
+      );
+      document.removeEventListener("mouseup", handlePointerUp);
+      document.removeEventListener("touchend", handlePointerUp);
+      document.removeEventListener("touchcancel", handlePointerUp);
+    };
+  }, [handlePointerMove, handlePointerUp, touchMoveOptions]);
+
+  React.useEffect(() => {
+    setLeftColumnWidthPercent((currentWidth) =>
+      clampLeftColumnWidthPercent(currentWidth),
+    );
+  }, [clampLeftColumnWidthPercent]);
+
+  React.useEffect(() => {
+    if (!introWrapRef.current) {
+      return;
+    }
+
+    introWrapRef.current.style.setProperty(
+      "--home-left-column-width",
+      `${leftColumnWidthPercent}%`,
+    );
+    introWrapRef.current.style.setProperty(
+      "--home-right-column-width",
+      `calc(${100 - leftColumnWidthPercent}% - ${HOME_INTRO_SEPARATOR_WIDTH}px)`,
+    );
+  }, [HOME_INTRO_SEPARATOR_WIDTH, leftColumnWidthPercent]);
+
+  React.useEffect(() => {
+    const settingsPanelNode = settingsPanelRef.current;
+    const targetMountNode = isReportsWrapperOpen
+      ? settingsPanelMountRef.current
+      : settingsPanelHostRef.current;
+
+    if (!settingsPanelNode || !targetMountNode) {
+      return;
+    }
+
+    if (settingsPanelNode.parentNode !== targetMountNode) {
+      targetMountNode.appendChild(settingsPanelNode);
+    }
+  }, [isReportsWrapperOpen]);
+
+  React.useEffect(() => {
+    if (isReportsWrapperOpen || showGalleryInRightColumn) {
+      if (openChatFriendId) {
+        setOpenChatFriendId(null);
+      }
+      props.closeActiveChat?.();
+    }
+  }, [isReportsWrapperOpen, openChatFriendId, props, showGalleryInRightColumn]);
+
+  React.useEffect(() => {
+    if (!profilePictureImageRef.current) {
+      return;
+    }
+
+    profilePictureImageRef.current.style.setProperty(
+      "--home-profile-offset-x",
+      `${profilePictureViewport.offsetX}px`,
+    );
+    profilePictureImageRef.current.style.setProperty(
+      "--home-profile-offset-y",
+      `${profilePictureViewport.offsetY}px`,
+    );
+    profilePictureImageRef.current.style.setProperty(
+      "--home-profile-scale",
+      `${profilePictureViewport.scale}`,
+    );
+  }, [profilePictureViewport]);
+
+  const toggleGalleryTopRow = () => {
+    setIsGalleryTopRowVisible((value) => !value);
   };
 
   React.useEffect(() => {
@@ -497,6 +566,7 @@ function Home(props) {
 
           return {
             id: String(friend._id || username || displayName).trim(),
+            chatId: String(friend._id || "").trim(),
             displayName,
             initials: initials || "D",
             username,
@@ -521,13 +591,194 @@ function Home(props) {
           );
         })
     : [];
-  const getFriendStatusColor = (isConnected) =>
-    props.friendConnectionColor
-      ? props.friendConnectionColor(isConnected)
-      : isConnected
-        ? "#32cd32"
-        : "rgba(240, 242, 245, 0.42)";
 
+  const unreadChatCountsByFriendId = React.useMemo(() => {
+    const notifications = Array.isArray(props.state?.notifications)
+      ? props.state.notifications
+      : [];
+
+    return notifications.reduce((counts, notification) => {
+      if (
+        notification?.type !== "chat_message" ||
+        notification?.status === "read"
+      ) {
+        return counts;
+      }
+
+      const friendId = String(notification.id || "").trim();
+
+      if (!friendId) {
+        return counts;
+      }
+
+      const nextCount = Number(notification.count);
+      counts[friendId] = Number.isFinite(nextCount)
+        ? Math.max(0, nextCount)
+        : 1;
+      return counts;
+    }, {});
+  }, [props.state?.notifications]);
+
+  const activeFriendCard = React.useMemo(
+    () =>
+      socialFriends.find(
+        (friend) => friend.chatId && friend.chatId === openChatFriendId,
+      ) || null,
+    [openChatFriendId, socialFriends],
+  );
+
+  const getFriendPresenceState = React.useCallback(
+    (friend) => {
+      const friendId = String(friend?.chatId || "").trim();
+      const isConnected = Boolean(friend?.isConnected);
+      const isTyping = friendId
+        ? Boolean(props.state?.friendTypingPresence?.[friendId])
+        : false;
+      const isAvailableInChat = friendId
+        ? Boolean(props.state?.friendChatPresence?.[friendId])
+        : false;
+
+      if (!isConnected) {
+        return {
+          iconClass: "fa-circle",
+          label: "Offline",
+          modifierClass: "Home_socialFriendStatus--offline",
+        };
+      }
+
+      if (isTyping) {
+        return {
+          iconClass: "fa-keyboard",
+          label: "Typing",
+          modifierClass: "Home_socialFriendStatus--typing",
+        };
+      }
+
+      if (isAvailableInChat) {
+        return {
+          iconClass: "fa-comments",
+          label: "Online",
+          modifierClass: "Home_socialFriendStatus--online",
+        };
+      }
+
+      return {
+        iconClass: "fa-signal",
+        label: "Connected",
+        modifierClass: "Home_socialFriendStatus--connected",
+      };
+    },
+    [props.state?.friendChatPresence, props.state?.friendTypingPresence],
+  );
+
+  const handleToggleInlineFriendChat = React.useCallback(
+    (friend) => {
+      if (!friend?.chatId) {
+        return;
+      }
+
+      if (openChatFriendId === friend.chatId) {
+        setOpenChatFriendId(null);
+        props.closeActiveChat?.();
+        return;
+      }
+
+      setOpenChatFriendId(friend.chatId);
+      props.selectFriendChat?.(friend.chatId);
+    },
+    [openChatFriendId, props],
+  );
+
+  const renderFriendListItem = React.useCallback(
+    (friend) => {
+      const isFriendChatOpen = openChatFriendId === friend.chatId;
+      const unreadChatCount = isFriendChatOpen
+        ? 0
+        : unreadChatCountsByFriendId[friend.chatId] || 0;
+      const friendPresenceState = getFriendPresenceState(friend);
+
+      return (
+        <li
+          key={friend.id}
+          className={`Home_socialFriendItem fc${isFriendChatOpen ? " Home_socialFriendItem--chatOpen Home_socialFriendItem--activeView" : ""}`}
+        >
+          <button
+            type="button"
+            className="Home_socialFriendSummary fr"
+            onClick={() => handleToggleInlineFriendChat(friend)}
+            aria-expanded={isFriendChatOpen}
+            aria-controls={
+              friend.chatId ? `Home_friendChat_${friend.chatId}` : undefined
+            }
+            disabled={!friend.chatId}
+          >
+            <div className="Home_socialFriendIdentity fr">
+              <div className="Home_socialFriendAvatar">
+                {friend.avatarUrl ? (
+                  <img
+                    src={friend.avatarUrl}
+                    alt={`${friend.displayName} avatar`}
+                    className="Home_socialFriendAvatarImage"
+                  />
+                ) : (
+                  <span aria-hidden="true">{friend.initials}</span>
+                )}
+              </div>
+              <div className="Home_socialFriendCopy fc">
+                <span className="Home_socialFriendName">
+                  {friend.displayName}
+                </span>
+                <span className="Home_socialFriendUsername">
+                  {friend.username || "Phenomed user"}
+                </span>
+              </div>
+            </div>
+            <div className="Home_socialFriendPresence">
+              {unreadChatCount > 0 ? (
+                <span className="Home_socialFriendUnreadBadge">
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              ) : null}
+              <span
+                className={`Home_socialFriendStatus ${friendPresenceState.modifierClass}`}
+              >
+                <i className={`fas ${friendPresenceState.iconClass}`}></i>
+                <span>{friendPresenceState.label}</span>
+              </span>
+            </div>
+          </button>
+          {isFriendChatOpen && friend.chatId ? (
+            <div
+              id={`Home_friendChat_${friend.chatId}`}
+              className="Home_inlineFriendChat"
+            >
+              <FriendChat
+                state={props.state}
+                content={phenomedSocialEnglishContent}
+                sendToThemMessage={props.sendToThemMessage}
+                updateMyTypingPresence={props.updateMyTypingPresence}
+                closeActiveChat={() => {
+                  setOpenChatFriendId(null);
+                  props.closeActiveChat?.();
+                }}
+                hideTitleContainer
+              />
+            </div>
+          ) : null}
+        </li>
+      );
+    },
+    [
+      openChatFriendId,
+      props.closeActiveChat,
+      props.sendToThemMessage,
+      props.state,
+      props.updateMyTypingPresence,
+      getFriendPresenceState,
+      unreadChatCountsByFriendId,
+      handleToggleInlineFriendChat,
+    ],
+  );
   const openProfilePicturePicker = () => {
     galleryUploadInputRef.current?.click();
   };
@@ -544,6 +795,7 @@ function Home(props) {
 
     const wrapperBounds =
       profilePictureWrapperRef.current?.getBoundingClientRect();
+    const BORDER_RADIUS = 22; // px, must match CSS
 
     if (!wrapperBounds?.width || !wrapperBounds?.height || scale <= 1) {
       return {
@@ -553,8 +805,14 @@ function Home(props) {
       };
     }
 
-    const maxOffsetX = ((scale - 1) * wrapperBounds.width) / 2;
-    const maxOffsetY = ((scale - 1) * wrapperBounds.height) / 2;
+    // Standard max offset (image edge covers parent edge)
+    let maxOffsetX = ((scale - 1) * wrapperBounds.width) / 2;
+    let maxOffsetY = ((scale - 1) * wrapperBounds.height) / 2;
+
+    // Reduce max offset so the image always covers the apex of each rounded corner
+    const extraClamp = BORDER_RADIUS * (scale - 1);
+    maxOffsetX = Math.max(0, maxOffsetX - extraClamp);
+    maxOffsetY = Math.max(0, maxOffsetY - extraClamp);
 
     return {
       scale,
@@ -856,13 +1114,7 @@ function Home(props) {
       lastModified: Number(fileToUploadFinal?.lastModified) || 0,
     };
 
-    if (!existingUploadTask) {
-      try {
-        await savePendingGalleryUpload(uploadTask);
-      } catch (error) {
-        // Continue upload even if local persistence is unavailable.
-      }
-    }
+    // ...existing code...
 
     setIsImageGalleryUploading(true);
 
@@ -978,11 +1230,7 @@ function Home(props) {
         syncUserMediaState(savePayload, {
           keepCurrentProfilePicture: true,
         });
-        try {
-          await deletePendingGalleryUpload(uploadTask.id);
-        } catch (error) {
-          // Ignore local cleanup failures after successful server save.
-        }
+        // ...existing code...
         sendCloudinaryReply(
           savePayload?.message || "Media saved to Cloudinary.",
         );
@@ -1116,78 +1364,9 @@ function Home(props) {
     }
   };
 
-  const handleClearPendingUploads = async () => {
-    setClearPendingFeedback("");
+  // Removed: handleClearPendingUploads (no longer needed)
 
-    try {
-      const clearedCount = await clearPendingGalleryUploads();
-      const message =
-        clearedCount > 0
-          ? `Cleared ${clearedCount} pending upload${clearedCount === 1 ? "" : "s"}.`
-          : "No pending uploads were stored.";
-
-      setClearPendingFeedback(message);
-      sendCloudinaryReply(message);
-    } catch (error) {
-      const message =
-        error?.message || "Unable to clear pending uploads right now.";
-
-      setClearPendingFeedback(message);
-      sendCloudinaryReply(message);
-    }
-  };
-
-  React.useEffect(() => {
-    if (!props.state?.token || hasRecoveredPendingUploadsRef.current) {
-      return;
-    }
-
-    hasRecoveredPendingUploadsRef.current = true;
-    let isCancelled = false;
-
-    const resumePendingUploads = async () => {
-      let pendingUploads = [];
-      try {
-        pendingUploads = await getPendingGalleryUploads();
-      } catch (error) {
-        return;
-      }
-
-      if (!pendingUploads.length || isCancelled) {
-        return;
-      }
-
-      sendCloudinaryReply(
-        `Resuming ${pendingUploads.length} pending media upload${pendingUploads.length === 1 ? "" : "s"}.`,
-      );
-
-      for (const pendingUpload of pendingUploads) {
-        if (isCancelled) {
-          break;
-        }
-
-        const pendingFile = pendingUpload?.file;
-        if (!(pendingFile instanceof Blob)) {
-          try {
-            await deletePendingGalleryUpload(pendingUpload?.id);
-          } catch (error) {
-            // Ignore invalid local queue cleanup errors.
-          }
-          continue;
-        }
-
-        await uploadGalleryImage(pendingFile, {
-          uploadTask: pendingUpload,
-        });
-      }
-    };
-
-    resumePendingUploads();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [props.state?.token]);
+  // Removed: resumePendingUploads effect (no longer resumes uploads after refresh)
 
   React.useEffect(() => {
     if (!imageOnlyGallery.length) {
@@ -2267,12 +2446,14 @@ function Home(props) {
       </div>
     );
   };
-
   return (
-    <div style={homeBackgroundStyle}>
-      <section id="Home_studysessions_article" className="fc">
-        <section id="Home_preStart" className="fc slide-top">
-          <div id="Home_preStart_leftPanel" className="fc">
+    <>
+      <article
+        id="Home_root"
+        className={!isNaghamtrkmani ? "Home_root--bg" : undefined}
+      >
+        <section id="Home_visible_wrapper" className="fc slide-top">
+          <div id="Home_main_wrapper" className="fc">
             <div id="Home_topControls" className="fr">
               <div id="Home_navWrap">
                 <Nav
@@ -2281,6 +2462,44 @@ function Home(props) {
                   logOut={props.logOut}
                   acceptFriend={props.acceptFriend}
                   makeNotificationsRead={props.makeNotificationsRead}
+                  extraActions={[
+                    {
+                      id: "friends-list",
+                      label: "Friends",
+                      iconClass: "fas fa-user-friends",
+                      isActive:
+                        !isReportsWrapperOpen && !showGalleryInRightColumn,
+                      onClick: () => {
+                        setIsReportsWrapperOpen(false);
+                        setShowGalleryInRightColumn(false);
+                        setOpenChatFriendId(null);
+                        props.closeActiveChat?.();
+                      },
+                    },
+                    {
+                      id: "media-gallery",
+                      label: "Media",
+                      iconClass: "fas fa-images",
+                      isActive:
+                        !isReportsWrapperOpen && showGalleryInRightColumn,
+                      onClick: () => {
+                        setIsReportsWrapperOpen(false);
+                        setShowGalleryInRightColumn(true);
+                      },
+                    },
+                    {
+                      id: "reports-settings",
+                      label: isReportsWrapperOpen
+                        ? "Hide Reports"
+                        : "Open Reports",
+                      iconClass: "fas fa-cog",
+                      isActive: isReportsWrapperOpen,
+                      onClick: () =>
+                        setIsReportsWrapperOpen(
+                          (currentValue) => !currentValue,
+                        ),
+                    },
+                  ]}
                   subApps={[
                     {
                       id: "study",
@@ -2310,44 +2529,22 @@ function Home(props) {
                 />
               </div>
             </div>
-            <div id="Home_preStart_introWrap" className="fc">
-              <div id="Home_preStart_intro" className="fr">
-                <div id="Home_preStart_leftColumn" className="fc">
-                  <div id="Home_preStart_leftColumnScroll" className="fc">
-                    <p id="Home_preStart_eyebrow">PhenoMed Home Page</p>
-                    <div id="Home_preStart_personalWrapper" className="fc">
-                      <div id="Home_preStart_personalBio" className="fc">
-                        <span id="Home_preStart_bio_name">
-                          {props.state.firstname || "-"}{" "}
-                          {props.state.lastname || "-"}
-                        </span>
-                        <span id="Home_preStart_bio_username">
-                          ({props.state.username || "-"})
-                        </span>
-                        <span id="Home_preStart_bio_study">
-                          Studying {props.state.program || "-"} at{" "}
-                          {props.state.university || "-"} University
-                        </span>
-                        <div id="Home_preStart_bio_yearTermRow">
-                          <span id="Home_preStart_bio_year">
-                            Year {props.state.studyYear || "-"}
-                          </span>
-                          <span id="Home_preStart_bio_term">
-                            Term {props.state.term || "-"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div id="Home_preStart_rightColumn" className="fc">
+            <div id="Home_preStart_introWrap" className="fr" ref={introWrapRef}>
+              {/* Removed Home_preStart_profileWrapper and its contents */}
+              <div
+                id="Home_main_leftColumn_wrapper"
+                className="Home_main_leftColumn_wrapper"
+              >
+                <div id="Home_bioWrapper" className="Home_bioWrapper fc">
                   <div
                     id="Home_preStart_profileWrapper"
                     ref={profilePictureWrapperRef}
+                    style={{ position: "relative" }}
                   >
                     {profilePictureSrc ? (
                       <img
                         id="Home_preStart_profilePic"
+                        ref={profilePictureImageRef}
                         src={profilePictureSrc}
                         alt={`${props.state.firstname} ${props.state.lastname}`}
                         onDoubleClick={resetProfilePictureViewport}
@@ -2361,9 +2558,6 @@ function Home(props) {
                         onPointerCancel={handleProfilePicturePointerUp}
                         onWheel={handleProfilePictureWheel}
                         className={isProfilePictureDragging ? "isDragging" : ""}
-                        style={{
-                          transform: `translate(${profilePictureViewport.offsetX}px, ${profilePictureViewport.offsetY}px) scale(${profilePictureViewport.scale})`,
-                        }}
                       />
                     ) : (
                       <i className="fas fa-user" aria-hidden="true"></i>
@@ -2372,358 +2566,250 @@ function Home(props) {
                       ref={galleryUploadInputRef}
                       type="file"
                       accept="image/*,video/*"
-                      style={{ display: "none" }}
+                      className="Home_hiddenFileInput"
                       onChange={handleProfilePictureSelected}
                     />
                   </div>
+                  <div id="Home_preStart_personalBio" className="fc">
+                    <span id="Home_preStart_bio_name">
+                      {props.state.firstname || "-"}{" "}
+                      {props.state.lastname || "-"}
+                    </span>
+                    <span id="Home_preStart_bio_username">
+                      ({props.state.username || "-"})
+                    </span>
+                    <span id="Home_preStart_bio_study">
+                      Studying {props.state.program || "-"} at{" "}
+                      {props.state.university || "-"} University
+                    </span>
+                    <div id="Home_preStart_bio_yearTermRow">
+                      <span id="Home_preStart_bio_year">
+                        Year {props.state.studyYear || "-"}
+                      </span>
+                      <span id="Home_preStart_bio_term">
+                        Term {props.state.term || "-"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="Home_mediaFriendsRow">
-                <div className="fc Home_preStart_toolCard Home_preStart_toolCard--flush">
-                  <div className="Home_reportHeader fr">
-                    <h3>Media Gallery</h3>
-                  </div>
-                  <div className="fc Home_galleryCard">
-                    <div className="Home_galleryTopRow fr">
-                      <p className="Home_galleryMetaText">
-                        Upload images or videos, preview them, or delete them
-                        from storage.
-                      </p>
+              <div
+                className="Home_introSeparator"
+                role="separator"
+                aria-orientation="vertical"
+                aria-valuemin={45}
+                aria-valuemax={85}
+                aria-valuenow={Math.round(leftColumnWidthPercent)}
+                onMouseDown={startSeparatorDrag}
+                onTouchStart={startSeparatorDrag}
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") {
+                    setLeftColumnWidthPercent((current) =>
+                      clampLeftColumnWidthPercent(current - 2),
+                    );
+                  } else if (event.key === "ArrowRight") {
+                    setLeftColumnWidthPercent((current) =>
+                      clampLeftColumnWidthPercent(current + 2),
+                    );
+                  }
+                }}
+              />
+              <section
+                id="Home_rightColumn_wrapper"
+                className="Home_socialFriendsPanel fc"
+              >
+                <div
+                  id="Home_friendsCard"
+                  className={`Home_socialFriendsCard fc${activeFriendCard ? " Home_socialFriendsCard--chatMounted" : ""}`}
+                >
+                  {activeFriendCard ? null : (
+                    <div className="Home_gallery_Header_wrapper fr">
+                      <h3 className="Home_socialFriendsTitle">
+                        {isReportsWrapperOpen
+                          ? "Settings"
+                          : showGalleryInRightColumn
+                            ? "Gallery"
+                            : "Friends"}
+                      </h3>
+                      {isReportsWrapperOpen ? null : (
+                        <span className="Home_socialFriendsCount">
+                          {showGalleryInRightColumn
+                            ? imageGallery.length
+                            : socialFriends.length}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {isReportsWrapperOpen ? (
+                    <div
+                      ref={settingsPanelMountRef}
+                      className="Home_settingsPanelMount"
+                    ></div>
+                  ) : showGalleryInRightColumn ? (
+                    <div className="Home_socialFriendsList Home_socialFriendsList--gallery">
                       <button
+                        id="Home_uploadMediaButton"
                         type="button"
-                        className="Home_changePasswordSubmit"
+                        className="Home_changePasswordSubmit Home_galleryUploadButton"
                         onClick={openProfilePicturePicker}
                         disabled={isImageGalleryUploading}
-                        style={{ marginRight: "1em" }}
                       >
                         {isImageGalleryUploading
                           ? "Uploading..."
                           : "Upload media"}
                       </button>
-                      <button
-                        type="button"
-                        className="Home_changePasswordSubmit"
-                        onClick={handleClearPendingUploads}
-                        style={{
-                          marginRight: "0.5em",
-                          background: "#ffe",
-                          color: "#333",
-                          border: "1px solid #ccc",
-                        }}
-                      >
-                        Clear All Pending Uploads
-                      </button>
-                      <span
-                        style={{
-                          alignSelf: "center",
-                          color: "#b77",
-                          fontSize: "0.95em",
-                        }}
-                      >
-                        {clearPendingFeedback}
-                      </span>
-                    </div>
-                    {imageGallery.length ? (
-                      <div className="Home_galleryGrid">
-                        {imageGallery.map((image) => {
-                          const imagePublicId = String(image?.publicId || "");
-                          const isVideoItem = isVideoGalleryItem(image);
-                          const isActionsOpen =
-                            imagePublicId === activeGalleryActionsPublicId;
-                          const isCurrentProfilePicture =
-                            String(image?.url || "").trim() ===
-                            profilePictureSrc;
-                          return (
-                            <article
-                              key={image.publicId}
-                              className="Home_galleryItem fc"
-                            >
-                              <div className="Home_galleryThumbWrap">
-                                <button
-                                  type="button"
-                                  className="Home_galleryThumbButton"
-                                  onClick={() =>
-                                    toggleGalleryItemActions(image.publicId)
-                                  }
-                                  title="Show media actions"
-                                >
-                                  {isVideoItem ? (
-                                    <video
-                                      src={image.url}
-                                      className="Home_galleryThumb"
-                                      muted
-                                      playsInline
-                                      preload="metadata"
-                                    />
-                                  ) : (
-                                    <img
-                                      src={image.url}
-                                      alt="Gallery upload"
-                                      className="Home_galleryThumb"
-                                    />
-                                  )}
-                                </button>
-                                <div
-                                  className={`Home_galleryItemActions fc${isActionsOpen ? " Home_galleryItemActions--open" : ""}`}
-                                >
+                      {imageGallery.length ? (
+                        <div id="Home_galleryGrid" className="Home_galleryGrid">
+                          {imageGallery.map((image) => {
+                            const imagePublicId = String(image?.publicId || "");
+                            const isVideoItem = isVideoGalleryItem(image);
+                            const isActionsOpen =
+                              imagePublicId === activeGalleryActionsPublicId;
+                            const isCurrentProfilePicture =
+                              String(image?.url || "").trim() ===
+                              profilePictureSrc;
+                            return (
+                              <article
+                                key={image.publicId}
+                                className="Home_galleryItem fc"
+                              >
+                                <div className="Home_galleryThumbWrap">
                                   <button
                                     type="button"
-                                    className="Home_editPicButton"
-                                    onClick={() => {
-                                      if (isVideoItem) {
-                                        if (typeof window !== "undefined") {
-                                          window.open(
-                                            image.url,
-                                            "_blank",
-                                            "noopener,noreferrer",
-                                          );
+                                    className="Home_galleryThumbButton"
+                                    onClick={() =>
+                                      toggleGalleryItemActions(image.publicId)
+                                    }
+                                    title="Show media actions"
+                                  >
+                                    {isVideoItem ? (
+                                      <video
+                                        src={image.url}
+                                        className="Home_galleryThumb"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                      />
+                                    ) : (
+                                      <img
+                                        src={image.url}
+                                        alt="Gallery upload"
+                                        className="Home_galleryThumb"
+                                      />
+                                    )}
+                                  </button>
+                                  <div
+                                    className={`Home_galleryItemActions fc${isActionsOpen ? " Home_galleryItemActions--open" : ""}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="Home_editPicButton"
+                                      onClick={() => {
+                                        if (isVideoItem) {
+                                          if (typeof window !== "undefined") {
+                                            window.open(
+                                              image.url,
+                                              "_blank",
+                                              "noopener,noreferrer",
+                                            );
+                                          }
+                                          return;
                                         }
-                                        return;
-                                      }
-
-                                      openGalleryViewer(image.publicId);
-                                    }}
-                                  >
-                                    <i className="fas fa-expand"></i>
-                                    <span>{isVideoItem ? "Open" : "View"}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="Home_editPicButton"
-                                    onClick={() =>
-                                      handleSetGalleryImageAsProfilePicture(
-                                        image.publicId,
-                                      )
-                                    }
-                                    disabled={
-                                      isVideoItem ||
-                                      isCurrentProfilePicture ||
-                                      isImageGallerySettingProfilePublicId ===
-                                        image.publicId
-                                    }
-                                  >
-                                    <i className="fas fa-user-check"></i>
-                                    <span>
-                                      {isImageGallerySettingProfilePublicId ===
-                                      image.publicId
-                                        ? "Saving..."
-                                        : isVideoItem
-                                          ? "Image only"
-                                          : isCurrentProfilePicture
-                                            ? "Current pp"
-                                            : "Set as pp"}
-                                    </span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="Home_editPicButton"
-                                    onClick={() =>
-                                      handleDeleteGalleryImage(image.publicId)
-                                    }
-                                    disabled={
-                                      isImageGalleryDeletingPublicId ===
-                                      image.publicId
-                                    }
-                                  >
-                                    <i className="fas fa-trash-alt"></i>
-                                    <span>
-                                      {isImageGalleryDeletingPublicId ===
-                                      image.publicId
-                                        ? "Deleting..."
-                                        : "Delete"}
-                                    </span>
-                                  </button>
-                                </div>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="Home_galleryEmptyState">
-                        No media uploaded yet.
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="fc Home_preStart_toolCard Home_preStart_toolCard--flush Home_socialFriendsPanel">
-                  <div className="Home_reportHeader fr">
-                    <h3>Social Friends</h3>
-                    <div className="Home_reportHeaderActions fr">
-                      <span className="Home_socialFriendsCount">
-                        {socialFriends.length}{" "}
-                        {socialFriends.length === 1 ? "friend" : "friends"}
-                      </span>
-                      <button
-                        type="button"
-                        className="Home_socialFriendsOpenButton"
-                        onClick={() => history.push("/phenomedsocial")}
-                      >
-                        <i
-                          className="fas fa-user-friends"
-                          aria-hidden="true"
-                        ></i>
-                        <span>Open Social</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="fc Home_socialFriendsCard">
-                    <p className="Home_galleryMetaText Home_socialFriendsMeta">
-                      Synced from Phenomed Social. Visit the social workspace to
-                      search, chat, and manage doctor connections.
-                    </p>
-                    {socialFriends.length ? (
-                      <ul className="Home_socialFriendsList">
-                        {socialFriends
-                          .map((friend) => [
-                            <li
-                              key={friend.id}
-                              className="Home_socialFriendItem fr"
-                            >
-                              <div className="Home_socialFriendIdentity fr">
-                                <span
-                                  className="Home_socialFriendAvatar"
-                                  aria-hidden="true"
-                                >
-                                  {friend.avatarUrl ? (
-                                    <img
-                                      src={friend.avatarUrl}
-                                      alt=""
-                                      className="Home_socialFriendAvatarImage"
-                                    />
-                                  ) : (
-                                    friend.initials
-                                  )}
-                                </span>
-                                <div className="fc Home_socialFriendCopy">
-                                  {friend.username ? (
-                                    <Link
-                                      className="Home_socialFriendName"
-                                      to={`/profile/${friend.username}`}
-                                    >
-                                      {friend.displayName}
-                                    </Link>
-                                  ) : (
-                                    <span className="Home_socialFriendName">
-                                      {friend.displayName}
-                                    </span>
-                                  )}
-                                  <span className="Home_socialFriendUsername">
-                                    {friend.username
-                                      ? `@${friend.username}`
-                                      : "Phenomed doctor"}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="fc Home_socialFriendPresence">
-                                <span className="Home_socialFriendStatus">
-                                  <i
-                                    className="fas fa-circle"
-                                    aria-hidden="true"
-                                    style={{
-                                      color: getFriendStatusColor(
-                                        friend.isConnected,
-                                      ),
-                                    }}
-                                  ></i>
-                                  <span>
-                                    {friend.isConnected ? "Online" : "Offline"}
-                                  </span>
-                                </span>
-                                <button
-                                  className="Home_socialFriendChatIcon"
-                                  title="Open chat"
-                                  onClick={() => setOpenChatFriendId(friend.id)}
-                                  style={{
-                                    marginLeft: 8,
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  <i
-                                    className="fas fa-comments"
-                                    aria-hidden="true"
-                                  ></i>
-                                </button>
-                              </div>
-                            </li>,
-                            friend.username === "naghamtrkmani" &&
-                              openChatFriendId === friend.id && (
-                                <li
-                                  key={friend.id + "-naghamchat"}
-                                  className="Home_socialFriendNaghamChat fc"
-                                >
-                                  <section id="Chat_article" className="fc">
-                                    <FriendChat
-                                      state={{
-                                        activeChatFriendName:
-                                          friend.displayName || friend.username,
-                                        activeChatFriendId: friend.id,
-                                        isChatting: true,
+                                        openGalleryViewer(image.publicId);
                                       }}
-                                      content={{}}
-                                      sendToThemMessage={() => {}}
-                                      updateMyTypingPresence={() => {}}
-                                      closeActiveChat={() =>
-                                        setOpenChatFriendId(null)
+                                    >
+                                      <i className="fas fa-expand"></i>
+                                      <span>
+                                        {isVideoItem ? "Open" : "View"}
+                                      </span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="Home_editPicButton"
+                                      onClick={() =>
+                                        handleSetGalleryImageAsProfilePicture(
+                                          image.publicId,
+                                        )
                                       }
-                                    />
-                                  </section>
-                                </li>
-                              ),
-                          ])
-                          .flat()}
-                      </ul>
-                    ) : (
-                      <div className="Home_galleryEmptyState Home_socialFriendsEmptyState">
-                        No friends synced from Phenomed Social yet.
-                      </div>
-                    )}
-                  </div>
+                                      disabled={
+                                        isVideoItem ||
+                                        isCurrentProfilePicture ||
+                                        isImageGallerySettingProfilePublicId ===
+                                          image.publicId
+                                      }
+                                    >
+                                      <i className="fas fa-user-check"></i>
+                                      <span>
+                                        {isImageGallerySettingProfilePublicId ===
+                                        image.publicId
+                                          ? "Saving..."
+                                          : isVideoItem
+                                            ? "Image only"
+                                            : isCurrentProfilePicture
+                                              ? "Current pp"
+                                              : "Set as pp"}
+                                      </span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="Home_editPicButton"
+                                      onClick={() =>
+                                        handleDeleteGalleryImage(image.publicId)
+                                      }
+                                      disabled={
+                                        isImageGalleryDeletingPublicId ===
+                                        image.publicId
+                                      }
+                                    >
+                                      <i className="fas fa-trash-alt"></i>
+                                      <span>
+                                        {isImageGalleryDeletingPublicId ===
+                                        image.publicId
+                                          ? "Deleting..."
+                                          : "Delete"}
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="Home_galleryEmptyState">
+                          No media uploaded yet.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <ul className="Home_socialFriendsList">
+                      {socialFriends.length === 0 ? (
+                        <li className="Home_socialFriendsEmptyState">
+                          No friends yet—share Phenomed Social with a colleague.
+                        </li>
+                      ) : activeFriendCard ? (
+                        renderFriendListItem(activeFriendCard)
+                      ) : (
+                        socialFriends.map(renderFriendListItem)
+                      )}
+                    </ul>
+                  )}
                 </div>
-              </div>
+              </section>
             </div>
+            {/* /Home_preStart_leftPanel */}
           </div>
-          {/* /Home_preStart_leftPanel */}
-          <div id="Home_preStart_reports" className="fc Home_preStart_reports">
-            <div
-              id="Home_preStart_reportsToggle"
-              className="fc"
-              role="button"
-              tabIndex={0}
-              aria-label={
-                isReportsWrapperOpen
-                  ? "Hide reports and settings panel"
-                  : "Show reports and settings panel"
-              }
-              aria-pressed={isReportsWrapperOpen}
-              onClick={() =>
-                setIsReportsWrapperOpen((currentValue) => !currentValue)
-              }
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setIsReportsWrapperOpen((currentValue) => !currentValue);
-                }
-              }}
-              title={
-                isReportsWrapperOpen
-                  ? "Hide reports and settings"
-                  : "Open reports and settings"
-              }
-            >
-              <i className="fas fa-cog" aria-hidden="true"></i>
-            </div>
-
+          <div ref={settingsPanelHostRef} className="Home_settingsPanelHost">
             <div
               id="Home_preStart_reportsWrapper"
-              className={`fc${isReportsWrapperOpen ? "" : " Home_preStart_reportsWrapper--closed"}`}
+              ref={settingsPanelRef}
+              className={`fc Home_preStart_reports${isReportsWrapperOpen ? "" : " Home_preStart_reportsWrapper--closed"}`}
             >
               <div className="fc Home_preStart_reportCard Home_preStart_reportsCard">
-                <div className="Home_reportHeader fr">
+                <div className="Home_gallery_Header_wrapper fr">
                   <h3>Log Record: Date and Time</h3>
-                  <div className="Home_reportHeaderActions fr">
+                  <div className="Home_gallery_Header_wrapperActions fr">
                     <button
                       type="button"
                       className="Home_reportDeleteButton"
@@ -2860,9 +2946,9 @@ function Home(props) {
 
               {isVisitLogOwner ? (
                 <div className="fc Home_preStart_reportCard Home_preStart_reportsCard">
-                  <div className="Home_reportHeader fr">
+                  <div className="Home_gallery_Header_wrapper fr">
                     <h3>Visit Log: App Entries</h3>
-                    <div className="Home_reportHeaderActions fr">
+                    <div className="Home_gallery_Header_wrapperActions fr">
                       <button
                         type="button"
                         className="Home_reportDeleteButton"
@@ -2979,7 +3065,7 @@ function Home(props) {
 
               {isVisitLogOwner ? (
                 <div className="fc Home_preStart_reportsCard">
-                  <div className="Home_reportHeader fr">
+                  <div className="Home_gallery_Header_wrapper fr">
                     <h3>naghamtrkmani course letter</h3>
                     <button
                       type="button"
@@ -3052,7 +3138,7 @@ function Home(props) {
               ) : null}
 
               <div className="fc Home_preStart_reportsCard">
-                <div className="Home_reportHeader fr">
+                <div className="Home_gallery_Header_wrapper fr">
                   <h3>planner music playlist</h3>
                   <button
                     type="button"
@@ -3155,7 +3241,7 @@ function Home(props) {
               </div>
 
               <div className="fc Home_preStart_reportsCard">
-                <div className="Home_reportHeader fr">
+                <div className="Home_gallery_Header_wrapper fr">
                   <h3>schoolplanner telegram</h3>
                   <button
                     type="button"
@@ -3254,24 +3340,7 @@ function Home(props) {
                       telegramAuthStage === "password" ||
                       telegramAuthStage === "connected" ? (
                         <>
-                          {/* Button to clear all pending uploads for troubleshooting */}
-                          <div
-                            style={{
-                              margin: "1em 0",
-                              padding: "0.5em",
-                              background: "#ffe",
-                              border: "1px solid #ccc",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <button
-                              onClick={handleClearPendingUploads}
-                              style={{ marginRight: "1em" }}
-                            >
-                              Clear All Pending Uploads
-                            </button>
-                            <span>{clearPendingFeedback}</span>
-                          </div>
+                          {/* Removed: Clear All Pending Uploads button and feedback (handler no longer exists) */}
                           <input
                             id="Home_schoolPlannerTelegram_code_input"
                             type="text"
@@ -3333,7 +3402,7 @@ function Home(props) {
                 </div>
               </div>
               <div className="fc Home_preStart_reportsCard">
-                <div className="Home_reportHeader fr">
+                <div className="Home_gallery_Header_wrapper fr">
                   <h3>Graphic Control</h3>
                   <button
                     type="button"
@@ -3390,7 +3459,7 @@ function Home(props) {
                 className="fc Home_preStart_reportsCard"
                 id="Home_userMenu_panelCard"
               >
-                <div className="Home_reportHeader fr">
+                <div className="Home_gallery_Header_wrapper fr">
                   <h3>Control Panel</h3>
                   <button
                     type="button"
@@ -3560,8 +3629,27 @@ function Home(props) {
               : "Image viewer"
           }
         />
-      </section>
-    </div>
+      </article>
+      {isNaghamtrkmani ? (
+        <img
+          src="/img/noga_cake.png"
+          alt="Cake"
+          className="Home_profileCake3D"
+          style={{
+            position: "fixed",
+            left: 25,
+            top: 20,
+            width: "88px",
+            height: "88px",
+            zIndex: 1000,
+            filter: "drop-shadow(0 2px 16px rgba(0,0,0,0.25))",
+            transform:
+              "rotate(-30deg) perspective(80px) translateZ(16px) scale(1.12)",
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 export default Home;

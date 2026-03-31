@@ -48,6 +48,7 @@ const FriendChat = ({
   sendToThemMessage,
   updateMyTypingPresence,
   closeActiveChat,
+  hideTitleContainer = false,
 }) => {
   const chatContent = content?.chat;
   const isChatting = Boolean(state?.isChatting);
@@ -110,7 +111,7 @@ const FriendChat = ({
 
     updateMyTypingPresence(
       state.activeChatFriendId,
-      Boolean(event.target.value.trim())
+      Boolean(event.target.value.trim()),
     );
   };
 
@@ -136,7 +137,10 @@ const FriendChat = ({
     textarea.focus();
 
     if (state?.activeChatFriendId && updateMyTypingPresence) {
-      updateMyTypingPresence(state.activeChatFriendId, Boolean(nextValue.trim()));
+      updateMyTypingPresence(
+        state.activeChatFriendId,
+        Boolean(nextValue.trim()),
+      );
     }
   };
 
@@ -162,54 +166,56 @@ const FriendChat = ({
     <section id="FriendChat_article" className="fc">
       <div id="FriendChat_content_container" className="fc">
         <section id="Chat_article" className="fc">
-          <section id="Chat_title_container" className="fr">
-            <i
-              className="fas fa-chevron-circle-left"
-              id="Chat_goback_icon"
-              onClick={() => {
-                const phenomedIntro =
-                  document.querySelector(".PhenomedSocial_intro");
-                const friendsListArticle = document.getElementById(
-                  "FriendsList_article"
-                );
-                const addFriendArticle = document.getElementById(
-                  "AddFriend_article"
-                );
-                const friendChatArticle =
-                  document.getElementById("FriendChat_article");
+          {hideTitleContainer ? null : (
+            <section id="Chat_title_container" className="fr">
+              <i
+                className="fas fa-chevron-circle-left"
+                id="Chat_goback_icon"
+                onClick={() => {
+                  const phenomedIntro = document.querySelector(
+                    ".PhenomedSocial_intro",
+                  );
+                  const friendsListArticle = document.getElementById(
+                    "FriendsList_article",
+                  );
+                  const addFriendArticle =
+                    document.getElementById("AddFriend_article");
+                  const friendChatArticle =
+                    document.getElementById("FriendChat_article");
 
-                if (friendsListArticle) {
-                  friendsListArticle.style.display = "flex";
-                }
-                if (addFriendArticle) {
-                  addFriendArticle.style.display = "flex";
-                }
-                if (friendChatArticle) {
-                  friendChatArticle.style.display = "none";
-                }
-                if (phenomedIntro) {
-                  phenomedIntro.style.display = "flex";
-                }
-                if (closeActiveChat) {
-                  closeActiveChat();
-                }
-              }}
-            ></i>
-            <div id="Chat_title_copy" className="fc">
-              <h1 id="Chat_title_text">
-                {state?.activeChatFriendName || chatContent?.title || "Chat"}
-              </h1>
-              {hasActiveChat && (
-                <p id="Chat_title_status">
-                  {friendIsTyping
-                    ? chatContent?.typingLabel || "typing..."
-                    : friendIsChatting
-                    ? chatContent?.onlineLabel || "online"
-                    : chatContent?.offlineLabel || "offline"}
-                </p>
-              )}
-            </div>
-          </section>
+                  if (friendsListArticle) {
+                    friendsListArticle.style.display = "flex";
+                  }
+                  if (addFriendArticle) {
+                    addFriendArticle.style.display = "flex";
+                  }
+                  if (friendChatArticle) {
+                    friendChatArticle.style.display = "none";
+                  }
+                  if (phenomedIntro) {
+                    phenomedIntro.style.display = "flex";
+                  }
+                  if (closeActiveChat) {
+                    closeActiveChat();
+                  }
+                }}
+              ></i>
+              <div id="Chat_title_copy" className="fc">
+                <h1 id="Chat_title_text">
+                  {state?.activeChatFriendName || chatContent?.title || "Chat"}
+                </h1>
+                {hasActiveChat && (
+                  <p id="Chat_title_status">
+                    {friendIsTyping
+                      ? chatContent?.typingLabel || "typing..."
+                      : friendIsChatting
+                        ? chatContent?.onlineLabel || "online"
+                        : chatContent?.offlineLabel || "offline"}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
           {isChatting ? (
             <React.Fragment>
               <ul id="Chat_messages">
@@ -229,8 +235,9 @@ const FriendChat = ({
                     onTouchStart={keepTextareaFocus}
                     onClick={() => {
                       setIsEmojiPickerOpen((currentValue) => !currentValue);
-                      const textarea =
-                        document.getElementById("Chat_textarea_input");
+                      const textarea = document.getElementById(
+                        "Chat_textarea_input",
+                      );
 
                       if (textarea) {
                         textarea.focus();
@@ -262,7 +269,9 @@ const FriendChat = ({
                 </div>
                 <textarea
                   id="Chat_textarea_input"
-                  placeholder={chatContent?.inputPlaceholder || "Write a message"}
+                  placeholder={
+                    chatContent?.inputPlaceholder || "Write a message"
+                  }
                   rows="1"
                   onFocus={handleTextareaFocus}
                   onBlur={handleTextareaBlur}
@@ -271,7 +280,7 @@ const FriendChat = ({
                     resizeChatTextarea(event.target);
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
+                    if (event.key === "Enter" && event.shiftKey) {
                       event.preventDefault();
                       handleSend();
                     }
