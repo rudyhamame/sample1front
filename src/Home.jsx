@@ -3630,25 +3630,6 @@ function Home(props) {
           }
         />
       </article>
-      {isNaghamtrkmani ? (
-        <img
-          src="/img/noga_cake.png"
-          alt="Cake"
-          className="Home_profileCake3D"
-          style={{
-            position: "fixed",
-            left: 25,
-            top: 20,
-            width: "88px",
-            height: "88px",
-            zIndex: 1000,
-            filter: "drop-shadow(0 2px 16px rgba(0,0,0,0.25))",
-            transform:
-              "rotate(-30deg) perspective(80px) translateZ(16px) scale(1.12)",
-            pointerEvents: "none",
-          }}
-        />
-      ) : null}
     </>
   );
 }
