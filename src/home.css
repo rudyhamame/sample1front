@@ -1626,9 +1626,9 @@
   min-width: var(--home-left-column-min-width);
   background: linear-gradient(
     180deg,
-    rgba(255, 238, 236, 0.72) 1%,
-    rgba(240, 206, 205, 0.58) 50%,
-    rgba(210, 164, 180, 0.52) 100%
+    rgba(255, 238, 236, 0.293) 1%,
+    rgba(240, 206, 205, 0.38) 50%,
+    rgba(210, 164, 180, 0.34) 100%
   );
   border-radius: 32px;
   position: relative;
@@ -1647,9 +1647,9 @@
 #Home_studysessions_article.Home_themeDark .Home_main_leftColumn_wrapper {
   background: linear-gradient(
     180deg,
-    rgba(9, 24, 31, 0.78) 0%,
-    rgba(12, 31, 39, 0.74) 52%,
-    rgba(15, 38, 46, 0.7) 100%
+    rgba(9, 24, 31, 0.56) 0%,
+    rgba(12, 31, 39, 0.5) 52%,
+    rgba(15, 38, 46, 0.46) 100%
   );
   border-color: rgba(110, 168, 180, 0.24);
   box-shadow:
@@ -1881,9 +1881,9 @@
   transform: translateY(-2px);
   background: linear-gradient(
     180deg,
-    rgba(255, 238, 236, 0.72) 1%,
-    rgba(240, 206, 205, 0.58) 50%,
-    rgba(210, 164, 180, 0.52) 100%
+    rgba(255, 238, 236, 0.5) 1%,
+    rgba(240, 206, 205, 0.38) 50%,
+    rgba(210, 164, 180, 0.34) 100%
   );
   color: var(--home-main-wrapper-text);
   min-width: var(--home-right-column-min-width);
@@ -1914,9 +1914,9 @@
   border-color: rgba(110, 168, 180, 0.24);
   background: linear-gradient(
     180deg,
-    rgba(9, 24, 31, 0.78) 0%,
-    rgba(12, 31, 39, 0.74) 52%,
-    rgba(15, 38, 46, 0.7) 100%
+    rgba(9, 24, 31, 0.56) 0%,
+    rgba(12, 31, 39, 0.5) 52%,
+    rgba(15, 38, 46, 0.46) 100%
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
@@ -3608,8 +3608,8 @@
   border-radius: 18px;
   background: linear-gradient(
     180deg,
-    rgba(248, 252, 252, 0.72),
-    rgba(235, 244, 245, 0.64)
+    rgba(248, 252, 252, 0.54),
+    rgba(235, 244, 245, 0.44)
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -3621,8 +3621,8 @@
   border-color: rgba(110, 168, 180, 0.18);
   background: linear-gradient(
     180deg,
-    rgba(10, 24, 31, 0.72),
-    rgba(12, 31, 39, 0.66)
+    rgba(10, 24, 31, 0.5),
+    rgba(12, 31, 39, 0.42)
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -3663,8 +3663,8 @@
   overflow: visible;
   background: linear-gradient(
     180deg,
-    rgba(248, 251, 252, 0.72),
-    rgba(233, 241, 243, 0.64)
+    rgba(248, 251, 252, 0.52),
+    rgba(233, 241, 243, 0.42)
   );
   border: 1px solid rgba(118, 151, 160, 0.18);
   box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
@@ -3682,8 +3682,8 @@
 #Home_studysessions_article.Home_themeDark #Home_navWrap #Nav_article {
   background: linear-gradient(
     180deg,
-    rgba(16, 37, 44, 0.72),
-    rgba(12, 28, 34, 0.66)
+    rgba(16, 37, 44, 0.5),
+    rgba(12, 28, 34, 0.42)
   );
   border-color: rgba(110, 168, 180, 0.18);
   box-shadow:

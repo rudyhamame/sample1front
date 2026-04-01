@@ -28,6 +28,46 @@ var lectureInEdit = {};
 var lectureCorrections = [];
 const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY = "nogaPlanner_reduce_motion";
 const NOGA_RING_VIDEO_DEFAULT_URL = "";
+const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
+
+let sharedPlannerMusicController = null;
+let sharedPlannerMusicSnapshot = {
+  isReady: false,
+  isPlaying: false,
+  trackTitle: "Planner Music",
+  trackArtist: "Internet Archive",
+  volume: 0.42,
+};
+
+const emitPlannerMusicSnapshot = (nextSnapshot) => {
+  sharedPlannerMusicSnapshot = {
+    ...sharedPlannerMusicSnapshot,
+    ...nextSnapshot,
+  };
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(PLANNER_MUSIC_SESSION_EVENT, {
+        detail: { ...sharedPlannerMusicSnapshot },
+      }),
+    );
+  }
+};
+
+export const getPlannerMusicSnapshot = () => ({
+  ...sharedPlannerMusicSnapshot,
+});
+
+export const toggleSharedPlannerMusic = () =>
+  sharedPlannerMusicController?.togglePlannerMusic?.() || Promise.resolve();
+
+export const playNextSharedPlannerMusicTrack = (autoplay = true) =>
+  sharedPlannerMusicController?.playNextPlannerMusicTrack?.(autoplay) ||
+  Promise.resolve();
+
+export const playPreviousSharedPlannerMusicTrack = (autoplay = true) =>
+  sharedPlannerMusicController?.playPreviousPlannerMusicTrack?.(autoplay) ||
+  Promise.resolve();
 
 var timezone = new Date().getTimezoneOffset();
 var todayDate = Date.now() - timezone * 60000;
@@ -948,173 +988,11 @@ const getConfiguredInternetArchiveItems = () => {
   }
 };
 
-const createDefaultPlannerMusicUiState = (locale = "en") => ({
-  music_isPlaying: false,
-  music_volume: 0.42,
-  music_trackTitle: locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
-  music_trackArtist: "Internet Archive",
-  music_isLoading: false,
-});
-
-const plannerMusicSession = {
-  audio: null,
-  playlist: [],
-  trackIndex: 0,
-  libraryPromise: null,
-  audioContext: null,
-  analyser: null,
-  analyserData: null,
-  sourceNode: null,
-  ui: createDefaultPlannerMusicUiState("en"),
-};
-
-const emitPlannerMusicSessionChange = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.dispatchEvent(
-    new CustomEvent("planner-music-session-change", {
-      detail: {
-        isReady:
-          Boolean(plannerMusicSession.audio?.src) ||
-          plannerMusicSession.playlist.length > 0,
-        isPlaying:
-          Boolean(plannerMusicSession.audio) &&
-          !plannerMusicSession.audio.paused &&
-          !plannerMusicSession.audio.ended,
-        volume: plannerMusicSession.ui.music_volume,
-        trackTitle: plannerMusicSession.ui.music_trackTitle,
-        trackArtist: plannerMusicSession.ui.music_trackArtist,
-      },
-    }),
-  );
-};
-
-const setSharedPlannerMusicTrack = (trackIndex, autoplay = false) => {
-  const audio = getPlannerMusicAudio();
-  const track = plannerMusicSession.playlist[trackIndex];
-
-  if (!audio || !track) {
-    return;
-  }
-
-  plannerMusicSession.trackIndex = trackIndex;
-  audio.pause();
-  audio.src = track.src;
-  audio.load();
-  audio.volume = plannerMusicSession.ui.music_volume;
-  plannerMusicSession.ui.music_trackTitle = track.title;
-  plannerMusicSession.ui.music_trackArtist = track.artist;
-  emitPlannerMusicSessionChange();
-
-  if (autoplay) {
-    audio
-      .play()
-      .then(() => {
-        emitPlannerMusicSessionChange();
-      })
-      .catch(() => {});
-  }
-};
-
-export const getPlannerMusicSnapshot = () => ({
-  isReady:
-    Boolean(plannerMusicSession.audio?.src) ||
-    plannerMusicSession.playlist.length > 0,
-  isPlaying:
-    Boolean(plannerMusicSession.audio) &&
-    !plannerMusicSession.audio.paused &&
-    !plannerMusicSession.audio.ended,
-  volume: plannerMusicSession.ui.music_volume,
-  trackTitle: plannerMusicSession.ui.music_trackTitle,
-  trackArtist: plannerMusicSession.ui.music_trackArtist,
-});
-
-export const toggleSharedPlannerMusic = async () => {
-  const audio = getPlannerMusicAudio();
-
-  if (!audio || !audio.src) {
-    return;
-  }
-
-  if (audio.paused) {
-    await audio.play().catch(() => {});
-  } else {
-    audio.pause();
-  }
-
-  emitPlannerMusicSessionChange();
-};
-
-export const playNextSharedPlannerMusicTrack = async (autoplay = true) => {
-  if (!plannerMusicSession.playlist.length) {
-    return;
-  }
-
-  const nextIndex =
-    (plannerMusicSession.trackIndex + 1) % plannerMusicSession.playlist.length;
-  setSharedPlannerMusicTrack(nextIndex, autoplay);
-};
-
-export const playPreviousSharedPlannerMusicTrack = async (autoplay = true) => {
-  if (!plannerMusicSession.playlist.length) {
-    return;
-  }
-
-  const nextIndex =
-    (plannerMusicSession.trackIndex - 1 + plannerMusicSession.playlist.length) %
-    plannerMusicSession.playlist.length;
-  setSharedPlannerMusicTrack(nextIndex, autoplay);
-};
-
-const getPlannerMusicAudio = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  if (!plannerMusicSession.audio) {
-    const audio = new Audio();
-    audio.crossOrigin = "anonymous";
-    audio.addEventListener("play", () => {
-      plannerMusicSession.ui.music_isPlaying = true;
-      emitPlannerMusicSessionChange();
-    });
-    audio.addEventListener("pause", () => {
-      plannerMusicSession.ui.music_isPlaying = false;
-      emitPlannerMusicSessionChange();
-    });
-    audio.addEventListener("ended", () => {
-      plannerMusicSession.ui.music_isPlaying = false;
-      if (plannerMusicSession.playlist.length > 0) {
-        playNextSharedPlannerMusicTrack(true);
-      } else {
-        emitPlannerMusicSessionChange();
-      }
-    });
-    audio.addEventListener("error", () => {
-      plannerMusicSession.ui.music_isPlaying = false;
-      emitPlannerMusicSessionChange();
-    });
-    plannerMusicSession.audio = audio;
-  }
-
-  return plannerMusicSession.audio;
-};
-
 export default class NogaPlanner extends Component {
   telegramCourseSuggestionsRequestInFlight = false;
 
   constructor(props) {
     super(props);
-    const sharedMusicUi = {
-      ...createDefaultPlannerMusicUiState(props.locale),
-      ...plannerMusicSession.ui,
-    };
-    const sharedAudio = getPlannerMusicAudio();
-    const musicIsPlaying = sharedAudio
-      ? !sharedAudio.paused && !sharedAudio.ended
-      : sharedMusicUi.music_isPlaying;
 
     this.state = {
       lectures: [],
@@ -1124,11 +1002,12 @@ export default class NogaPlanner extends Component {
       courses: [],
       course_isLoading: false,
       lecture_isLoading: false,
-      music_isPlaying: musicIsPlaying,
-      music_volume: sharedMusicUi.music_volume,
-      music_trackTitle: sharedMusicUi.music_trackTitle,
-      music_trackArtist: sharedMusicUi.music_trackArtist,
-      music_isLoading: sharedMusicUi.music_isLoading,
+      music_isPlaying: false,
+      music_volume: 0.42,
+      music_trackTitle:
+        props.locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
+      music_trackArtist: "Internet Archive",
+      music_isLoading: false,
       telegram_isLoading: false,
       telegram_error: "",
       telegram_messages: [],
@@ -1208,20 +1087,20 @@ export default class NogaPlanner extends Component {
     this.coursePrintAudio = null;
     this.coursePrintSoundTimeouts = [];
     this.courseDetailsTypingTimeouts = [];
-    this.musicAudioRef = { current: sharedAudio };
+    this.musicAudioRef = React.createRef();
     this.ringVideoRef = React.createRef();
     this.ringVideoFileInputRef = React.createRef();
     this.plannerArticleRef = React.createRef();
     this.lectureActionsWindowRef = React.createRef();
     this.musicTimerDialRef = React.createRef();
-    this.musicPlaylist = plannerMusicSession.playlist;
-    this.musicTrackIndex = plannerMusicSession.trackIndex;
-    this.musicLibraryPromise = plannerMusicSession.libraryPromise;
+    this.musicPlaylist = [];
+    this.musicTrackIndex = 0;
+    this.musicLibraryPromise = null;
     this.telegramSyncStatusTimeout = null;
-    this.musicAudioContext = plannerMusicSession.audioContext;
-    this.musicAnalyser = plannerMusicSession.analyser;
-    this.musicAnalyserData = plannerMusicSession.analyserData;
-    this.musicSourceNode = plannerMusicSession.sourceNode;
+    this.musicAudioContext = null;
+    this.musicAnalyser = null;
+    this.musicAnalyserData = null;
+    this.musicSourceNode = null;
     this.musicPaletteFrame = null;
     this.musicPaletteCursor = 0;
     this.musicTimerInterval = null;
@@ -1272,112 +1151,16 @@ export default class NogaPlanner extends Component {
     String(buttonText || "").trim() === actionText ||
     String(buttonText || "").trim() === this.t(actionText.toLowerCase());
 
-  persistPlannerMusicSession = () => {
-    plannerMusicSession.audio = this.musicAudioRef.current;
-    plannerMusicSession.playlist = this.musicPlaylist;
-    plannerMusicSession.trackIndex = this.musicTrackIndex;
-    plannerMusicSession.libraryPromise = this.musicLibraryPromise;
-    plannerMusicSession.audioContext = this.musicAudioContext;
-    plannerMusicSession.analyser = this.musicAnalyser;
-    plannerMusicSession.analyserData = this.musicAnalyserData;
-    plannerMusicSession.sourceNode = this.musicSourceNode;
-    plannerMusicSession.ui = {
-      ...plannerMusicSession.ui,
-      music_isPlaying: this.state.music_isPlaying,
-      music_volume: this.state.music_volume,
-      music_trackTitle: this.state.music_trackTitle,
-      music_trackArtist: this.state.music_trackArtist,
-      music_isLoading: this.state.music_isLoading,
-    };
-  };
-
-  syncPlannerMusicUiFromSession = () => {
-    const sharedAudio = getPlannerMusicAudio();
-    this.musicAudioRef.current = sharedAudio;
-
-    if (!sharedAudio) {
-      return;
-    }
-
-    const sharedUi = {
-      ...createDefaultPlannerMusicUiState(this.props.locale),
-      ...plannerMusicSession.ui,
-    };
-
-    this.setState({
-      music_isPlaying: !sharedAudio.paused && !sharedAudio.ended,
-      music_volume: sharedUi.music_volume,
-      music_trackTitle: sharedUi.music_trackTitle,
-      music_trackArtist: sharedUi.music_trackArtist,
-      music_isLoading: sharedUi.music_isLoading,
-    });
-  };
-
-  handlePlannerMusicPlay = () => {
-    plannerMusicSession.ui.music_isPlaying = true;
-    if (this.isComponentMounted) {
-      this.setState({ music_isPlaying: true });
-    }
-    this.startPlannerMusicReactivePalette();
-  };
-
-  handlePlannerMusicPause = () => {
-    plannerMusicSession.ui.music_isPlaying = false;
-    if (this.isComponentMounted) {
-      this.setState({ music_isPlaying: false });
-    }
-    this.stopPlannerMusicReactivePalette();
-  };
-
-  handlePlannerMusicEnded = () => {
-    plannerMusicSession.ui.music_isPlaying = false;
-    if (this.isComponentMounted) {
-      this.setState({ music_isPlaying: false });
-    }
-    this.playNextPlannerMusicTrack(true);
-  };
-
-  handlePlannerMusicError = () => {
-    plannerMusicSession.ui.music_isPlaying = false;
-    this.stopPlannerMusicReactivePalette();
-    this.playNextPlannerMusicTrack(false);
-  };
-
-  attachPlannerMusicListeners = () => {
-    const sharedAudio = getPlannerMusicAudio();
-    this.musicAudioRef.current = sharedAudio;
-
-    if (!sharedAudio) {
-      return;
-    }
-
-    sharedAudio.removeEventListener("play", this.handlePlannerMusicPlay);
-    sharedAudio.removeEventListener("pause", this.handlePlannerMusicPause);
-    sharedAudio.removeEventListener("ended", this.handlePlannerMusicEnded);
-    sharedAudio.removeEventListener("error", this.handlePlannerMusicError);
-    sharedAudio.addEventListener("play", this.handlePlannerMusicPlay);
-    sharedAudio.addEventListener("pause", this.handlePlannerMusicPause);
-    sharedAudio.addEventListener("ended", this.handlePlannerMusicEnded);
-    sharedAudio.addEventListener("error", this.handlePlannerMusicError);
-  };
-
-  detachPlannerMusicListeners = () => {
-    const sharedAudio = this.musicAudioRef.current;
-
-    if (!sharedAudio) {
-      return;
-    }
-
-    sharedAudio.removeEventListener("play", this.handlePlannerMusicPlay);
-    sharedAudio.removeEventListener("pause", this.handlePlannerMusicPause);
-    sharedAudio.removeEventListener("ended", this.handlePlannerMusicEnded);
-    sharedAudio.removeEventListener("error", this.handlePlannerMusicError);
-  };
-
   componentDidMount() {
     this.isComponentMounted = true;
-    this.attachPlannerMusicListeners();
-    this.syncPlannerMusicUiFromSession();
+    sharedPlannerMusicController = this;
+    emitPlannerMusicSnapshot({
+      isReady: true,
+      isPlaying: false,
+      trackTitle: this.state.music_trackTitle,
+      trackArtist: this.state.music_trackArtist,
+      volume: this.state.music_volume,
+    });
     window.addEventListener("popstate", this.handlePlannerBrowserBack);
     if (this.plannerArticleRef.current) {
       this.plannerArticleRef.current.addEventListener(
@@ -1401,9 +1184,6 @@ export default class NogaPlanner extends Component {
       this.musicAudioRef.current.volume = this.state.music_volume;
     }
     this.loadPlannerMusicLibrary();
-    if (this.musicAudioRef.current && !this.musicAudioRef.current.paused) {
-      this.startPlannerMusicReactivePalette();
-    }
     this.fetchTelegramConfig();
     this.fetchTelegramGroups();
     this.fetchStoredTelegramGroups();
@@ -1411,6 +1191,13 @@ export default class NogaPlanner extends Component {
   }
 
   componentWillUnmount() {
+    if (sharedPlannerMusicController === this) {
+      sharedPlannerMusicController = null;
+      emitPlannerMusicSnapshot({
+        isReady: false,
+        isPlaying: false,
+      });
+    }
     this.coursePrintSoundTimeouts.forEach((timeoutId) => {
       clearTimeout(timeoutId);
     });
@@ -1430,9 +1217,25 @@ export default class NogaPlanner extends Component {
       clearTimeout(this.telegramSyncStatusTimeout);
       this.telegramSyncStatusTimeout = null;
     }
-    this.detachPlannerMusicListeners();
-    this.persistPlannerMusicSession();
     this.stopPlannerMusicReactivePalette();
+    if (this.musicSourceNode) {
+      this.musicSourceNode.disconnect();
+      this.musicSourceNode = null;
+    }
+    if (this.musicAnalyser) {
+      this.musicAnalyser.disconnect();
+      this.musicAnalyser = null;
+    }
+    if (this.musicAudioContext) {
+      this.musicAudioContext.close().catch(() => {});
+      this.musicAudioContext = null;
+    }
+    if (this.musicAudioRef.current) {
+      this.musicAudioRef.current.pause();
+      this.musicAudioRef.current.currentTime = 0;
+      this.musicAudioRef.current.removeAttribute("src");
+      this.musicAudioRef.current.load();
+    }
     this.stopMusicTimer();
     this.stopMusicTimerAlarm();
     this.stopMusicTimerDialInteraction();
@@ -1452,6 +1255,24 @@ export default class NogaPlanner extends Component {
     }
     window.removeEventListener("popstate", this.handlePlannerBrowserBack);
     this.plannerSwipeStart = null;
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.music_isPlaying !== this.state.music_isPlaying ||
+      prevState.music_trackTitle !== this.state.music_trackTitle ||
+      prevState.music_trackArtist !== this.state.music_trackArtist ||
+      prevState.music_volume !== this.state.music_volume ||
+      prevState.music_isLoading !== this.state.music_isLoading
+    ) {
+      emitPlannerMusicSnapshot({
+        isReady: !this.state.music_isLoading,
+        isPlaying: this.state.music_isPlaying,
+        trackTitle: this.state.music_trackTitle,
+        trackArtist: this.state.music_trackArtist,
+        volume: this.state.music_volume,
+      });
+    }
   }
 
   ensurePlannerMusicAnalyser = async () => {
@@ -1492,8 +1313,6 @@ export default class NogaPlanner extends Component {
         this.musicSourceNode.connect(this.musicAnalyser);
         this.musicAnalyser.connect(this.musicAudioContext.destination);
       }
-
-      this.persistPlannerMusicSession();
 
       return true;
     } catch {
@@ -1668,7 +1487,13 @@ export default class NogaPlanner extends Component {
   };
 
   handlePlannerBrowserBack = () => {
-    // Let React Router handle in-app back navigation so shared music survives.
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (window.location.pathname === "/") {
+      window.location.reload();
+    }
   };
 
   resolveInternetArchiveTrack = async (item) => {
@@ -1981,9 +1806,7 @@ export default class NogaPlanner extends Component {
       .catch(() => [])
       .finally(() => {
         this.musicLibraryPromise = null;
-        plannerMusicSession.libraryPromise = null;
       });
-    plannerMusicSession.libraryPromise = this.musicLibraryPromise;
 
     const resolvedTracks = await this.musicLibraryPromise;
 
@@ -1995,7 +1818,6 @@ export default class NogaPlanner extends Component {
     this.setState({
       music_isLoading: false,
     });
-    this.persistPlannerMusicSession();
 
     if (this.musicPlaylist.length > 0 && this.musicAudioRef.current) {
       this.setPlannerMusicTrack(0);
@@ -2025,7 +1847,6 @@ export default class NogaPlanner extends Component {
       music_trackTitle: track.title,
       music_trackArtist: track.artist,
     });
-    this.persistPlannerMusicSession();
 
     if (autoplay) {
       musicAudio
@@ -2100,8 +1921,6 @@ export default class NogaPlanner extends Component {
     if (this.musicAudioRef.current) {
       this.musicAudioRef.current.volume = nextVolume;
     }
-
-    plannerMusicSession.ui.music_volume = nextVolume;
   };
 
   getMusicTimerDurationFromInputs = () => {
@@ -2447,6 +2266,7 @@ export default class NogaPlanner extends Component {
         () => {
           if (this.state.music_timerFinished) {
             this.ringMusicTimerAlarm();
+            this.openRingVideoOverlay();
           }
         },
       );
@@ -8431,7 +8251,7 @@ export default class NogaPlanner extends Component {
                     <div id="nogaPlanner_addCourse_exam_div" className="fr">
                       <section
                         id="nogaPlanner_addCourse_exam_input_section"
-                        className="fc"
+                        className="fr"
                       >
                         <div
                           id="nogaPlanner_addCourse_exam_input_section_inner"
@@ -8611,6 +8431,14 @@ export default class NogaPlanner extends Component {
                     aria-label="Music volume"
                   />
                 </div>
+                <p
+                  id="nogaPlanner_musicColumn_track"
+                  title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
+                >
+                  {this.state.music_isLoading
+                    ? this.t("loadingArchive")
+                    : this.state.music_trackTitle}
+                </p>
                 <div
                   id="nogaPlanner_musicColumn_timerShell"
                   className="fc"
@@ -8678,16 +8506,11 @@ export default class NogaPlanner extends Component {
                     <span className="nogaPlanner_musicColumn_timerTick"></span>
                     <span id="nogaPlanner_musicColumn_timerHand"></span>
                     <span id="nogaPlanner_musicColumn_timerCenter"></span>
-                  </div>
-                  <div id="nogaPlanner_musicColumn_timerSetReadout" className="fr">
-                    <span className="nogaPlanner_musicColumn_timerSetChip">
-                      <strong>{this.state.music_timerMinutes}</strong>
-                      <span>{this.t("minutesShort")}</span>
-                    </span>
-                    <span className="nogaPlanner_musicColumn_timerSetChip">
-                      <strong>{this.state.music_timerSeconds}</strong>
-                      <span>{this.t("secondsShort")}</span>
-                    </span>
+                    <strong id="nogaPlanner_musicColumn_timerLabel">
+                      {this.formatMusicTimerClock(
+                        this.state.music_timerRemainingSeconds,
+                      )}
+                    </strong>
                   </div>
                   <div id="nogaPlanner_musicColumn_timerActions" className="fc">
                     <button
@@ -8729,20 +8552,23 @@ export default class NogaPlanner extends Component {
                   </div>
                 </div>
               </div>
-              {typeof document !== "undefined" &&
-              document.getElementById("server_answer_noga_track_mount")
-                ? ReactDOM.createPortal(
-                    <p
-                      id="nogaPlanner_musicColumn_track"
-                      title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
-                    >
-                      {this.state.music_isLoading
-                        ? this.t("loadingArchive")
-                        : `${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
-                    </p>,
-                    document.getElementById("server_answer_noga_track_mount"),
-                  )
-                : null}
+              <audio
+                ref={this.musicAudioRef}
+                crossOrigin="anonymous"
+                onPlay={() => {
+                  this.setState({ music_isPlaying: true });
+                  this.startPlannerMusicReactivePalette();
+                }}
+                onPause={() => {
+                  this.setState({ music_isPlaying: false });
+                  this.stopPlannerMusicReactivePalette();
+                }}
+                onEnded={() => this.playNextPlannerMusicTrack(true)}
+                onError={() => {
+                  this.stopPlannerMusicReactivePalette();
+                  this.playNextPlannerMusicTrack(false);
+                }}
+              />
             </div>
             <section id="nogaPlanner_lectures_section">
               {this.state.lecture_isLoading === true && (
