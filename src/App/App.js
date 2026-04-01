@@ -4,13 +4,18 @@ import React from "react";
 //........import CSS...........
 import "./App.css";
 import "./Main/main.css";
-import "./Header/Nav/Notifications/notifications.css";
-import "./Header/Nav/nav.css";
+import "../Nav/Notifications/notifications.css";
+import "../Nav/nav.css";
 import "../home.css";
 import { Route } from "react-router-dom";
 import Home from "../Home";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import NogaPlan from "../SchoolPlanner/NogaPlanner";
+import NogaPlan, {
+  getPlannerMusicSnapshot,
+  playNextSharedPlannerMusicTrack,
+  playPreviousSharedPlannerMusicTrack,
+  toggleSharedPlannerMusic,
+} from "../SchoolPlanner/NogaPlanner";
 import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import { apiUrl } from "../config/api";
@@ -44,6 +49,15 @@ class App extends React.Component {
       term: storedSession.term || "",
       aiProvider: storedSession.aiProvider || "openai",
       profilePicture: storedSession.profilePicture || "",
+      profilePictureViewport:
+        storedSession.profilePictureViewport &&
+        typeof storedSession.profilePictureViewport === "object"
+          ? storedSession.profilePictureViewport
+          : { scale: 1, offsetX: 0, offsetY: 0 },
+      homeDrawing:
+        storedSession.homeDrawing && typeof storedSession.homeDrawing === "object"
+          ? storedSession.homeDrawing
+          : { draftPaths: [], appliedPaths: [], textItems: [] },
       imageGallery: Array.isArray(storedSession.imageGallery)
         ? storedSession.imageGallery
         : [],
@@ -99,6 +113,7 @@ class App extends React.Component {
         telegram: "checking",
         cloudinary: "checking",
       },
+      planner_music: getPlannerMusicSnapshot(),
       hide_app_footer: hideFooterPreference,
     };
   }
@@ -126,6 +141,11 @@ class App extends React.Component {
       term: storedSession.term || "",
       aiProvider: storedSession.aiProvider || "openai",
       profilePicture: storedSession.profilePicture || "",
+      profilePictureViewport:
+        storedSession.profilePictureViewport &&
+        typeof storedSession.profilePictureViewport === "object"
+          ? storedSession.profilePictureViewport
+          : { scale: 1, offsetX: 0, offsetY: 0 },
       imageGallery: Array.isArray(storedSession.imageGallery)
         ? storedSession.imageGallery
         : [],
@@ -138,6 +158,10 @@ class App extends React.Component {
     this.backendHealthPollInterval = window.setInterval(
       this.pollBackendHealth,
       30000,
+    );
+    window.addEventListener(
+      "planner-music-session-change",
+      this.handlePlannerMusicSessionChange,
     );
     window.addEventListener("pagehide", this.handlePageHide);
     window.addEventListener("beforeunload", this.handleBeforeUnload);
@@ -156,6 +180,10 @@ class App extends React.Component {
     }
   }
   componentWillUnmount() {
+    window.removeEventListener(
+      "planner-music-session-change",
+      this.handlePlannerMusicSessionChange,
+    );
     window.removeEventListener("pagehide", this.handlePageHide);
     window.removeEventListener("beforeunload", this.handleBeforeUnload);
     if (this.serverReplyTimeout) {
@@ -184,6 +212,12 @@ class App extends React.Component {
     //   this.availableToChat(false);
     // }
   }
+
+  handlePlannerMusicSessionChange = (event) => {
+    this.setState({
+      planner_music: event?.detail || getPlannerMusicSnapshot(),
+    });
+  };
 
   handlePageHide = () => {
     logoutStoredSession({
@@ -1778,6 +1812,42 @@ class App extends React.Component {
         const nextImageGallery = Array.isArray(jsonData?.media?.imageGallery)
           ? jsonData.media.imageGallery
           : [];
+        const nextProfilePictureViewport =
+          jsonData?.media?.profilePictureViewport &&
+          typeof jsonData.media.profilePictureViewport === "object"
+            ? jsonData.media.profilePictureViewport
+            : { scale: 1, offsetX: 0, offsetY: 0 };
+        const fetchedHomeDrawing =
+          jsonData?.media?.homeDrawing &&
+          typeof jsonData.media.homeDrawing === "object"
+            ? jsonData.media.homeDrawing
+            : { draftPaths: [], appliedPaths: [], textItems: [] };
+        const currentHomeDrawing =
+          this.state.homeDrawing && typeof this.state.homeDrawing === "object"
+            ? this.state.homeDrawing
+            : { draftPaths: [], appliedPaths: [], textItems: [] };
+        const fetchedAppliedCount = Array.isArray(fetchedHomeDrawing.appliedPaths)
+          ? fetchedHomeDrawing.appliedPaths.length
+          : Array.isArray(fetchedHomeDrawing.paths)
+            ? fetchedHomeDrawing.paths.length
+            : 0;
+        const currentAppliedCount = Array.isArray(currentHomeDrawing.appliedPaths)
+          ? currentHomeDrawing.appliedPaths.length
+          : Array.isArray(currentHomeDrawing.paths)
+            ? currentHomeDrawing.paths.length
+            : 0;
+        const fetchedTextCount = Array.isArray(fetchedHomeDrawing.textItems)
+          ? fetchedHomeDrawing.textItems.length
+          : 0;
+        const currentTextCount = Array.isArray(currentHomeDrawing.textItems)
+          ? currentHomeDrawing.textItems.length
+          : 0;
+        const nextHomeDrawing =
+          fetchedAppliedCount === 0 &&
+          fetchedTextCount === 0 &&
+          (currentAppliedCount > 0 || currentTextCount > 0)
+            ? currentHomeDrawing
+            : fetchedHomeDrawing;
 
         this.setState({
           username: jsonData.info?.username || this.state.username,
@@ -1797,6 +1867,8 @@ class App extends React.Component {
           login_record: jsonData.login_record || [],
           isOnline: jsonData.isOnline,
           profilePicture: nextProfilePicture,
+          profilePictureViewport: nextProfilePictureViewport,
+          homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
         });
         this.persistStoredSession({
@@ -1809,6 +1881,8 @@ class App extends React.Component {
           term: jsonData.info?.term || "",
           aiProvider: jsonData.info?.aiProvider || "openai",
           profilePicture: nextProfilePicture,
+          profilePictureViewport: nextProfilePictureViewport,
+          homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
           friends: jsonData.friends,
           posts: jsonData.posts,
@@ -1894,15 +1968,28 @@ class App extends React.Component {
     const nextImageGallery = Array.isArray(nextMedia?.imageGallery)
       ? nextMedia.imageGallery
       : [];
+    const nextProfilePictureViewport =
+      nextMedia?.profilePictureViewport &&
+      typeof nextMedia.profilePictureViewport === "object"
+        ? nextMedia.profilePictureViewport
+        : this.state.profilePictureViewport;
+    const nextHomeDrawing =
+      nextMedia?.homeDrawing && typeof nextMedia.homeDrawing === "object"
+        ? nextMedia.homeDrawing
+        : this.state.homeDrawing;
 
     this.setState(
       {
         profilePicture: nextProfilePicture,
+        profilePictureViewport: nextProfilePictureViewport,
+        homeDrawing: nextHomeDrawing,
         imageGallery: nextImageGallery,
       },
       () => {
         this.persistStoredSession({
           profilePicture: this.state.profilePicture,
+          profilePictureViewport: this.state.profilePictureViewport,
+          homeDrawing: this.state.homeDrawing,
           imageGallery: this.state.imageGallery,
         });
       },
@@ -2541,23 +2628,32 @@ class App extends React.Component {
   render() {
     const isNogaPlanRoute =
       typeof window !== "undefined" &&
-      window.location.pathname.includes("/phenomed/schoolplanner/nogaplan");
+      (window.location.pathname.includes("/phenomed/schoolplanner/nogaplan") ||
+        window.location.pathname.includes("/phenomed/nogaplan"));
     const normalizedUsername = String(this.state.username || "").toLowerCase();
     const isNaghamNogaFooter =
       isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
     const showServerAnswerFooter = !this.state.hide_app_footer;
     const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
     const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
+    const plannerMusic = this.state.planner_music || getPlannerMusicSnapshot();
     const currentPath =
       typeof window !== "undefined" ? window.location.pathname : "";
     const isArabicSchoolPlannerRoute =
-      currentPath === "/phenomed/schoolplanner/ar";
+      currentPath === "/phenomed/schoolplanner/ar" ||
+      currentPath === "/phenomed/nogaplan";
     const openArabicSchoolPlanner = () => {
       if (typeof window === "undefined" || isArabicSchoolPlannerRoute) {
         return;
       }
 
-      window.location.assign("/phenomed/schoolplanner/ar");
+      const arabicTargetPath = currentPath.includes(
+        "/phenomed/schoolplanner/nogaplan",
+      )
+        ? "/phenomed/nogaplan"
+        : "/phenomed/schoolplanner/ar";
+
+      window.location.assign(arabicTargetPath);
     };
     const serverAnswerFooter = (
       <footer
@@ -2641,6 +2737,47 @@ class App extends React.Component {
         </p>
         <button
           type="button"
+          id="server_answer_noga_prev"
+          className="server_answer_noga_playerButton"
+          onClick={() => playPreviousSharedPlannerMusicTrack(true)}
+          aria-label="Previous planner track"
+          title="Previous planner track"
+          disabled={!plannerMusic.isReady}
+        >
+          <i className="fi fi-rr-angle-small-left"></i>
+        </button>
+        <button
+          type="button"
+          id="server_answer_noga_toggle"
+          className="server_answer_noga_playerButton"
+          onClick={() => toggleSharedPlannerMusic()}
+          aria-label={
+            plannerMusic.isPlaying ? "Pause planner music" : "Play planner music"
+          }
+          title={
+            plannerMusic.isPlaying ? "Pause planner music" : "Play planner music"
+          }
+          disabled={!plannerMusic.isReady}
+        >
+          <i
+            className={
+              plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
+            }
+          ></i>
+        </button>
+        <button
+          type="button"
+          id="server_answer_noga_next"
+          className="server_answer_noga_playerButton"
+          onClick={() => playNextSharedPlannerMusicTrack(true)}
+          aria-label="Next planner track"
+          title="Next planner track"
+          disabled={!plannerMusic.isReady}
+        >
+          <i className="fi fi-rr-angle-small-right"></i>
+        </button>
+        <button
+          type="button"
           className={`server_answer_locale_button${isArabicSchoolPlannerRoute ? " server_answer_locale_button--active" : ""}`}
           onClick={openArabicSchoolPlanner}
           aria-label="Open Arabic School Planner"
@@ -2649,13 +2786,14 @@ class App extends React.Component {
         >
           Ar
         </button>
+        <div id="server_answer_noga_track_mount"></div>
       </footer>
     );
 
     return (
       <React.Fragment>
         <Route exact path="/">
-          <article id="app_page" className={appPageClassName}>
+          <article id="app_page" className={`${appPageClassName} app_page--home-dark`}>
             <main id="Main_article" className="fr">
               <Home
                 state={this.state}
@@ -2694,6 +2832,23 @@ class App extends React.Component {
           <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <NogaPlan
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/nogaplan">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <NogaPlan
+                locale="ar"
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}

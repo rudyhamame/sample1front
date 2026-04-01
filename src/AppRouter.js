@@ -55,11 +55,11 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
-          <Route path="/phenomed/schoolplanner/nogaplan">
+          <Route path="/phenomed/nogaplan">
             {isAuthenticated ? (
               <App
                 key="app-nogaplan"
-                path="/phenomed/schoolplanner/nogaplan"
+                path="/phenomed/nogaplan"
                 onLogout={handleLogout}
               />
             ) : (

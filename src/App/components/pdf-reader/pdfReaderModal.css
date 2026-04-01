@@ -22,6 +22,10 @@
   color: #f8f4eb;
 }
 
+.pdfReader_shell--study {
+  width: min(1560px, 100%);
+}
+
 .pdfReader_toolbar {
   display: flex;
   align-items: center;
@@ -60,76 +64,117 @@
 }
 
 .pdfReader_controls button,
-.pdfReader_searchRow button {
+.pdfReader_toolRow button,
+.pdfReader_inlineMeta button {
   border-radius: 999px;
   border: 1px solid rgba(244, 239, 229, 0.2);
   background: rgba(248, 244, 235, 0.08);
   color: #f8f4eb;
   font-size: 0.65rem;
   padding: 6px 11px;
+  cursor: pointer;
 }
 
-.pdfReader_controls span,
-.pdfReader_searchRow span {
+.pdfReader_toolRow button.is-active {
+  background: linear-gradient(135deg, #f4d07b 0%, #f28c54 100%);
+  color: #10272c;
+  border-color: transparent;
+}
+
+.pdfReader_controls span {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.56rem;
   opacity: 0.88;
 }
 
-.pdfReader_searchRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(244, 239, 229, 0.12);
-  flex-wrap: wrap;
-}
-
-.pdfReader_searchRow input {
-  min-width: 220px;
-  flex: 1 1 220px;
-  border-radius: 999px;
-  border: 1px solid rgba(244, 239, 229, 0.2);
-  padding: 8px 12px;
-  background: rgba(9, 25, 30, 0.6);
-  color: #f8f4eb;
-}
-
-.pdfReader_body {
+.pdfReader_studyLayout {
   display: grid;
-  grid-template-columns: 124px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
   min-height: 0;
   flex: 1 1 auto;
 }
 
-.pdfReader_thumbs {
-  border-right: 1px solid rgba(244, 239, 229, 0.12);
-  padding: 8px;
+.pdfReader_studyPanel,
+.pdfReader_notesPanel {
+  padding: 14px;
+  background: rgba(7, 20, 24, 0.4);
   overflow-y: auto;
+}
+
+.pdfReader_studyPanel {
+  border-right: 1px solid rgba(244, 239, 229, 0.12);
+}
+
+.pdfReader_notesPanel {
+  border-left: 1px solid rgba(244, 239, 229, 0.12);
+}
+
+.pdfReader_panelBlock {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
-.pdfReader_thumbButton {
-  border: 1px solid rgba(244, 239, 229, 0.12);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.14);
-  padding: 8px 6px;
+.pdfReader_panelBlock h2,
+.pdfReader_panelBlock h3,
+.pdfReader_panelBlock p {
+  margin: 0;
+}
+
+.pdfReader_panelEyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f4d07b;
+}
+
+.pdfReader_toolRow,
+.pdfReader_toggleRow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pdfReader_toggleRow label {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 0.74rem;
+}
+
+.pdfReader_inputLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.pdfReader_panelBlock textarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(244, 239, 229, 0.18);
+  background: rgba(9, 25, 30, 0.6);
   color: #f8f4eb;
+  padding: 10px 12px;
+  resize: vertical;
 }
 
-.pdfReader_thumbButton[data-active="true"] {
-  border-color: rgba(244, 239, 229, 0.5);
-  background: rgba(244, 239, 229, 0.12);
+.pdfReader_inlineMeta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.pdfReader_thumbButton .react-pdf__Page {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+.pdfReader_inlineMeta span,
+.pdfReader_hint {
+  font-size: 0.72rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.pdfReader_canvasSection {
+  min-width: 0;
+  display: flex;
 }
 
 .pdfReader_canvasWrap {
@@ -138,6 +183,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  width: 100%;
 }
 
 .pdfReader_canvasWrap--native {
@@ -168,6 +214,12 @@
   width: 100%;
 }
 
+.pdfReader_annotationLayer {
+  position: relative;
+  touch-action: none;
+  cursor: crosshair;
+}
+
 .pdfReader_canvas {
   display: block;
   max-width: none;
@@ -175,10 +227,59 @@
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
 }
 
-mark.pdfReader_mark {
-  background: #f2c66f;
-  color: #261501;
-  padding: 0;
+.pdfReader_annotationSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pdfReader_annotationList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pdfReader_annotationItem {
+  border: 1px solid rgba(244, 239, 229, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.14);
+  color: #f8f4eb;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pdfReader_annotationItem.is-selected {
+  border-color: rgba(244, 208, 123, 0.62);
+  background: rgba(244, 208, 123, 0.12);
+}
+
+.pdfReader_annotationItem span,
+.pdfReader_emptyState {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.pdfReader_annotationDelete {
+  color: #ffb4b4;
+  text-decoration: underline;
+}
+
+.pdfReader_emptyState {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 12px;
+}
+
+@media (max-width: 1280px) {
+  .pdfReader_studyLayout {
+    grid-template-columns: 240px minmax(0, 1fr) 280px;
+  }
 }
 
 @media (max-width: 980px) {
@@ -186,20 +287,25 @@ mark.pdfReader_mark {
     max-height: 97vh;
   }
 
-  .pdfReader_body {
+  .pdfReader_studyLayout {
     grid-template-columns: 1fr;
   }
 
-  .pdfReader_thumbs {
-    order: 2;
-    border-right: none;
+  .pdfReader_studyPanel,
+  .pdfReader_notesPanel {
+    border: none;
     border-top: 1px solid rgba(244, 239, 229, 0.12);
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
   }
 
-  .pdfReader_thumbButton {
-    min-width: 98px;
+  .pdfReader_studyPanel {
+    order: 1;
+  }
+
+  .pdfReader_canvasSection {
+    order: 2;
+  }
+
+  .pdfReader_notesPanel {
+    order: 3;
   }
 }

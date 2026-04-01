@@ -14,25 +14,3 @@
   margin: 0 auto;
   justify-content: space-between;
 }
-
-@keyframes header_blinker {
-  20% {
-    background-color: var(--orange);
-  }
-  30% {
-    background-color: var(--blue);
-  }
-
-  50% {
-    background-color: var(--orange);
-  }
-  100% {
-    background-color: var(--blue);
-  }
-}
-
-@media screen and (max-width: 600px) {
-  #timer {
-    font-size: 12pt;
-  }
-}

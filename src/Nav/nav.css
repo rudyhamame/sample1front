@@ -1,0 +1,255 @@
+/*Nav*/
+#Nav_article i {
+  font-size: 15pt;
+  color: #0f7f78;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+#Nav_article {
+  width: min-content;
+  gap: 24px;
+  align-items: center;
+  padding: 5px 14px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.98),
+    rgba(233, 241, 243, 0.98)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
+  border-radius: 0 0px 20px 20px;
+}
+
+#Nav_article i:hover {
+  color: #0b6a64;
+  transform: scale(0.96);
+}
+
+#Nav_article .Nav_actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.56),
+    rgba(233, 241, 243, 0.44)
+  );
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#Nav_article #Dim_article,
+#Nav_article #Logout_article,
+#Nav_article #Refresh_article {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.56),
+    rgba(233, 241, 243, 0.44)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#Nav_article .Nav_actionButton span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#Nav_article .Nav_actionButton--active {
+  border-color: rgba(15, 127, 120, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(236, 248, 248, 0.62),
+    rgba(225, 240, 241, 0.5)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(90, 121, 130, 0.1);
+}
+
+#Nav_article .Nav_actionButton i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.5rem;
+}
+
+#Nav_article #Dim_article i,
+#Nav_article #Logout_article i,
+#Nav_article #Refresh_article i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+#Nav_article .Nav_actionButton:hover i {
+  color: #0b6a64;
+  transform: translateY(-1px);
+}
+
+#Nav_article #Dim_article i:hover,
+#Nav_article #Logout_article i:hover,
+#Nav_article #Refresh_article i:hover {
+  color: #0b6a64;
+  transform: translateY(-1px);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article {
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  border-color: var(--home-pattern-button-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 14px 28px rgba(156, 97, 84, 0.14);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article i {
+  color: var(--home-pattern-button-icon);
+}
+
+#app_page.app_page--has-background-pattern
+  #Nav_article
+  .Nav_actionButton--active {
+  border-color: rgba(169, 90, 72, 0.34);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article .Nav_actionButton {
+  border-color: var(--home-pattern-button-border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--home-pattern-button-bg-start) 58%, transparent),
+    color-mix(in srgb, var(--home-pattern-button-bg-end) 48%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article #Dim_article,
+#app_page.app_page--has-background-pattern #Nav_article #Logout_article,
+#app_page.app_page--has-background-pattern #Nav_article #Refresh_article {
+  border-color: var(--home-pattern-button-border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--home-pattern-button-bg-start) 58%, transparent),
+    color-mix(in srgb, var(--home-pattern-button-bg-end) 48%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 12px 24px rgba(156, 97, 84, 0.16);
+}
+
+#app_page.app_page--has-background-pattern #Nav_article i:hover {
+  color: var(--home-pattern-button-hover-text);
+}
+
+#Home_studysessions_article.Home_themeDark #Nav_article .Nav_actionButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 39, 46, 0.5),
+    rgba(11, 31, 39, 0.42)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+#Home_studysessions_article.Home_themeDark #Nav_article #Dim_article,
+#Home_studysessions_article.Home_themeDark #Nav_article #Logout_article,
+#Home_studysessions_article.Home_themeDark #Nav_article #Refresh_article {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 39, 46, 0.5),
+    rgba(11, 31, 39, 0.42)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+#Home_studysessions_article.Home_themeDark #Nav_article .Nav_actionButton--active {
+  border-color: rgba(31, 181, 156, 0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 48, 55, 0.58),
+    rgba(12, 37, 43, 0.48)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+#Home_studysessions_article.Home_themeDark #Nav_article .Nav_actionButton:hover i {
+  color: #7ad5d8;
+}
+
+#Home_studysessions_article.Home_themeDark #Nav_article #Dim_article i:hover,
+#Home_studysessions_article.Home_themeDark #Nav_article #Logout_article i:hover,
+#Home_studysessions_article.Home_themeDark #Nav_article #Refresh_article i:hover {
+  color: #7ad5d8;
+}
+
+@media screen and (max-width: 1200px) {
+  #Header_content_container h2 {
+    font-size: 20pt;
+  }
+  #Nav_article i {
+    font-size: 10pt !important;
+  }
+  #Nav_article {
+    gap: 17px;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  #Nav_article {
+    height: 48px;
+  }
+}

@@ -652,6 +652,17 @@ const Login = ({ onLogin, onForceLogout }) => {
               term: userdata.user.info.term || "",
               aiProvider: userdata.user.info.aiProvider || "openai",
               profilePicture: userdata.user.media?.profilePicture?.url || "",
+              profilePictureViewport:
+                userdata.user.media?.profilePictureViewport || {
+                  scale: 1,
+                  offsetX: 0,
+                  offsetY: 0,
+                },
+              homeDrawing:
+                userdata.user.media?.homeDrawing &&
+                typeof userdata.user.media.homeDrawing === "object"
+                  ? userdata.user.media.homeDrawing
+                  : { draftPaths: [], appliedPaths: [], textItems: [] },
               imageGallery: Array.isArray(userdata.user.media?.imageGallery)
                 ? userdata.user.media.imageGallery
                 : [],

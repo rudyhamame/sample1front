@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import Nav from "../App/Header/Nav/Nav";
+import Nav from "../Nav/Nav";
 import { apiUrl } from "../config/api";
 
 const formatPostDate = (value) => {

@@ -1,8 +1,16 @@
 ﻿import { Link, useHistory } from "react-router-dom";
-import Nav from "./App/Header/Nav/Nav";
+import Nav from "./Nav/Nav";
 import React, { useState } from "react";
 import { apiUrl } from "./config/api";
 import { compressVideo } from "./utils/video-compress";
+import {
+  drawHomeLedRopePath,
+  drawHomeLedText,
+  drawHomeSketchPath,
+  HOME_DRAWING_PALETTES,
+  mergeNearbyHomeDrawingPaths,
+  smoothHomeDrawingPoints,
+} from "./utils/homeDrawingRope";
 import ImageViewerModal from "./App/components/image-viewer/ImageViewerModal";
 import FriendChat from "./PhenomedSocial/moi/friends/FriendChat/FriendChat";
 import { phenomedSocialEnglishContent } from "./PhenomedSocial/content";
@@ -15,6 +23,7 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
+const HOME_WRITING_FONT_SIZE = 18;
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
 const DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS = [
@@ -88,6 +97,108 @@ const buildInternetArchiveSearchUrl = (queryText) => {
   )}&fl[]=identifier,title,creator&sort[]=downloads desc&rows=8&page=1&output=json`;
 };
 
+const normalizeProfilePictureViewport = (nextViewport) => {
+  const rawScale = Number(nextViewport?.scale);
+  const rawOffsetX = Number(nextViewport?.offsetX);
+  const rawOffsetY = Number(nextViewport?.offsetY);
+
+  return {
+    scale: Number.isFinite(rawScale) ? Math.min(Math.max(rawScale, 1), 4) : 1,
+    offsetX: Number.isFinite(rawOffsetX) ? rawOffsetX : 0,
+    offsetY: Number.isFinite(rawOffsetY) ? rawOffsetY : 0,
+  };
+};
+
+const normalizeHomeDrawingPayload = (nextDrawingPayload) => {
+  const normalizePaths = (rawPaths) =>
+    (Array.isArray(rawPaths) ? rawPaths : [])
+      .map((path) => {
+        const paletteId = String(path?.paletteId || "aurora").trim() || "aurora";
+        const points = Array.isArray(path?.points)
+          ? path.points
+              .map((point) => ({
+                x: Number(point?.x),
+                y: Number(point?.y),
+              }))
+              .filter(
+                (point) =>
+                  Number.isFinite(point.x) && Number.isFinite(point.y),
+              )
+          : [];
+
+        return {
+          paletteId,
+          points,
+        };
+      })
+      .filter((path) => path.points.length >= 2);
+
+  const legacyAppliedPaths =
+    !Array.isArray(nextDrawingPayload?.appliedPaths) &&
+    Array.isArray(nextDrawingPayload?.paths)
+      ? nextDrawingPayload.paths
+      : [];
+
+  const normalizeTextItems = (rawItems) =>
+    (Array.isArray(rawItems) ? rawItems : [])
+      .map((item, index) => ({
+        id:
+          String(item?.id || "").trim() ||
+          `home-text-${Date.now()}-${index}`,
+        paletteId: String(item?.paletteId || "aurora").trim() || "aurora",
+        text: String(item?.text || "").trim(),
+        x: Number(item?.x),
+        y: Number(item?.y),
+      }))
+      .filter(
+        (item) =>
+          item.text &&
+          Number.isFinite(item.x) &&
+          Number.isFinite(item.y),
+      );
+
+  return {
+    draftPaths: normalizePaths(nextDrawingPayload?.draftPaths),
+    appliedPaths: normalizePaths(
+      Array.isArray(nextDrawingPayload?.appliedPaths)
+        ? nextDrawingPayload.appliedPaths
+        : legacyAppliedPaths,
+    ),
+    textItems: normalizeTextItems(nextDrawingPayload?.textItems),
+  };
+};
+
+const getHomeDrawingTextItemBounds = (context, item) => {
+  if (
+    !context ||
+    !item ||
+    !Number.isFinite(item?.x) ||
+    !Number.isFinite(item?.y) ||
+    !String(item?.text || "").trim()
+  ) {
+    return null;
+  }
+
+  context.save();
+  context.font = `600 ${HOME_WRITING_FONT_SIZE}px "IBM Plex Sans", sans-serif`;
+  const textMetrics = context.measureText(String(item.text || "").trim());
+  context.restore();
+
+  const textWidth = Math.max(22, textMetrics.width);
+  const textHeight = HOME_WRITING_FONT_SIZE * 1.24;
+  const paddingX = 10;
+  const paddingY = 7;
+
+  return {
+    left: item.x - paddingX,
+    top: item.y - textHeight / 2 - paddingY,
+    right: item.x + textWidth + paddingX,
+    bottom: item.y + textHeight / 2 + paddingY,
+    width: textWidth + paddingX * 2,
+    height: textHeight + paddingY * 2,
+  };
+};
+
 function Home(props) {
   // Determine if the current user is naghamtrkmani
   const isNaghamtrkmani =
@@ -106,6 +217,15 @@ function Home(props) {
   const history = useHistory();
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
+  const mainWrapperRef = React.useRef(null);
+  const drawingCanvasRef = React.useRef(null);
+  const drawingCanvasHostRef = React.useRef(null);
+  const appliedDrawingCanvasRef = React.useRef(null);
+  const appliedDrawingCanvasHostRef = React.useRef(null);
+  const drawingPathsRef = React.useRef([]);
+  const drawingCurrentPathRef = React.useRef(null);
+  const isDrawingPointerActiveRef = React.useRef(false);
+  const draggingHomeTextRef = React.useRef(null);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
@@ -279,10 +399,31 @@ function Home(props) {
   const [isReportsWrapperOpen, setIsReportsWrapperOpen] = useState(false);
   const [showGalleryInRightColumn, setShowGalleryInRightColumn] =
     useState(false);
+  const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
+  const [isHomeDrawingModeEnabled, setIsHomeDrawingModeEnabled] =
+    useState(false);
+  const [homeDrawingToolMode, setHomeDrawingToolMode] = useState("draw");
+  const [isHomeDrawingStartingFresh, setIsHomeDrawingStartingFresh] =
+    useState(false);
+  const [selectedHomeTextItemId, setSelectedHomeTextItemId] = useState("");
+  const [activeHomeDrawingPaletteId, setActiveHomeDrawingPaletteId] =
+    useState(HOME_DRAWING_PALETTES[0]?.id || "aurora");
+  const [homeDrawing, setHomeDrawing] = useState(() =>
+    normalizeHomeDrawingPayload(props.state?.homeDrawing),
+  );
+  const [homeDrawingCanvasVersion, setHomeDrawingCanvasVersion] = useState(0);
+  const latestHomeDrawingSaveRequestIdRef = React.useRef(0);
+  const pendingHomeDrawingSyncRef = React.useRef(false);
   const [isGalleryTopRowVisible, setIsGalleryTopRowVisible] = useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
+  const hasHydratedProfilePictureViewportRef = React.useRef(true);
   const [profilePictureViewport, setProfilePictureViewport] = useState(() => {
+    const stateViewport = props.state?.profilePictureViewport;
+    if (stateViewport && typeof stateViewport === "object") {
+      return normalizeProfilePictureViewport(stateViewport);
+    }
+
     if (typeof window === "undefined") {
       return { scale: 1, offsetX: 0, offsetY: 0 };
     }
@@ -297,11 +438,11 @@ function Home(props) {
       const offsetX = Number(parsedViewport?.offsetX) || 0;
       const offsetY = Number(parsedViewport?.offsetY) || 0;
 
-      return {
-        scale: Math.min(Math.max(scale, 1), 4),
+      return normalizeProfilePictureViewport({
+        scale,
         offsetX,
         offsetY,
-      };
+      });
     } catch {
       return { scale: 1, offsetX: 0, offsetY: 0 };
     }
@@ -331,6 +472,8 @@ function Home(props) {
   const HOME_LEFT_COLUMN_MAX_WIDTH_RATIO = 0.82;
 
   const touchMoveOptions = React.useMemo(() => ({ passive: false }), []);
+  const HOME_DRAWING_PATH_FILL = "rgba(118, 233, 247, 0.08)";
+  const HOME_DRAWING_PATH_GLOW = "rgba(118, 233, 247, 0.16)";
 
   const clampLeftColumnWidthPercent = React.useCallback((nextWidthPercent) => {
     const containerWidth =
@@ -450,6 +593,904 @@ function Home(props) {
       `calc(${100 - leftColumnWidthPercent}% - ${HOME_INTRO_SEPARATOR_WIDTH}px)`,
     );
   }, [HOME_INTRO_SEPARATOR_WIDTH, leftColumnWidthPercent]);
+
+  const getNavChildForbiddenRects = React.useCallback(() => {
+    if (!mainWrapperRef.current) {
+      return [];
+    }
+
+    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+    const navChildSelectors = [
+      "#Home_navWrap .Nav_actionButton",
+      "#Home_navWrap #SubApps_icon_container",
+      "#Home_navWrap #Notification_icons_container",
+      "#Home_navWrap #Dim_article",
+      "#Home_navWrap #Logout_article",
+      "#Home_navWrap #Refresh_article",
+    ];
+
+    return navChildSelectors
+      .flatMap((selector) =>
+        Array.from(mainWrapperRef.current.querySelectorAll(selector)),
+      )
+      .filter((element) => {
+        if (!(element instanceof HTMLElement)) {
+          return false;
+        }
+
+        const elementRect = element.getBoundingClientRect();
+        return elementRect.width > 0 && elementRect.height > 0;
+      })
+      .map((element) => {
+        const elementRect = element.getBoundingClientRect();
+
+        return {
+          left: elementRect.left - wrapperRect.left,
+          top: elementRect.top - wrapperRect.top,
+          right: elementRect.right - wrapperRect.left,
+          bottom: elementRect.bottom - wrapperRect.top,
+        };
+      });
+  }, []);
+
+  const getHomeDrawingMaskedRects = React.useCallback(() => {
+    if (!mainWrapperRef.current) {
+      return [];
+    }
+
+    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+    const maskedSelectors = [
+      "#Home_main_leftColumn_wrapper",
+      "#Home_rightColumn_wrapper",
+      "#Home_preStart_reportsWrapper",
+      "#Home_userMenuCluster",
+      "#Home_navWrap .Nav_actionButton",
+      "#Home_navWrap #SubApps_icon_container",
+      "#Home_navWrap #Notification_icons_container",
+      "#Home_navWrap #Dim_article",
+      "#Home_navWrap #Logout_article",
+      "#Home_navWrap #Refresh_article",
+    ];
+
+    return maskedSelectors
+      .flatMap((selector) =>
+        Array.from(mainWrapperRef.current.querySelectorAll(selector)),
+      )
+      .filter((element) => {
+        if (!(element instanceof HTMLElement)) {
+          return false;
+        }
+
+        const elementRect = element.getBoundingClientRect();
+        return elementRect.width > 0 && elementRect.height > 0;
+      })
+      .map((element) => {
+        const elementRect = element.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(element);
+        const topLeftRadius = Number.parseFloat(
+          computedStyle.borderTopLeftRadius || "0",
+        );
+        const topRightRadius = Number.parseFloat(
+          computedStyle.borderTopRightRadius || "0",
+        );
+        const bottomRightRadius = Number.parseFloat(
+          computedStyle.borderBottomRightRadius || "0",
+        );
+        const bottomLeftRadius = Number.parseFloat(
+          computedStyle.borderBottomLeftRadius || "0",
+        );
+
+        return {
+          left: elementRect.left - wrapperRect.left,
+          top: elementRect.top - wrapperRect.top,
+          right: elementRect.right - wrapperRect.left,
+          bottom: elementRect.bottom - wrapperRect.top,
+          radii: {
+            topLeft: Number.isFinite(topLeftRadius) ? topLeftRadius : 0,
+            topRight: Number.isFinite(topRightRadius) ? topRightRadius : 0,
+            bottomRight: Number.isFinite(bottomRightRadius)
+              ? bottomRightRadius
+              : 0,
+            bottomLeft: Number.isFinite(bottomLeftRadius) ? bottomLeftRadius : 0,
+          },
+        };
+      });
+  }, []);
+
+  const redrawHomeDrawingCanvas = React.useCallback(() => {
+    const appliedCanvas = appliedDrawingCanvasRef.current;
+    const appliedHost = appliedDrawingCanvasHostRef.current;
+    const draftCanvas = drawingCanvasRef.current;
+    const draftHost = drawingCanvasHostRef.current;
+
+    if (
+      !appliedCanvas ||
+      !appliedHost ||
+      !draftCanvas ||
+      !draftHost ||
+      !mainWrapperRef.current
+    ) {
+      return;
+    }
+
+    const appliedContext = appliedCanvas.getContext("2d");
+    const draftContext = draftCanvas.getContext("2d");
+
+    if (!appliedContext || !draftContext) {
+      return;
+    }
+
+    const bounds = appliedHost.getBoundingClientRect();
+    const devicePixelRatio =
+      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const width = Math.max(1, Math.round(bounds.width));
+    const height = Math.max(1, Math.round(bounds.height));
+
+    [appliedCanvas, draftCanvas].forEach((canvasNode) => {
+      if (
+        canvasNode.width !== Math.round(width * devicePixelRatio) ||
+        canvasNode.height !== Math.round(height * devicePixelRatio)
+      ) {
+        canvasNode.width = Math.round(width * devicePixelRatio);
+        canvasNode.height = Math.round(height * devicePixelRatio);
+        canvasNode.style.width = `${width}px`;
+        canvasNode.style.height = `${height}px`;
+      }
+    });
+
+    [appliedContext, draftContext].forEach((context) => {
+      context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      context.clearRect(0, 0, width, height);
+    });
+
+    if (isHomeDrawingModeEnabled) {
+      const drawingGlow = draftContext.createLinearGradient(0, 0, width, height);
+      drawingGlow.addColorStop(0, "rgba(173, 245, 255, 0.05)");
+      drawingGlow.addColorStop(0.45, HOME_DRAWING_PATH_FILL);
+      drawingGlow.addColorStop(1, "rgba(118, 233, 247, 0.02)");
+      draftContext.fillStyle = drawingGlow;
+      draftContext.fillRect(0, 0, width, height);
+    }
+
+    homeDrawing.appliedPaths.forEach((segment) => {
+      const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
+      if (rawPoints.length < 2) {
+        return;
+      }
+
+      const palette =
+        HOME_DRAWING_PALETTES.find(
+          (paletteOption) => paletteOption.id === segment?.paletteId,
+        ) || HOME_DRAWING_PALETTES[0];
+      const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
+
+      drawHomeLedRopePath(appliedContext, smoothedPoints, palette);
+    });
+
+    homeDrawing.textItems.forEach((item) => {
+      const palette =
+        HOME_DRAWING_PALETTES.find(
+          (paletteOption) => paletteOption.id === item?.paletteId,
+        ) || HOME_DRAWING_PALETTES[0];
+
+      drawHomeLedText(
+        appliedContext,
+        item?.text,
+        { x: item?.x, y: item?.y },
+        palette,
+        { fontSize: HOME_WRITING_FONT_SIZE },
+      );
+    });
+
+    homeDrawing.draftPaths.forEach((segment) => {
+      const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
+      if (rawPoints.length < 2) {
+        return;
+      }
+
+      const palette =
+        HOME_DRAWING_PALETTES.find(
+          (paletteOption) => paletteOption.id === segment?.paletteId,
+        ) || HOME_DRAWING_PALETTES[0];
+
+      drawHomeSketchPath(draftContext, rawPoints, palette);
+    });
+
+    if (isHomeDrawingModeEnabled && selectedHomeTextItemId) {
+      const selectedTextItem = homeDrawing.textItems.find(
+        (item) => item.id === selectedHomeTextItemId,
+      );
+      const selectedBounds = getHomeDrawingTextItemBounds(
+        appliedContext,
+        selectedTextItem,
+      );
+
+      if (selectedBounds) {
+        draftContext.save();
+        draftContext.strokeStyle = "rgba(208, 248, 252, 0.78)";
+        draftContext.lineWidth = 1;
+        draftContext.setLineDash([5, 4]);
+        draftContext.shadowBlur = 10;
+        draftContext.shadowColor = "rgba(118, 233, 247, 0.28)";
+        draftContext.strokeRect(
+          selectedBounds.left,
+          selectedBounds.top,
+          selectedBounds.width,
+          selectedBounds.height,
+        );
+        draftContext.restore();
+      }
+    }
+
+    getHomeDrawingMaskedRects().forEach((rect) => {
+      const bleed = 0;
+      const left = Math.max(0, rect.left - bleed);
+      const top = Math.max(0, rect.top - bleed);
+      const width = Math.max(0, rect.right - rect.left + bleed * 2);
+      const height = Math.max(0, rect.bottom - rect.top + bleed * 2);
+      const safeRadius = {
+        topLeft: Math.max(0, Number(rect?.radii?.topLeft || 0)),
+        topRight: Math.max(0, Number(rect?.radii?.topRight || 0)),
+        bottomRight: Math.max(0, Number(rect?.radii?.bottomRight || 0)),
+        bottomLeft: Math.max(0, Number(rect?.radii?.bottomLeft || 0)),
+      };
+
+      [draftContext].forEach((context) => {
+        context.save();
+        context.globalCompositeOperation = "destination-out";
+        context.beginPath();
+
+        if (typeof context.roundRect === "function") {
+          context.roundRect(left, top, width, height, [
+            safeRadius.topLeft,
+            safeRadius.topRight,
+            safeRadius.bottomRight,
+            safeRadius.bottomLeft,
+          ]);
+        } else {
+          const maxRadius = Math.min(width, height) / 2;
+          const topLeft = Math.min(safeRadius.topLeft, maxRadius);
+          const topRight = Math.min(safeRadius.topRight, maxRadius);
+          const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
+          const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
+
+          context.moveTo(left + topLeft, top);
+          context.lineTo(left + width - topRight, top);
+          context.quadraticCurveTo(left + width, top, left + width, top + topRight);
+          context.lineTo(left + width, top + height - bottomRight);
+          context.quadraticCurveTo(
+            left + width,
+            top + height,
+            left + width - bottomRight,
+            top + height,
+          );
+          context.lineTo(left + bottomLeft, top + height);
+          context.quadraticCurveTo(left, top + height, left, top + height - bottomLeft);
+          context.lineTo(left, top + topLeft);
+          context.quadraticCurveTo(left, top, left + topLeft, top);
+        }
+
+        context.closePath();
+        context.fill();
+        context.restore();
+      });
+    });
+
+  }, [
+    HOME_DRAWING_PATH_FILL,
+    getHomeDrawingMaskedRects,
+    homeDrawing.appliedPaths,
+    homeDrawing.draftPaths,
+    homeDrawing.textItems,
+    isHomeDrawingModeEnabled,
+    selectedHomeTextItemId,
+  ]);
+
+  const getCanvasPointFromEvent = React.useCallback((event) => {
+    const canvas = drawingCanvasRef.current;
+
+    if (!canvas) {
+      return null;
+    }
+
+    const canvasRect = canvas.getBoundingClientRect();
+
+    return {
+      x: event.clientX - canvasRect.left,
+      y: event.clientY - canvasRect.top,
+    };
+  }, []);
+
+  const isPointInsideNavChildCard = React.useCallback(
+    (point) =>
+      getNavChildForbiddenRects().some(
+        (rect) =>
+          point.x >= rect.left &&
+          point.x <= rect.right &&
+          point.y >= rect.top &&
+          point.y <= rect.bottom,
+      ),
+    [getNavChildForbiddenRects],
+  );
+
+  const findHomeTextItemAtPoint = React.useCallback(
+    (point) => {
+      if (!point) {
+        return null;
+      }
+
+      const measurementCanvas =
+        appliedDrawingCanvasRef.current || drawingCanvasRef.current;
+      const measurementContext = measurementCanvas?.getContext("2d");
+
+      if (!measurementContext) {
+        return null;
+      }
+
+      for (
+        let itemIndex = homeDrawing.textItems.length - 1;
+        itemIndex >= 0;
+        itemIndex -= 1
+      ) {
+        const textItem = homeDrawing.textItems[itemIndex];
+        const bounds = getHomeDrawingTextItemBounds(
+          measurementContext,
+          textItem,
+        );
+
+        if (
+          bounds &&
+          point.x >= bounds.left &&
+          point.x <= bounds.right &&
+          point.y >= bounds.top &&
+          point.y <= bounds.bottom
+        ) {
+          return textItem;
+        }
+      }
+
+      return null;
+    },
+    [homeDrawing.textItems],
+  );
+
+  React.useEffect(() => {
+    drawingPathsRef.current = homeDrawing.draftPaths;
+  }, [homeDrawing.draftPaths]);
+
+  const beginHomeDrawingStroke = React.useCallback(
+    (event) => {
+      if (!isHomeDrawingModeEnabled) {
+        return;
+      }
+
+      const point = getCanvasPointFromEvent(event);
+
+      if (!point || isPointInsideNavChildCard(point)) {
+        drawingCurrentPathRef.current = null;
+        isDrawingPointerActiveRef.current = true;
+        return;
+      }
+
+      event.preventDefault();
+
+      if (homeDrawingToolMode === "write") {
+        const hitTextItem = findHomeTextItemAtPoint(point);
+
+        if (hitTextItem) {
+          draggingHomeTextRef.current = {
+            id: hitTextItem.id,
+            offsetX: point.x - hitTextItem.x,
+            offsetY: point.y - hitTextItem.y,
+          };
+          setSelectedHomeTextItemId(hitTextItem.id);
+          isDrawingPointerActiveRef.current = true;
+          drawingCurrentPathRef.current = null;
+          return;
+        }
+
+        const nextText = window.prompt("Write label text", "");
+        if (!String(nextText || "").trim()) {
+          isDrawingPointerActiveRef.current = false;
+          drawingCurrentPathRef.current = null;
+          return;
+        }
+
+        const nextTextItem = {
+          id: `home-text-${Date.now()}`,
+          paletteId: activeHomeDrawingPaletteId,
+          text: String(nextText).trim(),
+          x: point.x,
+          y: point.y,
+        };
+
+        setSelectedHomeTextItemId(nextTextItem.id);
+        setHomeDrawing((currentDrawing) => ({
+          draftPaths: currentDrawing.draftPaths,
+          appliedPaths: currentDrawing.appliedPaths,
+          textItems: [...currentDrawing.textItems, nextTextItem],
+        }));
+        isDrawingPointerActiveRef.current = false;
+        drawingCurrentPathRef.current = null;
+        return;
+      }
+
+      isDrawingPointerActiveRef.current = true;
+      const nextPath = {
+        paletteId: activeHomeDrawingPaletteId,
+        points: [point],
+      };
+      drawingCurrentPathRef.current = nextPath;
+      setHomeDrawing((currentDrawing) => ({
+        draftPaths: [...currentDrawing.draftPaths, nextPath],
+        appliedPaths: currentDrawing.appliedPaths,
+        textItems: currentDrawing.textItems,
+      }));
+    },
+    [
+      activeHomeDrawingPaletteId,
+      findHomeTextItemAtPoint,
+      getCanvasPointFromEvent,
+      homeDrawingToolMode,
+      isHomeDrawingModeEnabled,
+      isPointInsideNavChildCard,
+    ],
+  );
+
+  const continueHomeDrawingStroke = React.useCallback(
+    (event) => {
+      if (!isHomeDrawingModeEnabled || !isDrawingPointerActiveRef.current) {
+        return;
+      }
+
+      const point = getCanvasPointFromEvent(event);
+
+      if (!point) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (homeDrawingToolMode === "write") {
+        if (draggingHomeTextRef.current?.id) {
+          const draggingState = draggingHomeTextRef.current;
+          const nextX = point.x - draggingState.offsetX;
+          const nextY = point.y - draggingState.offsetY;
+
+          setHomeDrawing((currentDrawing) => ({
+            draftPaths: currentDrawing.draftPaths,
+            appliedPaths: currentDrawing.appliedPaths,
+            textItems: currentDrawing.textItems.map((item) =>
+              item.id === draggingState.id
+                ? {
+                    ...item,
+                    x: nextX,
+                    y: nextY,
+                  }
+                : item,
+            ),
+          }));
+        }
+        return;
+      }
+
+      if (isPointInsideNavChildCard(point)) {
+        drawingCurrentPathRef.current = null;
+        return;
+      }
+
+      if (!drawingCurrentPathRef.current) {
+        const nextPath = {
+          paletteId: activeHomeDrawingPaletteId,
+          points: [point],
+        };
+        drawingCurrentPathRef.current = nextPath;
+        setHomeDrawing((currentDrawing) => ({
+          draftPaths: [...currentDrawing.draftPaths, nextPath],
+          appliedPaths: currentDrawing.appliedPaths,
+          textItems: currentDrawing.textItems,
+        }));
+      } else {
+        drawingCurrentPathRef.current.points.push(point);
+        setHomeDrawing((currentDrawing) => ({
+          draftPaths: [...currentDrawing.draftPaths],
+          appliedPaths: currentDrawing.appliedPaths,
+          textItems: currentDrawing.textItems,
+        }));
+      }
+    },
+    [
+      activeHomeDrawingPaletteId,
+      getCanvasPointFromEvent,
+      homeDrawingToolMode,
+      isHomeDrawingModeEnabled,
+      isPointInsideNavChildCard,
+    ],
+  );
+
+  const endHomeDrawingStroke = React.useCallback(() => {
+    isDrawingPointerActiveRef.current = false;
+    drawingCurrentPathRef.current = null;
+    draggingHomeTextRef.current = null;
+  }, []);
+
+  const editHomeTextItemAtPoint = React.useCallback(
+    (event) => {
+      if (!isHomeDrawingModeEnabled || homeDrawingToolMode !== "write") {
+        return;
+      }
+
+      const point = getCanvasPointFromEvent(event);
+      const hitTextItem = findHomeTextItemAtPoint(point);
+
+      if (!hitTextItem) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextText = window.prompt("Edit label text", hitTextItem.text || "");
+
+      if (nextText === null) {
+        return;
+      }
+
+      const normalizedText = String(nextText || "").trim();
+
+      if (!normalizedText) {
+        setHomeDrawing((currentDrawing) => ({
+          draftPaths: currentDrawing.draftPaths,
+          appliedPaths: currentDrawing.appliedPaths,
+          textItems: currentDrawing.textItems.filter(
+            (item) => item.id !== hitTextItem.id,
+          ),
+        }));
+        setSelectedHomeTextItemId((currentId) =>
+          currentId === hitTextItem.id ? "" : currentId,
+        );
+        return;
+      }
+
+      setSelectedHomeTextItemId(hitTextItem.id);
+      setHomeDrawing((currentDrawing) => ({
+        draftPaths: currentDrawing.draftPaths,
+        appliedPaths: currentDrawing.appliedPaths,
+        textItems: currentDrawing.textItems.map((item) =>
+          item.id === hitTextItem.id
+            ? {
+                ...item,
+                text: normalizedText,
+                paletteId: activeHomeDrawingPaletteId || item.paletteId,
+              }
+            : item,
+        ),
+      }));
+    },
+    [
+      activeHomeDrawingPaletteId,
+      findHomeTextItemAtPoint,
+      getCanvasPointFromEvent,
+      homeDrawingToolMode,
+      isHomeDrawingModeEnabled,
+    ],
+  );
+
+  const deleteSelectedHomeTextItem = React.useCallback(() => {
+    if (!selectedHomeTextItemId) {
+      return;
+    }
+
+    setHomeDrawing((currentDrawing) => ({
+      draftPaths: currentDrawing.draftPaths,
+      appliedPaths: currentDrawing.appliedPaths,
+      textItems: currentDrawing.textItems.filter(
+        (item) => item.id !== selectedHomeTextItemId,
+      ),
+    }));
+    setSelectedHomeTextItemId("");
+  }, [selectedHomeTextItemId]);
+
+  const clearHomeDrawingCanvas = React.useCallback(() => {
+    drawingCurrentPathRef.current = null;
+    pendingHomeDrawingSyncRef.current = true;
+    const nextDrawing = {
+      draftPaths: [],
+      appliedPaths: [],
+      textItems: [],
+    };
+    setHomeDrawing(nextDrawing);
+    setSelectedHomeTextItemId("");
+    props.setUserMediaInfo?.({
+      profilePicture: String(props.state?.profilePicture || "").trim(),
+      profilePictureViewport:
+        props.state?.profilePictureViewport || {
+          scale: 1,
+          offsetX: 0,
+          offsetY: 0,
+        },
+      homeDrawing: nextDrawing,
+      imageGallery: Array.isArray(props.state?.imageGallery)
+        ? props.state.imageGallery
+        : [],
+    });
+  }, [
+    props.setUserMediaInfo,
+    props.state?.imageGallery,
+    props.state?.profilePicture,
+    props.state?.profilePictureViewport,
+  ]);
+
+  const persistHomeDrawing = React.useCallback(
+    async (drawingPayload, { requestId, keepalive = false } = {}) => {
+      if (!props.state?.token) {
+        return null;
+      }
+
+      const response = await fetch(apiUrl("/api/user/profile"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          homeDrawing: drawingPayload,
+        }),
+        keepalive,
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to save home drawing.");
+      }
+
+      const nextHomeDrawing = normalizeHomeDrawingPayload(
+        payload?.media?.homeDrawing || drawingPayload,
+      );
+
+      if (
+        Number.isFinite(requestId) &&
+        latestHomeDrawingSaveRequestIdRef.current !== requestId
+      ) {
+        return nextHomeDrawing;
+      }
+
+      pendingHomeDrawingSyncRef.current = false;
+
+      props.setUserMediaInfo?.({
+        profilePicture: String(props.state?.profilePicture || "").trim(),
+        profilePictureViewport:
+          props.state?.profilePictureViewport || {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+          },
+        homeDrawing: nextHomeDrawing,
+        imageGallery: Array.isArray(props.state?.imageGallery)
+          ? props.state.imageGallery
+          : [],
+      });
+
+      return nextHomeDrawing;
+    },
+    [
+      props.setUserMediaInfo,
+      props.state?.imageGallery,
+      props.state?.profilePicture,
+      props.state?.profilePictureViewport,
+      props.state?.token,
+    ],
+  );
+
+  const applyHomeDrawingRope = React.useCallback(() => {
+    const sourcePaths = [
+      ...(Array.isArray(homeDrawing?.appliedPaths) ? homeDrawing.appliedPaths : []),
+      ...(Array.isArray(homeDrawing?.draftPaths) ? homeDrawing.draftPaths : []),
+    ];
+
+    if (!sourcePaths.length) {
+      const persistedDrawing = {
+        draftPaths: [],
+        appliedPaths: Array.isArray(homeDrawing?.appliedPaths)
+          ? homeDrawing.appliedPaths
+          : [],
+        textItems: Array.isArray(homeDrawing?.textItems)
+          ? homeDrawing.textItems
+          : [],
+      };
+
+      setHomeDrawing(persistedDrawing);
+      props.setUserMediaInfo?.({
+        profilePicture: String(props.state?.profilePicture || "").trim(),
+        profilePictureViewport:
+          props.state?.profilePictureViewport || {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+          },
+        homeDrawing: persistedDrawing,
+        imageGallery: Array.isArray(props.state?.imageGallery)
+          ? props.state.imageGallery
+          : [],
+      });
+      pendingHomeDrawingSyncRef.current = true;
+      setIsHomeDrawingModeEnabled(false);
+      drawingCurrentPathRef.current = null;
+      isDrawingPointerActiveRef.current = false;
+
+      if (props.state?.token) {
+        const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
+        latestHomeDrawingSaveRequestIdRef.current = requestId;
+
+        persistHomeDrawing(persistedDrawing, {
+          requestId,
+          keepalive: true,
+        }).catch(() => {
+          pendingHomeDrawingSyncRef.current = false;
+        });
+      }
+      return;
+    }
+
+    const existingAppliedPaths = Array.isArray(homeDrawing?.appliedPaths)
+      ? homeDrawing.appliedPaths
+      : [];
+    const draftPaths = Array.isArray(homeDrawing?.draftPaths)
+      ? homeDrawing.draftPaths
+      : [];
+    const mergeSourcePaths = isHomeDrawingStartingFresh
+      ? draftPaths
+      : sourcePaths;
+    const mergedPaths = mergeNearbyHomeDrawingPaths(mergeSourcePaths);
+    const mergedResultPaths = mergedPaths.length ? mergedPaths : mergeSourcePaths;
+    const nextAppliedPaths = isHomeDrawingStartingFresh
+      ? [...existingAppliedPaths, ...mergedResultPaths]
+      : mergedResultPaths;
+    const persistedDrawing = {
+      draftPaths: [],
+      appliedPaths: nextAppliedPaths,
+      textItems: Array.isArray(homeDrawing?.textItems)
+        ? homeDrawing.textItems
+        : [],
+    };
+
+    setHomeDrawing(persistedDrawing);
+    props.setUserMediaInfo?.({
+      profilePicture: String(props.state?.profilePicture || "").trim(),
+      profilePictureViewport:
+        props.state?.profilePictureViewport || {
+          scale: 1,
+          offsetX: 0,
+          offsetY: 0,
+        },
+      homeDrawing: persistedDrawing,
+      imageGallery: Array.isArray(props.state?.imageGallery)
+        ? props.state.imageGallery
+        : [],
+    });
+    pendingHomeDrawingSyncRef.current = true;
+    drawingCurrentPathRef.current = null;
+    isDrawingPointerActiveRef.current = false;
+    setIsHomeDrawingModeEnabled(false);
+    setIsHomeDrawingStartingFresh(false);
+    setHomeDrawingCanvasVersion((currentVersion) => currentVersion + 1);
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          redrawHomeDrawingCanvas();
+        });
+      });
+    }
+
+    if (props.state?.token) {
+      const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
+      latestHomeDrawingSaveRequestIdRef.current = requestId;
+
+      persistHomeDrawing(persistedDrawing, {
+        requestId,
+        keepalive: true,
+      }).catch(() => {
+        pendingHomeDrawingSyncRef.current = false;
+      });
+    }
+  }, [
+    homeDrawing?.appliedPaths,
+    homeDrawing?.draftPaths,
+    homeDrawing?.textItems,
+    isHomeDrawingStartingFresh,
+    persistHomeDrawing,
+    props.setUserMediaInfo,
+    props.state?.imageGallery,
+    props.state?.profilePicture,
+    props.state?.profilePictureViewport,
+    props.state?.token,
+    redrawHomeDrawingCanvas,
+  ]);
+
+  const handleToggleHomeDrawingMode = React.useCallback(() => {
+    if (isHomeDrawingModeEnabled) {
+      endHomeDrawingStroke();
+      applyHomeDrawingRope();
+      return;
+    }
+
+    setIsHomeDrawingModeEnabled(true);
+  }, [applyHomeDrawingRope, endHomeDrawingStroke, isHomeDrawingModeEnabled]);
+
+  React.useEffect(() => {
+    redrawHomeDrawingCanvas();
+  }, [
+    activeFriendsMiniTab,
+    isReportsWrapperOpen,
+    leftColumnWidthPercent,
+    openChatFriendId,
+    redrawHomeDrawingCanvas,
+    showGalleryInRightColumn,
+  ]);
+
+  React.useEffect(() => {
+    if (isHomeDrawingModeEnabled) {
+      return undefined;
+    }
+
+    if (typeof window === "undefined") {
+      redrawHomeDrawingCanvas();
+      return undefined;
+    }
+
+    const frameRequest = window.requestAnimationFrame(() => {
+      redrawHomeDrawingCanvas();
+    });
+    const timeoutId = window.setTimeout(() => {
+      redrawHomeDrawingCanvas();
+    }, 60);
+
+    return () => {
+      window.cancelAnimationFrame(frameRequest);
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    homeDrawing.appliedPaths,
+    isHomeDrawingModeEnabled,
+    redrawHomeDrawingCanvas,
+  ]);
+
+  React.useEffect(() => {
+    if (isHomeDrawingModeEnabled) {
+      return;
+    }
+
+    isDrawingPointerActiveRef.current = false;
+    drawingCurrentPathRef.current = null;
+  }, [isHomeDrawingModeEnabled]);
+
+  React.useEffect(() => {
+    const wrapperNode = mainWrapperRef.current;
+
+    if (!wrapperNode) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      redrawHomeDrawingCanvas();
+    };
+
+    handleResize();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(wrapperNode);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [redrawHomeDrawingCanvas]);
 
   React.useEffect(() => {
     const settingsPanelNode = settingsPanelRef.current;
@@ -619,6 +1660,88 @@ function Home(props) {
     }, {});
   }, [props.state?.notifications]);
 
+  const friendRequestNotifications = React.useMemo(() => {
+    const notifications = Array.isArray(props.state?.notifications)
+      ? props.state.notifications
+      : [];
+
+    return notifications.filter(
+      (notification) =>
+        notification?.type === "friend_request" &&
+        notification?.status !== "read",
+    );
+  }, [props.state?.notifications]);
+
+  const blockedUsers = React.useMemo(() => {
+    const rawBlockedUsers = Array.isArray(props.state?.blockedUsers)
+      ? props.state.blockedUsers
+      : Array.isArray(props.state?.blockList)
+        ? props.state.blockList
+        : Array.isArray(props.state?.blocks)
+          ? props.state.blocks
+          : [];
+
+    return rawBlockedUsers
+      .map((entry, index) => {
+        const info = entry?.info || entry?.user?.info || entry?.user || entry;
+        const firstName = String(info?.firstname || "").trim();
+        const lastName = String(info?.lastname || "").trim();
+        const username = String(info?.username || entry?.username || "").trim();
+        const displayName =
+          `${firstName} ${lastName}`.trim() || username || "Blocked user";
+        const initials =
+          `${firstName.charAt(0) || displayName.charAt(0) || "B"}${
+            lastName.charAt(0) || username.charAt(0) || ""
+          }`.toUpperCase() || "B";
+
+        return {
+          id: String(entry?._id || info?._id || username || index),
+          displayName,
+          username,
+          initials,
+          avatarUrl: String(
+            entry?.media?.profilePicture?.url ||
+              info?.profilePicture ||
+              entry?.profilePicture ||
+              "",
+          ).trim(),
+        };
+      })
+      .filter((entry) => entry.id);
+  }, [props.state?.blockList, props.state?.blockedUsers, props.state?.blocks]);
+
+  const friendsMiniTabs = React.useMemo(
+    () => [
+      {
+        id: "friends",
+        iconClass: "fas fa-user-friends",
+        label: "Friends",
+        count: socialFriends.length,
+      },
+      {
+        id: "requests",
+        iconClass: "fas fa-user-clock",
+        label: "Friend requests",
+        count: friendRequestNotifications.length,
+      },
+      {
+        id: "blocked",
+        iconClass: "fas fa-user-slash",
+        label: "Block list",
+        count: blockedUsers.length,
+      },
+    ],
+    [blockedUsers.length, friendRequestNotifications.length, socialFriends.length],
+  );
+
+  const activeFriendsMiniTabIndex = Math.max(
+    0,
+    friendsMiniTabs.findIndex((tab) => tab.id === activeFriendsMiniTab),
+  );
+
+  const activeFriendsMiniTabMeta =
+    friendsMiniTabs[activeFriendsMiniTabIndex] || friendsMiniTabs[0];
+
   const activeFriendCard = React.useMemo(
     () =>
       socialFriends.find(
@@ -685,6 +1808,18 @@ function Home(props) {
 
       setOpenChatFriendId(friend.chatId);
       props.selectFriendChat?.(friend.chatId);
+    },
+    [openChatFriendId, props],
+  );
+
+  const handleSelectFriendsMiniTab = React.useCallback(
+    (nextTab) => {
+      setActiveFriendsMiniTab(nextTab);
+
+      if (openChatFriendId) {
+        setOpenChatFriendId(null);
+        props.closeActiveChat?.();
+      }
     },
     [openChatFriendId, props],
   );
@@ -779,6 +1914,91 @@ function Home(props) {
       handleToggleInlineFriendChat,
     ],
   );
+
+  const renderFriendRequestListItem = React.useCallback(
+    (notification) => {
+      const requestId = String(notification?._id || notification?.id || "").trim();
+      const requesterId = String(notification?.id || "").trim();
+      const requestLabel = String(notification?.message || "Friend request").trim();
+
+      return (
+        <li key={requestId || requesterId} className="Home_socialFriendItem fc">
+          <div className="Home_socialFriendSummary fr">
+            <div className="Home_socialFriendIdentity fr">
+              <div className="Home_socialFriendAvatar">
+                <i className="fas fa-user-clock" aria-hidden="true"></i>
+              </div>
+              <div className="Home_socialFriendCopy fc">
+                <span className="Home_socialFriendName">Pending request</span>
+                <span className="Home_socialFriendUsername">{requestLabel}</span>
+              </div>
+            </div>
+          </div>
+          <div className="Home_socialRequestActions fr">
+            <button
+              type="button"
+              className="Home_socialRequestButton Home_socialRequestButton--accept"
+              onClick={() =>
+                requesterId && props.acceptFriend?.(`accept_icon${requesterId}`)
+              }
+              disabled={!requesterId}
+              aria-label="Accept friend request"
+              title="Accept friend request"
+            >
+              <i className="fas fa-user-check"></i>
+            </button>
+            <button
+              type="button"
+              className="Home_socialRequestButton Home_socialRequestButton--dismiss"
+              onClick={() =>
+                requestId && props.makeNotificationsRead?.(requestId)
+              }
+              disabled={!requestId}
+              aria-label="Dismiss friend request"
+              title="Dismiss friend request"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </li>
+      );
+    },
+    [props],
+  );
+
+  const renderBlockedUserListItem = React.useCallback((user) => {
+    return (
+      <li key={user.id} className="Home_socialFriendItem fc">
+        <div className="Home_socialFriendSummary fr">
+          <div className="Home_socialFriendIdentity fr">
+            <div className="Home_socialFriendAvatar">
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={`${user.displayName} avatar`}
+                  className="Home_socialFriendAvatarImage"
+                />
+              ) : (
+                <span aria-hidden="true">{user.initials}</span>
+              )}
+            </div>
+            <div className="Home_socialFriendCopy fc">
+              <span className="Home_socialFriendName">{user.displayName}</span>
+              <span className="Home_socialFriendUsername">
+                {user.username || "Blocked user"}
+              </span>
+            </div>
+          </div>
+          <div className="Home_socialFriendPresence">
+            <span className="Home_socialFriendStatus Home_socialFriendStatus--offline">
+              <i className="fas fa-user-slash"></i>
+              <span>Blocked</span>
+            </span>
+          </div>
+        </div>
+      </li>
+    );
+  }, []);
   const openProfilePicturePicker = () => {
     galleryUploadInputRef.current?.click();
   };
@@ -795,7 +2015,6 @@ function Home(props) {
 
     const wrapperBounds =
       profilePictureWrapperRef.current?.getBoundingClientRect();
-    const BORDER_RADIUS = 22; // px, must match CSS
 
     if (!wrapperBounds?.width || !wrapperBounds?.height || scale <= 1) {
       return {
@@ -805,14 +2024,9 @@ function Home(props) {
       };
     }
 
-    // Standard max offset (image edge covers parent edge)
-    let maxOffsetX = ((scale - 1) * wrapperBounds.width) / 2;
-    let maxOffsetY = ((scale - 1) * wrapperBounds.height) / 2;
-
-    // Reduce max offset so the image always covers the apex of each rounded corner
-    const extraClamp = BORDER_RADIUS * (scale - 1);
-    maxOffsetX = Math.max(0, maxOffsetX - extraClamp);
-    maxOffsetY = Math.max(0, maxOffsetY - extraClamp);
+    // Keep standard edge coverage only so panning feels free while zoomed.
+    const maxOffsetX = ((scale - 1) * wrapperBounds.width) / 2;
+    const maxOffsetY = ((scale - 1) * wrapperBounds.height) / 2;
 
     return {
       scale,
@@ -1570,6 +2784,62 @@ function Home(props) {
   }, [schoolPlannerReducedMotion]);
 
   React.useEffect(() => {
+    const stateViewport = props.state?.profilePictureViewport;
+    if (!stateViewport || typeof stateViewport !== "object") {
+      return;
+    }
+
+    const normalizedViewport = normalizeProfilePictureViewport(stateViewport);
+    hasHydratedProfilePictureViewportRef.current = true;
+    setProfilePictureViewport((currentViewport) => {
+      if (
+        currentViewport.scale === normalizedViewport.scale &&
+        currentViewport.offsetX === normalizedViewport.offsetX &&
+        currentViewport.offsetY === normalizedViewport.offsetY
+      ) {
+        return currentViewport;
+      }
+
+      return normalizedViewport;
+    });
+  }, [props.state?.profilePictureViewport]);
+
+  React.useEffect(() => {
+    const normalizedDrawing = normalizeHomeDrawingPayload(props.state?.homeDrawing);
+
+    if (
+      isHomeDrawingModeEnabled ||
+      homeDrawing.draftPaths.length > 0 ||
+      draggingHomeTextRef.current
+    ) {
+      return;
+    }
+
+    if (pendingHomeDrawingSyncRef.current) {
+      const currentSerialized = JSON.stringify(homeDrawing);
+      const nextSerialized = JSON.stringify(normalizedDrawing);
+
+      if (currentSerialized !== nextSerialized) {
+        return;
+      }
+
+      pendingHomeDrawingSyncRef.current = false;
+    }
+
+    setHomeDrawing((currentDrawing) => {
+      const currentSerialized = JSON.stringify(currentDrawing);
+      const nextSerialized = JSON.stringify(normalizedDrawing);
+      return currentSerialized === nextSerialized
+        ? currentDrawing
+        : normalizedDrawing;
+    });
+  }, [
+    homeDrawing.draftPaths.length,
+    isHomeDrawingModeEnabled,
+    props.state?.homeDrawing,
+  ]);
+
+  React.useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -1619,6 +2889,112 @@ function Home(props) {
       window.removeEventListener("resize", clampCurrentViewport);
     };
   }, [clampProfilePictureViewport, profilePictureSrc]);
+
+  React.useEffect(() => {
+    if (!props.state?.token || !profilePictureSrc) {
+      return;
+    }
+
+    if (!hasHydratedProfilePictureViewportRef.current) {
+      return;
+    }
+
+    const saveTimeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch(apiUrl("/api/user/profile"), {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${props.state.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            profilePictureViewport,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(payload?.message || "Unable to save profile view.");
+        }
+
+        const nextViewport = normalizeProfilePictureViewport(
+          payload?.media?.profilePictureViewport || profilePictureViewport,
+        );
+
+        props.setUserMediaInfo?.({
+          profilePicture: String(props.state?.profilePicture || "").trim(),
+          profilePictureViewport: nextViewport,
+          imageGallery: Array.isArray(props.state?.imageGallery)
+            ? props.state.imageGallery
+            : [],
+        });
+      } catch (error) {
+        // Keep local viewport state even if persistence fails.
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(saveTimeout);
+    };
+  }, [
+    profilePictureSrc,
+    profilePictureViewport,
+    props.setUserMediaInfo,
+    props.state?.imageGallery,
+    props.state?.profilePicture,
+    props.state?.token,
+  ]);
+
+  React.useEffect(() => {
+    if (!props.state?.token) {
+      return;
+    }
+
+    if (isHomeDrawingModeEnabled || homeDrawing.draftPaths.length > 0) {
+      return;
+    }
+
+    const persistedDrawing = {
+      draftPaths: [],
+      appliedPaths: homeDrawing.appliedPaths,
+      textItems: homeDrawing.textItems,
+    };
+    const persistedSerialized = JSON.stringify(persistedDrawing);
+    const stateSerialized = JSON.stringify(
+      normalizeHomeDrawingPayload(props.state?.homeDrawing),
+    );
+
+    if (persistedSerialized === stateSerialized) {
+      return;
+    }
+
+    const saveTimeout = window.setTimeout(async () => {
+      const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
+      latestHomeDrawingSaveRequestIdRef.current = requestId;
+
+      try {
+        await persistHomeDrawing(persistedDrawing, { requestId });
+      } catch (error) {
+        // Keep local drawing state even if persistence fails.
+        pendingHomeDrawingSyncRef.current = false;
+      }
+    }, 700);
+
+    return () => {
+      window.clearTimeout(saveTimeout);
+    };
+  }, [
+    isHomeDrawingModeEnabled,
+    homeDrawing,
+    persistHomeDrawing,
+    props.setUserMediaInfo,
+    props.state?.imageGallery,
+    props.state?.homeDrawing,
+    props.state?.profilePicture,
+    props.state?.profilePictureViewport,
+    props.state?.token,
+  ]);
 
   React.useEffect(() => {
     if (!isVisitLogOwner) {
@@ -2449,11 +3825,146 @@ function Home(props) {
   return (
     <>
       <article
-        id="Home_root"
-        className={!isNaghamtrkmani ? "Home_root--bg" : undefined}
+        id="Home_studysessions_article"
+        className={[
+          "Home_themeDark",
+          !isNaghamtrkmani ? "Home_root--bg" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
         <section id="Home_visible_wrapper" className="fc slide-top">
-          <div id="Home_main_wrapper" className="fc">
+          <div id="Home_main_wrapper" className="fc" ref={mainWrapperRef}>
+            <div
+              className={`Home_mainDrawingControls fr${
+                isHomeDrawingModeEnabled
+                  ? " Home_mainDrawingControls--open"
+                  : " Home_mainDrawingControls--closed"
+              }`}
+            >
+              <button
+                type="button"
+                className={`Home_mainDrawingButton${
+                  isHomeDrawingModeEnabled ? " isActive" : ""
+                }`}
+                onClick={handleToggleHomeDrawingMode}
+                aria-pressed={isHomeDrawingModeEnabled}
+                aria-label={
+                  isHomeDrawingModeEnabled
+                    ? "Disable glow line drawing"
+                    : "Enable glow line drawing"
+                }
+                title={
+                  isHomeDrawingModeEnabled
+                    ? "Disable glow line drawing"
+                    : "Enable glow line drawing"
+                }
+              >
+                <i className="fas fa-pen-nib"></i>
+              </button>
+              <div className="Home_mainDrawingModeNav fr Home_mainDrawingControls_panelItem">
+                {["write", "draw"].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`Home_mainDrawingModeButton${
+                      homeDrawingToolMode === mode ? " isActive" : ""
+                    }`}
+                    onClick={() => setHomeDrawingToolMode(mode)}
+                    aria-pressed={homeDrawingToolMode === mode}
+                    title={mode === "write" ? "Write" : "Draw"}
+                  >
+                    {mode === "write" ? "Write" : "Draw"}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+                  isHomeDrawingStartingFresh ? " isActive" : ""
+                }`}
+                onClick={() =>
+                  setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
+                }
+                aria-pressed={isHomeDrawingStartingFresh}
+                aria-label="Start a fresh unlinked line"
+                title="Start a fresh unlinked line"
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+              <div className="Home_mainDrawingPalette fr Home_mainDrawingControls_panelItem">
+                {HOME_DRAWING_PALETTES.map((palette) => (
+                  <button
+                    key={palette.id}
+                    type="button"
+                    className={`Home_mainDrawingPaletteButton${
+                      activeHomeDrawingPaletteId === palette.id
+                        ? " isActive"
+                        : ""
+                    }`}
+                    onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
+                    aria-label={`Use ${palette.label} rope light color`}
+                    title={palette.label}
+                    style={{
+                      "--home-drawing-palette-stroke": palette.stroke,
+                      "--home-drawing-palette-glow": palette.glow,
+                    }}
+                  >
+                    <span aria-hidden="true"></span>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="Home_mainDrawingButton Home_mainDrawingControls_panelItem"
+                onClick={clearHomeDrawingCanvas}
+                aria-label="Clear glow lines"
+                title="Clear glow lines"
+              >
+                <i className="fas fa-eraser"></i>
+              </button>
+              <button
+                type="button"
+                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+                  selectedHomeTextItemId ? "" : " isDisabled"
+                }`}
+                onClick={deleteSelectedHomeTextItem}
+                disabled={!selectedHomeTextItemId}
+                aria-label="Delete selected label"
+                title="Delete selected label"
+              >
+                <i className="fas fa-trash-alt"></i>
+              </button>
+            </div>
+            <div
+              ref={appliedDrawingCanvasHostRef}
+              className="Home_mainDrawingCanvasHost Home_mainDrawingCanvasHost--display"
+            >
+              <canvas
+                ref={appliedDrawingCanvasRef}
+                className="Home_mainDrawingCanvas"
+              />
+            </div>
+            <div
+              key={`home-drawing-canvas-${homeDrawingCanvasVersion}`}
+              ref={drawingCanvasHostRef}
+              className={`Home_mainDrawingCanvasHost${
+                isHomeDrawingModeEnabled
+                  ? " Home_mainDrawingCanvasHost--active"
+                  : ""
+              }`}
+            >
+              <canvas
+                ref={drawingCanvasRef}
+                className="Home_mainDrawingCanvas"
+                onPointerDown={beginHomeDrawingStroke}
+                onPointerMove={continueHomeDrawingStroke}
+                onPointerUp={endHomeDrawingStroke}
+                onPointerLeave={endHomeDrawingStroke}
+                onPointerCancel={endHomeDrawingStroke}
+                onDoubleClick={editHomeTextItemAtPoint}
+              />
+            </div>
             <div id="Home_topControls" className="fr">
               <div id="Home_navWrap">
                 <Nav
@@ -2590,6 +4101,10 @@ function Home(props) {
                         Term {props.state.term || "-"}
                       </span>
                     </div>
+                    <div
+                      className="Home_headerRibbon Home_headerRibbon--inline"
+                      aria-hidden="true"
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -2625,20 +4140,63 @@ function Home(props) {
                 >
                   {activeFriendCard ? null : (
                     <div className="Home_gallery_Header_wrapper fr">
-                      <h3 className="Home_socialFriendsTitle">
-                        {isReportsWrapperOpen
-                          ? "Settings"
-                          : showGalleryInRightColumn
-                            ? "Gallery"
-                            : "Friends"}
-                      </h3>
-                      {isReportsWrapperOpen ? null : (
-                        <span className="Home_socialFriendsCount">
-                          {showGalleryInRightColumn
-                            ? imageGallery.length
-                            : socialFriends.length}
-                        </span>
-                      )}
+                      <div className="Home_socialFriendsHeaderCopy fc">
+                        <div className="Home_socialFriendsHeaderTitleRow fr">
+                          <h3 className="Home_socialFriendsTitle">
+                            {isReportsWrapperOpen
+                              ? "Settings"
+                              : showGalleryInRightColumn
+                                ? "Gallery"
+                                : "Friends"}
+                          </h3>
+                          {isReportsWrapperOpen ? null : (
+                            <span className="Home_socialFriendsCount">
+                              {showGalleryInRightColumn
+                                ? imageGallery.length
+                                : activeFriendsMiniTabMeta?.count || 0}
+                            </span>
+                          )}
+                        </div>
+                        {!isReportsWrapperOpen && !showGalleryInRightColumn ? (
+                          <div
+                            className="Home_socialFriendsMiniNav"
+                            style={{
+                              "--home-friends-tab-count": friendsMiniTabs.length,
+                              "--home-friends-tab-index":
+                                activeFriendsMiniTabIndex,
+                            }}
+                          >
+                            <div className="Home_socialFriendsMiniNavRail">
+                              <span
+                                className="Home_socialFriendsMiniNavSelector"
+                                aria-hidden="true"
+                              ></span>
+                              {friendsMiniTabs.map((tab) => (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  className={`Home_socialFriendsMiniNavButton${
+                                    activeFriendsMiniTab === tab.id
+                                      ? " isActive"
+                                      : ""
+                                  }`}
+                                  onClick={() =>
+                                    handleSelectFriendsMiniTab(tab.id)
+                                  }
+                                  aria-label={tab.label}
+                                  title={tab.label}
+                                >
+                                  <i className={tab.iconClass}></i>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div
+                        className="Home_headerRibbon"
+                        aria-hidden="true"
+                      ></div>
                     </div>
                   )}
                   {isReportsWrapperOpen ? (
@@ -2784,12 +4342,30 @@ function Home(props) {
                     </div>
                   ) : (
                     <ul className="Home_socialFriendsList">
-                      {socialFriends.length === 0 ? (
+                      {activeFriendCard ? (
+                        renderFriendListItem(activeFriendCard)
+                      ) : activeFriendsMiniTab === "requests" ? (
+                        friendRequestNotifications.length === 0 ? (
+                          <li className="Home_socialFriendsEmptyState">
+                            No pending friend requests right now.
+                          </li>
+                        ) : (
+                          friendRequestNotifications.map(
+                            renderFriendRequestListItem,
+                          )
+                        )
+                      ) : activeFriendsMiniTab === "blocked" ? (
+                        blockedUsers.length === 0 ? (
+                          <li className="Home_socialFriendsEmptyState">
+                            No blocked users to show.
+                          </li>
+                        ) : (
+                          blockedUsers.map(renderBlockedUserListItem)
+                        )
+                      ) : socialFriends.length === 0 ? (
                         <li className="Home_socialFriendsEmptyState">
                           No friends yet—share Phenomed Social with a colleague.
                         </li>
-                      ) : activeFriendCard ? (
-                        renderFriendListItem(activeFriendCard)
                       ) : (
                         socialFriends.map(renderFriendListItem)
                       )}

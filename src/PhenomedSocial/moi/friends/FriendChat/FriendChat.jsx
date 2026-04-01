@@ -61,6 +61,7 @@ const FriendChat = ({
     : false;
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = React.useState(false);
   const emojiPickerRef = React.useRef(null);
+  const [localMessages, setLocalMessages] = React.useState([]);
 
   React.useEffect(() => {
     if (!isEmojiPickerOpen) {
@@ -83,6 +84,9 @@ const FriendChat = ({
     };
   }, [isEmojiPickerOpen]);
 
+  // Helper to generate a temporary ID for optimistic messages
+  const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
   const handleSend = () => {
     if (state?.isSendingMessage) {
       return;
@@ -90,17 +94,51 @@ const FriendChat = ({
 
     const textarea = document.getElementById("Chat_textarea_input");
     const message = textarea ? textarea.value : "";
+    if (!message.trim()) return;
+
+    // Optimistically add message
+    const tempId = generateTempId();
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        text: message,
+        sender: "me",
+        pending: true,
+        timestamp: Date.now(),
+      },
+    ]);
 
     if (sendToThemMessage) {
-      sendToThemMessage(message);
+      sendToThemMessage(message, tempId); // Pass tempId for reconciliation
     }
 
     setIsEmojiPickerOpen(false);
-
     if (textarea) {
+      textarea.value = "";
       textarea.focus();
+      resetChatTextareaHeight(textarea);
     }
   };
+
+  // Listen for backend confirmation (simulate: replace pending with real)
+  React.useEffect(() => {
+    if (!state?.chatMessages) return;
+    setLocalMessages((prev) => {
+      // Remove any pending messages that now exist in backend
+      return prev.filter((msg) =>
+        msg.pending && !state.chatMessages.some((m) => m.text === msg.text && m.sender === "me")
+          ? false
+          : true
+      );
+    });
+  }, [state?.chatMessages]);
+
+  // Combine local and backend messages for display
+  const allMessages = [
+    ...(state?.chatMessages || []),
+    ...localMessages.filter((msg) => msg.pending),
+  ];
 
   const handleTypingChange = (event) => {
     resizeChatTextarea(event.target);
@@ -219,10 +257,22 @@ const FriendChat = ({
           {isChatting ? (
             <React.Fragment>
               <ul id="Chat_messages">
-                <li id="FriendChat_empty_state">
-                  {chatContent?.empty ||
-                    "Open a conversation to view messages here."}
-                </li>
+                {allMessages.length === 0 ? (
+                  <li id="FriendChat_empty_state">
+                    {chatContent?.empty || "Open a conversation to view messages here."}
+                  </li>
+                ) : (
+                  allMessages.map((msg) => (
+                    <li
+                      key={msg.id || msg.timestamp}
+                      className={msg.sender === "me" ? "sentMessagesLI" : "receivedMessagesLI"}
+                      style={msg.pending ? { opacity: 0.6, fontStyle: "italic" } : {}}
+                    >
+                      <p>{msg.text}</p>
+                      {msg.pending && <span style={{ fontSize: 10, color: "#888" }}>(sending...)</span>}
+                    </li>
+                  ))
+                )}
               </ul>
               <section id="Chat_form" className="fr">
                 <div id="Chat_emoji_picker_wrap" ref={emojiPickerRef}>

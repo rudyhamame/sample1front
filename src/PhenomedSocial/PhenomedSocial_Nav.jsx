@@ -1,8 +1,8 @@
 import React from "react";
-import Dim from "../App/Header/Nav/Dim/Dim";
-import Logout from "../App/Header/Nav/Logout/Logout";
-import Notifications from "../App/Header/Nav/Notifications/Notifications";
-import Refresh from "../App/Header/Nav/Refresh/Refresh";
+import Dim from "../Nav/Dim/Dim";
+import Logout from "../Nav/Logout/Logout";
+import Notifications from "../Nav/Notifications/Notifications";
+import Refresh from "../Nav/Refresh/Refresh";
 
 const PhenomedSocial_Nav = (props) => {
   return (

@@ -6,14 +6,14 @@ const Refresh = () => {
     window.location.reload();
   };
   return (
-    <div>
+    <section id="Refresh_article">
       <i
         class="fas fa-sync-alt"
         id="InputPost_refresh_icon"
         title="Refresh"
         onClick={refresh}
       ></i>
-    </div>
+    </section>
   );
 };
 

@@ -1,5 +1,6 @@
 //..............IMPORT................
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import "./nogaPlanner.css";
 import { apiUrl } from "../config/api";
 import PdfReaderModal from "../App/components/pdf-reader/PdfReaderModal";
@@ -126,7 +127,28 @@ const formatExamTimeParts = (value) => {
     return { hour: "", minute: "" };
   }
 
-  const timeParts = String(value).split(":");
+  const normalizedValue = String(value).trim();
+  const digitGroups = normalizedValue.match(/\d+/g) || [];
+
+  if (digitGroups.length >= 2) {
+    return {
+      hour: digitGroups[0] || "",
+      minute: digitGroups[1] || "",
+    };
+  }
+
+  if (digitGroups.length === 1) {
+    const compactValue = digitGroups[0];
+
+    if (compactValue.length >= 4) {
+      return {
+        hour: compactValue.slice(0, 2),
+        minute: compactValue.slice(2, 4),
+      };
+    }
+  }
+
+  const timeParts = normalizedValue.split(/\s+/);
   return {
     hour: timeParts[0] || "",
     minute: timeParts[1] || "",
@@ -367,6 +389,13 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     saving: "Saving...",
     loadMore: "Load more",
     loadingArchive: "Loading Archive",
+    timer: "Timer",
+    minutesShort: "Min",
+    secondsShort: "Sec",
+    startTimer: "Start timer",
+    pauseTimer: "Pause timer",
+    resetTimer: "Reset timer",
+    timerFinished: "Time is over",
     loadingTelegramMessages: "Loading Telegram messages...",
     noTelegramMessagesYet: "No Telegram messages found yet.",
     noTelegramPdfsYet: "No synced PDFs found yet.",
@@ -513,7 +542,7 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     unknownDay: "Unknown day",
   },
   ar: {
-    add: "إضافة",
+    add: "اضافة",
     edit: "تعديل",
     delete: "حذف",
     close: "إغلاق",
@@ -524,6 +553,13 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     saving: "جارٍ الحفظ...",
     loadMore: "تحميل المزيد",
     loadingArchive: "جارٍ تحميل الأرشيف",
+    timer: "المؤقت",
+    minutesShort: "د",
+    secondsShort: "ث",
+    startTimer: "ابدأ المؤقت",
+    pauseTimer: "أوقف المؤقت",
+    resetTimer: "إعادة ضبط المؤقت",
+    timerFinished: "انتهى الوقت",
     loadingTelegramMessages: "جارٍ تحميل رسائل تيليجرام...",
     noTelegramMessagesYet: "لا توجد رسائل تيليجرام بعد.",
     noStoredMessagesYet: "لا توجد رسائل محفوظة بعد",
@@ -912,11 +948,173 @@ const getConfiguredInternetArchiveItems = () => {
   }
 };
 
+const createDefaultPlannerMusicUiState = (locale = "en") => ({
+  music_isPlaying: false,
+  music_volume: 0.42,
+  music_trackTitle: locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
+  music_trackArtist: "Internet Archive",
+  music_isLoading: false,
+});
+
+const plannerMusicSession = {
+  audio: null,
+  playlist: [],
+  trackIndex: 0,
+  libraryPromise: null,
+  audioContext: null,
+  analyser: null,
+  analyserData: null,
+  sourceNode: null,
+  ui: createDefaultPlannerMusicUiState("en"),
+};
+
+const emitPlannerMusicSessionChange = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("planner-music-session-change", {
+      detail: {
+        isReady:
+          Boolean(plannerMusicSession.audio?.src) ||
+          plannerMusicSession.playlist.length > 0,
+        isPlaying:
+          Boolean(plannerMusicSession.audio) &&
+          !plannerMusicSession.audio.paused &&
+          !plannerMusicSession.audio.ended,
+        volume: plannerMusicSession.ui.music_volume,
+        trackTitle: plannerMusicSession.ui.music_trackTitle,
+        trackArtist: plannerMusicSession.ui.music_trackArtist,
+      },
+    }),
+  );
+};
+
+const setSharedPlannerMusicTrack = (trackIndex, autoplay = false) => {
+  const audio = getPlannerMusicAudio();
+  const track = plannerMusicSession.playlist[trackIndex];
+
+  if (!audio || !track) {
+    return;
+  }
+
+  plannerMusicSession.trackIndex = trackIndex;
+  audio.pause();
+  audio.src = track.src;
+  audio.load();
+  audio.volume = plannerMusicSession.ui.music_volume;
+  plannerMusicSession.ui.music_trackTitle = track.title;
+  plannerMusicSession.ui.music_trackArtist = track.artist;
+  emitPlannerMusicSessionChange();
+
+  if (autoplay) {
+    audio
+      .play()
+      .then(() => {
+        emitPlannerMusicSessionChange();
+      })
+      .catch(() => {});
+  }
+};
+
+export const getPlannerMusicSnapshot = () => ({
+  isReady:
+    Boolean(plannerMusicSession.audio?.src) ||
+    plannerMusicSession.playlist.length > 0,
+  isPlaying:
+    Boolean(plannerMusicSession.audio) &&
+    !plannerMusicSession.audio.paused &&
+    !plannerMusicSession.audio.ended,
+  volume: plannerMusicSession.ui.music_volume,
+  trackTitle: plannerMusicSession.ui.music_trackTitle,
+  trackArtist: plannerMusicSession.ui.music_trackArtist,
+});
+
+export const toggleSharedPlannerMusic = async () => {
+  const audio = getPlannerMusicAudio();
+
+  if (!audio || !audio.src) {
+    return;
+  }
+
+  if (audio.paused) {
+    await audio.play().catch(() => {});
+  } else {
+    audio.pause();
+  }
+
+  emitPlannerMusicSessionChange();
+};
+
+export const playNextSharedPlannerMusicTrack = async (autoplay = true) => {
+  if (!plannerMusicSession.playlist.length) {
+    return;
+  }
+
+  const nextIndex =
+    (plannerMusicSession.trackIndex + 1) % plannerMusicSession.playlist.length;
+  setSharedPlannerMusicTrack(nextIndex, autoplay);
+};
+
+export const playPreviousSharedPlannerMusicTrack = async (autoplay = true) => {
+  if (!plannerMusicSession.playlist.length) {
+    return;
+  }
+
+  const nextIndex =
+    (plannerMusicSession.trackIndex - 1 + plannerMusicSession.playlist.length) %
+    plannerMusicSession.playlist.length;
+  setSharedPlannerMusicTrack(nextIndex, autoplay);
+};
+
+const getPlannerMusicAudio = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (!plannerMusicSession.audio) {
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio.addEventListener("play", () => {
+      plannerMusicSession.ui.music_isPlaying = true;
+      emitPlannerMusicSessionChange();
+    });
+    audio.addEventListener("pause", () => {
+      plannerMusicSession.ui.music_isPlaying = false;
+      emitPlannerMusicSessionChange();
+    });
+    audio.addEventListener("ended", () => {
+      plannerMusicSession.ui.music_isPlaying = false;
+      if (plannerMusicSession.playlist.length > 0) {
+        playNextSharedPlannerMusicTrack(true);
+      } else {
+        emitPlannerMusicSessionChange();
+      }
+    });
+    audio.addEventListener("error", () => {
+      plannerMusicSession.ui.music_isPlaying = false;
+      emitPlannerMusicSessionChange();
+    });
+    plannerMusicSession.audio = audio;
+  }
+
+  return plannerMusicSession.audio;
+};
+
 export default class NogaPlanner extends Component {
   telegramCourseSuggestionsRequestInFlight = false;
 
   constructor(props) {
     super(props);
+    const sharedMusicUi = {
+      ...createDefaultPlannerMusicUiState(props.locale),
+      ...plannerMusicSession.ui,
+    };
+    const sharedAudio = getPlannerMusicAudio();
+    const musicIsPlaying = sharedAudio
+      ? !sharedAudio.paused && !sharedAudio.ended
+      : sharedMusicUi.music_isPlaying;
 
     this.state = {
       lectures: [],
@@ -926,12 +1124,11 @@ export default class NogaPlanner extends Component {
       courses: [],
       course_isLoading: false,
       lecture_isLoading: false,
-      music_isPlaying: false,
-      music_volume: 0.42,
-      music_trackTitle:
-        props.locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
-      music_trackArtist: "Internet Archive",
-      music_isLoading: false,
+      music_isPlaying: musicIsPlaying,
+      music_volume: sharedMusicUi.music_volume,
+      music_trackTitle: sharedMusicUi.music_trackTitle,
+      music_trackArtist: sharedMusicUi.music_trackArtist,
+      music_isLoading: sharedMusicUi.music_isLoading,
       telegram_isLoading: false,
       telegram_error: "",
       telegram_messages: [],
@@ -1000,26 +1197,39 @@ export default class NogaPlanner extends Component {
       ringVideo_publicId: "",
       ringVideo_isUploading: false,
       ringVideo_uploadError: "",
+      music_timerMinutes: "15",
+      music_timerSeconds: "00",
+      music_timerTotalSeconds: 900,
+      music_timerRemainingSeconds: 900,
+      music_timerIsRunning: false,
+      music_timerFinished: false,
     };
 
     this.coursePrintAudio = null;
     this.coursePrintSoundTimeouts = [];
     this.courseDetailsTypingTimeouts = [];
-    this.musicAudioRef = React.createRef();
+    this.musicAudioRef = { current: sharedAudio };
     this.ringVideoRef = React.createRef();
     this.ringVideoFileInputRef = React.createRef();
     this.plannerArticleRef = React.createRef();
     this.lectureActionsWindowRef = React.createRef();
-    this.musicPlaylist = [];
-    this.musicTrackIndex = 0;
-    this.musicLibraryPromise = null;
+    this.musicTimerDialRef = React.createRef();
+    this.musicPlaylist = plannerMusicSession.playlist;
+    this.musicTrackIndex = plannerMusicSession.trackIndex;
+    this.musicLibraryPromise = plannerMusicSession.libraryPromise;
     this.telegramSyncStatusTimeout = null;
-    this.musicAudioContext = null;
-    this.musicAnalyser = null;
-    this.musicAnalyserData = null;
-    this.musicSourceNode = null;
+    this.musicAudioContext = plannerMusicSession.audioContext;
+    this.musicAnalyser = plannerMusicSession.analyser;
+    this.musicAnalyserData = plannerMusicSession.analyserData;
+    this.musicSourceNode = plannerMusicSession.sourceNode;
     this.musicPaletteFrame = null;
     this.musicPaletteCursor = 0;
+    this.musicTimerInterval = null;
+    this.musicTimerAlarmContext = null;
+    this.musicTimerAlarmTimeouts = [];
+    this.musicTimerDialDragActive = false;
+    this.musicTimerDialLastAngle = null;
+    this.musicTimerDialAngleCarry = 0;
     this.isComponentMounted = false;
     this.plannerSwipeStart = null;
     this.lectureActionsPointerState = null;
@@ -1062,12 +1272,112 @@ export default class NogaPlanner extends Component {
     String(buttonText || "").trim() === actionText ||
     String(buttonText || "").trim() === this.t(actionText.toLowerCase());
 
+  persistPlannerMusicSession = () => {
+    plannerMusicSession.audio = this.musicAudioRef.current;
+    plannerMusicSession.playlist = this.musicPlaylist;
+    plannerMusicSession.trackIndex = this.musicTrackIndex;
+    plannerMusicSession.libraryPromise = this.musicLibraryPromise;
+    plannerMusicSession.audioContext = this.musicAudioContext;
+    plannerMusicSession.analyser = this.musicAnalyser;
+    plannerMusicSession.analyserData = this.musicAnalyserData;
+    plannerMusicSession.sourceNode = this.musicSourceNode;
+    plannerMusicSession.ui = {
+      ...plannerMusicSession.ui,
+      music_isPlaying: this.state.music_isPlaying,
+      music_volume: this.state.music_volume,
+      music_trackTitle: this.state.music_trackTitle,
+      music_trackArtist: this.state.music_trackArtist,
+      music_isLoading: this.state.music_isLoading,
+    };
+  };
+
+  syncPlannerMusicUiFromSession = () => {
+    const sharedAudio = getPlannerMusicAudio();
+    this.musicAudioRef.current = sharedAudio;
+
+    if (!sharedAudio) {
+      return;
+    }
+
+    const sharedUi = {
+      ...createDefaultPlannerMusicUiState(this.props.locale),
+      ...plannerMusicSession.ui,
+    };
+
+    this.setState({
+      music_isPlaying: !sharedAudio.paused && !sharedAudio.ended,
+      music_volume: sharedUi.music_volume,
+      music_trackTitle: sharedUi.music_trackTitle,
+      music_trackArtist: sharedUi.music_trackArtist,
+      music_isLoading: sharedUi.music_isLoading,
+    });
+  };
+
+  handlePlannerMusicPlay = () => {
+    plannerMusicSession.ui.music_isPlaying = true;
+    if (this.isComponentMounted) {
+      this.setState({ music_isPlaying: true });
+    }
+    this.startPlannerMusicReactivePalette();
+  };
+
+  handlePlannerMusicPause = () => {
+    plannerMusicSession.ui.music_isPlaying = false;
+    if (this.isComponentMounted) {
+      this.setState({ music_isPlaying: false });
+    }
+    this.stopPlannerMusicReactivePalette();
+  };
+
+  handlePlannerMusicEnded = () => {
+    plannerMusicSession.ui.music_isPlaying = false;
+    if (this.isComponentMounted) {
+      this.setState({ music_isPlaying: false });
+    }
+    this.playNextPlannerMusicTrack(true);
+  };
+
+  handlePlannerMusicError = () => {
+    plannerMusicSession.ui.music_isPlaying = false;
+    this.stopPlannerMusicReactivePalette();
+    this.playNextPlannerMusicTrack(false);
+  };
+
+  attachPlannerMusicListeners = () => {
+    const sharedAudio = getPlannerMusicAudio();
+    this.musicAudioRef.current = sharedAudio;
+
+    if (!sharedAudio) {
+      return;
+    }
+
+    sharedAudio.removeEventListener("play", this.handlePlannerMusicPlay);
+    sharedAudio.removeEventListener("pause", this.handlePlannerMusicPause);
+    sharedAudio.removeEventListener("ended", this.handlePlannerMusicEnded);
+    sharedAudio.removeEventListener("error", this.handlePlannerMusicError);
+    sharedAudio.addEventListener("play", this.handlePlannerMusicPlay);
+    sharedAudio.addEventListener("pause", this.handlePlannerMusicPause);
+    sharedAudio.addEventListener("ended", this.handlePlannerMusicEnded);
+    sharedAudio.addEventListener("error", this.handlePlannerMusicError);
+  };
+
+  detachPlannerMusicListeners = () => {
+    const sharedAudio = this.musicAudioRef.current;
+
+    if (!sharedAudio) {
+      return;
+    }
+
+    sharedAudio.removeEventListener("play", this.handlePlannerMusicPlay);
+    sharedAudio.removeEventListener("pause", this.handlePlannerMusicPause);
+    sharedAudio.removeEventListener("ended", this.handlePlannerMusicEnded);
+    sharedAudio.removeEventListener("error", this.handlePlannerMusicError);
+  };
+
   componentDidMount() {
     this.isComponentMounted = true;
-    const addCoursePanel = document.getElementById("nogaPlanner_addCourse_div");
-    if (addCoursePanel) {
-      addCoursePanel.style.display = "none";
-    }
+    this.attachPlannerMusicListeners();
+    this.syncPlannerMusicUiFromSession();
     window.addEventListener("popstate", this.handlePlannerBrowserBack);
     if (this.plannerArticleRef.current) {
       this.plannerArticleRef.current.addEventListener(
@@ -1091,6 +1401,9 @@ export default class NogaPlanner extends Component {
       this.musicAudioRef.current.volume = this.state.music_volume;
     }
     this.loadPlannerMusicLibrary();
+    if (this.musicAudioRef.current && !this.musicAudioRef.current.paused) {
+      this.startPlannerMusicReactivePalette();
+    }
     this.fetchTelegramConfig();
     this.fetchTelegramGroups();
     this.fetchStoredTelegramGroups();
@@ -1117,25 +1430,12 @@ export default class NogaPlanner extends Component {
       clearTimeout(this.telegramSyncStatusTimeout);
       this.telegramSyncStatusTimeout = null;
     }
+    this.detachPlannerMusicListeners();
+    this.persistPlannerMusicSession();
     this.stopPlannerMusicReactivePalette();
-    if (this.musicSourceNode) {
-      this.musicSourceNode.disconnect();
-      this.musicSourceNode = null;
-    }
-    if (this.musicAnalyser) {
-      this.musicAnalyser.disconnect();
-      this.musicAnalyser = null;
-    }
-    if (this.musicAudioContext) {
-      this.musicAudioContext.close().catch(() => {});
-      this.musicAudioContext = null;
-    }
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.pause();
-      this.musicAudioRef.current.currentTime = 0;
-      this.musicAudioRef.current.removeAttribute("src");
-      this.musicAudioRef.current.load();
-    }
+    this.stopMusicTimer();
+    this.stopMusicTimerAlarm();
+    this.stopMusicTimerDialInteraction();
     if (this.ringVideoRef.current) {
       this.ringVideoRef.current.pause();
       this.ringVideoRef.current.currentTime = 0;
@@ -1154,14 +1454,221 @@ export default class NogaPlanner extends Component {
     this.plannerSwipeStart = null;
   }
 
-  handlePlannerBrowserBack = () => {
-    if (typeof window === "undefined") {
+  ensurePlannerMusicAnalyser = async () => {
+    const musicAudio = this.musicAudioRef.current;
+
+    if (!musicAudio || typeof window === "undefined") {
+      return false;
+    }
+
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext || null;
+
+    if (!AudioContextClass) {
+      return false;
+    }
+
+    try {
+      if (!this.musicAudioContext) {
+        this.musicAudioContext = new AudioContextClass();
+      }
+
+      if (this.musicAudioContext.state === "suspended") {
+        await this.musicAudioContext.resume();
+      }
+
+      if (!this.musicSourceNode) {
+        this.musicSourceNode =
+          this.musicAudioContext.createMediaElementSource(musicAudio);
+      }
+
+      if (!this.musicAnalyser) {
+        this.musicAnalyser = this.musicAudioContext.createAnalyser();
+        this.musicAnalyser.fftSize = 256;
+        this.musicAnalyser.smoothingTimeConstant = 0.84;
+        this.musicAnalyserData = new Uint8Array(
+          this.musicAnalyser.frequencyBinCount,
+        );
+        this.musicSourceNode.connect(this.musicAnalyser);
+        this.musicAnalyser.connect(this.musicAudioContext.destination);
+      }
+
+      this.persistPlannerMusicSession();
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  applyPlannerMusicPalette = ({
+    energy = 0,
+    bass = 0,
+    treble = 0,
+    speed = 0.01,
+    fallbackTime = 0,
+  } = {}) => {
+    const articleNode = this.plannerArticleRef.current;
+
+    if (!articleNode) {
       return;
     }
 
-    if (window.location.pathname === "/") {
-      window.location.reload();
+    const boundedEnergy = Math.max(0, Math.min(1, energy));
+    const boundedBass = Math.max(0, Math.min(1, bass));
+    const boundedTreble = Math.max(0, Math.min(1, treble));
+    const boundedSpeed = Math.max(0.004, Math.min(0.045, speed));
+
+    this.musicPaletteCursor =
+      (this.musicPaletteCursor + boundedSpeed + boundedTreble * 0.012) %
+      PLANNER_MUSIC_PALETTES.length;
+
+    const paletteIndex = Math.floor(this.musicPaletteCursor);
+    const nextPaletteIndex = (paletteIndex + 1) % PLANNER_MUSIC_PALETTES.length;
+    const mixAmount = this.musicPaletteCursor - paletteIndex;
+
+    const currentPalette = PLANNER_MUSIC_PALETTES[paletteIndex].map(hexToRgb);
+    const nextPalette = PLANNER_MUSIC_PALETTES[nextPaletteIndex].map(hexToRgb);
+    const mixedPalette = currentPalette.map((color, colorIndex) =>
+      interpolateRgb(color, nextPalette[colorIndex], mixAmount),
+    );
+    const glowStrength = 0.14 + boundedEnergy * 0.26 + boundedBass * 0.08;
+    const highlightStrength = 0.1 + boundedTreble * 0.18;
+    const grainShift = `${Math.round((fallbackTime * 22) % 260)}px ${Math.round(
+      (fallbackTime * 14) % 200,
+    )}px`;
+
+    articleNode.style.setProperty(
+      "--planner-audio-bg",
+      rgbToCss(mixedPalette[0], 1),
+    );
+    articleNode.style.setProperty(
+      "--planner-audio-wave-a",
+      rgbToCss(mixedPalette[1], 0.28 + boundedEnergy * 0.22),
+    );
+    articleNode.style.setProperty(
+      "--planner-audio-wave-b",
+      rgbToCss(mixedPalette[2], 0.18 + boundedTreble * 0.2),
+    );
+    articleNode.style.setProperty(
+      "--planner-audio-glow",
+      rgbToCss(mixedPalette[1], glowStrength),
+    );
+    articleNode.style.setProperty(
+      "--planner-audio-highlight",
+      rgbToCss(mixedPalette[2], highlightStrength),
+    );
+    articleNode.style.setProperty(
+      "--planner-audio-sheen",
+      rgbToCss(mixedPalette[0], 0.08 + boundedBass * 0.1),
+    );
+    articleNode.style.setProperty("--planner-audio-grain-offset", grainShift);
+  };
+
+  stopPlannerMusicReactivePalette = () => {
+    if (this.musicPaletteFrame) {
+      window.cancelAnimationFrame(this.musicPaletteFrame);
+      this.musicPaletteFrame = null;
     }
+
+    const articleNode = this.plannerArticleRef.current;
+    if (articleNode) {
+      articleNode.style.removeProperty("--planner-audio-bg");
+      articleNode.style.removeProperty("--planner-audio-wave-a");
+      articleNode.style.removeProperty("--planner-audio-wave-b");
+      articleNode.style.removeProperty("--planner-audio-glow");
+      articleNode.style.removeProperty("--planner-audio-highlight");
+      articleNode.style.removeProperty("--planner-audio-sheen");
+      articleNode.style.removeProperty("--planner-audio-grain-offset");
+    }
+  };
+
+  startPlannerMusicReactivePalette = async () => {
+    if (this.isReducedMotionEnabled()) {
+      this.stopPlannerMusicReactivePalette();
+      return;
+    }
+
+    const musicAudio = this.musicAudioRef.current;
+
+    if (!musicAudio) {
+      return;
+    }
+
+    await this.ensurePlannerMusicAnalyser();
+    this.stopPlannerMusicReactivePalette();
+
+    const step = () => {
+      if (!this.isComponentMounted || !this.musicAudioRef.current) {
+        this.stopPlannerMusicReactivePalette();
+        return;
+      }
+
+      const activeAudio = this.musicAudioRef.current;
+      let bass = 0;
+      let mid = 0;
+      let treble = 0;
+      let energy = 0;
+
+      if (this.musicAnalyser && this.musicAnalyserData) {
+        this.musicAnalyser.getByteFrequencyData(this.musicAnalyserData);
+        const bucketCount = this.musicAnalyserData.length;
+        const bassEnd = Math.max(1, Math.floor(bucketCount * 0.18));
+        const midEnd = Math.max(bassEnd + 1, Math.floor(bucketCount * 0.55));
+        let bassTotal = 0;
+        let midTotal = 0;
+        let trebleTotal = 0;
+
+        for (let index = 0; index < bucketCount; index += 1) {
+          const sample = this.musicAnalyserData[index] / 255;
+          energy += sample;
+
+          if (index < bassEnd) {
+            bassTotal += sample;
+          } else if (index < midEnd) {
+            midTotal += sample;
+          } else {
+            trebleTotal += sample;
+          }
+        }
+
+        energy /= bucketCount || 1;
+        bass = bassTotal / bassEnd;
+        mid = midTotal / Math.max(1, midEnd - bassEnd);
+        treble = trebleTotal / Math.max(1, bucketCount - midEnd);
+      } else {
+        const fallbackBeat = Math.abs(
+          Math.sin(
+            (activeAudio.currentTime || 0) *
+              (1.2 + this.state.music_volume * 2),
+          ),
+        );
+        energy = 0.18 + fallbackBeat * 0.42;
+        bass = 0.22 + fallbackBeat * 0.34;
+        mid = 0.16 + fallbackBeat * 0.26;
+        treble = 0.12 + fallbackBeat * 0.22;
+      }
+
+      this.applyPlannerMusicPalette({
+        energy,
+        bass,
+        treble,
+        speed: 0.006 + energy * 0.018 + mid * 0.01,
+        fallbackTime: activeAudio.currentTime || 0,
+      });
+
+      if (!activeAudio.paused && !activeAudio.ended) {
+        this.musicPaletteFrame = window.requestAnimationFrame(step);
+      } else {
+        this.stopPlannerMusicReactivePalette();
+      }
+    };
+
+    this.musicPaletteFrame = window.requestAnimationFrame(step);
+  };
+
+  handlePlannerBrowserBack = () => {
+    // Let React Router handle in-app back navigation so shared music survives.
   };
 
   resolveInternetArchiveTrack = async (item) => {
@@ -1474,7 +1981,9 @@ export default class NogaPlanner extends Component {
       .catch(() => [])
       .finally(() => {
         this.musicLibraryPromise = null;
+        plannerMusicSession.libraryPromise = null;
       });
+    plannerMusicSession.libraryPromise = this.musicLibraryPromise;
 
     const resolvedTracks = await this.musicLibraryPromise;
 
@@ -1486,6 +1995,7 @@ export default class NogaPlanner extends Component {
     this.setState({
       music_isLoading: false,
     });
+    this.persistPlannerMusicSession();
 
     if (this.musicPlaylist.length > 0 && this.musicAudioRef.current) {
       this.setPlannerMusicTrack(0);
@@ -1515,6 +2025,7 @@ export default class NogaPlanner extends Component {
       music_trackTitle: track.title,
       music_trackArtist: track.artist,
     });
+    this.persistPlannerMusicSession();
 
     if (autoplay) {
       musicAudio
@@ -1589,6 +2100,357 @@ export default class NogaPlanner extends Component {
     if (this.musicAudioRef.current) {
       this.musicAudioRef.current.volume = nextVolume;
     }
+
+    plannerMusicSession.ui.music_volume = nextVolume;
+  };
+
+  getMusicTimerDurationFromInputs = () => {
+    const minutes = Math.max(
+      0,
+      Math.min(999, Number(this.state.music_timerMinutes || 0) || 0),
+    );
+    const seconds = Math.max(
+      0,
+      Math.min(59, Number(this.state.music_timerSeconds || 0) || 0),
+    );
+
+    return minutes * 60 + seconds;
+  };
+
+  getMusicTimerDurationFromState = () =>
+    Math.max(0, Number(this.state.music_timerRemainingSeconds || 0) || 0);
+
+  formatMusicTimerClock = (totalSeconds) => {
+    const normalizedSeconds = Math.max(0, Number(totalSeconds || 0) || 0);
+    const minutes = Math.floor(normalizedSeconds / 60);
+    const seconds = normalizedSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+
+  applyMusicTimerDuration = (nextDuration) => {
+    const normalizedDuration = Math.max(
+      0,
+      Math.min(999 * 60 + 59, Number(nextDuration || 0) || 0),
+    );
+    const nextMinutes = Math.floor(normalizedDuration / 60);
+    const nextSeconds = normalizedDuration % 60;
+
+    this.setState({
+      music_timerMinutes: String(nextMinutes).padStart(2, "0"),
+      music_timerSeconds: String(nextSeconds).padStart(2, "0"),
+      music_timerTotalSeconds: normalizedDuration,
+      music_timerRemainingSeconds: normalizedDuration,
+      music_timerFinished: false,
+    });
+  };
+
+  getMusicTimerDialPointerAngle = (event) => {
+    const dialNode = this.musicTimerDialRef.current;
+    if (!dialNode) {
+      return null;
+    }
+
+    const rect = dialNode.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const deltaX = event.clientX - centerX;
+    const deltaY = event.clientY - centerY;
+
+    if (deltaX === 0 && deltaY === 0) {
+      return null;
+    }
+
+    return (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+  };
+
+  stopMusicTimerDialInteraction = () => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener(
+        "pointermove",
+        this.handleMusicTimerDialPointerMove,
+      );
+      window.removeEventListener(
+        "pointerup",
+        this.stopMusicTimerDialInteraction,
+      );
+      window.removeEventListener(
+        "pointercancel",
+        this.stopMusicTimerDialInteraction,
+      );
+    }
+
+    this.musicTimerDialDragActive = false;
+    this.musicTimerDialLastAngle = null;
+    this.musicTimerDialAngleCarry = 0;
+  };
+
+  handleMusicTimerDialPointerMove = (event) => {
+    if (!this.musicTimerDialDragActive || this.state.music_timerIsRunning) {
+      return;
+    }
+
+    const nextAngle = this.getMusicTimerDialPointerAngle(event);
+    if (nextAngle === null || this.musicTimerDialLastAngle === null) {
+      this.musicTimerDialLastAngle = nextAngle;
+      return;
+    }
+
+    let angleDelta = nextAngle - this.musicTimerDialLastAngle;
+    if (angleDelta > 180) {
+      angleDelta -= 360;
+    } else if (angleDelta < -180) {
+      angleDelta += 360;
+    }
+
+    this.musicTimerDialLastAngle = nextAngle;
+    this.musicTimerDialAngleCarry += angleDelta;
+
+    const minuteStepAngle = 6;
+    let minuteSteps = 0;
+
+    if (this.musicTimerDialAngleCarry >= minuteStepAngle) {
+      minuteSteps = Math.floor(this.musicTimerDialAngleCarry / minuteStepAngle);
+    } else if (this.musicTimerDialAngleCarry <= -minuteStepAngle) {
+      minuteSteps = Math.ceil(this.musicTimerDialAngleCarry / minuteStepAngle);
+    }
+
+    if (minuteSteps === 0) {
+      return;
+    }
+
+    this.musicTimerDialAngleCarry -= minuteSteps * minuteStepAngle;
+    this.applyMusicTimerDuration(
+      this.getMusicTimerDurationFromState() + minuteSteps * 60,
+    );
+  };
+
+  startMusicTimerDialInteraction = (event) => {
+    if (this.state.music_timerIsRunning) {
+      return;
+    }
+
+    const nextAngle = this.getMusicTimerDialPointerAngle(event);
+    if (nextAngle === null) {
+      return;
+    }
+
+    event.preventDefault();
+    this.stopMusicTimerAlarm();
+    this.musicTimerDialDragActive = true;
+    this.musicTimerDialLastAngle = nextAngle;
+    this.musicTimerDialAngleCarry = 0;
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(
+        "pointermove",
+        this.handleMusicTimerDialPointerMove,
+      );
+      window.addEventListener("pointerup", this.stopMusicTimerDialInteraction);
+      window.addEventListener(
+        "pointercancel",
+        this.stopMusicTimerDialInteraction,
+      );
+    }
+  };
+
+  nudgeMusicTimerDial = (direction) => {
+    if (this.state.music_timerIsRunning) {
+      return;
+    }
+
+    this.applyMusicTimerDuration(
+      this.getMusicTimerDurationFromState() + direction * 60,
+    );
+  };
+
+  getMusicTimerDialAngle = () => {
+    if (
+      this.state.music_timerIsRunning ||
+      (this.state.music_timerFinished && this.state.music_timerTotalSeconds > 0)
+    ) {
+      return this.state.music_timerTotalSeconds > 0
+        ? Math.min(
+            360,
+            Math.max(
+              0,
+              (1 -
+                this.state.music_timerRemainingSeconds /
+                  this.state.music_timerTotalSeconds) *
+                360,
+            ),
+          )
+        : 0;
+    }
+
+    return (
+      ((Math.max(0, Number(this.state.music_timerRemainingSeconds || 0) || 0) %
+        3600) /
+        3600) *
+      360
+    );
+  };
+
+  updateMusicTimerField = (fieldName, event) => {
+    const nextValue = String(event.target.value || "").replace(/\D/g, "");
+    const maxLength = fieldName === "music_timerMinutes" ? 3 : 2;
+    const trimmedValue = nextValue.slice(0, maxLength);
+
+    this.setState({
+      [fieldName]: trimmedValue,
+      music_timerFinished: false,
+    });
+  };
+
+  syncMusicTimerWithInputs = () => {
+    const nextDuration = this.getMusicTimerDurationFromInputs();
+
+    this.applyMusicTimerDuration(nextDuration);
+  };
+
+  stopMusicTimerAlarm = () => {
+    this.musicTimerAlarmTimeouts.forEach((timeoutId) => {
+      clearTimeout(timeoutId);
+    });
+    this.musicTimerAlarmTimeouts = [];
+
+    if (this.musicTimerAlarmContext) {
+      this.musicTimerAlarmContext.close().catch(() => {});
+      this.musicTimerAlarmContext = null;
+    }
+  };
+
+  ringMusicTimerAlarm = () => {
+    this.stopMusicTimerAlarm();
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext || null;
+
+    if (!AudioContextClass) {
+      return;
+    }
+
+    try {
+      const context = new AudioContextClass();
+      this.musicTimerAlarmContext = context;
+      const now = context.currentTime;
+      const chimePattern = [0, 0.22, 0.52];
+
+      chimePattern.forEach((offset, index) => {
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.type = index === 1 ? "triangle" : "sine";
+        oscillator.frequency.setValueAtTime(
+          index === 1 ? 740 : 988,
+          now + offset,
+        );
+        gainNode.gain.setValueAtTime(0.0001, now + offset);
+        gainNode.gain.exponentialRampToValueAtTime(0.12, now + offset + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.32);
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + 0.34);
+      });
+
+      this.musicTimerAlarmTimeouts.push(
+        window.setTimeout(() => {
+          this.stopMusicTimerAlarm();
+        }, 1600),
+      );
+    } catch (error) {
+      this.stopMusicTimerAlarm();
+    }
+  };
+
+  stopMusicTimer = () => {
+    if (this.musicTimerInterval) {
+      clearInterval(this.musicTimerInterval);
+      this.musicTimerInterval = null;
+    }
+
+    if (this.isComponentMounted) {
+      this.setState({
+        music_timerIsRunning: false,
+      });
+    }
+  };
+
+  resetMusicTimer = () => {
+    const nextDuration = this.getMusicTimerDurationFromInputs();
+    this.stopMusicTimer();
+    this.stopMusicTimerAlarm();
+    this.applyMusicTimerDuration(nextDuration);
+  };
+
+  startMusicTimer = () => {
+    const nextDuration = this.getMusicTimerDurationFromInputs();
+
+    if (nextDuration <= 0) {
+      return;
+    }
+
+    this.stopMusicTimer();
+    this.stopMusicTimerAlarm();
+
+    this.setState((currentState) => ({
+      music_timerTotalSeconds:
+        currentState.music_timerRemainingSeconds > 0 &&
+        currentState.music_timerRemainingSeconds !==
+          currentState.music_timerTotalSeconds &&
+        !currentState.music_timerFinished
+          ? currentState.music_timerTotalSeconds
+          : nextDuration,
+      music_timerRemainingSeconds:
+        currentState.music_timerRemainingSeconds > 0 &&
+        currentState.music_timerRemainingSeconds !==
+          currentState.music_timerTotalSeconds &&
+        !currentState.music_timerFinished
+          ? currentState.music_timerRemainingSeconds
+          : nextDuration,
+      music_timerIsRunning: true,
+      music_timerFinished: false,
+    }));
+
+    this.musicTimerInterval = window.setInterval(() => {
+      if (!this.isComponentMounted) {
+        this.stopMusicTimer();
+        return;
+      }
+
+      this.setState(
+        (currentState) => {
+          const nextRemainingSeconds = Math.max(
+            0,
+            Number(currentState.music_timerRemainingSeconds || 0) - 1,
+          );
+
+          if (nextRemainingSeconds <= 0) {
+            this.stopMusicTimer();
+            return {
+              music_timerRemainingSeconds: 0,
+              music_timerFinished: true,
+              music_timerIsRunning: false,
+            };
+          }
+
+          return {
+            music_timerRemainingSeconds: nextRemainingSeconds,
+            music_timerFinished: false,
+            music_timerIsRunning: true,
+          };
+        },
+        () => {
+          if (this.state.music_timerFinished) {
+            this.ringMusicTimerAlarm();
+          }
+        },
+      );
+    }, 1000);
   };
 
   fetchTelegramConfig = async (options = {}) => {
@@ -4036,65 +4898,111 @@ export default class NogaPlanner extends Component {
     document.getElementById("nogaPlanner_addLecture_div").style.display =
       "none";
   };
+  setElementValueById = (elementId, value) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.value = value;
+    }
+  };
+  setElementHtmlById = (elementId, html) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.innerHTML = html;
+    }
+  };
   openAddCourseForm = (object) => {
     this.setState({ show_addCourseForm: true }, () => {
-      document.getElementById(
+      const detailsDiv = document.getElementById(
+        "nogaPlanner_courses_details_div",
+      );
+      const actionsMount = document.getElementById(
+        "nogaPlanner_courses_actions_mount",
+      );
+
+      if (detailsDiv) {
+        detailsDiv.classList.remove("nogaPlanner_courses_panel--hidden");
+        detailsDiv.scrollTop = 0;
+      }
+
+      if (actionsMount) {
+        actionsMount.classList.remove("nogaPlanner_courses_panel--hidden");
+      }
+
+      const addCourseButtonLabel = document.getElementById(
         "nogaPlanner_addCourse_addButton_label",
-      ).textContent =
-        object.buttonName === "Edit" ? this.t("edit") : this.t("add");
+      );
+
+      if (addCourseButtonLabel) {
+        addCourseButtonLabel.textContent =
+          object.buttonName === "Edit" ? this.t("edit") : this.t("add");
+      }
       if (object.buttonName === "Add") {
         courseDayAndTime = [];
         courseInstructorsNames = [];
         courseExams = [];
-        document.getElementById("nogaPlanner_addCourse_name_input").value = "";
-        document.getElementById("nogaPlanner_addCourse_component_input").value =
-          "Course component";
-        document.getElementById("nogaPlanner_addCourse_day_input").value =
-          "Course day";
-        document.getElementById("nogaPlanner_addCourse_time_hour_input").value =
-          "";
-        document.getElementById(
-          "nogaPlanner_addCourse_time_minute_input",
-        ).value = "";
-        document.getElementById("nogaPlanner_addCourse_year_input").value =
-          "Course year";
-        document.getElementById("nogaPlanner_addCourse_term_input").value =
-          "Course term";
-        document.getElementById("nogaPlanner_addCourse_class_input").value =
-          "Course classification";
-        document.getElementById("nogaPlanner_addCourse_status_input").value =
-          "Course status";
-        document.getElementById("nogaPlanner_addCourse_grade_input").value = "";
-        document.getElementById("nogaPlanner_addCourse_fullGrade_input").value =
-          "";
-        document.getElementById("nogaPlanner_addCourse_examType_input").value =
-          "Exam type";
-        document.getElementById(
+        this.setElementValueById("nogaPlanner_addCourse_name_input", "");
+        this.setElementValueById(
+          "nogaPlanner_addCourse_component_input",
+          "Course component",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_day_input",
+          "Course day",
+        );
+        this.setElementValueById("nogaPlanner_addCourse_time_hour_input", "");
+        this.setElementValueById("nogaPlanner_addCourse_time_minute_input", "");
+        this.setElementValueById(
+          "nogaPlanner_addCourse_year_input",
+          "Course year",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_term_input",
+          "Course term",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_class_input",
+          "Course classification",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_status_input",
+          "Course status",
+        );
+        this.setElementValueById("nogaPlanner_addCourse_grade_input", "");
+        this.setElementValueById("nogaPlanner_addCourse_fullGrade_input", "");
+        this.setElementValueById(
+          "nogaPlanner_addCourse_examType_input",
+          "Exam type",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_day_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_month_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_year_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examTime_hour_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examTime_minute_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_instructorName_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementHtmlById(
           "nogaPlanner_addCourse_instructorsNames_ul",
-        ).innerHTML = "";
-        document.getElementById(
-          "nogaPlanner_addCourse_dayAndTime_ul",
-        ).innerHTML = "";
-        document.getElementById("nogaPlanner_addCourse_exams_ul").innerHTML =
-          "";
+          "",
+        );
+        this.setElementHtmlById("nogaPlanner_addCourse_dayAndTime_ul", "");
+        this.setElementHtmlById("nogaPlanner_addCourse_exams_ul", "");
       }
       if (object.buttonName === "Edit") {
         courseDayAndTime = object.course.course_dayAndTime;
@@ -4117,60 +5025,91 @@ export default class NogaPlanner extends Component {
                   },
                 ]
               : [];
-        document.getElementById("nogaPlanner_addCourse_name_input").value =
-          object.course.course_name.split(" (")[0];
-        document.getElementById("nogaPlanner_addCourse_component_input").value =
-          object.course.course_component;
-        document.getElementById("nogaPlanner_addCourse_day_input").value =
-          "Course day";
-        document.getElementById("nogaPlanner_addCourse_time_hour_input").value =
-          "";
-        document.getElementById(
-          "nogaPlanner_addCourse_time_minute_input",
-        ).value = "";
-        document.getElementById(
-          "nogaPlanner_addCourse_dayAndTime_ul",
-        ).innerHTML = "";
-        document.getElementById("nogaPlanner_addCourse_year_input").value =
-          object.course.course_year;
-        document.getElementById("nogaPlanner_addCourse_term_input").value =
-          object.course.course_term;
-        document.getElementById("nogaPlanner_addCourse_class_input").value =
-          object.course.course_class;
-        document.getElementById("nogaPlanner_addCourse_status_input").value =
-          object.course.course_status;
-        document.getElementById(
+        this.setElementValueById(
+          "nogaPlanner_addCourse_name_input",
+          object.course.course_name.split(" (")[0],
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_component_input",
+          object.course.course_component,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_day_input",
+          "Course day",
+        );
+        this.setElementValueById("nogaPlanner_addCourse_time_hour_input", "");
+        this.setElementValueById("nogaPlanner_addCourse_time_minute_input", "");
+        this.setElementHtmlById("nogaPlanner_addCourse_dayAndTime_ul", "");
+        this.setElementValueById(
+          "nogaPlanner_addCourse_year_input",
+          object.course.course_year,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_term_input",
+          object.course.course_term,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_class_input",
+          object.course.course_class,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_status_input",
+          object.course.course_status,
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_instructorName_input",
-        ).value = "";
-        document.getElementById(
+          "",
+        );
+        this.setElementHtmlById(
           "nogaPlanner_addCourse_instructorsNames_ul",
-        ).innerHTML = "";
-        document.getElementById("nogaPlanner_addCourse_grade_input").value =
-          object.course.course_grade;
-        document.getElementById("nogaPlanner_addCourse_fullGrade_input").value =
-          object.course.course_fullGrade;
-        document.getElementById("nogaPlanner_addCourse_examType_input").value =
-          object.course.exam_type || "Exam type";
+          "",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_grade_input",
+          object.course.course_grade,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_fullGrade_input",
+          object.course.course_fullGrade,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addCourse_examType_input",
+          object.course.exam_type || "Exam type",
+        );
         const examDateParts = formatExamDateParts(object.course.exam_date);
-        document.getElementById(
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_day_input",
-        ).value = examDateParts.day;
-        document.getElementById(
+          examDateParts.day,
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_month_input",
-        ).value = examDateParts.month;
-        document.getElementById(
+          examDateParts.month,
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examDate_year_input",
-        ).value = examDateParts.year;
+          examDateParts.year,
+        );
         const examTimeParts = formatExamTimeParts(object.course.exam_time);
-        document.getElementById(
+        this.setElementValueById(
           "nogaPlanner_addCourse_examTime_hour_input",
-        ).value = examTimeParts.hour;
-        document.getElementById(
+          examTimeParts.hour,
+        );
+        this.setElementValueById(
           "nogaPlanner_addCourse_examTime_minute_input",
-        ).value = examTimeParts.minute;
-        this.retrieveCourseDayAndTime();
-        this.retrieveCourseInstructorsNames();
-        this.retrieveCourseExams();
+          examTimeParts.minute,
+        );
+
+        if (document.getElementById("nogaPlanner_addCourse_dayAndTime_ul")) {
+          this.retrieveCourseDayAndTime();
+        }
+        if (
+          document.getElementById("nogaPlanner_addCourse_instructorsNames_ul")
+        ) {
+          this.retrieveCourseInstructorsNames();
+        }
+        if (document.getElementById("nogaPlanner_addCourse_exams_ul")) {
+          this.retrieveCourseExams();
+        }
       }
     });
   };
@@ -4502,12 +5441,12 @@ export default class NogaPlanner extends Component {
     const actionItems = [
       {
         key: "add",
-        label: "Add",
+        label: this.t("add"),
         iconClass: "fi fi-rr-plus",
         allowWhenIdle: true,
         run: () => {
           this.openAddCourseForm({
-            buttonName: "Add",
+            buttonName: this.t("add"),
           });
         },
       },
@@ -7223,6 +8162,75 @@ export default class NogaPlanner extends Component {
       this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
     }
   };
+  submitAddCourseForm = () => {
+    const buttonName = document.getElementById(
+      "nogaPlanner_addCourse_addButton_label",
+    )?.textContent;
+    const course_name =
+      document.getElementById("nogaPlanner_addCourse_name_input")?.value || "";
+    const course_component =
+      document.getElementById("nogaPlanner_addCourse_component_input")?.value ||
+      "";
+    const course_year =
+      document.getElementById("nogaPlanner_addCourse_year_input")?.value || "";
+    const course_term =
+      document.getElementById("nogaPlanner_addCourse_term_input")?.value || "";
+    const course_class =
+      document.getElementById("nogaPlanner_addCourse_class_input")?.value || "";
+    const course_status =
+      document.getElementById("nogaPlanner_addCourse_status_input")?.value ||
+      "";
+    const course_grade =
+      document.getElementById("nogaPlanner_addCourse_grade_input")?.value || "";
+    const course_fullGrade =
+      document.getElementById("nogaPlanner_addCourse_fullGrade_input")?.value ||
+      "";
+    const exam_type =
+      document.getElementById("nogaPlanner_addCourse_examType_input")?.value ||
+      "";
+    const exam_date = buildExamDateValue({
+      day:
+        document.getElementById("nogaPlanner_addCourse_examDate_day_input")
+          ?.value || "",
+      month:
+        document.getElementById("nogaPlanner_addCourse_examDate_month_input")
+          ?.value || "",
+      year:
+        document.getElementById("nogaPlanner_addCourse_examDate_year_input")
+          ?.value || "",
+    });
+    const exam_time = buildExamTimeValue({
+      hour:
+        document.getElementById("nogaPlanner_addCourse_examTime_hour_input")
+          ?.value || "",
+      minute:
+        document.getElementById("nogaPlanner_addCourse_examTime_minute_input")
+          ?.value || "",
+    });
+    const nextCourse = {
+      course_name: `${course_name} (${course_component})`,
+      course_component,
+      course_year,
+      course_term,
+      course_class,
+      course_status,
+      course_grade,
+      course_fullGrade,
+      course_length: 0,
+      course_progress: 0,
+      exam_type,
+      exam_date,
+      exam_time,
+    };
+
+    if (this.isActionLabel(buttonName, "Add")) {
+      this.addCourse(nextCourse);
+    }
+
+    if (this.isActionLabel(buttonName, "Edit")) {
+      this.editCourse(nextCourse);
+    }
+  };
   render() {
     const activeTelegramPdfMessage = this.state.telegram_pdfViewerMessage;
     const activeTelegramPdfKey = this.getTelegramPdfMessageKey(
@@ -7265,12 +8273,262 @@ export default class NogaPlanner extends Component {
                 <div
                   id="nogaPlanner_courses_details_div"
                   className="fc nogaPlanner_courses_panel--hidden"
-                ></div>
+                >
+                  {this.state.show_addCourseForm ? (
+                    <div id="nogaPlanner_addCourse_div" className="fc">
+                      <form id="nogaPlanner_addCourse_form" className="fc">
+                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowSplit">
+                          <input
+                            id="nogaPlanner_addCourse_name_input"
+                            placeholder={this.t("courseNamePlaceholder")}
+                          />
+                          <select
+                            id="nogaPlanner_addCourse_component_input"
+                            defaultValue="Course component"
+                          >
+                            <option
+                              disabled="disabled"
+                              value="Course component"
+                            >
+                              {this.t("courseComponentPlaceholder")}
+                            </option>
+                            <option value="In-class">
+                              {this.t("inClass")}
+                            </option>
+                            <option value="Out-of-class">
+                              {this.t("outOfClass")}
+                            </option>
+                          </select>
+                        </div>
+                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
+                          <div
+                            id="nogaPlanner_addCourse_dayAndTime_div"
+                            className="fr"
+                          >
+                            <div
+                              id="nogaPlanner_addCourse_dayAndTime_input_section"
+                              className="fc"
+                            >
+                              <div className="fc">
+                                <div className="nogaPlanner_addCourse_dayAndTime_row">
+                                  <input
+                                    id="nogaPlanner_addCourse_day_input"
+                                    placeholder={this.t("courseDayPlaceholder")}
+                                  />
+                                  <div
+                                    id="nogaPlanner_addCourse_time_inputs"
+                                    className="fr"
+                                  >
+                                    <input
+                                      id="nogaPlanner_addCourse_time_hour_input"
+                                      placeholder="HH"
+                                    />
+                                    <input
+                                      id="nogaPlanner_addCourse_time_minute_input"
+                                      placeholder="MM"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="nogaPlanner_addCourse_dayAndTime_row">
+                                  <input
+                                    id="nogaPlanner_addCourse_year_input"
+                                    placeholder={this.t(
+                                      "courseYearPlaceholder",
+                                    )}
+                                  />
+                                  <input
+                                    id="nogaPlanner_addCourse_term_input"
+                                    placeholder={this.t(
+                                      "courseTermPlaceholder",
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                              <ul
+                                id="nogaPlanner_addCourse_dayAndTime_ul"
+                                className="fr"
+                              ></ul>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowQuad">
+                          <select
+                            id="nogaPlanner_addCourse_class_input"
+                            defaultValue="Course classification"
+                          >
+                            <option
+                              disabled="disabled"
+                              value="Course classification"
+                            >
+                              {this.t("courseClassificationPlaceholder")}
+                            </option>
+                            <option disabled="disabled">
+                              {this.t("inClassGroup")}
+                            </option>
+                            <option value="Basic science">
+                              {this.t("basicScience")}
+                            </option>
+                            <option value="Applied science">
+                              {this.t("appliedScience")}
+                            </option>
+                            <option disabled="disabled">
+                              {this.t("outOfClassGroup")}
+                            </option>
+                            <option value="Lab">{this.t("lab")}</option>
+                            <option value="Clinical rotation">
+                              {this.t("clinicalRotation")}
+                            </option>
+                          </select>
+                          <select
+                            id="nogaPlanner_addCourse_status_input"
+                            defaultValue="Course status"
+                          >
+                            <option disabled="disabled" value="Course status">
+                              {this.t("courseStatusPlaceholder")}
+                            </option>
+                            <option value="Unstarted">
+                              {this.t("unstarted")}
+                            </option>
+                            <option value="Ongoing">{this.t("ongoing")}</option>
+                            <option value="Pass">{this.t("pass")}</option>
+                            <option value="Fail">{this.t("fail")}</option>
+                          </select>
+                        </div>
+                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
+                          <div
+                            id="nogaPlanner_addCourse_instructorsNames_div"
+                            className="fr"
+                          >
+                            <div
+                              id="nogaPlanner_addCourse_instructorName_section"
+                              className="fr"
+                            >
+                              <input
+                                id="nogaPlanner_addCourse_instructorName_input"
+                                placeholder={this.t(
+                                  "courseInstructorsPlaceholder",
+                                )}
+                              />
+                              <ul
+                                id="nogaPlanner_addCourse_instructorsNames_ul"
+                                className="fr"
+                              ></ul>
+                            </div>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  ) : null}
+                </div>
                 <div
                   id="nogaPlanner_courses_actions_mount"
                   className="fc nogaPlanner_courses_panel--hidden"
                 ></div>
               </div>
+              {this.state.show_addCourseForm ? (
+                <div className="nogaPlanner_addCourse_examPanelWrapper">
+                  <div id="nogaPlanner_addCourse_examSection" className="fc">
+                    <div id="nogaPlanner_addCourse_exam_div" className="fr">
+                      <section
+                        id="nogaPlanner_addCourse_exam_input_section"
+                        className="fc"
+                      >
+                        <div
+                          id="nogaPlanner_addCourse_exam_input_section_inner"
+                          className="fc"
+                        >
+                          <label
+                            htmlFor="nogaPlanner_addCourse_examDate_day_input"
+                            className="nogaPlanner_addCourse_examFieldLabel"
+                          >
+                            {this.t("examDateLabel")}
+                          </label>
+                          <div
+                            id="nogaPlanner_addCourse_examDate_inputs"
+                            className="fr"
+                          >
+                            <input
+                              id="nogaPlanner_addCourse_examDate_day_input"
+                              placeholder="DD"
+                            />
+                            <input
+                              id="nogaPlanner_addCourse_examDate_month_input"
+                              placeholder="MM"
+                            />
+                            <input
+                              id="nogaPlanner_addCourse_examDate_year_input"
+                              placeholder="YYYY"
+                            />
+                          </div>
+                          <label
+                            htmlFor="nogaPlanner_addCourse_examTime_hour_input"
+                            className="nogaPlanner_addCourse_examFieldLabel"
+                          >
+                            {this.t("examTimeLabel")}
+                          </label>
+                          <div
+                            id="nogaPlanner_addCourse_examTime_inputs"
+                            className="fr"
+                          >
+                            <input
+                              id="nogaPlanner_addCourse_examTime_hour_input"
+                              placeholder="HH"
+                            />
+                            <input
+                              id="nogaPlanner_addCourse_examTime_minute_input"
+                              placeholder="MM"
+                            />
+                          </div>
+                          <label
+                            htmlFor="nogaPlanner_addCourse_examType_input"
+                            className="nogaPlanner_addCourse_examFieldLabel"
+                          >
+                            {this.t("examTypeLabel")}
+                          </label>
+                          <select
+                            id="nogaPlanner_addCourse_examType_input"
+                            defaultValue="Exam type"
+                          >
+                            <option disabled="disabled" value="Exam type">
+                              {this.t("examTypeLabel")}
+                            </option>
+                            <option value="Quiz">{this.t("quiz")}</option>
+                            <option value="Midterm">{this.t("midterm")}</option>
+                            <option value="Final">{this.t("final")}</option>
+                            <option value="Practical">
+                              {this.t("practical")}
+                            </option>
+                            <option value="Oral">{this.t("oral")}</option>
+                          </select>
+                          <label
+                            htmlFor="nogaPlanner_addCourse_grade_input"
+                            className="nogaPlanner_addCourse_examFieldLabel"
+                          >
+                            {this.t("gradesLabel")}
+                          </label>
+                          <div
+                            id="nogaPlanner_addCourse_grade_div"
+                            className="fr"
+                          >
+                            <input
+                              id="nogaPlanner_addCourse_grade_input"
+                              placeholder={this.t("actualGrade")}
+                            />
+                            <input
+                              id="nogaPlanner_addCourse_fullGrade_input"
+                              placeholder={this.t("fullGrade")}
+                            />
+                          </div>
+                        </div>
+                      </section>
+                      <ul
+                        id="nogaPlanner_addCourse_exams_ul"
+                        className="fr"
+                      ></ul>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {}
             </aside>
             <div id="nogaPlanner_musicColumn" className="fc">
@@ -7285,16 +8543,6 @@ export default class NogaPlanner extends Component {
                 id="nogaPlanner_musicColumn_panel"
                 className={`nogaPlanner_stripMonogram${this.state.music_isPlaying ? " nogaPlanner_musicColumn_panel--playing" : ""}`}
               >
-                <button
-                  id="nogaPlanner_musicColumn_ring"
-                  type="button"
-                  aria-label="Open ring video"
-                  title="Open ring video"
-                  onClick={this.openRingVideoOverlay}
-                >
-                  <span id="nogaPlanner_musicColumn_ringBand"></span>
-                  <span id="nogaPlanner_musicColumn_ringStone"></span>
-                </button>
                 <p id="nogaPlanner_musicColumn_title">{this.t("music")}</p>
                 <button
                   id="nogaPlanner_musicColumn_prev"
@@ -7363,32 +8611,138 @@ export default class NogaPlanner extends Component {
                     aria-label="Music volume"
                   />
                 </div>
-                <p
-                  id="nogaPlanner_musicColumn_track"
-                  title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
+                <div
+                  id="nogaPlanner_musicColumn_timerShell"
+                  className="fc"
+                  data-running={
+                    this.state.music_timerIsRunning ? "true" : "false"
+                  }
+                  data-finished={
+                    this.state.music_timerFinished ? "true" : "false"
+                  }
                 >
-                  {this.state.music_isLoading
-                    ? this.t("loadingArchive")
-                    : this.state.music_trackTitle}
-                </p>
+                  <div
+                    id="nogaPlanner_musicColumn_timerDial"
+                    ref={this.musicTimerDialRef}
+                    style={{
+                      "--nogaPlannerTimerProgress": `${
+                        this.state.music_timerTotalSeconds > 0
+                          ? Math.min(
+                              1,
+                              Math.max(
+                                0,
+                                1 -
+                                  this.state.music_timerRemainingSeconds /
+                                    this.state.music_timerTotalSeconds,
+                              ),
+                            )
+                          : 0
+                      }`,
+                      "--nogaPlannerTimerAngle": `${this.getMusicTimerDialAngle()}deg`,
+                    }}
+                    aria-label={this.t("timer")}
+                    role="slider"
+                    tabIndex={this.state.music_timerIsRunning ? -1 : 0}
+                    aria-valuemin={0}
+                    aria-valuemax={999}
+                    aria-valuenow={Math.floor(
+                      Number(this.state.music_timerRemainingSeconds || 0) / 60,
+                    )}
+                    aria-valuetext={this.formatMusicTimerClock(
+                      this.state.music_timerRemainingSeconds,
+                    )}
+                    onPointerDown={this.startMusicTimerDialInteraction}
+                    onWheel={(event) => {
+                      event.preventDefault();
+                      this.nudgeMusicTimerDial(event.deltaY > 0 ? -1 : 1);
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "ArrowRight" ||
+                        event.key === "ArrowUp"
+                      ) {
+                        event.preventDefault();
+                        this.nudgeMusicTimerDial(1);
+                      } else if (
+                        event.key === "ArrowLeft" ||
+                        event.key === "ArrowDown"
+                      ) {
+                        event.preventDefault();
+                        this.nudgeMusicTimerDial(-1);
+                      }
+                    }}
+                  >
+                    <span className="nogaPlanner_musicColumn_timerTick"></span>
+                    <span className="nogaPlanner_musicColumn_timerTick"></span>
+                    <span className="nogaPlanner_musicColumn_timerTick"></span>
+                    <span className="nogaPlanner_musicColumn_timerTick"></span>
+                    <span id="nogaPlanner_musicColumn_timerHand"></span>
+                    <span id="nogaPlanner_musicColumn_timerCenter"></span>
+                  </div>
+                  <div id="nogaPlanner_musicColumn_timerSetReadout" className="fr">
+                    <span className="nogaPlanner_musicColumn_timerSetChip">
+                      <strong>{this.state.music_timerMinutes}</strong>
+                      <span>{this.t("minutesShort")}</span>
+                    </span>
+                    <span className="nogaPlanner_musicColumn_timerSetChip">
+                      <strong>{this.state.music_timerSeconds}</strong>
+                      <span>{this.t("secondsShort")}</span>
+                    </span>
+                  </div>
+                  <div id="nogaPlanner_musicColumn_timerActions" className="fc">
+                    <button
+                      type="button"
+                      className="nogaPlanner_musicColumn_timerButton"
+                      onClick={
+                        this.state.music_timerIsRunning
+                          ? this.stopMusicTimer
+                          : this.startMusicTimer
+                      }
+                      aria-label={
+                        this.state.music_timerIsRunning
+                          ? this.t("pauseTimer")
+                          : this.t("startTimer")
+                      }
+                      title={
+                        this.state.music_timerIsRunning
+                          ? this.t("pauseTimer")
+                          : this.t("startTimer")
+                      }
+                    >
+                      <i
+                        className={
+                          this.state.music_timerIsRunning
+                            ? "fi fi-rr-pause"
+                            : "fi fi-rr-play"
+                        }
+                      ></i>
+                    </button>
+                    <button
+                      type="button"
+                      className="nogaPlanner_musicColumn_timerButton nogaPlanner_musicColumn_timerButton--reset"
+                      onClick={this.resetMusicTimer}
+                      aria-label={this.t("resetTimer")}
+                      title={this.t("resetTimer")}
+                    >
+                      <i className="fi fi-rr-rotate-right"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <audio
-                ref={this.musicAudioRef}
-                crossOrigin="anonymous"
-                onPlay={() => {
-                  this.setState({ music_isPlaying: true });
-                  this.startPlannerMusicReactivePalette();
-                }}
-                onPause={() => {
-                  this.setState({ music_isPlaying: false });
-                  this.stopPlannerMusicReactivePalette();
-                }}
-                onEnded={() => this.playNextPlannerMusicTrack(true)}
-                onError={() => {
-                  this.stopPlannerMusicReactivePalette();
-                  this.playNextPlannerMusicTrack(false);
-                }}
-              />
+              {typeof document !== "undefined" &&
+              document.getElementById("server_answer_noga_track_mount")
+                ? ReactDOM.createPortal(
+                    <p
+                      id="nogaPlanner_musicColumn_track"
+                      title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
+                    >
+                      {this.state.music_isLoading
+                        ? this.t("loadingArchive")
+                        : `${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
+                    </p>,
+                    document.getElementById("server_answer_noga_track_mount"),
+                  )
+                : null}
             </div>
             <section id="nogaPlanner_lectures_section">
               {this.state.lecture_isLoading === true && (
@@ -8638,619 +9992,6 @@ export default class NogaPlanner extends Component {
               Add
             </label>
           </div>
-          {this.state.show_addCourseForm ? (
-            <div id="nogaPlanner_addCourse_div" className="fc">
-              <div
-                id="nogaPlanner_addCourse_closeButton"
-                role="button"
-                tabIndex={0}
-                onClick={this.closeAddCourseForm}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    this.closeAddCourseForm();
-                  }
-                }}
-              >
-                {this.t("close")}
-              </div>
-              <div id="nogaPlanner_addCourse_scrollArea" className="fc">
-                <form id="nogaPlanner_addCourse_form" className="fc">
-                  <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowSplit">
-                    <input
-                      id="nogaPlanner_addCourse_name_input"
-                      placeholder={this.t("courseNamePlaceholder")}
-                    />
-                    <select id="nogaPlanner_addCourse_component_input">
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course component"
-                      >
-                        {this.t("courseComponentPlaceholder")}
-                      </option>
-                      <option value="In-class">{this.t("inClass")}</option>
-                      <option value="Out-of-class">
-                        {this.t("outOfClass")}
-                      </option>
-                    </select>
-                  </div>
-                  <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
-                    <div
-                      id="nogaPlanner_addCourse_dayAndTime_div"
-                      className="fr"
-                    >
-                      <section
-                        id="nogaPlanner_addCourse_dayAndTime_input_section"
-                        className="fc"
-                      >
-                        <div className="fc">
-                          <select id="nogaPlanner_addCourse_day_input">
-                            <option
-                              selected={true}
-                              disabled="disabled"
-                              value="Course day"
-                            >
-                              {this.t("courseDayPlaceholder")}
-                            </option>
-                            <option value="Sunday">{this.t("sunday")}</option>
-                            <option value="Monday">{this.t("monday")}</option>
-                            <option value="Tuesday">{this.t("tuesday")}</option>
-                            <option value="Wednesday">
-                              {this.t("wednesday")}
-                            </option>
-                            <option value="Thursday">
-                              {this.t("thursday")}
-                            </option>
-                            <option value="Friday">{this.t("friday")}</option>
-                            <option value="Saturday">
-                              {this.t("saturday")}
-                            </option>
-                          </select>
-                          <div
-                            id="nogaPlanner_addCourse_time_inputs"
-                            className="fr"
-                          >
-                            <input
-                              placeholder="hh"
-                              id="nogaPlanner_addCourse_time_hour_input"
-                            />
-                            <input
-                              placeholder="mm"
-                              id="nogaPlanner_addCourse_time_minute_input"
-                            />
-                          </div>
-                        </div>
-                      </section>
-                      <ul
-                        id="nogaPlanner_addCourse_dayAndTime_ul"
-                        className="fr"
-                      ></ul>
-                      <div id="nogaPlanner_addCourse_dayAndTime_label">
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            this.addCourseDayAndTime({
-                              day: document.getElementById(
-                                "nogaPlanner_addCourse_day_input",
-                              ).value,
-                              time: buildExamTimeValue({
-                                hour: document.getElementById(
-                                  "nogaPlanner_addCourse_time_hour_input",
-                                ).value,
-                                minute: document.getElementById(
-                                  "nogaPlanner_addCourse_time_minute_input",
-                                ).value,
-                              }),
-                            });
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              this.addCourseDayAndTime({
-                                day: document.getElementById(
-                                  "nogaPlanner_addCourse_day_input",
-                                ).value,
-                                time: buildExamTimeValue({
-                                  hour: document.getElementById(
-                                    "nogaPlanner_addCourse_time_hour_input",
-                                  ).value,
-                                  minute: document.getElementById(
-                                    "nogaPlanner_addCourse_time_minute_input",
-                                  ).value,
-                                }),
-                              });
-                            }
-                          }}
-                        >
-                          {this.t("add")}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowQuad">
-                    <select
-                      class="form-select"
-                      name="year"
-                      id="nogaPlanner_addCourse_year_input"
-                    >
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course year"
-                      >
-                        {this.t("courseYearPlaceholder")}
-                      </option>
-                      <option value="1940">1940</option>
-                      <option value="1941">1941</option>
-                      <option value="1942">1942</option>
-                      <option value="1943">1943</option>
-                      <option value="1944">1944</option>
-                      <option value="1945">1945</option>
-                      <option value="1946">1946</option>
-                      <option value="1947">1947</option>
-                      <option value="1948">1948</option>
-                      <option value="1949">1949</option>
-                      <option value="1950">1950</option>
-                      <option value="1951">1951</option>
-                      <option value="1952">1952</option>
-                      <option value="1953">1953</option>
-                      <option value="1954">1954</option>
-                      <option value="1955">1955</option>
-                      <option value="1956">1956</option>
-                      <option value="1957">1957</option>
-                      <option value="1958">1958</option>
-                      <option value="1959">1959</option>
-                      <option value="1960">1960</option>
-                      <option value="1961">1961</option>
-                      <option value="1962">1962</option>
-                      <option value="1963">1963</option>
-                      <option value="1964">1964</option>
-                      <option value="1965">1965</option>
-                      <option value="1966">1966</option>
-                      <option value="1967">1967</option>
-                      <option value="1968">1968</option>
-                      <option value="1969">1969</option>
-                      <option value="1970">1970</option>
-                      <option value="1971">1971</option>
-                      <option value="1972">1972</option>
-                      <option value="1973">1973</option>
-                      <option value="1974">1974</option>
-                      <option value="1975">1975</option>
-                      <option value="1976">1976</option>
-                      <option value="1977">1977</option>
-                      <option value="1978">1978</option>
-                      <option value="1979">1979</option>
-                      <option value="1980">1980</option>
-                      <option value="1981">1981</option>
-                      <option value="1982">1982</option>
-                      <option value="1983">1983</option>
-                      <option value="1984">1984</option>
-                      <option value="1985">1985</option>
-                      <option value="1986">1986</option>
-                      <option value="1987">1987</option>
-                      <option value="1988">1988</option>
-                      <option value="1989">1989</option>
-                      <option value="1990">1990</option>
-                      <option value="1991">1991</option>
-                      <option value="1992">1992</option>
-                      <option value="1993">1993</option>
-                      <option value="1994">1994</option>
-                      <option value="1995">1995</option>
-                      <option value="1996">1996</option>
-                      <option value="1997">1997</option>
-                      <option value="1998">1998</option>
-                      <option value="1999">1999</option>
-                      <option value="2000">2000</option>
-                      <option value="2001">2001</option>
-                      <option value="2002">2002</option>
-                      <option value="2003">2003</option>
-                      <option value="2004">2004</option>
-                      <option value="2005">2005</option>
-                      <option value="2006">2006</option>
-                      <option value="2007">2007</option>
-                      <option value="2008">2008</option>
-                      <option value="2009">2009</option>
-                      <option value="2010">2010</option>
-                      <option value="2011">2011</option>
-                      <option value="2012">2012</option>
-                      <option value="2013">2013</option>
-                      <option value="2014">2014</option>
-                      <option value="2015">2015</option>
-                      <option value="2016">2016</option>
-                      <option value="2017">2017</option>
-                      <option value="2018">2018</option>
-                      <option value="2019">2019</option>
-                      <option value="2020">2020</option>
-                      <option value="2021">2021</option>
-                      <option value="2022">2022</option>
-                      <option value="2023">2023</option>
-                    </select>
-                    <select name="" id="nogaPlanner_addCourse_term_input">
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course term"
-                      >
-                        {this.t("courseTermPlaceholder")}
-                      </option>
-                      <option value="Fall">{this.t("fall")}</option>
-                      <option value="Winter">{this.t("winter")}</option>
-                      <option value="Summer">{this.t("summer")}</option>
-                    </select>
-                    <select id="nogaPlanner_addCourse_class_input">
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course classification"
-                      >
-                        {this.t("courseClassificationPlaceholder")}
-                      </option>
-                      <option disabled="disabled">
-                        {this.t("inClassGroup")}
-                      </option>
-                      <option value="Basic science">
-                        {this.t("basicScience")}
-                      </option>
-                      <option value="Applied science">
-                        {this.t("appliedScience")}
-                      </option>
-                      <option disabled="disabled">
-                        {this.t("outOfClassGroup")}
-                      </option>
-                      <option value="Lab">{this.t("lab")}</option>
-                      <option value="Clinical rotation">
-                        {this.t("clinicalRotation")}
-                      </option>
-                    </select>
-                    <select name="" id="nogaPlanner_addCourse_status_input">
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course status"
-                      >
-                        {this.t("courseStatusPlaceholder")}
-                      </option>
-                      <option value="Unstarted">{this.t("unstarted")}</option>
-                      <option value="Ongoing">{this.t("ongoing")}</option>
-                      <option value="Pass">{this.t("pass")}</option>
-                      <option value="Fail">{this.t("fail")}</option>
-                    </select>
-                  </div>
-                  <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
-                    <div
-                      id="nogaPlanner_addCourse_instructorsNames_div"
-                      className="fr"
-                    >
-                      <div
-                        id="nogaPlanner_addCourse_instructorName_section"
-                        className="fr"
-                      >
-                        <input
-                          id="nogaPlanner_addCourse_instructorName_input"
-                          placeholder={this.t("courseInstructorsPlaceholder")}
-                        />
-                        <ul
-                          id="nogaPlanner_addCourse_instructorsNames_ul"
-                          className="fr"
-                        ></ul>
-                      </div>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          this.addCourseInstructorsNames();
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            this.addCourseInstructorsNames();
-                          }
-                        }}
-                      >
-                        {this.t("add")}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide nogaPlanner_addCourse_rowMeta">
-                    <div id="nogaPlanner_addCourse_examSection" className="fc">
-                      <div id="nogaPlanner_addCourse_exam_div" className="fr">
-                        <section
-                          id="nogaPlanner_addCourse_exam_input_section"
-                          className="fc"
-                        >
-                          <div
-                            id="nogaPlanner_addCourse_exam_input_section_inner"
-                            className="fc"
-                          >
-                            <label
-                              htmlFor="nogaPlanner_addCourse_examDate_day_input"
-                              className="nogaPlanner_addCourse_examFieldLabel"
-                            >
-                              {this.t("examDateLabel")}
-                            </label>
-                            <div
-                              id="nogaPlanner_addCourse_examDate_inputs"
-                              className="fr"
-                            >
-                              <input
-                                placeholder="DD"
-                                id="nogaPlanner_addCourse_examDate_day_input"
-                              />
-                              <input
-                                placeholder="MM"
-                                id="nogaPlanner_addCourse_examDate_month_input"
-                              />
-                              <input
-                                placeholder="YYYY"
-                                id="nogaPlanner_addCourse_examDate_year_input"
-                              />
-                            </div>
-                            <label
-                              htmlFor="nogaPlanner_addCourse_examTime_hour_input"
-                              className="nogaPlanner_addCourse_examFieldLabel"
-                            >
-                              {this.t("examTimeLabel")}
-                            </label>
-                            <div
-                              id="nogaPlanner_addCourse_examTime_inputs"
-                              className="fr"
-                            >
-                              <input
-                                placeholder="hh"
-                                id="nogaPlanner_addCourse_examTime_hour_input"
-                              />
-                              <input
-                                placeholder="mm"
-                                id="nogaPlanner_addCourse_examTime_minute_input"
-                              />
-                            </div>
-                            <label
-                              htmlFor="nogaPlanner_addCourse_examType_input"
-                              className="nogaPlanner_addCourse_examFieldLabel"
-                            >
-                              {this.t("examTypeLabel")}
-                            </label>
-                            <select id="nogaPlanner_addCourse_examType_input">
-                              <option
-                                selected={true}
-                                disabled="disabled"
-                                value="Exam type"
-                              >
-                                {this.t("examTypeLabel")}
-                              </option>
-                              <option value="Quiz">{this.t("quiz")}</option>
-                              <option value="Midterm">
-                                {this.t("midterm")}
-                              </option>
-                              <option value="Final">{this.t("final")}</option>
-                              <option value="Practical">
-                                {this.t("practical")}
-                              </option>
-                              <option value="Oral">{this.t("oral")}</option>
-                            </select>
-                            <label
-                              htmlFor="nogaPlanner_addCourse_grade_input"
-                              className="nogaPlanner_addCourse_examFieldLabel"
-                            >
-                              {this.t("gradesLabel")}
-                            </label>
-                            <div
-                              id="nogaPlanner_addCourse_grade_div"
-                              className="fr"
-                            >
-                              <input
-                                placeholder={this.t("actualGrade")}
-                                id="nogaPlanner_addCourse_grade_input"
-                              />
-                              <input
-                                placeholder={this.t("fullGrade")}
-                                id="nogaPlanner_addCourse_fullGrade_input"
-                              />
-                            </div>
-                          </div>
-                        </section>
-                        <ul
-                          id="nogaPlanner_addCourse_exams_ul"
-                          className="fr"
-                        ></ul>
-                        <div id="nogaPlanner_addCourse_exam_label">
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              this.addCourseExam();
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                this.addCourseExam();
-                              }
-                            }}
-                          >
-                            {this.t("add")}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div
-                id="nogaPlanner_addCourse_addButton_label"
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  let buttonName = document.getElementById(
-                    "nogaPlanner_addCourse_addButton_label",
-                  ).textContent;
-                  let course_name = document.getElementById(
-                    "nogaPlanner_addCourse_name_input",
-                  ).value;
-                  let course_component = document.getElementById(
-                    "nogaPlanner_addCourse_component_input",
-                  ).value;
-                  let course_year = document.getElementById(
-                    "nogaPlanner_addCourse_year_input",
-                  ).value;
-                  let course_term = document.getElementById(
-                    "nogaPlanner_addCourse_term_input",
-                  ).value;
-                  let course_class = document.getElementById(
-                    "nogaPlanner_addCourse_class_input",
-                  ).value;
-                  let course_status = document.getElementById(
-                    "nogaPlanner_addCourse_status_input",
-                  ).value;
-                  let course_grade = document.getElementById(
-                    "nogaPlanner_addCourse_grade_input",
-                  ).value;
-                  let course_fullGrade = document.getElementById(
-                    "nogaPlanner_addCourse_fullGrade_input",
-                  ).value;
-                  let exam_date = buildExamDateValue({
-                    day: document.getElementById(
-                      "nogaPlanner_addCourse_examDate_day_input",
-                    ).value,
-                    month: document.getElementById(
-                      "nogaPlanner_addCourse_examDate_month_input",
-                    ).value,
-                    year: document.getElementById(
-                      "nogaPlanner_addCourse_examDate_year_input",
-                    ).value,
-                  });
-                  let exam_time = buildExamTimeValue({
-                    hour: document.getElementById(
-                      "nogaPlanner_addCourse_examTime_hour_input",
-                    ).value,
-                    minute: document.getElementById(
-                      "nogaPlanner_addCourse_examTime_minute_input",
-                    ).value,
-                  });
-                  if (this.isActionLabel(buttonName, "Add")) {
-                    this.addCourse({
-                      course_name: course_name + " (" + course_component + ")",
-                      course_component: course_component,
-                      course_year: course_year,
-                      course_term: course_term,
-                      course_class: course_class,
-                      course_status: course_status,
-                      course_grade: course_grade,
-                      course_fullGrade: course_fullGrade,
-                      course_length: 0,
-                      course_progress: 0,
-                      exam_date: exam_date,
-                      exam_time: exam_time,
-                    });
-                  }
-                  if (this.isActionLabel(buttonName, "Edit")) {
-                    this.editCourse({
-                      course_name: course_name + " (" + course_component + ")",
-                      course_component: course_component,
-                      course_year: course_year,
-                      course_term: course_term,
-                      course_class: course_class,
-                      course_status: course_status,
-                      course_grade: course_grade,
-                      course_fullGrade: course_fullGrade,
-                      course_length: 0,
-                      course_progress: 0,
-                      exam_date: exam_date,
-                      exam_time: exam_time,
-                    });
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    let buttonName = document.getElementById(
-                      "nogaPlanner_addCourse_addButton_label",
-                    ).textContent;
-                    let course_name = document.getElementById(
-                      "nogaPlanner_addCourse_name_input",
-                    ).value;
-                    let course_component = document.getElementById(
-                      "nogaPlanner_addCourse_component_input",
-                    ).value;
-                    let course_year = document.getElementById(
-                      "nogaPlanner_addCourse_year_input",
-                    ).value;
-                    let course_term = document.getElementById(
-                      "nogaPlanner_addCourse_term_input",
-                    ).value;
-                    let course_class = document.getElementById(
-                      "nogaPlanner_addCourse_class_input",
-                    ).value;
-                    let course_status = document.getElementById(
-                      "nogaPlanner_addCourse_status_input",
-                    ).value;
-                    let course_grade = document.getElementById(
-                      "nogaPlanner_addCourse_grade_input",
-                    ).value;
-                    let course_fullGrade = document.getElementById(
-                      "nogaPlanner_addCourse_fullGrade_input",
-                    ).value;
-                    let exam_type = document.getElementById(
-                      "nogaPlanner_addCourse_examType_input",
-                    ).value;
-                    let exam_date = buildExamDateValue({
-                      day: document.getElementById(
-                        "nogaPlanner_addCourse_examDate_day_input",
-                      ).value,
-                      month: document.getElementById(
-                        "nogaPlanner_addCourse_examDate_month_input",
-                      ).value,
-                      year: document.getElementById(
-                        "nogaPlanner_addCourse_examDate_year_input",
-                      ).value,
-                    });
-                    let exam_time = buildExamTimeValue({
-                      hour: document.getElementById(
-                        "nogaPlanner_addCourse_examTime_hour_input",
-                      ).value,
-                      minute: document.getElementById(
-                        "nogaPlanner_addCourse_examTime_minute_input",
-                      ).value,
-                    });
-                    if (this.isActionLabel(buttonName, "Add")) {
-                      this.addCourse({
-                        course_name:
-                          course_name + " (" + course_component + ")",
-                        course_component: course_component,
-                        course_year: course_year,
-                        course_term: course_term,
-                        course_class: course_class,
-                        course_status: course_status,
-                        course_grade: course_grade,
-                        course_fullGrade: course_fullGrade,
-                        course_length: 0,
-                        course_progress: 0,
-                        exam_type: exam_type,
-                        exam_date: exam_date,
-                        exam_time: exam_time,
-                      });
-                    }
-                    if (this.isActionLabel(buttonName, "Edit")) {
-                      this.editCourse({
-                        course_name:
-                          course_name + " (" + course_component + ")",
-                        course_component: course_component,
-                        course_year: course_year,
-                        course_term: course_term,
-                        course_class: course_class,
-                        course_status: course_status,
-                        course_grade: course_grade,
-                        course_fullGrade: course_fullGrade,
-                        course_length: 0,
-                        course_progress: 0,
-                        exam_type: exam_type,
-                        exam_date: exam_date,
-                        exam_time: exam_time,
-                      });
-                    }
-                  }
-                }}
-              >
-                {this.t("add")}
-              </div>
-            </div>
-          ) : null}
         </article>
         <PdfReaderModal
           isOpen={this.state.telegram_pdfViewerOpen}
