@@ -1,5 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import { apiUrl } from "../../../../config/api";
 import {
   attachStreamToElement,
@@ -8,46 +9,20 @@ import {
   stopMediaStream,
 } from "../../../../realtime/webrtcCall";
 
-const CHAT_EMOJIS = [
-  "😀",
-  "😂",
-  "😊",
-  "😍",
-  "🤔",
-  "👍",
-  "👏",
-  "🙏",
-  "🔥",
-  "🎉",
-  "💙",
-  "💯",
-  "😎",
-  "😅",
-  "😭",
-  "🤝",
-];
-
-CHAT_EMOJIS.push("🫂", "❤️");
-
-const resetChatTextareaHeight = (textarea) => {
-  if (!textarea) {
-    return;
-  }
-
-  textarea.style.height = "42px";
-};
-
-const resizeChatTextarea = (textarea) => {
-  if (!textarea) {
-    return;
-  }
-
-  resetChatTextareaHeight(textarea);
-  textarea.style.height = `${Math.max(textarea.scrollHeight, 42)}px`;
-};
-
 const keepTextareaFocus = (event) => {
   event.preventDefault();
+};
+
+const clampValue = (value, min, max) => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  if (min > max) {
+    return min;
+  }
+
+  return Math.min(Math.max(value, min), max);
 };
 
 const formatChatTimestamp = (rawValue, fallbackTimestamp) => {
@@ -91,11 +66,15 @@ const FriendChat = ({
   const remoteAudioRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
   const remoteVideoRef = React.useRef(null);
+  const videoStageRef = React.useRef(null);
+  const videoOverlayDragRef = React.useRef(null);
   const peerConnectionRef = React.useRef(null);
   const localStreamRef = React.useRef(null);
   const remoteStreamRef = React.useRef(null);
   const rtcConfigRef = React.useRef(null);
   const queuedIceCandidatesRef = React.useRef([]);
+  const typingDebounceTimeoutRef = React.useRef(null);
+  const lastTypingStateRef = React.useRef(false);
   const activeCallPartnerRef = React.useRef("");
   const [callState, setCallState] = React.useState("idle");
   const [callMode, setCallMode] = React.useState("");
@@ -105,6 +84,12 @@ const FriendChat = ({
   const [localStreamVersion, setLocalStreamVersion] = React.useState(0);
   const [isAudioMuted, setIsAudioMuted] = React.useState(false);
   const [isVideoMuted, setIsVideoMuted] = React.useState(false);
+  const [videoOverlayPosition, setVideoOverlayPosition] = React.useState({
+    x: 18,
+    y: 18,
+  });
+  const [videoOverlayScale, setVideoOverlayScale] = React.useState(1);
+  const emojiPickerTheme = Theme.AUTO;
 
   const normalizedRemoteMessages = React.useMemo(() => {
     const activeFriendId = String(state?.activeChatFriendId || "").trim();
@@ -163,6 +148,38 @@ const FriendChat = ({
     });
   }, []);
 
+  const clampVideoOverlayPosition = React.useCallback((nextPosition, scale) => {
+    const stageElement = videoStageRef.current;
+
+    if (!stageElement) {
+      return {
+        x: Math.max(0, Number(nextPosition?.x) || 0),
+        y: Math.max(0, Number(nextPosition?.y) || 0),
+      };
+    }
+
+    const stageWidth = stageElement.clientWidth || 0;
+    const stageHeight = stageElement.clientHeight || 0;
+    const panelWidth = 320 * scale;
+    const panelHeight = 228 * scale;
+
+    return {
+      x: clampValue(Number(nextPosition?.x) || 0, 0, Math.max(stageWidth - panelWidth, 0)),
+      y: clampValue(Number(nextPosition?.y) || 0, 0, Math.max(stageHeight - panelHeight, 0)),
+    };
+  }, []);
+
+  const setVideoOverlayScaleClamped = React.useCallback(
+    (nextScale) => {
+      const normalizedScale = clampValue(nextScale, 0.72, 1.45);
+      setVideoOverlayScale(normalizedScale);
+      setVideoOverlayPosition((currentPosition) =>
+        clampVideoOverlayPosition(currentPosition, normalizedScale),
+      );
+    },
+    [clampVideoOverlayPosition],
+  );
+
   const releasePeerConnection = React.useCallback(() => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.onicecandidate = null;
@@ -204,6 +221,8 @@ const FriendChat = ({
         setIncomingCall(null);
       }
       setCallError(keepError ? nextError : "");
+      setVideoOverlayScale(1);
+      setVideoOverlayPosition({ x: 18, y: 18 });
     },
     [releasePeerConnection, resetCallMedia],
   );
@@ -367,6 +386,14 @@ const FriendChat = ({
 
   React.useEffect(() => {
     return () => {
+      if (typingDebounceTimeoutRef.current) {
+        window.clearTimeout(typingDebounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
       teardownCall();
     };
   }, [teardownCall]);
@@ -509,10 +536,6 @@ const FriendChat = ({
   const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   const handleSend = () => {
-    if (state?.isSendingMessage) {
-      return;
-    }
-
     const textarea = textareaRef.current;
     const message = textarea ? textarea.value : "";
     if (!message.trim()) return;
@@ -541,10 +564,13 @@ const FriendChat = ({
     }
 
     setIsEmojiPickerOpen(false);
+    if (state?.activeChatFriendId && updateMyTypingPresence) {
+      lastTypingStateRef.current = false;
+      updateMyTypingPresence(state.activeChatFriendId, false);
+    }
     if (textarea) {
       textarea.value = "";
       textarea.focus();
-      resetChatTextareaHeight(textarea);
     }
   };
 
@@ -568,17 +594,43 @@ const FriendChat = ({
     ...localMessages.filter((msg) => msg.pending),
   ];
 
+  const setTypingPresence = React.useCallback(
+    (nextIsTyping, { immediate = false } = {}) => {
+      if (!state?.activeChatFriendId || !updateMyTypingPresence) {
+        return;
+      }
+
+      const normalizedValue = Boolean(nextIsTyping);
+
+      if (typingDebounceTimeoutRef.current) {
+        window.clearTimeout(typingDebounceTimeoutRef.current);
+        typingDebounceTimeoutRef.current = null;
+      }
+
+      if (lastTypingStateRef.current === normalizedValue && !immediate) {
+        return;
+      }
+
+      const emitTypingPresence = () => {
+        lastTypingStateRef.current = normalizedValue;
+        updateMyTypingPresence(state.activeChatFriendId, normalizedValue);
+      };
+
+      if (immediate) {
+        emitTypingPresence();
+        return;
+      }
+
+      typingDebounceTimeoutRef.current = window.setTimeout(
+        emitTypingPresence,
+        normalizedValue ? 120 : 80,
+      );
+    },
+    [state?.activeChatFriendId, updateMyTypingPresence],
+  );
+
   const handleTypingChange = (event) => {
-    resizeChatTextarea(event.target);
-
-    if (!state?.activeChatFriendId || !updateMyTypingPresence) {
-      return;
-    }
-
-    updateMyTypingPresence(
-      state.activeChatFriendId,
-      Boolean(event.target.value.trim()),
-    );
+    setTypingPresence(Boolean(event.target.value.trim()));
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -599,33 +651,18 @@ const FriendChat = ({
     const nextCursorPosition = selectionStart + emoji.length;
     textarea.selectionStart = nextCursorPosition;
     textarea.selectionEnd = nextCursorPosition;
-    resizeChatTextarea(textarea);
     textarea.focus();
 
-    if (state?.activeChatFriendId && updateMyTypingPresence) {
-      updateMyTypingPresence(
-        state.activeChatFriendId,
-        Boolean(nextValue.trim()),
-      );
-    }
+    setTypingPresence(Boolean(nextValue.trim()));
   };
 
   const handleTextareaFocus = () => {
-    if (!state?.activeChatFriendId || !updateMyTypingPresence) {
-      return;
-    }
-
-    updateMyTypingPresence(state.activeChatFriendId, true);
+    const textarea = textareaRef.current;
+    setTypingPresence(Boolean(textarea?.value.trim()), { immediate: true });
   };
 
   const handleTextareaBlur = (event) => {
-    resetChatTextareaHeight(event.target);
-
-    if (!state?.activeChatFriendId || !updateMyTypingPresence) {
-      return;
-    }
-
-    updateMyTypingPresence(state.activeChatFriendId, false);
+    setTypingPresence(false, { immediate: true });
   };
 
   const handleStartCall = async (nextCallMode) => {
@@ -783,6 +820,71 @@ const FriendChat = ({
     teardownCall();
   };
 
+  React.useEffect(() => {
+    if (callMode !== "video") {
+      videoOverlayDragRef.current = null;
+      setVideoOverlayScale(1);
+      setVideoOverlayPosition({ x: 18, y: 18 });
+      return undefined;
+    }
+
+    setVideoOverlayPosition((currentPosition) =>
+      clampVideoOverlayPosition(currentPosition, videoOverlayScale),
+    );
+
+    return undefined;
+  }, [callMode, clampVideoOverlayPosition, videoOverlayScale]);
+
+  React.useEffect(() => {
+    const handlePointerMove = (event) => {
+      const dragState = videoOverlayDragRef.current;
+
+      if (!dragState) {
+        return;
+      }
+
+      const nextPosition = clampVideoOverlayPosition(
+        {
+          x: dragState.originX + (event.clientX - dragState.pointerStartX),
+          y: dragState.originY + (event.clientY - dragState.pointerStartY),
+        },
+        videoOverlayScale,
+      );
+
+      setVideoOverlayPosition(nextPosition);
+    };
+
+    const handlePointerUp = () => {
+      videoOverlayDragRef.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [clampVideoOverlayPosition, videoOverlayScale]);
+
+  const handleVideoOverlayDragStart = React.useCallback(
+    (event) => {
+      if (callMode !== "video") {
+        return;
+      }
+
+      videoOverlayDragRef.current = {
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: videoOverlayPosition.x,
+        originY: videoOverlayPosition.y,
+      };
+    },
+    [callMode, videoOverlayPosition.x, videoOverlayPosition.y],
+  );
+
   const handleToggleMute = () => {
     const localStream = localStreamRef.current;
 
@@ -866,10 +968,13 @@ const FriendChat = ({
                 </h1>
                 {hasActiveChat && (
                   <p id="Chat_title_status">
-                    {friendIsTyping
-                      ? chatContent?.typingLabel || "typing..."
-                      : friendIsChatting
-                        ? chatContent?.onlineLabel || "online"
+                    {friendIsChatting
+                      ? "In Chat"
+                      : state?.friends?.find?.(
+                            (friend) =>
+                              String(friend?._id || "").trim() === activeFriendId,
+                          )?.status?.isConnected
+                        ? "Online"
                         : chatContent?.offlineLabel || "offline"}
                     </p>
                 )}
@@ -974,38 +1079,88 @@ const FriendChat = ({
                                 : "Ready"}
                     </span>
                   </div>
-                  <div className="Chat_mediaStage fr">
-                    <div className="Chat_mediaTile Chat_mediaTile--remote">
-                      {callMode === "video" ? (
-                        <video
-                          id="Chat_remoteVideo"
-                          ref={remoteVideoRef}
-                          autoPlay
-                          playsInline
-                        />
-                      ) : (
-                        <div className="Chat_audioPlaceholder">
-                          <i className="fas fa-user-md"></i>
-                          <span>Remote audio</span>
+                  <div
+                    ref={videoStageRef}
+                    className={`Chat_mediaStage${callMode === "video" ? " Chat_mediaStage--floating" : " fr"}`}
+                  >
+                    {callMode === "video" ? (
+                      <div
+                        className="Chat_videoOverlay fc"
+                        style={{
+                          left: `${videoOverlayPosition.x}px`,
+                          top: `${videoOverlayPosition.y}px`,
+                          transform: `scale(${videoOverlayScale})`,
+                        }}
+                      >
+                        <div
+                          className="Chat_videoOverlayHeader fr"
+                          onPointerDown={handleVideoOverlayDragStart}
+                        >
+                          <span className="Chat_videoOverlayHandle">
+                            <i className="fas fa-arrows-alt"></i>
+                            <span>Move video</span>
+                          </span>
+                          <div className="Chat_videoOverlayScaleControls fr">
+                            <button
+                              type="button"
+                              className="Chat_videoOverlayScaleButton"
+                              onClick={() =>
+                                setVideoOverlayScaleClamped(videoOverlayScale - 0.12)
+                              }
+                              aria-label="Shrink video"
+                              title="Shrink video"
+                            >
+                              <i className="fas fa-search-minus"></i>
+                            </button>
+                            <button
+                              type="button"
+                              className="Chat_videoOverlayScaleButton"
+                              onClick={() =>
+                                setVideoOverlayScaleClamped(videoOverlayScale + 0.12)
+                              }
+                              aria-label="Enlarge video"
+                              title="Enlarge video"
+                            >
+                              <i className="fas fa-search-plus"></i>
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div className="Chat_mediaTile Chat_mediaTile--local">
-                      {callMode === "video" ? (
-                        <video
-                          id="Chat_localVideo"
-                          ref={localVideoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                        />
-                      ) : (
-                        <div className="Chat_audioPlaceholder">
-                          <i className="fas fa-microphone"></i>
-                          <span>Local audio</span>
+                        <div className="Chat_videoOverlayBody">
+                          <div className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote">
+                            <video
+                              id="Chat_remoteVideo"
+                              ref={remoteVideoRef}
+                              autoPlay
+                              playsInline
+                            />
+                          </div>
+                          <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
+                            <video
+                              id="Chat_localVideo"
+                              ref={localVideoRef}
+                              autoPlay
+                              playsInline
+                              muted
+                            />
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="Chat_mediaTile Chat_mediaTile--remote">
+                          <div className="Chat_audioPlaceholder">
+                            <i className="fas fa-user-md"></i>
+                            <span>Remote audio</span>
+                          </div>
+                        </div>
+                        <div className="Chat_mediaTile Chat_mediaTile--local">
+                          <div className="Chat_audioPlaceholder">
+                            <i className="fas fa-microphone"></i>
+                            <span>Local audio</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="Chat_callControls fr">
                     <button
@@ -1078,8 +1233,26 @@ const FriendChat = ({
                   ))
                 )}
               </ul>
+              {isEmojiPickerOpen ? (
+                <div id="Chat_emoji_picker" className="fc" ref={emojiPickerRef}>
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => {
+                      handleEmojiSelect(emojiData.emoji);
+                    }}
+                    theme={emojiPickerTheme}
+                    emojiStyle={EmojiStyle.APPLE}
+                    lazyLoadEmojis
+                    autoFocusSearch={false}
+                    previewConfig={{ showPreview: false }}
+                    width={272}
+                    height={320}
+                    searchPlaceholder="Search emoji"
+                    className="Chat_modernEmojiPicker"
+                  />
+                </div>
+              ) : null}
               <section id="Chat_form" className="fr">
-                <div id="Chat_emoji_picker_wrap" ref={emojiPickerRef}>
+                <div id="Chat_emoji_picker_wrap">
                   <button
                     id="Chat_emoji_button"
                     type="button"
@@ -1097,27 +1270,9 @@ const FriendChat = ({
                     }}
                   >
                     <span role="img" aria-hidden="true">
-                      🙂
+                      ??
                     </span>
                   </button>
-                  {isEmojiPickerOpen ? (
-                    <div id="Chat_emoji_picker" className="fc">
-                      {CHAT_EMOJIS.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          className="Chat_emoji_option"
-                          onMouseDown={keepTextareaFocus}
-                          onTouchStart={keepTextareaFocus}
-                          onClick={() => {
-                            handleEmojiSelect(emoji);
-                          }}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
                 <textarea
                   id="Chat_textarea_input"
@@ -1129,9 +1284,6 @@ const FriendChat = ({
                   onFocus={handleTextareaFocus}
                   onBlur={handleTextareaBlur}
                   onChange={handleTypingChange}
-                  onInput={(event) => {
-                    resizeChatTextarea(event.target);
-                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
@@ -1142,7 +1294,6 @@ const FriendChat = ({
                 <button
                   id="Chat_submit_button"
                   type="button"
-                  disabled={Boolean(state?.isSendingMessage)}
                   onMouseDown={keepTextareaFocus}
                   onTouchStart={keepTextareaFocus}
                   onClick={handleSend}

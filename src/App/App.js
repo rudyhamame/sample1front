@@ -1425,17 +1425,16 @@ class App extends React.Component {
     if (textarea) {
       textarea.style.height = "42px";
     }
-    if (this.state.isSendingMessage) {
-      return Promise.resolve(false);
-    }
     if (!this.state.friendID_selected) {
       this.serverReply("Select a doctor from your friends list first");
       return Promise.resolve(false);
     }
     if (normalizedMessage.trim() !== "") {
+      const selectedFriendId = this.state.friendID_selected;
+      const optimisticTimestamp = new Date().toISOString();
       let url =
         apiUrl("/api/chat/sendMessage/") +
-        this.state.friendID_selected +
+        selectedFriendId +
         "/" +
         this.state.my_id;
       let options = {
@@ -1461,7 +1460,18 @@ class App extends React.Component {
               textarea.style.height = "42px";
               textarea.focus();
             }
-            this.updateMyTypingPresence(this.state.friendID_selected, false);
+            this.setState((prevState) => ({
+              chat: [
+                ...(Array.isArray(prevState.chat) ? prevState.chat : []),
+                {
+                  _id: selectedFriendId,
+                  from: "me",
+                  message: normalizedMessage,
+                  date: optimisticTimestamp,
+                },
+              ],
+            }));
+            this.updateMyTypingPresence(selectedFriendId, false);
             return true;
           } else {
             this.serverReply("Unable to send message");

@@ -1559,9 +1559,6 @@ function Home(props) {
     (friend) => {
       const friendId = String(friend?.chatId || "").trim();
       const isConnected = Boolean(friend?.isConnected);
-      const isTyping = friendId
-        ? Boolean(props.state?.friendTypingPresence?.[friendId])
-        : false;
       const isAvailableInChat = friendId
         ? Boolean(props.state?.friendChatPresence?.[friendId])
         : false;
@@ -1574,29 +1571,21 @@ function Home(props) {
         };
       }
 
-      if (isTyping) {
-        return {
-          iconClass: "fa-keyboard",
-          label: "Typing",
-          modifierClass: "Home_socialFriendStatus--typing",
-        };
-      }
-
       if (isAvailableInChat) {
         return {
           iconClass: "fa-comments",
-          label: "Online",
+          label: "In Chat",
           modifierClass: "Home_socialFriendStatus--online",
         };
       }
 
       return {
         iconClass: "fa-signal",
-        label: "Connected",
+        label: "Online",
         modifierClass: "Home_socialFriendStatus--connected",
       };
     },
-    [props.state?.friendChatPresence, props.state?.friendTypingPresence],
+    [props.state?.friendChatPresence],
   );
 
   const handleToggleInlineFriendChat = React.useCallback(
