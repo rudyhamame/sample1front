@@ -1743,12 +1743,15 @@
 #PhenomedSocial_article .Chat_inlineCallActions {
   justify-content: flex-end;
   margin-bottom: 8px;
-  padding: 6px 8px;
-  border-radius: 14px;
-  border: 1px solid rgba(124, 157, 165, 0.16);
-  background: linear-gradient(180deg, rgba(252, 255, 255, 0.92), rgba(236, 246, 244, 0.94));
+  padding: 7px 9px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background:
+    linear-gradient(180deg, rgba(252, 255, 255, 0.95), rgba(236, 246, 244, 0.96)),
+    rgba(255, 255, 255, 0.7);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(124, 157, 165, 0.06),
     0 8px 18px rgba(94, 124, 133, 0.08);
   gap: 6px;
   margin-inline-start: 0;
@@ -1758,43 +1761,108 @@
 }
 
 #PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton {
-  min-width: 36px;
-  width: 36px;
-  min-height: 36px;
-  height: 36px;
+  position: relative;
+  min-width: 38px;
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
   padding: 0;
   border-radius: 12px;
-  border-color: rgba(20, 105, 99, 0.14);
-  background: linear-gradient(135deg, rgba(29, 125, 117, 0.96), rgba(20, 105, 99, 0.9));
+  border-color: rgba(20, 105, 99, 0.16);
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.22), transparent 38%),
+    linear-gradient(135deg, rgba(29, 125, 117, 0.96), rgba(20, 105, 99, 0.9));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 8px 14px rgba(20, 105, 99, 0.14);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    filter 160ms ease,
+    background 160ms ease;
 }
 
 #PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton i {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
+  color: rgba(247, 251, 252, 0.98);
+  text-shadow: 0 1px 2px rgba(5, 24, 28, 0.24);
 }
 
 #PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: saturate(1.08) brightness(1.02);
+  filter: saturate(1.1) brightness(1.03);
+  border-color: rgba(20, 105, 99, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 12px 18px rgba(20, 105, 99, 0.18);
+}
+
+#PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton:active:not(:disabled) {
+  transform: translateY(0);
+  filter: saturate(0.98) brightness(0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 5px 10px rgba(20, 105, 99, 0.16);
+}
+
+#PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton:disabled {
+  opacity: 0.5;
+  filter: grayscale(0.12) saturate(0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 10px rgba(94, 124, 133, 0.1);
+}
+
+#PhenomedSocial_article .Chat_inlineCallActions .Chat_callButton:disabled i {
+  color: rgba(233, 242, 243, 0.84);
+  text-shadow: none;
 }
 
 #PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions {
-  border-color: rgba(110, 168, 180, 0.14);
-  background: linear-gradient(180deg, rgba(10, 28, 33, 0.96), rgba(13, 36, 42, 0.94));
+  border-color: rgba(110, 168, 180, 0.16);
+  background:
+    linear-gradient(180deg, rgba(10, 28, 33, 0.98), rgba(13, 36, 42, 0.96)),
+    rgba(7, 21, 26, 0.76);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),
     0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 #PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions .Chat_callButton {
   border-color: rgba(110, 168, 180, 0.18);
-  background: linear-gradient(135deg, rgba(24, 92, 96, 0.98), rgba(18, 70, 74, 0.98));
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.08), transparent 36%),
+    linear-gradient(135deg, rgba(24, 92, 96, 0.98), rgba(18, 70, 74, 0.98));
   color: rgba(235, 245, 247, 0.96);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions .Chat_callButton i {
+  color: rgba(241, 248, 249, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled) {
+  border-color: rgba(122, 213, 216, 0.26);
+  filter: saturate(1.1) brightness(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 18px rgba(0, 0, 0, 0.26);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions .Chat_callButton:active:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+#PhenomedSocial_article.PhenomedSocial_themeDark .Chat_inlineCallActions .Chat_callButton:disabled {
+  opacity: 0.46;
+  filter: saturate(0.65) brightness(0.84);
 }
 
 #PhenomedSocial_article #Chat_incomingCallBanner,
