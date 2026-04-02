@@ -85,6 +85,8 @@ const FriendChat = ({
   const emojiPickerRef = React.useRef(null);
   const textareaRef = React.useRef(null);
   const [localMessages, setLocalMessages] = React.useState([]);
+  const localAudioRef = React.useRef(null);
+  const remoteAudioRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
   const remoteVideoRef = React.useRef(null);
   const peerConnectionRef = React.useRef(null);
@@ -145,6 +147,12 @@ const FriendChat = ({
     "Doctor";
 
   const syncMediaElements = React.useCallback(() => {
+    attachStreamToElement(localAudioRef.current, localStreamRef.current, {
+      muted: true,
+    });
+    attachStreamToElement(remoteAudioRef.current, remoteStreamRef.current, {
+      muted: false,
+    });
     attachStreamToElement(localVideoRef.current, localStreamRef.current, {
       muted: true,
     });
@@ -868,6 +876,19 @@ const FriendChat = ({
           )}
           {isChatting ? (
             <React.Fragment>
+              <audio
+                id="Chat_remoteAudio"
+                ref={remoteAudioRef}
+                autoPlay
+                playsInline
+              />
+              <audio
+                id="Chat_localAudio"
+                ref={localAudioRef}
+                autoPlay
+                playsInline
+                muted
+              />
               {hideTitleContainer && hasActiveChat ? (
                 <div className="Chat_inlineCallActions fr">
                   <button
