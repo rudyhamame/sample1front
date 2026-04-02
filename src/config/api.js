@@ -1,8 +1,16 @@
-const DEV_API_BASE_URL =
-  typeof window !== "undefined" &&
-  ["localhost", "127.0.0.1"].includes(window.location.hostname)
-    ? "http://localhost:4000"
-    : "http://10.38.149.72:4000";
+const DEV_API_BASE_URL = (() => {
+  if (typeof window === "undefined") {
+    return "http://localhost:4000";
+  }
+
+  const currentHostname = String(window.location.hostname || "").trim();
+
+  if (["localhost", "127.0.0.1"].includes(currentHostname)) {
+    return "http://localhost:4000";
+  }
+
+  return `http://${currentHostname}:4000`;
+})();
 
 const DEFAULT_API_BASE_URL = import.meta.env.DEV
   ? DEV_API_BASE_URL
