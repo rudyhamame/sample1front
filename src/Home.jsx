@@ -219,6 +219,7 @@ function Home(props) {
   const homeBackgroundStyle = undefined;
   // State to track which friend's chat is open
   const [openChatFriendId, setOpenChatFriendId] = useState(null);
+  const [inlineCallActionsTarget, setInlineCallActionsTarget] = useState(null);
   const history = useHistory();
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
@@ -1605,11 +1606,13 @@ function Home(props) {
       }
 
       if (openChatFriendId === friend.chatId) {
+        setInlineCallActionsTarget(null);
         setOpenChatFriendId(null);
         props.closeActiveChat?.();
         return;
       }
 
+      setInlineCallActionsTarget(null);
       setOpenChatFriendId(friend.chatId);
       props.selectFriendChat?.(friend.chatId);
     },
@@ -1621,6 +1624,7 @@ function Home(props) {
       setActiveFriendsMiniTab(nextTab);
 
       if (openChatFriendId) {
+        setInlineCallActionsTarget(null);
         setOpenChatFriendId(null);
         props.closeActiveChat?.();
       }
@@ -1696,6 +1700,16 @@ function Home(props) {
                 <i className={`fas ${friendPresenceState.iconClass}`}></i>
                 <span>{friendPresenceState.label}</span>
               </span>
+              {isFriendChatOpen ? (
+                <div
+                  className="Home_socialFriendInlineCallActionsSlot"
+                  ref={(node) => {
+                    setInlineCallActionsTarget((currentTarget) =>
+                      currentTarget === node ? currentTarget : node,
+                    );
+                  }}
+                />
+              ) : null}
             </div>
           </button>
           {isFriendChatOpen && friend.chatId ? (
@@ -1710,10 +1724,12 @@ function Home(props) {
                 updateMyTypingPresence={props.updateMyTypingPresence}
                 getRealtimeSocket={props.getRealtimeSocket}
                 closeActiveChat={() => {
+                  setInlineCallActionsTarget(null);
                   setOpenChatFriendId(null);
                   props.closeActiveChat?.();
                 }}
                 hideTitleContainer
+                inlineCallActionsTarget={inlineCallActionsTarget}
               />
             </div>
           ) : null}

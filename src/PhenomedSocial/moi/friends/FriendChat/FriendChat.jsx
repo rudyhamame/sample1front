@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { apiUrl } from "../../../../config/api";
 import {
   attachStreamToElement,
@@ -71,6 +72,7 @@ const FriendChat = ({
   getRealtimeSocket,
   closeActiveChat,
   hideTitleContainer = false,
+  inlineCallActionsTarget = null,
 }) => {
   const chatContent = content?.chat;
   const isChatting = Boolean(state?.isChatting);
@@ -724,6 +726,32 @@ const FriendChat = ({
     }
   };
 
+  const inlineCallActions =
+    hideTitleContainer && hasActiveChat ? (
+      <div className="Chat_inlineCallActions Home_socialFriendPresence fr">
+        <button
+          type="button"
+          className="Chat_callButton"
+          title="Start voice call"
+          aria-label="Start voice call"
+          disabled={callState !== "idle" && callState !== "incoming"}
+          onClick={() => handleStartCall("audio")}
+        >
+          <i className="fas fa-phone-alt"></i>
+        </button>
+        <button
+          type="button"
+          className="Chat_callButton"
+          title="Start video call"
+          aria-label="Start video call"
+          disabled={callState !== "idle" && callState !== "incoming"}
+          onClick={() => handleStartCall("video")}
+        >
+          <i className="fas fa-video"></i>
+        </button>
+      </div>
+    ) : null;
+
   const handleRejectIncomingCall = () => {
     const socket = getRealtimeSocket?.();
 
@@ -889,30 +917,11 @@ const FriendChat = ({
                 playsInline
                 muted
               />
-              {hideTitleContainer && hasActiveChat ? (
-                <div className="Chat_inlineCallActions fr">
-                  <button
-                    type="button"
-                    className="Chat_callButton"
-                    title="Start voice call"
-                    aria-label="Start voice call"
-                    disabled={callState !== "idle" && callState !== "incoming"}
-                    onClick={() => handleStartCall("audio")}
-                  >
-                    <i className="fas fa-phone-alt"></i>
-                  </button>
-                  <button
-                    type="button"
-                    className="Chat_callButton"
-                    title="Start video call"
-                    aria-label="Start video call"
-                    disabled={callState !== "idle" && callState !== "incoming"}
-                    onClick={() => handleStartCall("video")}
-                  >
-                    <i className="fas fa-video"></i>
-                  </button>
-                </div>
-              ) : null}
+              {inlineCallActions
+                ? inlineCallActionsTarget
+                  ? createPortal(inlineCallActions, inlineCallActionsTarget)
+                  : inlineCallActions
+                : null}
               {incomingCall ? (
                 <section id="Chat_incomingCallBanner" className="fc">
                   <strong>
