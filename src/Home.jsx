@@ -5,7 +5,6 @@ import { apiUrl } from "./config/api";
 import { compressVideo } from "./utils/video-compress";
 import {
   drawHomeLedRopePath,
-  drawHomeLedText,
   drawHomeSketchPath,
   HOME_DRAWING_PALETTES,
   mergeNearbyHomeDrawingPaths,
@@ -23,7 +22,6 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
-const HOME_WRITING_FONT_SIZE = 18;
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
 const DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS = [
@@ -109,11 +107,46 @@ const normalizeProfilePictureViewport = (nextViewport) => {
   };
 };
 
+const normalizeHomeDrawingPaletteSnapshot = (paletteLike, fallbackId = "aurora") => {
+  const fallbackPalette =
+    HOME_DRAWING_PALETTES.find(
+      (paletteOption) => paletteOption.id === fallbackId,
+    ) || HOME_DRAWING_PALETTES[0];
+
+  return {
+    paletteId: String(
+      paletteLike?.paletteId || fallbackPalette?.id || "aurora",
+    ).trim() || fallbackPalette?.id || "aurora",
+    stroke:
+      String(paletteLike?.stroke || "").trim() ||
+      String(fallbackPalette?.stroke || "").trim(),
+    glow:
+      String(paletteLike?.glow || "").trim() ||
+      String(fallbackPalette?.glow || "").trim(),
+    bulb:
+      String(paletteLike?.bulb || "").trim() ||
+      String(fallbackPalette?.bulb || "").trim(),
+  };
+};
+
+const resolveHomeDrawingPalette = (paletteLike) => {
+  const paletteId = String(paletteLike?.paletteId || "aurora").trim() || "aurora";
+  const fallbackPalette =
+    HOME_DRAWING_PALETTES.find(
+      (paletteOption) => paletteOption.id === paletteId,
+    ) || HOME_DRAWING_PALETTES[0];
+
+  return normalizeHomeDrawingPaletteSnapshot(paletteLike, fallbackPalette?.id);
+};
+
 const normalizeHomeDrawingPayload = (nextDrawingPayload) => {
   const normalizePaths = (rawPaths) =>
     (Array.isArray(rawPaths) ? rawPaths : [])
       .map((path) => {
-        const paletteId = String(path?.paletteId || "aurora").trim() || "aurora";
+        const paletteSnapshot = normalizeHomeDrawingPaletteSnapshot(
+          path,
+          String(path?.paletteId || "aurora").trim() || "aurora",
+        );
         const points = Array.isArray(path?.points)
           ? path.points
               .map((point) => ({
@@ -127,7 +160,10 @@ const normalizeHomeDrawingPayload = (nextDrawingPayload) => {
           : [];
 
         return {
-          paletteId,
+          paletteId: paletteSnapshot.paletteId,
+          stroke: paletteSnapshot.stroke,
+          glow: paletteSnapshot.glow,
+          bulb: paletteSnapshot.bulb,
           points,
         };
       })
@@ -168,37 +204,6 @@ const normalizeHomeDrawingPayload = (nextDrawingPayload) => {
   };
 };
 
-const getHomeDrawingTextItemBounds = (context, item) => {
-  if (
-    !context ||
-    !item ||
-    !Number.isFinite(item?.x) ||
-    !Number.isFinite(item?.y) ||
-    !String(item?.text || "").trim()
-  ) {
-    return null;
-  }
-
-  context.save();
-  context.font = `600 ${HOME_WRITING_FONT_SIZE}px "IBM Plex Sans", sans-serif`;
-  const textMetrics = context.measureText(String(item.text || "").trim());
-  context.restore();
-
-  const textWidth = Math.max(22, textMetrics.width);
-  const textHeight = HOME_WRITING_FONT_SIZE * 1.24;
-  const paddingX = 10;
-  const paddingY = 7;
-
-  return {
-    left: item.x - paddingX,
-    top: item.y - textHeight / 2 - paddingY,
-    right: item.x + textWidth + paddingX,
-    bottom: item.y + textHeight / 2 + paddingY,
-    width: textWidth + paddingX * 2,
-    height: textHeight + paddingY * 2,
-  };
-};
-
 function Home(props) {
   // Determine if the current user is naghamtrkmani
   const isNaghamtrkmani =
@@ -225,7 +230,6 @@ function Home(props) {
   const drawingPathsRef = React.useRef([]);
   const drawingCurrentPathRef = React.useRef(null);
   const isDrawingPointerActiveRef = React.useRef(false);
-  const draggingHomeTextRef = React.useRef(null);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
@@ -402,10 +406,10 @@ function Home(props) {
   const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
   const [isHomeDrawingModeEnabled, setIsHomeDrawingModeEnabled] =
     useState(false);
-  const [homeDrawingToolMode, setHomeDrawingToolMode] = useState("draw");
+  const [isHomeDrawingAutoGlueEnabled, setIsHomeDrawingAutoGlueEnabled] =
+    useState(true);
   const [isHomeDrawingStartingFresh, setIsHomeDrawingStartingFresh] =
     useState(false);
-  const [selectedHomeTextItemId, setSelectedHomeTextItemId] = useState("");
   const [activeHomeDrawingPaletteId, setActiveHomeDrawingPaletteId] =
     useState(HOME_DRAWING_PALETTES[0]?.id || "aurora");
   const [homeDrawing, setHomeDrawing] = useState(() =>
@@ -758,28 +762,10 @@ function Home(props) {
         return;
       }
 
-      const palette =
-        HOME_DRAWING_PALETTES.find(
-          (paletteOption) => paletteOption.id === segment?.paletteId,
-        ) || HOME_DRAWING_PALETTES[0];
+      const palette = resolveHomeDrawingPalette(segment);
       const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
 
       drawHomeLedRopePath(appliedContext, smoothedPoints, palette);
-    });
-
-    homeDrawing.textItems.forEach((item) => {
-      const palette =
-        HOME_DRAWING_PALETTES.find(
-          (paletteOption) => paletteOption.id === item?.paletteId,
-        ) || HOME_DRAWING_PALETTES[0];
-
-      drawHomeLedText(
-        appliedContext,
-        item?.text,
-        { x: item?.x, y: item?.y },
-        palette,
-        { fontSize: HOME_WRITING_FONT_SIZE },
-      );
     });
 
     homeDrawing.draftPaths.forEach((segment) => {
@@ -788,39 +774,10 @@ function Home(props) {
         return;
       }
 
-      const palette =
-        HOME_DRAWING_PALETTES.find(
-          (paletteOption) => paletteOption.id === segment?.paletteId,
-        ) || HOME_DRAWING_PALETTES[0];
+      const palette = resolveHomeDrawingPalette(segment);
 
       drawHomeSketchPath(draftContext, rawPoints, palette);
     });
-
-    if (isHomeDrawingModeEnabled && selectedHomeTextItemId) {
-      const selectedTextItem = homeDrawing.textItems.find(
-        (item) => item.id === selectedHomeTextItemId,
-      );
-      const selectedBounds = getHomeDrawingTextItemBounds(
-        appliedContext,
-        selectedTextItem,
-      );
-
-      if (selectedBounds) {
-        draftContext.save();
-        draftContext.strokeStyle = "rgba(208, 248, 252, 0.78)";
-        draftContext.lineWidth = 1;
-        draftContext.setLineDash([5, 4]);
-        draftContext.shadowBlur = 10;
-        draftContext.shadowColor = "rgba(118, 233, 247, 0.28)";
-        draftContext.strokeRect(
-          selectedBounds.left,
-          selectedBounds.top,
-          selectedBounds.width,
-          selectedBounds.height,
-        );
-        draftContext.restore();
-      }
-    }
 
     getHomeDrawingMaskedRects().forEach((rect) => {
       const bleed = 0;
@@ -881,9 +838,7 @@ function Home(props) {
     getHomeDrawingMaskedRects,
     homeDrawing.appliedPaths,
     homeDrawing.draftPaths,
-    homeDrawing.textItems,
     isHomeDrawingModeEnabled,
-    selectedHomeTextItemId,
   ]);
 
   const getCanvasPointFromEvent = React.useCallback((event) => {
@@ -913,47 +868,6 @@ function Home(props) {
     [getNavChildForbiddenRects],
   );
 
-  const findHomeTextItemAtPoint = React.useCallback(
-    (point) => {
-      if (!point) {
-        return null;
-      }
-
-      const measurementCanvas =
-        appliedDrawingCanvasRef.current || drawingCanvasRef.current;
-      const measurementContext = measurementCanvas?.getContext("2d");
-
-      if (!measurementContext) {
-        return null;
-      }
-
-      for (
-        let itemIndex = homeDrawing.textItems.length - 1;
-        itemIndex >= 0;
-        itemIndex -= 1
-      ) {
-        const textItem = homeDrawing.textItems[itemIndex];
-        const bounds = getHomeDrawingTextItemBounds(
-          measurementContext,
-          textItem,
-        );
-
-        if (
-          bounds &&
-          point.x >= bounds.left &&
-          point.x <= bounds.right &&
-          point.y >= bounds.top &&
-          point.y <= bounds.bottom
-        ) {
-          return textItem;
-        }
-      }
-
-      return null;
-    },
-    [homeDrawing.textItems],
-  );
-
   React.useEffect(() => {
     drawingPathsRef.current = homeDrawing.draftPaths;
   }, [homeDrawing.draftPaths]);
@@ -974,50 +888,15 @@ function Home(props) {
 
       event.preventDefault();
 
-      if (homeDrawingToolMode === "write") {
-        const hitTextItem = findHomeTextItemAtPoint(point);
-
-        if (hitTextItem) {
-          draggingHomeTextRef.current = {
-            id: hitTextItem.id,
-            offsetX: point.x - hitTextItem.x,
-            offsetY: point.y - hitTextItem.y,
-          };
-          setSelectedHomeTextItemId(hitTextItem.id);
-          isDrawingPointerActiveRef.current = true;
-          drawingCurrentPathRef.current = null;
-          return;
-        }
-
-        const nextText = window.prompt("Write label text", "");
-        if (!String(nextText || "").trim()) {
-          isDrawingPointerActiveRef.current = false;
-          drawingCurrentPathRef.current = null;
-          return;
-        }
-
-        const nextTextItem = {
-          id: `home-text-${Date.now()}`,
-          paletteId: activeHomeDrawingPaletteId,
-          text: String(nextText).trim(),
-          x: point.x,
-          y: point.y,
-        };
-
-        setSelectedHomeTextItemId(nextTextItem.id);
-        setHomeDrawing((currentDrawing) => ({
-          draftPaths: currentDrawing.draftPaths,
-          appliedPaths: currentDrawing.appliedPaths,
-          textItems: [...currentDrawing.textItems, nextTextItem],
-        }));
-        isDrawingPointerActiveRef.current = false;
-        drawingCurrentPathRef.current = null;
-        return;
-      }
-
       isDrawingPointerActiveRef.current = true;
-      const nextPath = {
+      const selectedPalette = resolveHomeDrawingPalette({
         paletteId: activeHomeDrawingPaletteId,
+      });
+      const nextPath = {
+        paletteId: selectedPalette.paletteId,
+        stroke: selectedPalette.stroke,
+        glow: selectedPalette.glow,
+        bulb: selectedPalette.bulb,
         points: [point],
       };
       drawingCurrentPathRef.current = nextPath;
@@ -1029,9 +908,7 @@ function Home(props) {
     },
     [
       activeHomeDrawingPaletteId,
-      findHomeTextItemAtPoint,
       getCanvasPointFromEvent,
-      homeDrawingToolMode,
       isHomeDrawingModeEnabled,
       isPointInsideNavChildCard,
     ],
@@ -1051,37 +928,20 @@ function Home(props) {
 
       event.preventDefault();
 
-      if (homeDrawingToolMode === "write") {
-        if (draggingHomeTextRef.current?.id) {
-          const draggingState = draggingHomeTextRef.current;
-          const nextX = point.x - draggingState.offsetX;
-          const nextY = point.y - draggingState.offsetY;
-
-          setHomeDrawing((currentDrawing) => ({
-            draftPaths: currentDrawing.draftPaths,
-            appliedPaths: currentDrawing.appliedPaths,
-            textItems: currentDrawing.textItems.map((item) =>
-              item.id === draggingState.id
-                ? {
-                    ...item,
-                    x: nextX,
-                    y: nextY,
-                  }
-                : item,
-            ),
-          }));
-        }
-        return;
-      }
-
       if (isPointInsideNavChildCard(point)) {
         drawingCurrentPathRef.current = null;
         return;
       }
 
       if (!drawingCurrentPathRef.current) {
-        const nextPath = {
+        const selectedPalette = resolveHomeDrawingPalette({
           paletteId: activeHomeDrawingPaletteId,
+        });
+        const nextPath = {
+          paletteId: selectedPalette.paletteId,
+          stroke: selectedPalette.stroke,
+          glow: selectedPalette.glow,
+          bulb: selectedPalette.bulb,
           points: [point],
         };
         drawingCurrentPathRef.current = nextPath;
@@ -1102,7 +962,6 @@ function Home(props) {
     [
       activeHomeDrawingPaletteId,
       getCanvasPointFromEvent,
-      homeDrawingToolMode,
       isHomeDrawingModeEnabled,
       isPointInsideNavChildCard,
     ],
@@ -1111,83 +970,7 @@ function Home(props) {
   const endHomeDrawingStroke = React.useCallback(() => {
     isDrawingPointerActiveRef.current = false;
     drawingCurrentPathRef.current = null;
-    draggingHomeTextRef.current = null;
   }, []);
-
-  const editHomeTextItemAtPoint = React.useCallback(
-    (event) => {
-      if (!isHomeDrawingModeEnabled || homeDrawingToolMode !== "write") {
-        return;
-      }
-
-      const point = getCanvasPointFromEvent(event);
-      const hitTextItem = findHomeTextItemAtPoint(point);
-
-      if (!hitTextItem) {
-        return;
-      }
-
-      event.preventDefault();
-      const nextText = window.prompt("Edit label text", hitTextItem.text || "");
-
-      if (nextText === null) {
-        return;
-      }
-
-      const normalizedText = String(nextText || "").trim();
-
-      if (!normalizedText) {
-        setHomeDrawing((currentDrawing) => ({
-          draftPaths: currentDrawing.draftPaths,
-          appliedPaths: currentDrawing.appliedPaths,
-          textItems: currentDrawing.textItems.filter(
-            (item) => item.id !== hitTextItem.id,
-          ),
-        }));
-        setSelectedHomeTextItemId((currentId) =>
-          currentId === hitTextItem.id ? "" : currentId,
-        );
-        return;
-      }
-
-      setSelectedHomeTextItemId(hitTextItem.id);
-      setHomeDrawing((currentDrawing) => ({
-        draftPaths: currentDrawing.draftPaths,
-        appliedPaths: currentDrawing.appliedPaths,
-        textItems: currentDrawing.textItems.map((item) =>
-          item.id === hitTextItem.id
-            ? {
-                ...item,
-                text: normalizedText,
-                paletteId: activeHomeDrawingPaletteId || item.paletteId,
-              }
-            : item,
-        ),
-      }));
-    },
-    [
-      activeHomeDrawingPaletteId,
-      findHomeTextItemAtPoint,
-      getCanvasPointFromEvent,
-      homeDrawingToolMode,
-      isHomeDrawingModeEnabled,
-    ],
-  );
-
-  const deleteSelectedHomeTextItem = React.useCallback(() => {
-    if (!selectedHomeTextItemId) {
-      return;
-    }
-
-    setHomeDrawing((currentDrawing) => ({
-      draftPaths: currentDrawing.draftPaths,
-      appliedPaths: currentDrawing.appliedPaths,
-      textItems: currentDrawing.textItems.filter(
-        (item) => item.id !== selectedHomeTextItemId,
-      ),
-    }));
-    setSelectedHomeTextItemId("");
-  }, [selectedHomeTextItemId]);
 
   const clearHomeDrawingCanvas = React.useCallback(() => {
     drawingCurrentPathRef.current = null;
@@ -1198,7 +981,6 @@ function Home(props) {
       textItems: [],
     };
     setHomeDrawing(nextDrawing);
-    setSelectedHomeTextItemId("");
     props.setUserMediaInfo?.({
       profilePicture: String(props.state?.profilePicture || "").trim(),
       profilePictureViewport:
@@ -1340,7 +1122,9 @@ function Home(props) {
     const mergeSourcePaths = isHomeDrawingStartingFresh
       ? draftPaths
       : sourcePaths;
-    const mergedPaths = mergeNearbyHomeDrawingPaths(mergeSourcePaths);
+    const mergedPaths = isHomeDrawingAutoGlueEnabled
+      ? mergeNearbyHomeDrawingPaths(mergeSourcePaths)
+      : mergeSourcePaths;
     const mergedResultPaths = mergedPaths.length ? mergedPaths : mergeSourcePaths;
     const nextAppliedPaths = isHomeDrawingStartingFresh
       ? [...existingAppliedPaths, ...mergedResultPaths]
@@ -1397,6 +1181,7 @@ function Home(props) {
     homeDrawing?.appliedPaths,
     homeDrawing?.draftPaths,
     homeDrawing?.textItems,
+    isHomeDrawingAutoGlueEnabled,
     isHomeDrawingStartingFresh,
     persistHomeDrawing,
     props.setUserMediaInfo,
@@ -1515,6 +1300,25 @@ function Home(props) {
       props.closeActiveChat?.();
     }
   }, [isReportsWrapperOpen, openChatFriendId, props, showGalleryInRightColumn]);
+
+  React.useEffect(() => {
+    const globalActiveChatFriendId = String(
+      props.state?.activeChatFriendId || "",
+    ).trim();
+
+    if (!globalActiveChatFriendId) {
+      setOpenChatFriendId((currentFriendId) =>
+        currentFriendId ? null : currentFriendId,
+      );
+      return;
+    }
+
+    setOpenChatFriendId((currentFriendId) =>
+      currentFriendId === globalActiveChatFriendId
+        ? currentFriendId
+        : globalActiveChatFriendId,
+    );
+  }, [props.state?.activeChatFriendId]);
 
   React.useEffect(() => {
     if (!profilePictureImageRef.current) {
@@ -1831,6 +1635,18 @@ function Home(props) {
         ? 0
         : unreadChatCountsByFriendId[friend.chatId] || 0;
       const friendPresenceState = getFriendPresenceState(friend);
+      const inlineChatState = isFriendChatOpen
+        ? {
+            ...props.state,
+            friendID_selected: friend.chatId,
+            activeChatFriendId: friend.chatId,
+            activeChatFriendName:
+              friend.displayName ||
+              props.state?.activeChatFriendName ||
+              "Chat",
+            isChatting: true,
+          }
+        : props.state;
 
       return (
         <li
@@ -1888,10 +1704,11 @@ function Home(props) {
               className="Home_inlineFriendChat"
             >
               <FriendChat
-                state={props.state}
+                state={inlineChatState}
                 content={phenomedSocialEnglishContent}
                 sendToThemMessage={props.sendToThemMessage}
                 updateMyTypingPresence={props.updateMyTypingPresence}
+                getRealtimeSocket={props.getRealtimeSocket}
                 closeActiveChat={() => {
                   setOpenChatFriendId(null);
                   props.closeActiveChat?.();
@@ -2809,8 +2626,7 @@ function Home(props) {
 
     if (
       isHomeDrawingModeEnabled ||
-      homeDrawing.draftPaths.length > 0 ||
-      draggingHomeTextRef.current
+      homeDrawing.draftPaths.length > 0
     ) {
       return;
     }
@@ -3862,22 +3678,6 @@ function Home(props) {
               >
                 <i className="fas fa-pen-nib"></i>
               </button>
-              <div className="Home_mainDrawingModeNav fr Home_mainDrawingControls_panelItem">
-                {["write", "draw"].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`Home_mainDrawingModeButton${
-                      homeDrawingToolMode === mode ? " isActive" : ""
-                    }`}
-                    onClick={() => setHomeDrawingToolMode(mode)}
-                    aria-pressed={homeDrawingToolMode === mode}
-                    title={mode === "write" ? "Write" : "Draw"}
-                  >
-                    {mode === "write" ? "Write" : "Draw"}
-                  </button>
-                ))}
-              </div>
               <button
                 type="button"
                 className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
@@ -3891,6 +3691,28 @@ function Home(props) {
                 title="Start a fresh unlinked line"
               >
                 <i className="fas fa-plus"></i>
+              </button>
+              <button
+                type="button"
+                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+                  isHomeDrawingAutoGlueEnabled ? " isActive" : ""
+                }`}
+                onClick={() =>
+                  setIsHomeDrawingAutoGlueEnabled((currentValue) => !currentValue)
+                }
+                aria-pressed={isHomeDrawingAutoGlueEnabled}
+                aria-label={
+                  isHomeDrawingAutoGlueEnabled
+                    ? "Disable auto-gluing the line"
+                    : "Enable auto-gluing the line"
+                }
+                title={
+                  isHomeDrawingAutoGlueEnabled
+                    ? "Auto-glue on"
+                    : "Auto-glue off"
+                }
+              >
+                <i className="fas fa-link"></i>
               </button>
               <div className="Home_mainDrawingPalette fr Home_mainDrawingControls_panelItem">
                 {HOME_DRAWING_PALETTES.map((palette) => (
@@ -3923,18 +3745,6 @@ function Home(props) {
               >
                 <i className="fas fa-eraser"></i>
               </button>
-              <button
-                type="button"
-                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
-                  selectedHomeTextItemId ? "" : " isDisabled"
-                }`}
-                onClick={deleteSelectedHomeTextItem}
-                disabled={!selectedHomeTextItemId}
-                aria-label="Delete selected label"
-                title="Delete selected label"
-              >
-                <i className="fas fa-trash-alt"></i>
-              </button>
             </div>
             <div
               ref={appliedDrawingCanvasHostRef}
@@ -3962,7 +3772,6 @@ function Home(props) {
                 onPointerUp={endHomeDrawingStroke}
                 onPointerLeave={endHomeDrawingStroke}
                 onPointerCancel={endHomeDrawingStroke}
-                onDoubleClick={editHomeTextItemAtPoint}
               />
             </div>
             <div id="Home_topControls" className="fr">
@@ -4025,6 +3834,12 @@ function Home(props) {
                       path: "/ecg",
                     },
                     {
+                      id: "pdf-reader",
+                      label: "PDF Reader",
+                      icon: "fas fa-file-pdf",
+                      path: "/phenomed/pdf-reader",
+                    },
+                    {
                       id: "school",
                       label: schoolPlannerLabel,
                       icon: "fas fa-layer-group",
@@ -4082,24 +3897,28 @@ function Home(props) {
                     />
                   </div>
                   <div id="Home_preStart_personalBio" className="fc">
-                    <span id="Home_preStart_bio_name">
-                      {props.state.firstname || "-"}{" "}
-                      {props.state.lastname || "-"}
-                    </span>
-                    <span id="Home_preStart_bio_username">
-                      ({props.state.username || "-"})
-                    </span>
-                    <span id="Home_preStart_bio_study">
-                      Studying {props.state.program || "-"} at{" "}
-                      {props.state.university || "-"} University
-                    </span>
-                    <div id="Home_preStart_bio_yearTermRow">
-                      <span id="Home_preStart_bio_year">
-                        Year {props.state.studyYear || "-"}
-                      </span>
-                      <span id="Home_preStart_bio_term">
-                        Term {props.state.term || "-"}
-                      </span>
+                    <div className="Home_preStart_bioFlexRow">
+                      <div className="Home_preStart_bioLeft fc">
+                        <span id="Home_preStart_bio_name">
+                          {props.state.firstname || "-"} {props.state.lastname || "-"}
+                        </span>
+                        <span id="Home_preStart_bio_username">
+                          ({props.state.username || "-"})
+                        </span>
+                      </div>
+                      <div className="Home_preStart_bioRight fc">
+                        <span id="Home_preStart_bio_study">
+                          Studying {props.state.program || "-"} at {props.state.university || "-"} University
+                        </span>
+                        <div id="Home_preStart_bio_yearTermRow">
+                          <span id="Home_preStart_bio_year">
+                            Year {props.state.studyYear || "-"}
+                          </span>
+                          <span id="Home_preStart_bio_term">
+                            Term {props.state.term || "-"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div
                       className="Home_headerRibbon Home_headerRibbon--inline"

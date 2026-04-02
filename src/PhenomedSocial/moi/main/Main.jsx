@@ -34,6 +34,7 @@ const Main = (props) => {
         sendToMeMessage={props.sendToMeMessage}
         sendToThemMessage={props.sendToThemMessage}
         updateMyTypingPresence={props.updateMyTypingPresence}
+        getRealtimeSocket={props.getRealtimeSocket}
         dbUpdate_user_connected={props.dbUpdate_user_connected}
         serverReply={props.serverReply}
       />

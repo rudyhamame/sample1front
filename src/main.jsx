@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import AppRouter from "./AppRouter";
+import "./color.css";
 import "./App/App.css";
 import "@flaticon/flaticon-uicons/css/regular/rounded.css";
 import "@flaticon/flaticon-uicons/css/bold/straight.css";

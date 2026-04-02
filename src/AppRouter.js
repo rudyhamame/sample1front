@@ -37,6 +37,9 @@ const AppRouter = () => {
               <Login onLogin={handleLogin} onForceLogout={handleLogout} />
             )}
           </Route>
+          <Route exact path="/pdf-reader">
+            <Redirect to="/phenomed/pdf-reader" />
+          </Route>
           <Route path="/cooporation">
             {isAuthenticated ? (
               <App
@@ -91,6 +94,17 @@ const AppRouter = () => {
           <Route path="/ecg">
             {isAuthenticated ? (
               <App key="app-ecg" path="/ecg" onLogout={handleLogout} />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route exact path="/phenomed/pdf-reader">
+            {isAuthenticated ? (
+              <App
+                key="app-pdf-reader"
+                path="/phenomed/pdf-reader"
+                onLogout={handleLogout}
+              />
             ) : (
               <Redirect to="/" />
             )}

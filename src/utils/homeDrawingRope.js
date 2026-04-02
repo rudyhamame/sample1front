@@ -42,6 +42,9 @@ const clonePoint = (point) => ({
 
 const clonePath = (path) => ({
   paletteId: String(path?.paletteId || "aurora").trim() || "aurora",
+  stroke: String(path?.stroke || "").trim(),
+  glow: String(path?.glow || "").trim(),
+  bulb: String(path?.bulb || "").trim(),
   points: Array.isArray(path?.points) ? path.points.map(clonePoint) : [],
 });
 
@@ -396,6 +399,9 @@ const mergeTwoPaths = (
     distance: candidates[0].distance,
     path: {
       paletteId: firstPath.paletteId,
+      stroke: String(firstPath?.stroke || "").trim(),
+      glow: String(firstPath?.glow || "").trim(),
+      bulb: String(firstPath?.bulb || "").trim(),
       points: candidates[0].nextPoints,
     },
   };

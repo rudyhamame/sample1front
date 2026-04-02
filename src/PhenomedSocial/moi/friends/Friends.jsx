@@ -174,6 +174,7 @@ class Friends extends React.Component {
             content={this.props.content}
             sendToThemMessage={this.props.sendToThemMessage}
             updateMyTypingPresence={this.props.updateMyTypingPresence}
+            getRealtimeSocket={this.props.getRealtimeSocket}
             closeActiveChat={this.props.closeActiveChat}
           />
         </section>

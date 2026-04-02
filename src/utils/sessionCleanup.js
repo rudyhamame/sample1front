@@ -1,11 +1,29 @@
 import { apiUrl } from "../config/api";
 
+const SESSION_STORAGE_KEY = "state";
+
 export const readStoredSession = () => {
   try {
-    const storedState = sessionStorage.getItem("state");
-    return storedState ? JSON.parse(storedState) : null;
+    const sessionState = sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+    if (sessionState) {
+      return JSON.parse(sessionState);
+    }
+
+    const persistedState = localStorage.getItem(SESSION_STORAGE_KEY);
+    return persistedState ? JSON.parse(persistedState) : null;
   } catch (error) {
     return null;
+  }
+};
+
+export const writeStoredSession = (nextState) => {
+  try {
+    const serializedState = JSON.stringify(nextState);
+    sessionStorage.setItem(SESSION_STORAGE_KEY, serializedState);
+    localStorage.setItem(SESSION_STORAGE_KEY, serializedState);
+  } catch (error) {
+    // Ignore storage write errors.
   }
 };
 

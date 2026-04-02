@@ -7,6 +7,7 @@ import {
   getStoredPdfReaderState,
   setStoredPdfReaderState,
 } from "../utils/pdfReaderState";
+import { readStoredSession } from "../utils/sessionCleanup";
 //.........VARIABLES................
 var courses = [];
 var lectures = [];
@@ -926,6 +927,8 @@ export default class SchoolPlanner extends Component {
       telegram_storedGroupOptions: [],
       telegram_deletingGroupReference: "",
       telegram_openingPdfKey: "",
+      telegram_cloudUploadPdfKey: "",
+      telegram_cloudAddedPdfKeys: {},
       telegram_pdfViewerOpen: false,
       telegram_pdfViewerUrl: "",
       telegram_pdfViewerMessage: null,
@@ -1909,6 +1912,12 @@ export default class SchoolPlanner extends Component {
   };
 
   fetchStoredTelegramPdfBlob = async ({ groupReference, messageId }) => {
+    const token = this.getAuthToken();
+
+    if (!token) {
+      throw new Error("Stored PDFs need a valid login token.");
+    }
+
     const response = await fetch(
       apiUrl(
         `/api/telegram/stored-group-pdfs/${encodeURIComponent(groupReference)}/${messageId}/open`,
@@ -1916,7 +1925,7 @@ export default class SchoolPlanner extends Component {
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${this.props.state.token}`,
+          Authorization: `Bearer ${token}`,
         },
       },
     );
@@ -1949,8 +1958,9 @@ export default class SchoolPlanner extends Component {
     ).trim();
     const messageId = Number(message?.id || 0);
     const openingKey = `${groupReference}:${messageId}`;
+    const token = this.getAuthToken();
 
-    if (!this.props.state?.token || !groupReference || !messageId) {
+    if (!token || !groupReference || !messageId) {
       return;
     }
 
@@ -1991,8 +2001,9 @@ export default class SchoolPlanner extends Component {
     ).trim();
     const messageId = Number(message?.id || 0);
     const openingKey = `${groupReference}:${messageId}`;
+    const token = this.getAuthToken();
 
-    if (!this.props.state?.token || !groupReference || !messageId) {
+    if (!token || !groupReference || !messageId) {
       return;
     }
 
@@ -2009,7 +2020,7 @@ export default class SchoolPlanner extends Component {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${this.props.state.token}`,
+            Authorization: `Bearer ${token}`,
           },
         },
       );
@@ -2054,14 +2065,142 @@ export default class SchoolPlanner extends Component {
     }
   };
 
+  getAuthToken = () =>
+    String(
+      this.props.state?.token || readStoredSession()?.token || "",
+    ).trim();
+
+  uploadStoredTelegramPdfToCloud = async (message) => {
+    const groupReference = String(
+      message?.groupReference || this.state.telegram_panelGroupReference || "",
+    ).trim();
+    const messageId = Number(message?.id || 0);
+    const uploadKey = `${groupReference}:${messageId}`;
+    const token = this.getAuthToken();
+
+    if (!token || !groupReference || !messageId) {
+      return;
+    }
+
+    this.setState({
+      telegram_cloudUploadPdfKey: uploadKey,
+      telegram_error: "",
+      telegram_feedback: "",
+    });
+
+    try {
+      const pdfBlob = await this.fetchStoredTelegramPdfBlob({
+        groupReference,
+        messageId,
+      });
+      const fallbackFileName =
+        String(message?.attachmentFileName || "").trim() || "telegram.pdf";
+      const fileName = fallbackFileName.toLowerCase().endsWith(".pdf")
+        ? fallbackFileName
+        : `${fallbackFileName}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, {
+        type: pdfBlob.type || "application/pdf",
+      });
+      const publicIdSeed = `${groupReference}-${messageId}-${fileName}`
+        .trim()
+        .replace(/[^a-zA-Z0-9/_-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 180);
+      const signatureResponse = await fetch(
+        apiUrl("/api/user/image-gallery/signature"),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            publicId: publicIdSeed || `telegram-pdf-${messageId}`,
+            resourceType: "raw",
+          }),
+        },
+      );
+      const signaturePayload = await signatureResponse.json().catch(() => ({}));
+
+      if (!signatureResponse.ok) {
+        throw new Error(
+          signaturePayload?.message || "Unable to prepare Cloud upload.",
+        );
+      }
+
+      const cloudinaryBody = new FormData();
+      cloudinaryBody.append("file", pdfFile);
+      cloudinaryBody.append("api_key", signaturePayload.apiKey);
+      cloudinaryBody.append("timestamp", String(signaturePayload.timestamp));
+      cloudinaryBody.append("signature", signaturePayload.signature);
+      cloudinaryBody.append("folder", signaturePayload.folder);
+      cloudinaryBody.append("public_id", signaturePayload.publicId);
+
+      const cloudinaryResponse = await fetch(signaturePayload.uploadUrl, {
+        method: "POST",
+        body: cloudinaryBody,
+      });
+      const cloudinaryPayload = await cloudinaryResponse
+        .json()
+        .catch(() => ({}));
+
+      if (!cloudinaryResponse.ok) {
+        throw new Error(
+          cloudinaryPayload?.error?.message || "Cloud upload failed.",
+        );
+      }
+
+      const saveResponse = await fetch(apiUrl("/api/user/image-gallery"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: cloudinaryPayload.secure_url,
+          publicId: cloudinaryPayload.public_id,
+          assetId: cloudinaryPayload.asset_id,
+          folder: cloudinaryPayload.folder,
+          resourceType: cloudinaryPayload.resource_type || "raw",
+          mimeType: pdfFile.type || "application/pdf",
+          format: cloudinaryPayload.format || "pdf",
+          bytes: cloudinaryPayload.bytes || pdfFile.size || 0,
+          createdAt: new Date().toISOString(),
+        }),
+      });
+      const savePayload = await saveResponse.json().catch(() => ({}));
+
+      if (!saveResponse.ok) {
+        throw new Error(savePayload?.message || "Unable to save uploaded PDF.");
+      }
+
+      this.setState({
+        telegram_cloudUploadPdfKey: "",
+        telegram_cloudAddedPdfKeys: {
+          ...(this.state.telegram_cloudAddedPdfKeys || {}),
+          [uploadKey]: true,
+        },
+        telegram_feedback:
+          savePayload?.message || "PDF added to Cloud successfully.",
+      });
+    } catch (error) {
+      this.setState({
+        telegram_cloudUploadPdfKey: "",
+        telegram_error: error?.message || "Unable to add PDF to Cloud.",
+      });
+    }
+  };
+
   openStoredTelegramPdf = async (message) => {
     const groupReference = String(
       message?.groupReference || this.state.telegram_panelGroupReference || "",
     ).trim();
     const messageId = Number(message?.id || 0);
     const openingKey = `${groupReference}:${messageId}`;
+    const token = this.getAuthToken();
 
-    if (!this.props.state?.token || !groupReference || !messageId) {
+    if (!token || !groupReference || !messageId) {
       return;
     }
 
@@ -7767,9 +7906,33 @@ export default class SchoolPlanner extends Component {
                                 <button
                                   type="button"
                                   className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfOpenAlt"
-                                  onClick={() => this.downloadStoredTelegramPdf(message)}
+                                  onClick={() => this.uploadStoredTelegramPdfToCloud(message)}
+                                  disabled={
+                                    this.state.telegram_cloudUploadPdfKey ===
+                                      `${String(
+                                        this.state.telegram_panelGroupReference || "",
+                                      ).trim()}:${Number(message?.id || 0)}` ||
+                                    Boolean(
+                                      this.state.telegram_cloudAddedPdfKeys?.[
+                                        `${String(
+                                          this.state.telegram_panelGroupReference || "",
+                                        ).trim()}:${Number(message?.id || 0)}`
+                                      ],
+                                    )
+                                  }
                                 >
-                                  {this.isArabic() ? "تنزيل" : "Download"}
+                                  {this.state.telegram_cloudAddedPdfKeys?.[
+                                  `${String(
+                                    this.state.telegram_panelGroupReference || "",
+                                  ).trim()}:${Number(message?.id || 0)}`
+                                  ]
+                                    ? "Added to Cloud"
+                                    : this.state.telegram_cloudUploadPdfKey ===
+                                        `${String(
+                                          this.state.telegram_panelGroupReference || "",
+                                        ).trim()}:${Number(message?.id || 0)}`
+                                    ? "Adding..."
+                                    : "Add to Cloud"}
                                 </button>
                                 <button
                                   type="button"

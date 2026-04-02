@@ -136,16 +136,17 @@
   padding: 12px 14px;
   cursor: pointer;
   text-decoration: none;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.7rem;
-  font-weight: 500;
   color: rgba(21, 57, 64, 0.92);
   text-align: left;
   background: rgba(246, 250, 250, 0.98);
   border: 1px solid rgba(118, 151, 160, 0.14);
   border-radius: 14px;
   box-shadow: 0 4px 10px rgba(90, 121, 130, 0.07);
-  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 #app_page.app_page--has-background-pattern #SubApps_dropMenu_container li a.SubApps_row {

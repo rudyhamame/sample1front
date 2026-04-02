@@ -10,6 +10,7 @@ import InspectionOverlay from "../debug/InspectionOverlay";
 import {
   logoutStoredSession,
   readStoredSession,
+  writeStoredSession,
 } from "../utils/sessionCleanup";
 
 const clinicalRealityParagraphs = [
@@ -299,7 +300,7 @@ const Login = ({ onLogin, onForceLogout }) => {
   useEffect(() => {
     if (login_ok && authReport) {
       setIsLoginTransitioning(true);
-      sessionStorage.setItem("state", JSON.stringify(authReport));
+      writeStoredSession(authReport);
 
       const timeoutId = window.setTimeout(() => {
         setIs_loading(false);

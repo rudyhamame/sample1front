@@ -1,3 +1,127 @@
+#Nav_dim_i_dim,
+#Nav_dim_i_undim {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 1.2em;
+  vertical-align: middle;
+  position: static !important;
+}
+/* Wrapper for Nav component */
+.nav-wrapper {
+  position: relative;
+  width: fit-content;
+}
+
+.nav-wrapper--layered {
+  z-index: 40;
+}
+
+/* Show/hide handle container */
+.nav-handle-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.nav-handle-container--outer {
+  z-index: 20;
+}
+
+.nav-handle-container--inner {
+  z-index: 1;
+}
+
+/* Hide nav handle container when nav is open */
+.nav-handle-container--hidden {
+  display: none;
+}
+
+/* Hide nav handle button when nav is open */
+.nav-bottom-handle {
+  pointer-events: auto;
+  background: #0f7f78;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 8px;
+  cursor: pointer;
+  margin: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.nav-bottom-handle:focus {
+  outline: 2px solid #0f7f78;
+}
+/* Animated height wrapper for Nav_article, grows from bottom to top */
+.nav-animated-wrapper {
+  max-height: 160px;
+  transition:
+    max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.22s ease;
+  display: flex;
+  flex-direction: column-reverse;
+  position: relative;
+  z-index: 40;
+}
+
+.nav-animated-wrapper--closed {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+}
+
+.nav-animated-wrapper--open {
+  overflow: visible;
+  max-height: 160px;
+  opacity: 1;
+}
+
+#Nav_article {
+  position: relative;
+  transform-origin: bottom;
+  overflow: visible;
+  z-index: 41;
+}
+
+#Nav_article.Nav_article--collapsed {
+  visibility: hidden;
+  pointer-events: none;
+}
+/* Handle at the bottom of Nav_article */
+.nav-bottom-handle {
+  background: #0f7f78;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 8px;
+  cursor: pointer;
+  margin: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.2s;
+}
+.nav-bottom-handle:hover {
+  background: #0b6a64;
+}
+
+.nav-handle-panel {
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding-bottom: 8px;
+}
 /*Nav*/
 #Nav_article i {
   font-size: 15pt;

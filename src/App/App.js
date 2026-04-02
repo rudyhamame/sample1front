@@ -18,6 +18,7 @@ import NogaPlan, {
 } from "../SchoolPlanner/NogaPlanner";
 import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
+import PdfReaderPage from "../PdfReaderPage.jsx";
 import { apiUrl } from "../config/api";
 import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
 import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
@@ -26,6 +27,7 @@ import { connectRealtime } from "../realtime/socket";
 import {
   logoutStoredSession,
   readStoredSession,
+  writeStoredSession,
 } from "../utils/sessionCleanup";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
@@ -390,6 +392,8 @@ class App extends React.Component {
       isTyping,
     });
   };
+
+  getRealtimeSocket = () => this.realtimeSocket;
 
   availableToChat = (isConnected) => {
     let url = apiUrl("/api/user/isOnline/") + this.state.my_id;
@@ -1292,14 +1296,20 @@ class App extends React.Component {
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
   RetrievingMySendingMessages = (friend_id) => {
     const ul = document.getElementById("Chat_messages");
-    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
-    const friendReadyToReply = Boolean(
-      this.state.friendTypingPresence?.[friend_id],
-    );
 
     if (!ul || !friend_id) {
       return;
     }
+
+    if (ul.dataset.reactManaged === "true") {
+      ul.scrollTop = ul.scrollHeight;
+      return;
+    }
+
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+    const friendReadyToReply = Boolean(
+      this.state.friendTypingPresence?.[friend_id],
+    );
 
     ul.innerHTML = "";
     let previousDayKey = null;
@@ -1410,7 +1420,8 @@ class App extends React.Component {
   };
 
   sendToThemMessage = (message) => {
-    let textarea = document.getElementById("Chat_textarea_input");
+    const normalizedMessage = String(message || "");
+    const textarea = document.getElementById("Chat_textarea_input");
     if (textarea) {
       textarea.style.height = "42px";
     }
@@ -1421,7 +1432,7 @@ class App extends React.Component {
       this.serverReply("Select a doctor from your friends list first");
       return Promise.resolve(false);
     }
-    if (message && message.trim() !== "") {
+    if (normalizedMessage.trim() !== "") {
       let url =
         apiUrl("/api/chat/sendMessage/") +
         this.state.friendID_selected +
@@ -1435,7 +1446,7 @@ class App extends React.Component {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: document.getElementById("Chat_textarea_input").value,
+          message: normalizedMessage,
         }),
       };
       let req = new Request(url, options);
@@ -1907,13 +1918,10 @@ class App extends React.Component {
   persistStoredSession = (partialState = {}) => {
     try {
       const storedSession = readStoredSession() || {};
-      sessionStorage.setItem(
-        "state",
-        JSON.stringify({
-          ...storedSession,
-          ...partialState,
-        }),
-      );
+      writeStoredSession({
+        ...storedSession,
+        ...partialState,
+      });
     } catch (error) {
       // Ignore storage write errors.
     }
@@ -2017,13 +2025,10 @@ class App extends React.Component {
 
     try {
       const storedSession = readStoredSession() || {};
-      sessionStorage.setItem(
-        "state",
-        JSON.stringify({
-          ...storedSession,
-          aiProvider: nextProvider,
-        }),
-      );
+      writeStoredSession({
+        ...storedSession,
+        aiProvider: nextProvider,
+      });
     } catch (error) {
       // Ignore storage errors and keep runtime state update.
     }
@@ -2805,6 +2810,7 @@ class App extends React.Component {
                 sendToThemMessage={this.sendToThemMessage}
                 updateMyTypingPresence={this.updateMyTypingPresence}
                 serverReply={this.serverReply}
+                getRealtimeSocket={this.getRealtimeSocket}
                 setAppFooterHidden={this.setAppFooterHidden}
                 setUserAcademicInfo={this.setUserAcademicInfo}
                 setUserMediaInfo={this.setUserMediaInfo}
@@ -2908,6 +2914,19 @@ class App extends React.Component {
             {showServerAnswerFooter ? serverAnswerFooter : null}
           </article>
         </Route>
+        <Route exact path="/phenomed/pdf-reader">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <PdfReaderPage
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
         <Route exact path="/phenomedsocial/ar">
           <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
@@ -2925,6 +2944,7 @@ class App extends React.Component {
                 makeNotificationsRead={this.makeNotificationsRead}
                 sendToThemMessage={this.sendToThemMessage}
                 updateMyTypingPresence={this.updateMyTypingPresence}
+                getRealtimeSocket={this.getRealtimeSocket}
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}
@@ -2951,6 +2971,7 @@ class App extends React.Component {
                 makeNotificationsRead={this.makeNotificationsRead}
                 sendToThemMessage={this.sendToThemMessage}
                 updateMyTypingPresence={this.updateMyTypingPresence}
+                getRealtimeSocket={this.getRealtimeSocket}
                 type={this.type}
                 counter={this.counter}
                 updateBeforeLeave={this.updateBeforeLeave}

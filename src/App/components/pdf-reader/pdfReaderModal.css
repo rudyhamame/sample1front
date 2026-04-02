@@ -1,8 +1,42 @@
+:root{
+  --blue-shade-950: #081518;
+  --blue-shade-800: #173a42;
+  --blue-shade-700: #265f6d;
+  --blue-shade-600: #358497;
+  --blue-shade-500: #44a9c2;
+  --blue-shade-400: #53ceec;
+  --pdf-tools-icon-size: 22px;
+  --pdf-tools-icon-bg: rgba(255, 255, 255, 0.08);
+  --pdf-tools-icon-hover-bg: rgba(83, 206, 236, 0.28);
+  --pdf-tools-icon-active-bg: rgba(83, 206, 236, 0.45);
+}
+/* DAY MODE */
 .pdfReader_overlay {
+  --pdf-reader-highlight-color: var(--blue-shade-400);
+  --pdf-reader-day-accent: var(--blue-shade-500);
+  --pdf-reader-day-accent-strong: var(--blue-shade-400);
+  --pdf-reader-day-text: rgba(232, 247, 250, 0.96);
+  --pdf-reader-day-text-muted: rgba(205, 234, 240, 0.84);
+  --pdf-reader-day-text-soft: rgba(170, 217, 227, 0.74);
+  --pdf-reader-day-text-faint: rgba(140, 197, 210, 0.64);
+  --pdf-reader-day-border: rgba(68, 169, 194, 0.24);
+  --pdf-reader-day-border-strong: rgba(83, 206, 236, 0.42);
+  --pdf-reader-day-surface: linear-gradient(
+    180deg,
+    var(--blue-shade-800),
+    var(--blue-shade-700)
+  );
+  --pdf-reader-day-panel: linear-gradient(
+    180deg,
+    rgba(23, 58, 66, 0.98),
+    rgba(38, 95, 109, 0.96)
+  );
+  --pdf-reader-day-card: rgba(53, 132, 151, 0.34);
+  --pdf-reader-day-button: rgba(68, 169, 194, 0.22);
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(8, 22, 27, 0.78);
+  background: rgba(8, 21, 24, 0.82);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -10,103 +44,409 @@
   padding: 16px;
 }
 
+.pdfReader_inlineMount {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 26px;
+  box-sizing: border-box;
+  background: transparent;
+  box-shadow: none;
+}
+
 .pdfReader_shell {
-  width: min(1280px, 100%);
   max-height: 94vh;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(244, 239, 229, 0.24);
-  background: linear-gradient(180deg, #17373d 0%, #10272c 100%);
-  color: #f8f4eb;
+  color: var(--pdf-reader-day-text);
+  background-color: var(--white);
+}
+
+.pdfReader_inlineMount .pdfReader_shell {
+  width: 100%;
+  height: 100%;
+  max-height: none;
 }
 
 .pdfReader_shell--study {
   width: min(1560px, 100%);
 }
 
+.PDF_controlwrapper {
+  position: relative;
+  z-index: 3;
+  border-bottom: 1px solid rgba(83, 206, 236, 0.24);
+  box-shadow: 0px 0px 1px rgba(8, 21, 24, 0.12);
+}
+
 .pdfReader_toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  direction: ltr;
   gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(244, 239, 229, 0.14);
+  padding: 3px 24px;
+  color: var(--blue-shade-700);
+  border-bottom: #0815181c  1px solid;
+}
+
+.pdfReader_uploadWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.pdfReader_uploadDropdown {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  min-width: 240px;
+  padding: 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(8, 21, 24, 0.92), rgba(23, 58, 66, 0.96)),
+    rgba(8, 21, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.pdfReader_uploadDropdown button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.pdfReader_uploadDropdown button:hover {
+  background: rgba(83, 206, 236, 0.24);
+}
+
+.pdfReader_uploadHint {
+  margin: 4px 0 0;
+  padding: 0 6px;
+  font-size: 0.68rem;
+  color: var(--pdf-reader-day-text-muted);
+}
+
+.pdfReader_uploadList {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pdfReader_uploadListItem button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.2);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  text-align: left;
+}
+
+.pdfReader_uploadListItem button small {
+  font-size: 0.68rem;
+  color: var(--pdf-reader-day-text-muted);
 }
 
 .pdfReader_titleWrap {
   min-width: 0;
+  background-color: #e6e6e6;
+  padding: 2px;
+  border: 2px solid var(--blue-shade-600);
 }
 
 .pdfReader_title,
 .pdfReader_subtitle {
   margin: 0;
+  color: var(--pdf-reader-day-text);
 }
 
 .pdfReader_title {
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--pdf-reader-day-accent-strong);
   overflow-wrap: anywhere;
 }
 
 .pdfReader_subtitle {
-  font-size: 0.64rem;
-  opacity: 0.82;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  opacity: 0.92;
+  color: var(--pdf-reader-day-text-muted);
 }
 
 .pdfReader_controls {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap:5px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  background-color: #e6e6e6;
+  padding: 2px;
+  border: 2px solid var(--blue-shade-600);
+}
+
+.pdfReader_controls > * + * {
+  border-left: 1px solid rgba(38, 95, 109, 0.48);
+  margin-left: 4px;
+  padding-left: 10px;
 }
 
 .pdfReader_controls button,
-.pdfReader_toolRow button,
 .pdfReader_inlineMeta button {
-  border-radius: 999px;
-  border: 1px solid rgba(244, 239, 229, 0.2);
-  background: rgba(248, 244, 235, 0.08);
-  color: #f8f4eb;
-  font-size: 0.65rem;
-  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: var(--pdf-reader-day-button);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
-.pdfReader_toolRow button.is-active {
-  background: linear-gradient(135deg, #f4d07b 0%, #f28c54 100%);
-  color: #10272c;
-  border-color: transparent;
+.pdfReader_controls button:hover:not(:disabled),
+.pdfReader_inlineMeta button:hover:not(:disabled) {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.3);
 }
 
 .pdfReader_controls span {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.56rem;
+  font-size: 0.64rem;
   opacity: 0.88;
+  color: var(--pdf-reader-day-text-muted);
+}
+
+.PDF_tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  opacity: 1;
+  pointer-events: auto;
+  direction: ltr;
+  
+}
+  
+.pdfReader_shell .PDF_tools::-webkit-scrollbar {
+  display: none;
+}
+  
+
+#PDF_tools .Login_realityControlButton i {
+  font-size: 0.9rem;
+  width: var(--pdf-tools-icon-size);
+  height: var(--pdf-tools-icon-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--pdf-tools-icon-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  color: var(--pdf-reader-day-text);
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+#PDF_tools .Login_realityControlButton:hover:not(:disabled) i {
+  background: var(--pdf-tools-icon-hover-bg);
+  color: #06161a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 10px rgba(0, 0, 0, 0.12);
+}
+
+#PDF_tools .Login_realityControlButton.is-armed i,
+#PDF_tools .Login_realityControlButton.is-active i {
+  background: var(--pdf-tools-icon-active-bg);
+  color: #041017;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 2px rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px) scale(1.02);
+}
+
+#PDF_tools .Login_realityControlButton.is-armed i .fas,
+#PDF_tools .Login_realityControlButton.is-active i .fas {
+  text-shadow: none;
+}
+
+#PDF_tools .Login_realityControlButton i.fas,
+#PDF_tools .Login_realityControlButton i.fab,
+#PDF_tools .Login_realityControlButton i.far {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+#PDF_tools_tool_hand i {
+  color: #f5c3b0;
+}
+
+.PDF_tools_SubGroups {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(38, 95, 109, 0.18);
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 6px 14px rgba(8, 21, 24, 0.08);
+  color: #081518;
+}
+
+#PDF_tools_penGroup input[type="color"],
+#PDF_tools_highlightGroup input[type="color"] {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(68, 169, 194, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.pdfReader_shell .Login_realityControlButton {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--pdf-reader-day-border);
+  border-radius: 10px;
+  background: rgba(68, 169, 194, 0.2);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.pdfReader_shell .Login_realityControlButton:hover:not(:disabled) {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.28);
+}
+
+.pdfReader_shell .Login_realityControlButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pdfReader_shell .Login_realityControlButton--pen {
+  min-width: 36px;
+}
+
+.pdfReader_shell .Login_realityControlButton--align {
+  min-width: 34px;
+}
+
+.pdfReader_shell .Login_realityControlButton--erase {
+  min-width: 34px;
+}
+
+.pdfReader_shell .Login_realityControlButton--pen.is-active,
+.pdfReader_shell .Login_realityControlButton--pen.is-armed,
+.pdfReader_shell .Login_realityControlButton--align.is-active,
+.pdfReader_shell .Login_realityControlButton--align.is-armed,
+.pdfReader_shell .Login_realityControlButton--erase.is-active,
+.pdfReader_shell .Login_realityControlButton--erase.is-armed {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.34);
+  color: rgba(245, 253, 255, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 0 0 2px rgba(255, 241, 168, 0.38);
+}
+
+.pdfReader_shell .Login_realityControlField {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pdf-reader-day-text-muted);
+  font-size: 0.66rem;
+  font-family: "IBM Plex Mono", monospace;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .pdfReader_studyLayout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  grid-template-columns: 280px minmax(0, 1fr) 360px;
   min-height: 0;
+  height: 100%;
   flex: 1 1 auto;
+  direction: ltr;
+  position: relative;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(83, 206, 236, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(8, 21, 24, 0.2), rgba(23, 58, 66, 0.34));
+  box-shadow:
+    inset 0 22px 34px rgba(255, 255, 255, 0.08),
+    inset 0 -28px 40px rgba(8, 21, 24, 0.28);
 }
 
 .pdfReader_studyPanel,
 .pdfReader_notesPanel {
-  padding: 14px;
-  background: rgba(7, 20, 24, 0.4);
+  background:
+    linear-gradient(180deg, rgba(245, 251, 252, 0.96), rgba(224, 244, 248, 0.92));
   overflow-y: auto;
+  min-height: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -10px 18px rgba(38, 95, 109, 0.08),
+    0 14px 28px rgba(8, 21, 24, 0.14);
+    padding: 10px;
 }
 
 .pdfReader_studyPanel {
-  border-right: 1px solid rgba(244, 239, 229, 0.12);
+  border-right: 1px solid rgba(124, 157, 165, 0.18);
 }
 
 .pdfReader_notesPanel {
-  border-left: 1px solid rgba(244, 239, 229, 0.12);
+  border-left: 1px solid rgba(124, 157, 165, 0.18);
 }
 
 .pdfReader_panelBlock {
@@ -116,24 +456,165 @@
   margin-bottom: 16px;
 }
 
+.pdfReader_settingsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.pdfReader_settingsToggle {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.18);
+  color: var(--pdf-reader-day-text);
+  text-align: left;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 16px rgba(8, 21, 24, 0.08);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.pdfReader_settingsToggle:hover:not(:disabled) {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.2);
+  transform: translateY(-1px);
+}
+
+.pdfReader_settingsToggle.is-active {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 22px rgba(8, 21, 24, 0.12);
+}
+
+.pdfReader_settingsToggle strong,
+.pdfReader_settingsToggle span {
+  color: inherit;
+}
+
+.pdfReader_settingsToggle span {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--pdf-reader-day-text-muted);
+}
+
+.pdfReader_settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.pdfReader_settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+}
+
+.pdfReader_settingsRow span {
+  color: var(--pdf-reader-day-text-muted);
+}
+
+.pdfReader_settingsControlCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.pdfReader_settingsControlField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(38, 95, 109, 0.16);
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 8px 16px rgba(8, 21, 24, 0.05);
+}
+
+.pdfReader_settingsControlText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pdfReader_settingsControlText strong {
+  color: var(--pdf-reader-day-text);
+  font-size: 0.8rem;
+}
+
+.pdfReader_settingsControlText span {
+  color: var(--pdf-reader-day-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.pdfReader_settingsControlInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.pdfReader_settingsControlInputRow input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--blue-shade-500);
+}
+
+.pdfReader_settingsControlInputRow output {
+  min-width: 54px;
+  text-align: right;
+  color: var(--pdf-reader-day-accent-strong);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .pdfReader_panelBlock h2,
 .pdfReader_panelBlock h3,
 .pdfReader_panelBlock p {
   margin: 0;
+  color: var(--pdf-reader-day-text);
 }
 
 .pdfReader_panelEyebrow {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #f4d07b;
+  color: var(--pdf-reader-day-text-soft);
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
 }
 
-.pdfReader_toolRow,
 .pdfReader_toggleRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  min-width: max-content;
 }
 
 .pdfReader_toggleRow label {
@@ -141,21 +622,212 @@
   align-items: center;
   gap: 6px;
   font-size: 0.74rem;
+  color: var(--pdf-reader-day-text-muted);
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .pdfReader_inputLabel {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  color: var(--pdf-reader-day-text-soft);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.pdfReader_courseSelect {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 14px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.18);
+  color: var(--pdf-reader-day-text);
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-family: "IBM Plex Mono", monospace;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.pdfReader_courseSelect:hover,
+.pdfReader_courseSelect:focus {
+  border-color: var(--pdf-reader-day-border-strong);
+}
+
+.pdfReader_lectureList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pdfReader_lectureListItem {
+  margin: 0;
+}
+
+.pdfReader_lectureButton {
+  width: 100%;
+  border: 1px solid var(--pdf-reader-day-border);
+  border-radius: 14px;
+  background: rgba(8, 21, 24, 0.18);
+  color: var(--pdf-reader-day-text);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 16px rgba(8, 21, 24, 0.08);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  font-size: 0.9rem;
+}
+
+.pdfReader_lectureButton strong,
+.pdfReader_lectureButton span {
+  color: inherit;
+}
+
+.pdfReader_lectureButton span,
+.pdfReader_lectureListEmpty {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.pdfReader_lectureButton:hover:not(:disabled),
+.pdfReader_lectureButton.is-selected {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 22px rgba(8, 21, 24, 0.12);
+}
+
+.pdfReader_lectureButton:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pdfReader_lectureListEmpty {
+  border-radius: 14px;
+  border: 1px dashed var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.1);
+  color: var(--pdf-reader-day-text-muted);
+  padding: 12px;
 }
 
 .pdfReader_panelBlock textarea {
   width: 100%;
+  min-height: 104px;
   border-radius: 14px;
-  border: 1px solid rgba(244, 239, 229, 0.18);
-  background: rgba(9, 25, 30, 0.6);
-  color: #f8f4eb;
-  padding: 10px 12px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.24);
+  color: var(--pdf-reader-day-text);
+  padding: 12px;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  font-family: "IBM Plex Mono", monospace;
   resize: vertical;
+  outline: none;
+  caret-color: var(--pdf-reader-day-accent-strong);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.pdfReader_panelBlock textarea::placeholder {
+  color: var(--pdf-reader-day-text-faint);
+  opacity: 1;
+}
+
+.pdfReader_panelBlock textarea:hover {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(8, 21, 24, 0.32);
+}
+
+.pdfReader_panelBlock textarea:focus {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(8, 21, 24, 0.38);
+  box-shadow: 0 0 0 3px rgba(68, 169, 194, 0.16);
+}
+
+.pdfReader_panelBlock textarea:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 6px 14px rgba(156, 97, 84, 0.05);
+}
+
+.pdfReader_richEditor {
+  width: 100%;
+  min-height: 180px;
+  box-sizing: border-box;
+  padding: 14px 14px 18px;
+  border-radius: 16px 16px 22px 22px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background-color: rgba(8, 21, 24, 0.24);
+  color: var(--pdf-reader-day-text);
+  font-size: 9pt;
+  line-height: 2em;
+  font-family: "IBM Plex Mono", monospace;
+  outline: none;
+  overflow: auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 0 0 1px rgba(68, 169, 194, 0.16);
+  cursor: text;
+}
+
+.pdfReader_richEditor,
+.pdfReader_richEditor * {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.pdfReader_richEditor.is-eraseCursor {
+  cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M8 18l8-8 6 6-8 8H8l-4-4 8-8' fill='%23f7fbfc' stroke='%2335545b' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M14 24h8' stroke='%239db3b8' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 4 24, text;
+}
+
+.pdfReader_richEditor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--pdf-reader-day-text-faint);
+}
+
+.pdfReader_richEditor h3 {
+  margin: 0 0 1em;
+  color: var(--blue-shade-400);
+  font-size: clamp(1.02rem, 1.25vw, 1.34rem);
+  line-height: 1.3;
+}
+
+.pdfReader_richEditor p {
+  margin: 0;
+  padding: 0.08em 0 0.06em;
+  margin-bottom: 0.36em;
+}
+
+.pdfReader_richEditor:hover {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(8, 21, 24, 0.32);
+}
+
+.pdfReader_richEditor:focus {
+  border-color: var(--pdf-reader-day-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 3px rgba(68, 169, 194, 0.16);
 }
 
 .pdfReader_inlineMeta {
@@ -170,31 +842,53 @@
   font-size: 0.72rem;
   opacity: 0.9;
   margin: 0;
+  color: var(--pdf-reader-day-text-muted);
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .pdfReader_canvasSection {
   min-width: 0;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    180deg,
+    rgba(23, 58, 66, 0.98),
+    rgba(38, 95, 109, 0.96)
+  );
+  box-shadow:
+    inset 0 18px 30px rgba(255, 255, 255, 0.08),
+    inset 0 -24px 36px rgba(8, 21, 24, 0.4),
+    0 24px 44px rgba(8, 21, 24, 0.22);
+  transform: translateY(2px);
 }
 
 .pdfReader_canvasWrap {
   overflow: auto;
   padding: 12px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  box-shadow:
+    inset 0 16px 26px rgba(255, 255, 255, 0.012),
+    inset 0 -18px 28px rgba(8, 21, 24, 0.104);
+    background: var(--white);
 }
 
-.pdfReader_canvasWrap--native {
+.pdfReader_canvasWrap--nativescrollable {
   min-height: 72vh;
-  align-items: flex-start;
 }
 
 .pdfReader_status {
   margin: 0;
   padding: 8px 14px;
   font-size: 0.7rem;
+  color: var(--pdf-reader-day-text-muted);
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .pdfReader_status--floating {
@@ -203,28 +897,142 @@
   left: 8px;
   margin: 0;
   border-radius: 999px;
-  background: rgba(10, 26, 31, 0.82);
-  border: 1px solid rgba(244, 239, 229, 0.16);
+  background: rgba(8, 21, 24, 0.88);
+  border: 1px solid rgba(83, 206, 236, 0.22);
+}
+
+.pdfReader_canvasStack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 4px 0 28px;
 }
 
 .pdfReader_canvasStage {
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
+  scroll-margin-top: 16px;
 }
 
 .pdfReader_annotationLayer {
   position: relative;
   touch-action: none;
   cursor: crosshair;
+  width: var(--pdf-page-width);
+  height: var(--pdf-page-height);
+}
+
+.pdfReader_textLayer {
+  position: absolute;
+  inset: 0;
+  width: var(--pdf-page-width);
+  height: var(--pdf-page-height);
+  pointer-events: none;
+  user-select: text;
+  word-break: keep-all;
+  z-index: 2;
+}
+
+.pdfReader_textLayer.is-active {
+  pointer-events: auto;
+}
+
+.pdfReader_textLayer .textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 2;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  caret-color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pdfReader_textLayer .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+  caret-color: transparent;
+}
+
+.pdfReader_textLayer .textLayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+
+.pdfReader_textLayer .textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: -1;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.pdfReader_textLayer .textLayer .endOfContent.active {
+  inset: 100% 0 0;
+}
+
+.pdfReader_textLayer .textLayer::selection,
+.pdfReader_textLayer .textLayer *::selection {
+  background: rgba(255, 196, 92, 0.18);
+}
+
+.pdfReader_textLayer .textLayer br::selection {
+  background: transparent;
+}
+
+.pdfReader_annotationLayer--idle {
+  cursor: default;
+}
+
+.pdfReader_annotationLayer--select {
+  cursor: text;
+}
+
+.pdfReader_annotationLayer--erase {
+  cursor: cell;
+}
+
+.pdfReader_annotationLayer--hand {
+  cursor: grab;
+}
+
+.pdfReader_annotationLayer--hand:active {
+  cursor: grabbing;
 }
 
 .pdfReader_canvas {
   display: block;
   max-width: none;
   background: #ffffff;
-  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.042);
+  border-radius: 8px;
+}
+
+.pdfReader_canvas.is-textSelecting,
+.pdfReader_annotationSvg.is-textSelecting {
+  pointer-events: none;
 }
 
 .pdfReader_annotationSvg {
@@ -235,6 +1043,10 @@
   pointer-events: none;
 }
 
+.pdfReader_highlightIcon {
+  color: var(--pdf-reader-highlight-color);
+}
+
 .pdfReader_annotationList {
   display: flex;
   flex-direction: column;
@@ -242,16 +1054,19 @@
 }
 
 .pdfReader_annotationItem {
-  border: 1px solid rgba(244, 239, 229, 0.12);
+  border: 1px solid var(--pdf-reader-day-border);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.14);
-  color: #f8f4eb;
+  background: rgba(8, 21, 24, 0.26);
+  color: var(--pdf-reader-day-text);
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   text-align: start;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 18px rgba(94, 124, 133, 0.08);
 }
 
 .pdfReader_annotationItem.is-selected {
@@ -266,46 +1081,619 @@
 }
 
 .pdfReader_annotationDelete {
-  color: #ffb4b4;
+  color: var(--pdf-reader-day-accent-strong);
   text-decoration: underline;
 }
 
 .pdfReader_emptyState {
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(8, 21, 24, 0.24);
   padding: 12px;
+  color: var(--pdf-reader-day-text-muted);
+  border: 1px solid var(--pdf-reader-day-border);
 }
 
-@media (max-width: 1280px) {
-  .pdfReader_studyLayout {
-    grid-template-columns: 240px minmax(0, 1fr) 280px;
-  }
+.pdfReader_sourcePickerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 21, 24, 0.38);
+  backdrop-filter: blur(10px);
 }
 
-@media (max-width: 980px) {
-  .pdfReader_shell {
-    max-height: 97vh;
-  }
+.pdfReader_sourcePicker {
+  width: min(760px, 100%);
+  max-height: min(80vh, 860px);
+  overflow: auto;
+  border-radius: 26px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: var(--pdf-reader-day-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 30px 60px rgba(94, 124, 133, 0.16);
+  color: var(--pdf-reader-day-text);
+}
 
-  .pdfReader_studyLayout {
-    grid-template-columns: 1fr;
-  }
+.pdfReader_sourcePickerHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid var(--pdf-reader-day-border);
+  backdrop-filter: blur(8px);
+}
 
-  .pdfReader_studyPanel,
-  .pdfReader_notesPanel {
-    border: none;
-    border-top: 1px solid rgba(244, 239, 229, 0.12);
-  }
+.pdfReader_sourcePickerEyebrow,
+.pdfReader_sourcePickerTitle {
+  margin: 0;
+}
 
-  .pdfReader_studyPanel {
-    order: 1;
-  }
+.pdfReader_sourcePickerEyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pdf-reader-day-text-soft);
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+}
 
-  .pdfReader_canvasSection {
-    order: 2;
-  }
+.pdfReader_sourcePickerTitle {
+  font-size: 1.2rem;
+  line-height: 1.2;
+  color: var(--pdf-reader-day-accent-strong);
+}
 
-  .pdfReader_notesPanel {
-    order: 3;
-  }
+.pdfReader_sourcePickerClose,
+.pdfReader_sourcePickerBack,
+.pdfReader_sourcePickerRefresh,
+.pdfReader_sourcePickerCardActions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(68, 169, 194, 0.22);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.pdfReader_sourcePickerClose:hover:not(:disabled),
+.pdfReader_sourcePickerBack:hover:not(:disabled),
+.pdfReader_sourcePickerRefresh:hover:not(:disabled),
+.pdfReader_sourcePickerCardActions button:hover:not(:disabled) {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.3);
+}
+
+.pdfReader_sourcePickerClose {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdfReader_sourcePickerChoices,
+.pdfReader_sourcePickerBody {
+  padding: 20px 24px 24px;
+}
+
+.pdfReader_sourcePickerChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pdfReader_sourceChoiceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 164px;
+  padding: 20px;
+  border-radius: 18px 18px 22px 22px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: var(--pdf-reader-day-panel);
+  color: var(--pdf-reader-day-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 24px rgba(94, 124, 133, 0.08);
+}
+
+.pdfReader_sourceChoiceCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--pdf-reader-day-border-strong);
+  background: linear-gradient(
+    180deg,
+    rgba(53, 132, 151, 0.44),
+    rgba(68, 169, 194, 0.3)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 32px rgba(94, 124, 133, 0.12);
+}
+
+.pdfReader_sourceChoiceCard i {
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(83, 206, 236, 0.22);
+  color: rgba(245, 253, 255, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.pdfReader_sourceChoiceCard strong,
+.pdfReader_sourceChoiceCard span {
+  color: var(--pdf-reader-day-text);
+}
+
+.pdfReader_sourceChoiceCard span,
+.pdfReader_sourcePickerStatus,
+.pdfReader_sourcePickerCardCaption,
+.pdfReader_sourcePickerCardExtract {
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.pdfReader_sourcePickerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.pdfReader_sourcePickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pdfReader_sourcePickerCard {
+  border-radius: 14px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: var(--pdf-reader-day-card);
+  padding: 16px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 18px rgba(94, 124, 133, 0.08);
+}
+
+.pdfReader_sourcePickerCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--pdf-reader-day-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 14px 24px rgba(94, 124, 133, 0.12);
+}
+
+.pdfReader_sourcePickerMeta,
+.pdfReader_sourcePickerCardActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pdfReader_sourcePickerMeta {
+  margin-bottom: 8px;
+}
+
+.pdfReader_sourcePickerBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(83, 206, 236, 0.24);
+  border: 1px solid var(--pdf-reader-day-border);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pdf-reader-day-accent-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.pdfReader_sourcePickerCardTitle {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--pdf-reader-day-accent-strong);
+}
+
+.pdfReader_sourcePickerCardCaption,
+.pdfReader_sourcePickerCardExtract {
+  margin: 0 0 8px;
+  color: var(--pdf-reader-day-text-muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.pdfReader_sourcePickerCardActions {
+  margin-top: 12px;
+}
+
+/* DARK MODE */
+body.dark .pdfReader_overlay,
+#app_page.app_page--home-dark .pdfReader_overlay {
+  background: rgba(8, 22, 27, 0.92);
+}
+
+body.dark .pdfReader_inlineMount,
+#app_page.app_page--home-dark .pdfReader_inlineMount {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(44, 148, 145, 0.18), transparent 26%),
+    radial-gradient(circle at 86% 12%, rgba(245, 168, 93, 0.1), transparent 20%),
+    linear-gradient(180deg, rgba(9, 22, 27, 0.98), rgba(13, 31, 38, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 26px 48px rgba(0, 0, 0, 0.24);
+}
+
+body.dark .pdfReader_shell,
+#app_page.app_page--home-dark .pdfReader_shell {
+  background: linear-gradient(180deg, #101c22 0%, #0a1317 100%);
+  color: #e6e6e6;
+  border-color: rgba(44, 66, 80, 0.44);
+}
+
+body.dark .pdfReader_toolbar,
+#app_page.app_page--home-dark .pdfReader_toolbar {
+  border-bottom: 1px solid rgba(44, 66, 80, 0.24);
+}
+
+body.dark .pdfReader_controls button,
+body.dark .pdfReader_shell .Login_realityControlButton,
+body.dark .pdfReader_inlineMeta button,
+#app_page.app_page--home-dark .pdfReader_controls button,
+#app_page.app_page--home-dark .pdfReader_shell .Login_realityControlButton,
+#app_page.app_page--home-dark .pdfReader_inlineMeta button {
+  background: rgba(44, 66, 80, 0.18);
+  color: #e6e6e6;
+  border: 1px solid rgba(44, 66, 80, 0.32);
+}
+
+body.dark .pdfReader_shell .Login_realityControlButton.is-active,
+body.dark .pdfReader_shell .Login_realityControlButton.is-armed,
+#app_page.app_page--home-dark .pdfReader_shell .Login_realityControlButton.is-active,
+#app_page.app_page--home-dark .pdfReader_shell .Login_realityControlButton.is-armed {
+  background: linear-gradient(135deg, #f4d07b 0%, #f28c54 100%);
+  color: #10272c;
+}
+
+body.dark .pdfReader_studyPanel,
+body.dark .pdfReader_notesPanel,
+#app_page.app_page--home-dark .pdfReader_studyPanel,
+#app_page.app_page--home-dark .pdfReader_notesPanel {
+  background: linear-gradient(180deg, rgba(18, 34, 40, 0.9), rgba(12, 24, 29, 0.84));
+  border-color: rgba(44, 66, 80, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -16px 24px rgba(0, 0, 0, 0.16),
+    0 18px 32px rgba(0, 0, 0, 0.2);
+}
+
+body.dark .pdfReader_courseSelect,
+body.dark .pdfReader_lectureButton,
+#app_page.app_page--home-dark .pdfReader_courseSelect,
+#app_page.app_page--home-dark .pdfReader_lectureButton {
+  background: rgba(14, 39, 46, 0.9);
+  color: rgba(226, 242, 244, 0.92);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_courseSelect:hover,
+body.dark .pdfReader_courseSelect:focus,
+body.dark .pdfReader_lectureButton:hover:not(:disabled),
+body.dark .pdfReader_lectureButton.is-selected,
+#app_page.app_page--home-dark .pdfReader_courseSelect:hover,
+#app_page.app_page--home-dark .pdfReader_courseSelect:focus,
+#app_page.app_page--home-dark .pdfReader_lectureButton:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_lectureButton.is-selected {
+  border-color: rgba(122, 213, 216, 0.28);
+  background: rgba(16, 44, 52, 0.96);
+}
+
+body.dark .pdfReader_settingsToggle,
+body.dark .pdfReader_settingsList,
+body.dark .pdfReader_settingsControlCard,
+body.dark .pdfReader_settingsControlField,
+#app_page.app_page--home-dark .pdfReader_settingsToggle,
+#app_page.app_page--home-dark .pdfReader_settingsList,
+#app_page.app_page--home-dark .pdfReader_settingsControlCard,
+#app_page.app_page--home-dark .pdfReader_settingsControlField {
+  background: rgba(14, 39, 46, 0.9);
+  color: rgba(226, 242, 244, 0.92);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_settingsToggle:hover:not(:disabled),
+body.dark .pdfReader_settingsToggle.is-active,
+#app_page.app_page--home-dark .pdfReader_settingsToggle:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_settingsToggle.is-active {
+  border-color: rgba(122, 213, 216, 0.28);
+  background: rgba(16, 44, 52, 0.98);
+}
+
+body.dark .pdfReader_settingsToggle span,
+body.dark .pdfReader_settingsRow span,
+body.dark .pdfReader_settingsControlText span,
+#app_page.app_page--home-dark .pdfReader_settingsToggle span,
+#app_page.app_page--home-dark .pdfReader_settingsRow span,
+#app_page.app_page--home-dark .pdfReader_settingsControlText span {
+  color: rgba(178, 210, 215, 0.72);
+}
+
+body.dark .pdfReader_settingsControlInputRow output,
+#app_page.app_page--home-dark .pdfReader_settingsControlInputRow output {
+  color: rgba(122, 213, 216, 0.92);
+}
+
+body.dark .pdfReader_lectureListEmpty,
+#app_page.app_page--home-dark .pdfReader_lectureListEmpty {
+  background: rgba(14, 39, 46, 0.7);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(178, 210, 215, 0.68);
+}
+
+body.dark .pdfReader_panelEyebrow,
+#app_page.app_page--home-dark .pdfReader_panelEyebrow {
+  color: #ffe08a;
+}
+
+body.dark .pdfReader_title,
+body.dark .pdfReader_subtitle,
+#app_page.app_page--home-dark .pdfReader_title,
+#app_page.app_page--home-dark .pdfReader_subtitle {
+  color: #ffe8b0;
+}
+
+body.dark .pdfReader_subtitle,
+body.dark .pdfReader_controls span,
+body.dark .pdfReader_hint,
+#app_page.app_page--home-dark .pdfReader_subtitle,
+#app_page.app_page--home-dark .pdfReader_controls span,
+#app_page.app_page--home-dark .pdfReader_hint {
+  color: rgba(216, 232, 237, 0.72);
+}
+
+body.dark .pdfReader_panelBlock textarea,
+#app_page.app_page--home-dark .pdfReader_panelBlock textarea {
+  background: linear-gradient(180deg, rgba(14, 39, 46, 0.96), rgba(12, 31, 37, 0.94));
+  color: rgba(226, 242, 244, 0.92);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_panelBlock textarea::placeholder,
+#app_page.app_page--home-dark .pdfReader_panelBlock textarea::placeholder {
+  color: rgba(178, 210, 215, 0.58);
+  opacity: 1;
+}
+
+body.dark .pdfReader_panelBlock textarea:hover,
+#app_page.app_page--home-dark .pdfReader_panelBlock textarea:hover {
+  border-color: rgba(122, 213, 216, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 24px rgba(0, 0, 0, 0.22);
+}
+
+body.dark .pdfReader_panelBlock textarea:focus,
+#app_page.app_page--home-dark .pdfReader_panelBlock textarea:focus {
+  border-color: rgba(122, 213, 216, 0.42);
+  background: linear-gradient(180deg, rgba(16, 44, 52, 0.98), rgba(12, 34, 40, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 3px rgba(122, 213, 216, 0.12),
+    0 16px 28px rgba(0, 0, 0, 0.24);
+}
+
+body.dark .pdfReader_richEditor,
+#app_page.app_page--home-dark .pdfReader_richEditor {
+  background: rgba(14, 39, 46, 0.92);
+  color: rgba(226, 242, 244, 0.92);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(110, 168, 180, 0.1);
+}
+
+body.dark .pdfReader_richEditor:empty::before,
+#app_page.app_page--home-dark .pdfReader_richEditor:empty::before {
+  color: rgba(178, 210, 215, 0.58);
+}
+
+body.dark .pdfReader_richEditor h3,
+#app_page.app_page--home-dark .pdfReader_richEditor h3 {
+  color: rgba(226, 242, 244, 0.92);
+}
+
+body.dark .pdfReader_richEditor:hover,
+#app_page.app_page--home-dark .pdfReader_richEditor:hover {
+  border-color: rgba(122, 213, 216, 0.28);
+  background: rgba(16, 44, 52, 0.96);
+}
+
+body.dark .pdfReader_richEditor:focus,
+#app_page.app_page--home-dark .pdfReader_richEditor:focus {
+  border-color: rgba(122, 213, 216, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 3px rgba(122, 213, 216, 0.12);
+}
+
+body.dark .pdfReader_canvasSection,
+#app_page.app_page--home-dark .pdfReader_canvasSection {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(53, 129, 133, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(9, 22, 27, 0.78), rgba(12, 30, 36, 0.72));
+  box-shadow:
+    inset 0 18px 30px rgba(255, 255, 255, 0.04),
+    inset 0 -24px 36px rgba(0, 0, 0, 0.34),
+    0 24px 44px rgba(0, 0, 0, 0.26);
+}
+
+body.dark .pdfReader_studyLayout,
+#app_page.app_page--home-dark .pdfReader_studyLayout {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(83, 206, 236, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(4, 11, 14, 0.22), rgba(7, 18, 22, 0.42));
+  box-shadow:
+    inset 0 22px 34px rgba(255, 255, 255, 0.03),
+    inset 0 -28px 40px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .pdfReader_annotationItem,
+body.dark .pdfReader_emptyState,
+#app_page.app_page--home-dark .pdfReader_annotationItem,
+#app_page.app_page--home-dark .pdfReader_emptyState {
+  background: rgba(14, 39, 46, 0.88);
+  color: rgba(226, 242, 244, 0.9);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_sourcePickerOverlay,
+#app_page.app_page--home-dark .pdfReader_sourcePickerOverlay {
+  background: rgba(6, 13, 16, 0.32);
+}
+
+body.dark .pdfReader_sourcePicker,
+#app_page.app_page--home-dark .pdfReader_sourcePicker {
+  border-color: rgba(110, 168, 180, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(53, 129, 133, 0.16), transparent 24%),
+    linear-gradient(180deg, rgba(12, 29, 34, 0.98), rgba(10, 24, 29, 0.96));
+  color: rgba(226, 242, 244, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 26px 54px rgba(0, 0, 0, 0.28);
+}
+
+body.dark .pdfReader_sourcePickerHeader,
+#app_page.app_page--home-dark .pdfReader_sourcePickerHeader {
+  border-bottom-color: rgba(110, 168, 180, 0.14);
+  background: rgba(12, 29, 34, 0.96);
+}
+
+body.dark .pdfReader_sourcePickerEyebrow,
+body.dark .pdfReader_sourcePickerTitle,
+body.dark .pdfReader_sourceChoiceCard,
+body.dark .pdfReader_sourceChoiceCard strong,
+body.dark .pdfReader_sourceChoiceCard span,
+body.dark .pdfReader_sourcePickerStatus,
+body.dark .pdfReader_sourcePickerCardCaption,
+body.dark .pdfReader_sourcePickerCardExtract,
+body.dark .pdfReader_sourcePickerCardTitle,
+#app_page.app_page--home-dark .pdfReader_sourcePickerEyebrow,
+#app_page.app_page--home-dark .pdfReader_sourcePickerTitle,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard strong,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard span,
+#app_page.app_page--home-dark .pdfReader_sourcePickerStatus,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCardCaption,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCardExtract,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCardTitle {
+  color: rgba(226, 242, 244, 0.9);
+}
+
+body.dark .pdfReader_sourcePickerClose,
+body.dark .pdfReader_sourcePickerBack,
+body.dark .pdfReader_sourcePickerRefresh,
+body.dark .pdfReader_sourcePickerCardActions button,
+#app_page.app_page--home-dark .pdfReader_sourcePickerClose,
+#app_page.app_page--home-dark .pdfReader_sourcePickerBack,
+#app_page.app_page--home-dark .pdfReader_sourcePickerRefresh,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCardActions button {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(226, 242, 244, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_sourcePickerClose:hover:not(:disabled),
+body.dark .pdfReader_sourcePickerBack:hover:not(:disabled),
+body.dark .pdfReader_sourcePickerRefresh:hover:not(:disabled),
+body.dark .pdfReader_sourcePickerCardActions button:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_sourcePickerClose:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_sourcePickerBack:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_sourcePickerRefresh:hover:not(:disabled),
+#app_page.app_page--home-dark .pdfReader_sourcePickerCardActions button:hover:not(:disabled) {
+  border-color: rgba(122, 213, 216, 0.28);
+  background: rgba(16, 44, 52, 0.98);
+}
+
+body.dark .pdfReader_sourceChoiceCard,
+body.dark .pdfReader_sourcePickerCard,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCard {
+  border-color: rgba(110, 168, 180, 0.16);
+  background: rgba(14, 39, 46, 0.82);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+body.dark .pdfReader_sourceChoiceCard:hover,
+body.dark .pdfReader_sourcePickerCard:hover,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard:hover,
+#app_page.app_page--home-dark .pdfReader_sourcePickerCard:hover {
+  border-color: rgba(122, 213, 216, 0.24);
+  background: rgba(16, 44, 52, 0.9);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
+}
+
+body.dark .pdfReader_sourcePickerBadge,
+#app_page.app_page--home-dark .pdfReader_sourcePickerBadge {
+  background: rgba(122, 213, 216, 0.12);
+  border-color: rgba(122, 213, 216, 0.18);
+}
+
+body.dark .pdfReader_sourceChoiceCard i,
+#app_page.app_page--home-dark .pdfReader_sourceChoiceCard i {
+  background: rgba(122, 213, 216, 0.12);
+  color: rgba(226, 242, 244, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }

@@ -1,14 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as pdfjs from "pdfjs-dist/build/pdf";
+import { TextLayerBuilder } from "pdfjs-dist/web/pdf_viewer.js";
 import "./pdfReaderModal.css";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const TOOLS = [
-  { id: "pen", label: "Pen" },
-  { id: "highlight", label: "Highlight" },
-  { id: "note", label: "Note" },
+  {
+    id: "select",
+    label: <i className="fas fa-i-cursor"></i>,
+    title: "Text selection",
+  },
+  { id: "pen", label: <i className="fas fa-pen"></i> },
+  { id: "hand", label: <i className="fas fa-hand-paper"></i> },
 ];
 
 const clampPage = (value, max) => {
@@ -54,17 +59,23 @@ const readStoredStudyState = (documentKey) => {
     const parsed = JSON.parse(raw || "{}");
     return {
       annotationsByPage:
-        parsed?.annotationsByPage && typeof parsed.annotationsByPage === "object"
+        parsed?.annotationsByPage &&
+        typeof parsed.annotationsByPage === "object"
           ? parsed.annotationsByPage
           : {},
-      studySummary: typeof parsed?.studySummary === "string" ? parsed.studySummary : "",
+      studySummary:
+        typeof parsed?.studySummary === "string" ? parsed.studySummary : "",
     };
   } catch {
     return { annotationsByPage: {}, studySummary: "" };
   }
 };
 
-const writeStoredStudyState = (documentKey, annotationsByPage, studySummary) => {
+const writeStoredStudyState = (
+  documentKey,
+  annotationsByPage,
+  studySummary,
+) => {
   if (typeof window === "undefined" || !documentKey) {
     return;
   }
@@ -94,11 +105,35 @@ const pathFromPoints = (points = []) => {
     .join(" ");
 };
 
-const createDraft = (tool, point, defaultNoteText) => {
+const hexToRgba = (value, alpha) => {
+  if (typeof value !== "string") {
+    return `rgba(250, 204, 21, ${alpha})`;
+  }
+
+  const normalized = value.trim();
+
+  if (/^#([0-9a-f]{3}){1,2}$/i.test(normalized)) {
+    const hex = normalized.slice(1);
+    const expanded =
+      hex.length === 3
+        ? hex
+            .split("")
+            .map((character) => `${character}${character}`)
+            .join("")
+        : hex;
+    const parsed = Number.parseInt(expanded, 16);
+
+    return `rgba(${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}, ${alpha})`;
+  }
+
+  return normalized;
+};
+
+const createDraft = (tool, point, defaultNoteText, options = {}) => {
   if (tool === "pen") {
     return {
       type: "pen",
-      color: "#2dd4bf",
+      color: options.penColor || "#2dd4bf",
       width: 3,
       points: [point],
     };
@@ -107,11 +142,9 @@ const createDraft = (tool, point, defaultNoteText) => {
   if (tool === "highlight") {
     return {
       type: "highlight",
-      color: "rgba(250, 204, 21, 0.34)",
-      x: point.x,
-      y: point.y,
-      width: 0,
-      height: 0,
+      color: options.highlightColor || "rgba(250, 204, 21, 0.34)",
+      width: options.highlightStrokeWidth || 18,
+      points: [point],
     };
   }
 
@@ -130,6 +163,81 @@ const createDraft = (tool, point, defaultNoteText) => {
   return null;
 };
 
+const getRangeFromPoint = (x, y) => {
+  if (document.caretRangeFromPoint) {
+    return document.caretRangeFromPoint(x, y);
+  }
+
+  if (document.caretPositionFromPoint) {
+    const position = document.caretPositionFromPoint(x, y);
+
+    if (!position) {
+      return null;
+    }
+
+    const range = document.createRange();
+    range.setStart(position.offsetNode, position.offset);
+    range.collapse(true);
+    return range;
+  }
+
+  return null;
+};
+
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const formatPastedPlainText = (plainText) => {
+  const normalizedText = String(plainText || "").replace(/\r\n?/g, "\n");
+  const blocks = normalizedText.split(/\n{2,}/).filter((block) => block.trim());
+
+  if (blocks.length === 0) {
+    return "";
+  }
+
+  return blocks
+    .map((block) => {
+      const htmlBlock = escapeHtml(block).replace(/\n/g, "<br>");
+      return `<p><span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;">${htmlBlock}</span></p>`;
+    })
+    .join("");
+};
+
+const sanitizeClinicalRealityHtml = (html) => {
+  if (typeof window === "undefined") {
+    return String(html || "");
+  }
+
+  const container = window.document.createElement("div");
+  container.innerHTML = String(html || "");
+
+  container.querySelectorAll("*").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+
+    if (element.tagName === "H3") {
+      element.style.removeProperty("line-height");
+      element.style.removeProperty("font-family");
+    } else {
+      element.style.removeProperty("font-size");
+      element.style.removeProperty("line-height");
+      element.style.removeProperty("font-family");
+    }
+
+    if (!element.getAttribute("style")?.trim()) {
+      element.removeAttribute("style");
+    }
+  });
+
+  return container.innerHTML;
+};
+
 const PdfReaderModal = ({
   isOpen,
   fileUrl,
@@ -143,24 +251,80 @@ const PdfReaderModal = ({
   onOpenInNewTab,
   onDownload,
   onReaderStateChange,
+  onChooseFile,
+  renderInline = false,
+  forceVisible = false,
+  storedCourseOptions = [],
+  selectedCourseName = "",
+  onSelectCourseName,
+  selectedCourseLectures = [],
+  selectedLectureId = "",
+  onSelectCourseLecture,
+  cloudPdfMessages = [],
+  openCloudPdf,
 }) => {
-  const canvasRef = useRef(null);
+  const canvasRefs = useRef({});
   const canvasWrapRef = useRef(null);
-  const overlayRef = useRef(null);
-  const renderTaskRef = useRef(null);
-  const resizeTimeoutRef = useRef(null);
+  const overlayRefs = useRef({});
+  const textLayerRefs = useRef({});
+  const pageContainerRefs = useRef({});
+  const realityEditorRef = useRef(null);
+  const renderTasksRef = useRef({});
+  const textLayerBuildersRef = useRef({});
+  const draftAnnotationRef = useRef(null);
+  const draftAnimationFrameRef = useRef(null);
+  const wheelAnimationFrameRef = useRef(null);
+  const wheelTargetRef = useRef({ top: 0, left: 0 });
+  const pinchGestureRef = useRef(null);
+  const threeFingerUndoCooldownRef = useRef(0);
+  const panSessionRef = useRef(null);
+  const visiblePagesRef = useRef(new Set());
+  const layoutSyncTimeoutRef = useRef(null);
 
   const [pdfDocument, setPdfDocument] = useState(null);
   const [numPages, setNumPages] = useState(0);
-  const [pageNumber, setPageNumber] = useState(Math.max(1, Number(initialPage) || 1));
+  const [pageNumber, setPageNumber] = useState(
+    Math.max(1, Number(initialPage) || 1),
+  );
   const [zoom, setZoom] = useState(
     Math.min(2.5, Math.max(0.6, Number(initialZoom) || 1)),
   );
   const [viewerError, setViewerError] = useState("");
   const [documentLoading, setDocumentLoading] = useState(false);
-  const [pageRendering, setPageRendering] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [tool, setTool] = useState("pen");
+  const [renderingPages, setRenderingPages] = useState({});
+  const [pageSizes, setPageSizes] = useState({});
+  const [canvasWrapWidth, setCanvasWrapWidth] = useState(0);
+  const [visiblePages, setVisiblePages] = useState([]);
+  const [renderRevision, setRenderRevision] = useState(0);
+  const [tool, setTool] = useState(null);
+  const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(true);
+  const [editorTextColor, setEditorTextColor] = useState("#1a3b43");
+  const [editorHighlightColor, setEditorHighlightColor] = useState("#fff1a8");
+  const [isPenEraseModeOn, setIsPenEraseModeOn] = useState(false);
+  const [isHighlightEraseModeOn, setIsHighlightEraseModeOn] =
+    useState(false);
+  const [highlightStrokeWidth, setHighlightStrokeWidth] = useState(18);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+  const [scrollSpeedFactor, setScrollSpeedFactor] = useState(1.55);
+  const [touchZoomResponse, setTouchZoomResponse] = useState(1);
+  const [scrollTransitionAmount, setScrollTransitionAmount] = useState(0.22);
+  const [hasRealitySelection, setHasRealitySelection] = useState(true);
+  const [selectedRealityFontSizePt, setSelectedRealityFontSizePt] =
+    useState(12);
+  const disableErasers = useCallback(
+    (options = { keepPen: false, keepHighlight: false }) => {
+      if (!options.keepPen) {
+        setIsPenEraseModeOn(false);
+      }
+
+      if (!options.keepHighlight) {
+        setIsHighlightEraseModeOn(false);
+      }
+    },
+    [],
+  );
+  const [activePdfToolButton, setActivePdfToolButton] = useState("");
   const [rtlMode, setRtlMode] = useState(true);
   const [antiOcrMode, setAntiOcrMode] = useState(true);
   const [defaultNoteText, setDefaultNoteText] = useState("");
@@ -168,6 +332,14 @@ const PdfReaderModal = ({
   const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [annotationsByPage, setAnnotationsByPage] = useState({});
   const [studySummary, setStudySummary] = useState("");
+  const handlePdfToolButton = useCallback(
+    (buttonId, effect) => {
+      disableErasers();
+      setActivePdfToolButton(buttonId);
+      effect?.();
+    },
+    [disableErasers],
+  );
 
   const documentKey = useMemo(() => {
     return [fileUrl, title, metadata?.sender, metadata?.sizeBytes]
@@ -178,8 +350,27 @@ const PdfReaderModal = ({
 
   const currentAnnotations = annotationsByPage[String(pageNumber)] || [];
   const selectedNote = currentAnnotations.find(
-    (annotation) => annotation.id === selectedNoteId && annotation.type === "note",
+    (annotation) =>
+      annotation.id === selectedNoteId && annotation.type === "note",
   );
+  const isCurrentPageRendering = Boolean(renderingPages[String(pageNumber)]);
+  const pageNumbers = useMemo(
+    () => Array.from({ length: numPages }, (_, index) => index + 1),
+    [numPages],
+  );
+  const visiblePagesKey = useMemo(
+    () =>
+      visiblePages
+        .slice()
+        .sort((a, b) => a - b)
+        .join(","),
+    [visiblePages],
+  );
+  const pageRendering = useMemo(
+    () => Object.values(renderingPages).some(Boolean),
+    [renderingPages],
+  );
+  const isSelectingText = tool === "select";
 
   useEffect(() => {
     setPageNumber(Math.max(1, Number(initialPage) || 1));
@@ -196,6 +387,10 @@ const PdfReaderModal = ({
   useEffect(() => {
     writeStoredStudyState(documentKey, annotationsByPage, studySummary);
   }, [annotationsByPage, documentKey, studySummary]);
+
+  useEffect(() => {
+    draftAnnotationRef.current = draftAnnotation;
+  }, [draftAnnotation]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -231,6 +426,9 @@ const PdfReaderModal = ({
       if (!isOpen || !fileUrl) {
         setPdfDocument(null);
         setNumPages(0);
+        setPageSizes({});
+        setRenderingPages({});
+        setVisiblePages([]);
         setViewerError("");
         setDocumentLoading(false);
         return;
@@ -253,6 +451,13 @@ const PdfReaderModal = ({
           return nextDocument;
         });
         setNumPages(Number(nextDocument.numPages || 0));
+        setPageSizes({});
+        setRenderingPages({});
+        setRenderRevision(0);
+        visiblePagesRef.current = new Set([
+          clampPage(initialPage, nextDocument.numPages || 0),
+        ]);
+        setVisiblePages(Array.from(visiblePagesRef.current));
         setPageNumber((currentPage) =>
           clampPage(currentPage || initialPage, nextDocument.numPages || 0),
         );
@@ -280,108 +485,367 @@ const PdfReaderModal = ({
   }, [fileUrl, initialPage, isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !pdfDocument || !canvasRef.current || !canvasWrapRef.current) {
+    if (
+      !isOpen ||
+      !fileUrl ||
+      documentLoading ||
+      !pdfDocument ||
+      numPages <= 0
+    ) {
+      return undefined;
+    }
+
+    const timeoutIds = [
+      window.setTimeout(() => {
+        setRenderRevision((currentValue) => currentValue + 1);
+      }, 60),
+      window.setTimeout(() => {
+        setRenderRevision((currentValue) => currentValue + 1);
+      }, 220),
+    ];
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [documentLoading, fileUrl, isOpen, numPages, pdfDocument]);
+
+  useEffect(() => {
+    if (!isOpen || !pdfDocument || canvasWrapWidth <= 0) {
       return undefined;
     }
 
     let isCancelled = false;
+    const pagesToRender = Array.from(
+      new Set(
+        [pageNumber - 1, pageNumber, pageNumber + 1, ...visiblePages].filter(
+          (pageIndex) => pageIndex >= 1 && pageIndex <= numPages,
+        ),
+      ),
+    );
 
-    const renderPage = async () => {
-      setPageRendering(true);
-      setViewerError("");
+    const setPageRenderingState = (pageIndex, nextState) => {
+      const pageKey = String(pageIndex);
+      setRenderingPages((currentState) =>
+        currentState[pageKey] === nextState
+          ? currentState
+          : {
+              ...currentState,
+              [pageKey]: nextState,
+            },
+      );
+    };
+
+    const renderPage = async (pageIndex) => {
+      const canvas = canvasRefs.current[pageIndex];
+
+      if (!canvas) {
+        return;
+      }
+
+      setPageRenderingState(pageIndex, true);
 
       try {
-        const page = await pdfDocument.getPage(clampPage(pageNumber, numPages));
+        const page = await pdfDocument.getPage(pageIndex);
 
         if (isCancelled) {
           return;
         }
 
         const unscaledViewport = page.getViewport({ scale: 1 });
-        const availableWidth = Math.max(
-          320,
-          canvasWrapRef.current.clientWidth - 32,
-        );
+        const availableWidth = Math.max(320, canvasWrapWidth - 32);
         const baseScale = availableWidth / Math.max(1, unscaledViewport.width);
         const viewport = page.getViewport({
           scale: Math.max(0.25, baseScale) * zoom,
         });
-        const canvas = canvasRef.current;
+        const outputScale =
+          typeof window !== "undefined"
+            ? Math.max(window.devicePixelRatio || 1, 1)
+            : 1;
         const context = canvas.getContext("2d");
 
         if (!context) {
           throw new Error("Canvas rendering is not available.");
         }
 
-        canvas.width = Math.round(viewport.width);
-        canvas.height = Math.round(viewport.height);
+        canvas.width = Math.round(viewport.width * outputScale);
+        canvas.height = Math.round(viewport.height * outputScale);
         canvas.style.width = `${Math.round(viewport.width)}px`;
         canvas.style.height = `${Math.round(viewport.height)}px`;
-        setCanvasSize({
-          width: Math.round(viewport.width),
-          height: Math.round(viewport.height),
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        setPageSizes((currentState) => {
+          const pageKey = String(pageIndex);
+          const nextSize = {
+            width: Math.round(viewport.width),
+            height: Math.round(viewport.height),
+          };
+          const currentSize = currentState[pageKey];
+
+          if (
+            currentSize?.width === nextSize.width &&
+            currentSize?.height === nextSize.height
+          ) {
+            return currentState;
+          }
+
+          return {
+            ...currentState,
+            [pageKey]: nextSize,
+          };
         });
 
-        renderTaskRef.current?.cancel?.();
+        renderTasksRef.current[pageIndex]?.cancel?.();
         const nextRenderTask = page.render({
           canvasContext: context,
           viewport,
+          transform:
+            outputScale === 1 ? null : [outputScale, 0, 0, outputScale, 0, 0],
         });
-        renderTaskRef.current = nextRenderTask;
+        renderTasksRef.current[pageIndex] = nextRenderTask;
         await nextRenderTask.promise;
+
+        const textLayerDiv = textLayerRefs.current[pageIndex];
+
+        if (textLayerDiv) {
+          try {
+            textLayerDiv.innerHTML = "";
+            textLayerDiv.style.setProperty(
+              "--scale-factor",
+              `${viewport.scale}`,
+            );
+
+            const textContentSource = await page.getTextContent({
+              normalizeWhitespace: true,
+            });
+            const builder =
+              textLayerBuildersRef.current[pageIndex] ||
+              new TextLayerBuilder({});
+
+            textLayerBuildersRef.current[pageIndex] = builder;
+            textLayerDiv.append(builder.div);
+            builder.div.style.setProperty(
+              "--scale-factor",
+              `${viewport.scale}`,
+            );
+            builder.setTextContentSource(textContentSource);
+            await builder.render(viewport);
+          } catch {
+            // Keep the canvas visible even if text-layer generation fails.
+          }
+        }
       } catch (renderError) {
-        if (!isCancelled && renderError?.name !== "RenderingCancelledException") {
+        if (
+          !isCancelled &&
+          renderError?.name !== "RenderingCancelledException"
+        ) {
           setViewerError(
             renderError?.message || "Unable to render this PDF page.",
           );
         }
       } finally {
         if (!isCancelled) {
-          setPageRendering(false);
+          setPageRenderingState(pageIndex, false);
         }
       }
     };
 
-    renderPage();
-
-    const handleResize = () => {
-      window.clearTimeout(resizeTimeoutRef.current);
-      resizeTimeoutRef.current = window.setTimeout(() => {
-        renderPage();
-      }, 120);
-    };
-
-    window.addEventListener("resize", handleResize);
+    setViewerError("");
+    pagesToRender.forEach((pageIndex) => {
+      renderPage(pageIndex);
+    });
 
     return () => {
       isCancelled = true;
-      window.removeEventListener("resize", handleResize);
-      window.clearTimeout(resizeTimeoutRef.current);
-      renderTaskRef.current?.cancel?.();
+      pagesToRender.forEach((pageIndex) => {
+        renderTasksRef.current[pageIndex]?.cancel?.();
+      });
     };
-  }, [isOpen, numPages, pageNumber, pdfDocument, zoom]);
+  }, [
+    canvasWrapWidth,
+    isOpen,
+    numPages,
+    pageNumber,
+    pdfDocument,
+    renderRevision,
+    visiblePagesKey,
+    zoom,
+  ]);
 
-  useEffect(() => () => {
-    renderTaskRef.current?.cancel?.();
-    window.clearTimeout(resizeTimeoutRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      Object.values(renderTasksRef.current).forEach((task) => task?.cancel?.());
+      if (layoutSyncTimeoutRef.current) {
+        window.clearTimeout(layoutSyncTimeoutRef.current);
+        layoutSyncTimeoutRef.current = null;
+      }
+      if (draftAnimationFrameRef.current) {
+        window.cancelAnimationFrame(draftAnimationFrameRef.current);
+        draftAnimationFrameRef.current = null;
+      }
+      if (wheelAnimationFrameRef.current) {
+        window.cancelAnimationFrame(wheelAnimationFrameRef.current);
+        wheelAnimationFrameRef.current = null;
+      }
+      pinchGestureRef.current = null;
+    },
+    [],
+  );
 
-  useEffect(() => () => {
-    pdfDocument?.destroy?.().catch(() => {});
-  }, [pdfDocument]);
+  useEffect(
+    () => () => {
+      pdfDocument?.destroy?.().catch(() => {});
+    },
+    [pdfDocument],
+  );
 
   const isVisible =
-    isOpen &&
+    (forceVisible || isOpen) &&
     (isLoading ||
+      forceVisible ||
       documentLoading ||
       pageRendering ||
       Boolean(fileUrl) ||
       Boolean(error) ||
       Boolean(viewerError));
 
-  const setPageAnnotations = (updater) => {
+  useEffect(() => {
+    if (!isVisible) {
+      return undefined;
+    }
+
+    const wrapElement = canvasWrapRef.current;
+
+    if (!wrapElement) {
+      return undefined;
+    }
+
+    const syncWidth = () => {
+      const nextWidth = Math.max(0, wrapElement.clientWidth || 0);
+      setCanvasWrapWidth((currentWidth) =>
+        currentWidth === nextWidth ? currentWidth : nextWidth,
+      );
+    };
+
+    syncWidth();
+
+    let animationFrameId = 0;
+    let secondAnimationFrameId = 0;
+
+    animationFrameId = window.requestAnimationFrame(() => {
+      syncWidth();
+      secondAnimationFrameId = window.requestAnimationFrame(() => {
+        syncWidth();
+      });
+    });
+
+    layoutSyncTimeoutRef.current = window.setTimeout(() => {
+      syncWidth();
+      layoutSyncTimeoutRef.current = null;
+    }, 180);
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        syncWidth();
+      });
+
+      observer.observe(wrapElement);
+
+      return () => {
+        observer.disconnect();
+        window.cancelAnimationFrame(animationFrameId);
+        window.cancelAnimationFrame(secondAnimationFrameId);
+        if (layoutSyncTimeoutRef.current) {
+          window.clearTimeout(layoutSyncTimeoutRef.current);
+          layoutSyncTimeoutRef.current = null;
+        }
+      };
+    }
+
+    window.addEventListener("resize", syncWidth);
+    return () => {
+      window.removeEventListener("resize", syncWidth);
+      window.cancelAnimationFrame(animationFrameId);
+      window.cancelAnimationFrame(secondAnimationFrameId);
+      if (layoutSyncTimeoutRef.current) {
+        window.clearTimeout(layoutSyncTimeoutRef.current);
+        layoutSyncTimeoutRef.current = null;
+      }
+    };
+  }, [documentLoading, fileUrl, isVisible, numPages]);
+
+  useEffect(() => {
+    if (!isVisible || !canvasWrapRef.current || !pageNumbers.length) {
+      return undefined;
+    }
+
+    const rootElement = canvasWrapRef.current;
+
+    if (typeof IntersectionObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let strongestVisiblePage = null;
+        let strongestRatio = 0;
+
+        entries.forEach((entry) => {
+          const pageIndex = Number(entry.target.dataset.pageNumber);
+
+          if (!pageIndex) {
+            return;
+          }
+
+          if (entry.isIntersecting && entry.intersectionRatio > 0.2) {
+            visiblePagesRef.current.add(pageIndex);
+
+            if (entry.intersectionRatio > strongestRatio) {
+              strongestRatio = entry.intersectionRatio;
+              strongestVisiblePage = pageIndex;
+            }
+          } else {
+            visiblePagesRef.current.delete(pageIndex);
+          }
+        });
+
+        const nextVisiblePages = Array.from(visiblePagesRef.current).sort(
+          (firstPage, secondPage) => firstPage - secondPage,
+        );
+        setVisiblePages((currentPages) =>
+          currentPages.length === nextVisiblePages.length &&
+          currentPages.every((page, index) => page === nextVisiblePages[index])
+            ? currentPages
+            : nextVisiblePages,
+        );
+
+        if (strongestVisiblePage) {
+          setPageNumber((currentPage) =>
+            currentPage === strongestVisiblePage
+              ? currentPage
+              : strongestVisiblePage,
+          );
+        }
+      },
+      {
+        root: rootElement,
+        threshold: [0.2, 0.45, 0.7, 0.9],
+      },
+    );
+
+    pageNumbers.forEach((pageIndex) => {
+      const pageElement = pageContainerRefs.current[pageIndex];
+
+      if (pageElement) {
+        observer.observe(pageElement);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [isVisible, pageNumbers]);
+
+  const setPageAnnotations = (targetPageNumber, updater) => {
     setAnnotationsByPage((currentState) => {
-      const pageKey = String(pageNumber);
+      const pageKey = String(targetPageNumber);
       const currentPageAnnotations = currentState[pageKey] || [];
       const nextPageAnnotations =
         typeof updater === "function"
@@ -394,9 +858,10 @@ const PdfReaderModal = ({
       };
     });
   };
+  const isPdfToolButtonActive = (id) => activePdfToolButton === id;
 
-  const getRelativePoint = (event) => {
-    const overlay = overlayRef.current;
+  const getRelativePoint = (event, targetPageNumber) => {
+    const overlay = overlayRefs.current[targetPageNumber];
 
     if (!overlay) {
       return { x: 0, y: 0 };
@@ -410,64 +875,505 @@ const PdfReaderModal = ({
     };
   };
 
-  const handlePointerDown = (event) => {
-    if (!fileUrl || pageRendering || documentLoading) {
+  const eraseHighlightAnnotationsAtPoint = (targetPageNumber, point) => {
+    const currentPageSize = pageSizes[String(targetPageNumber)] || {};
+    const width = Math.max(currentPageSize.width || 0, 1);
+    const height = Math.max(currentPageSize.height || 0, 1);
+    const eraserRadius = Math.max(
+      10,
+      Math.min(24, Math.min(width, height) * 0.02),
+    );
+
+    setPageAnnotations(targetPageNumber, (entries) =>
+      entries.flatMap((entry) => {
+        if (entry.type !== "highlight" || !Array.isArray(entry.points)) {
+          return [entry];
+        }
+
+        const segments = [];
+        let currentSegment = [];
+
+        entry.points.forEach((penPoint) => {
+          const deltaX = (penPoint.x - point.x) * width;
+          const deltaY = (penPoint.y - point.y) * height;
+          const isInsideEraseRadius =
+            Math.hypot(deltaX, deltaY) <= eraserRadius;
+
+          if (isInsideEraseRadius) {
+            if (currentSegment.length > 0) {
+              segments.push(currentSegment);
+              currentSegment = [];
+            }
+
+            return;
+          }
+
+          currentSegment.push(penPoint);
+        });
+
+        if (currentSegment.length > 0) {
+          segments.push(currentSegment);
+        }
+
+        return segments.map((segment, segmentIndex) => ({
+          ...entry,
+          id: `${entry.id || entry.type}-${segmentIndex}-${Date.now()}`,
+          points: segment,
+        }));
+      }),
+    );
+  };
+
+  const erasePenAnnotationsAtPoint = (targetPageNumber, point) => {
+    const currentPageSize = pageSizes[String(targetPageNumber)] || {};
+    const width = Math.max(currentPageSize.width || 0, 1);
+    const height = Math.max(currentPageSize.height || 0, 1);
+    const eraserRadius = Math.max(
+      10,
+      Math.min(24, Math.min(width, height) * 0.02),
+    );
+
+    setPageAnnotations(targetPageNumber, (entries) =>
+      entries.flatMap((entry) => {
+        if (entry.type !== "pen" || !Array.isArray(entry.points)) {
+          return [entry];
+        }
+
+        const segments = [];
+        let currentSegment = [];
+
+        entry.points.forEach((penPoint) => {
+          const deltaX = (penPoint.x - point.x) * width;
+          const deltaY = (penPoint.y - point.y) * height;
+          const isInsideEraseRadius =
+            Math.hypot(deltaX, deltaY) <= eraserRadius;
+
+          if (isInsideEraseRadius) {
+            if (currentSegment.length > 0) {
+              segments.push(currentSegment);
+              currentSegment = [];
+            }
+
+            return;
+          }
+
+          currentSegment.push(penPoint);
+        });
+
+        if (currentSegment.length > 0) {
+          segments.push(currentSegment);
+        }
+
+        return segments.map((segment, segmentIndex) => ({
+          ...entry,
+          id: `${entry.id || entry.type}-${segmentIndex}-${Date.now()}`,
+          points: segment,
+        }));
+      }),
+    );
+  };
+
+  const handlePointerDown = (targetPageNumber, event) => {
+    if (
+      !fileUrl ||
+      Boolean(renderingPages[String(targetPageNumber)]) ||
+      documentLoading
+    ) {
       return;
     }
 
-    const point = getRelativePoint(event);
+    if (isPenEraseModeOn) {
+      erasePenAnnotationsAtPoint(
+        targetPageNumber,
+        getRelativePoint(event, targetPageNumber),
+      );
+      event.preventDefault();
+      return;
+    }
+
+    if (isHighlightEraseModeOn) {
+      eraseHighlightAnnotationsAtPoint(
+        targetPageNumber,
+        getRelativePoint(event, targetPageNumber),
+      );
+      event.preventDefault();
+      return;
+    }
+
+    if (!tool) {
+      return;
+    }
+
+    if (tool === "select") {
+      return;
+    }
+
+    if (tool === "hand") {
+      const wrapElement = canvasWrapRef.current;
+
+      if (!wrapElement) {
+        return;
+      }
+
+      panSessionRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startScrollLeft: wrapElement.scrollLeft,
+        startScrollTop: wrapElement.scrollTop,
+      };
+      event.preventDefault();
+      return;
+    }
+
+    const point = getRelativePoint(event, targetPageNumber);
 
     if (tool === "note") {
       const note = createDraft("note", point, defaultNoteText);
-      setPageAnnotations((entries) => [...entries, note]);
+      setPageAnnotations(targetPageNumber, (entries) => [...entries, note]);
+      setPageNumber(targetPageNumber);
       setSelectedNoteId(note.id);
       return;
     }
 
-    setDraftAnnotation(createDraft(tool, point, defaultNoteText));
+    const nextDraft = {
+      ...createDraft(tool, point, defaultNoteText, {
+        penColor: editorTextColor,
+        highlightColor: hexToRgba(editorHighlightColor, 0.34),
+        highlightStrokeWidth,
+      }),
+      pageNumber: targetPageNumber,
+    };
+    setPageNumber(targetPageNumber);
+    draftAnnotationRef.current = nextDraft;
+    setDraftAnnotation(nextDraft);
   };
 
-  const handlePointerMove = (event) => {
-    if (!draftAnnotation) {
+  const handlePointerMove = (targetPageNumber, event) => {
+    if (isPenEraseModeOn && event.buttons === 1) {
+      erasePenAnnotationsAtPoint(
+        targetPageNumber,
+        getRelativePoint(event, targetPageNumber),
+      );
+      event.preventDefault();
       return;
     }
 
-    const point = getRelativePoint(event);
+    if (isHighlightEraseModeOn && event.buttons === 1) {
+      eraseHighlightAnnotationsAtPoint(
+        targetPageNumber,
+        getRelativePoint(event, targetPageNumber),
+      );
+      event.preventDefault();
+      return;
+    }
 
-    if (draftAnnotation.type === "pen") {
-      setDraftAnnotation((currentDraft) => ({
+    if (tool === "select") {
+      return;
+    }
+
+    if (tool === "hand" && panSessionRef.current) {
+      const wrapElement = canvasWrapRef.current;
+
+      if (!wrapElement) {
+        return;
+      }
+
+      wrapElement.scrollLeft =
+        panSessionRef.current.startScrollLeft -
+        (event.clientX - panSessionRef.current.startX);
+      wrapElement.scrollTop =
+        panSessionRef.current.startScrollTop -
+        (event.clientY - panSessionRef.current.startY);
+      event.preventDefault();
+      return;
+    }
+
+    if (!draftAnnotationRef.current) {
+      return;
+    }
+
+    const point = getRelativePoint(event, targetPageNumber);
+
+    const currentDraft = draftAnnotationRef.current;
+
+    if (currentDraft.pageNumber !== targetPageNumber) {
+      return;
+    }
+
+    let nextDraft = currentDraft;
+
+    if (currentDraft.type === "pen") {
+      nextDraft = {
         ...currentDraft,
         points: [...currentDraft.points, point],
-      }));
+      };
+    } else if (currentDraft.type === "highlight") {
+      nextDraft = {
+        ...currentDraft,
+        points: [...currentDraft.points, point],
+      };
+    }
+
+    if (nextDraft === currentDraft) {
       return;
     }
 
-    if (draftAnnotation.type === "highlight") {
-      setDraftAnnotation((currentDraft) => ({
-        ...currentDraft,
-        width: point.x - currentDraft.x,
-        height: point.y - currentDraft.y,
-      }));
+    draftAnnotationRef.current = nextDraft;
+
+    if (!draftAnimationFrameRef.current) {
+      draftAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        draftAnimationFrameRef.current = null;
+        setDraftAnnotation(draftAnnotationRef.current);
+      });
     }
   };
 
+  const animateCanvasWheelScroll = useCallback(() => {
+    const wrapElement = canvasWrapRef.current;
+
+    if (!wrapElement) {
+      wheelAnimationFrameRef.current = null;
+      return;
+    }
+
+    const nextTop =
+      wrapElement.scrollTop +
+      (wheelTargetRef.current.top - wrapElement.scrollTop) *
+        scrollTransitionAmount;
+    const nextLeft =
+      wrapElement.scrollLeft +
+      (wheelTargetRef.current.left - wrapElement.scrollLeft) *
+        scrollTransitionAmount;
+
+    wrapElement.scrollTop = nextTop;
+    wrapElement.scrollLeft = nextLeft;
+
+    const reachedTop =
+      Math.abs(wheelTargetRef.current.top - wrapElement.scrollTop) < 1;
+    const reachedLeft =
+      Math.abs(wheelTargetRef.current.left - wrapElement.scrollLeft) < 1;
+
+    if (reachedTop && reachedLeft) {
+      wrapElement.scrollTop = wheelTargetRef.current.top;
+      wrapElement.scrollLeft = wheelTargetRef.current.left;
+      wheelAnimationFrameRef.current = null;
+      return;
+    }
+
+    wheelAnimationFrameRef.current = window.requestAnimationFrame(
+      animateCanvasWheelScroll,
+    );
+  }, [scrollTransitionAmount]);
+
+  const handleCanvasWheel = useCallback(
+    (event) => {
+      if (event.ctrlKey) {
+        return;
+      }
+
+      const wrapElement = canvasWrapRef.current;
+
+      if (!wrapElement) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const deltaUnitMultiplier =
+        event.deltaMode === 1
+          ? 34
+          : event.deltaMode === 2
+            ? wrapElement.clientHeight * 0.92
+            : 1;
+      const verticalBoost = scrollSpeedFactor;
+      const horizontalBoost = Math.max(1, scrollSpeedFactor - 0.3);
+      const nextDeltaY =
+        (event.shiftKey ? event.deltaX || event.deltaY : event.deltaY) *
+        deltaUnitMultiplier *
+        verticalBoost;
+      const nextDeltaX =
+        (!event.shiftKey ? event.deltaX : 0) *
+        deltaUnitMultiplier *
+        horizontalBoost;
+
+      if (!wheelAnimationFrameRef.current) {
+        wheelTargetRef.current = {
+          top: wrapElement.scrollTop,
+          left: wrapElement.scrollLeft,
+        };
+      }
+
+      const maxTop = Math.max(
+        0,
+        wrapElement.scrollHeight - wrapElement.clientHeight,
+      );
+      const maxLeft = Math.max(
+        0,
+        wrapElement.scrollWidth - wrapElement.clientWidth,
+      );
+
+      wheelTargetRef.current = {
+        top: Math.min(
+          maxTop,
+          Math.max(0, wheelTargetRef.current.top + nextDeltaY),
+        ),
+        left: Math.min(
+          maxLeft,
+          Math.max(0, wheelTargetRef.current.left + nextDeltaX),
+        ),
+      };
+
+      if (!wheelAnimationFrameRef.current) {
+        wheelAnimationFrameRef.current = window.requestAnimationFrame(
+          animateCanvasWheelScroll,
+        );
+      }
+    },
+    [animateCanvasWheelScroll, scrollSpeedFactor],
+  );
+
+  const getTouchDistance = useCallback((firstTouch, secondTouch) => {
+    const deltaX = firstTouch.clientX - secondTouch.clientX;
+    const deltaY = firstTouch.clientY - secondTouch.clientY;
+    return Math.hypot(deltaX, deltaY);
+  }, []);
+
+  const undoLastPdfAction = useCallback(() => {
+    const editorElement = realityEditorRef.current;
+    const activeElement = document.activeElement;
+    const isEditingRealityNotes =
+      editorElement &&
+      activeElement &&
+      (activeElement === editorElement || editorElement.contains(activeElement));
+
+    if (isEditingRealityNotes) {
+      document.execCommand("undo");
+
+      if (editorElement) {
+        setStudySummary(
+          sanitizeClinicalRealityHtml(editorElement.innerHTML),
+        );
+      }
+
+      return;
+    }
+
+    if (draftAnnotationRef.current) {
+      draftAnnotationRef.current = null;
+      setDraftAnnotation(null);
+      return;
+    }
+
+    const pageKey = String(pageNumber);
+    const pageEntries = annotationsByPage[pageKey] || [];
+    const lastEntry = pageEntries[pageEntries.length - 1];
+
+    if (!lastEntry) {
+      return;
+    }
+
+    setPageAnnotations(pageNumber, (entries) => entries.slice(0, -1));
+
+    if (lastEntry.id === selectedNoteId) {
+      setSelectedNoteId(null);
+    }
+  }, [annotationsByPage, pageNumber, selectedNoteId]);
+
+  const handleCanvasTouchStart = useCallback(
+    (event) => {
+      if (event.touches.length === 3) {
+        const now = Date.now();
+
+        if (now - threeFingerUndoCooldownRef.current > 500) {
+          threeFingerUndoCooldownRef.current = now;
+          event.preventDefault();
+          undoLastPdfAction();
+        }
+
+        return;
+      }
+
+      if (event.touches.length !== 2) {
+        return;
+      }
+
+      const [firstTouch, secondTouch] = event.touches;
+      pinchGestureRef.current = {
+        startDistance: getTouchDistance(firstTouch, secondTouch),
+        startZoom: zoom,
+      };
+    },
+    [getTouchDistance, undoLastPdfAction, zoom],
+  );
+
+  const handleCanvasTouchMove = useCallback(
+    (event) => {
+      if (event.touches.length !== 2 || !pinchGestureRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const [firstTouch, secondTouch] = event.touches;
+      const nextDistance = getTouchDistance(firstTouch, secondTouch);
+      const startDistance = pinchGestureRef.current.startDistance || nextDistance;
+
+      if (!startDistance) {
+        return;
+      }
+
+      const nextZoom = Math.max(
+        0.6,
+        Math.min(
+          2.5,
+          pinchGestureRef.current.startZoom *
+            (1 + (nextDistance / startDistance - 1) * touchZoomResponse),
+        ),
+      );
+
+      setZoom(Number(nextZoom.toFixed(3)));
+    },
+    [getTouchDistance, touchZoomResponse],
+  );
+
+  const handleCanvasTouchEnd = useCallback(() => {
+    pinchGestureRef.current = null;
+  }, []);
+
   const finalizeDraft = () => {
-    if (!draftAnnotation) {
+    if (panSessionRef.current) {
+      panSessionRef.current = null;
+      return;
+    }
+
+    const currentDraft = draftAnnotationRef.current;
+
+    if (draftAnimationFrameRef.current) {
+      window.cancelAnimationFrame(draftAnimationFrameRef.current);
+      draftAnimationFrameRef.current = null;
+    }
+
+    if (!currentDraft) {
       return;
     }
 
     const annotation = {
-      ...draftAnnotation,
+      ...currentDraft,
       id: `${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
 
-    setPageAnnotations((entries) => [...entries, annotation]);
+    setPageAnnotations(annotation.pageNumber, (entries) => [
+      ...entries,
+      annotation,
+    ]);
+    draftAnnotationRef.current = null;
     setDraftAnnotation(null);
   };
 
   const updateSelectedNote = (nextText) => {
-    setPageAnnotations((entries) =>
+    setPageAnnotations(pageNumber, (entries) =>
       entries.map((entry) =>
         entry.id === selectedNoteId && entry.type === "note"
           ? { ...entry, text: nextText }
@@ -477,7 +1383,7 @@ const PdfReaderModal = ({
   };
 
   const deleteAnnotation = (annotationId) => {
-    setPageAnnotations((entries) =>
+    setPageAnnotations(pageNumber, (entries) =>
       entries.filter((entry) => entry.id !== annotationId),
     );
 
@@ -493,330 +1399,1495 @@ const PdfReaderModal = ({
     setDraftAnnotation(null);
   };
 
+  const focusRealityEditor = () => {
+    if (realityEditorRef.current) {
+      realityEditorRef.current.focus();
+    }
+  };
+
+  const hasActiveSelectionInsideEditor = () => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return false;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const range = selection.getRangeAt(0);
+
+    return (
+      !!editorElement && editorElement.contains(range.commonAncestorContainer)
+    );
+  };
+
+  const insertHtmlAtCurrentSelection = (html) => {
+    document.execCommand("insertHTML", false, html);
+  };
+
+  useEffect(() => {
+    const editorElement = realityEditorRef.current;
+
+    if (!editorElement) {
+      return;
+    }
+
+    const sanitizedSummary = sanitizeClinicalRealityHtml(studySummary);
+
+    if (editorElement.innerHTML !== sanitizedSummary) {
+      editorElement.innerHTML = sanitizedSummary;
+    }
+  }, [studySummary]);
+
+  useEffect(() => {
+    const syncRealitySelection = () => {
+      const selection = window.getSelection();
+
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        setHasRealitySelection(false);
+        setSelectedRealityFontSizePt(null);
+        return;
+      }
+
+      const editorElement = realityEditorRef.current;
+      const range = selection.getRangeAt(0);
+      const hasSelectionInsideEditor =
+        !!editorElement &&
+        editorElement.contains(range.commonAncestorContainer) &&
+        selection.toString().trim().length > 0;
+
+      setHasRealitySelection(hasSelectionInsideEditor);
+
+      if (!hasSelectionInsideEditor) {
+        setSelectedRealityFontSizePt(null);
+        return;
+      }
+
+      const parentElement =
+        range.startContainer.nodeType === Node.TEXT_NODE
+          ? range.startContainer.parentElement
+          : range.startContainer;
+      const computedFontSizePx = Number.parseFloat(
+        window.getComputedStyle(parentElement).fontSize,
+      );
+      const computedFontSizePt = computedFontSizePx * 0.75;
+
+      setSelectedRealityFontSizePt(Number(computedFontSizePt.toFixed(1)));
+    };
+
+    document.addEventListener("selectionchange", syncRealitySelection);
+    return () => {
+      document.removeEventListener("selectionchange", syncRealitySelection);
+    };
+  }, []);
+
+  const applyEditorCommand = (command, value = null) => {
+    if (command === "justifyLeft") {
+      setRtlMode(false);
+    }
+
+    if (command === "justifyRight") {
+      setRtlMode(true);
+    }
+
+    if (!hasActiveSelectionInsideEditor()) {
+      focusRealityEditor();
+    }
+
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand(command, false, value);
+
+    if (realityEditorRef.current) {
+      setStudySummary(
+        sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+      );
+    }
+  };
+
+  const applyHighlightToSelection = () => {
+    disableErasers();
+    setTool((currentTool) =>
+      currentTool === "highlight" ? null : "highlight",
+    );
+  };
+
+  const clearTransparentHighlightArtifacts = () => {
+    if (!realityEditorRef.current) {
+      return;
+    }
+
+    realityEditorRef.current
+      .querySelectorAll(
+        '[style*="background-color: transparent"], [style*="background-color: rgba(0, 0, 0, 0)"]',
+      )
+      .forEach((element) => {
+        element.style.backgroundColor = "";
+
+        if (!element.getAttribute("style")?.trim()) {
+          element.removeAttribute("style");
+        }
+      });
+  };
+
+  const eraseHighlightAtPoint = (clientX, clientY) => {
+    const editorElement = realityEditorRef.current;
+
+    if (!editorElement) {
+      return;
+    }
+
+    const caretRange = getRangeFromPoint(clientX, clientY);
+
+    if (!caretRange || !editorElement.contains(caretRange.startContainer)) {
+      return;
+    }
+
+    const textNode =
+      caretRange.startContainer.nodeType === Node.TEXT_NODE
+        ? caretRange.startContainer
+        : null;
+
+    if (!textNode || !textNode.textContent) {
+      return;
+    }
+
+    const offset = Math.min(
+      caretRange.startOffset,
+      Math.max(textNode.textContent.length - 1, 0),
+    );
+
+    const charRange = document.createRange();
+    charRange.setStart(textNode, offset);
+    charRange.setEnd(
+      textNode,
+      Math.min(offset + 1, textNode.textContent.length),
+    );
+
+    const selection = window.getSelection();
+
+    if (!selection) {
+      return;
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(charRange);
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("hiliteColor", false, "transparent");
+    clearTransparentHighlightArtifacts();
+    selection.removeAllRanges();
+    setHasRealitySelection(false);
+    setSelectedRealityFontSizePt(null);
+    setStudySummary(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+  };
+
+  const handleRealityEditorMouseDown = (event) => {
+    if (!isHighlightEraseModeOn) {
+      return;
+    }
+
+    event.preventDefault();
+    eraseHighlightAtPoint(event.clientX, event.clientY);
+  };
+
+  const handleRealityEditorMouseMove = (event) => {
+    if (!isHighlightEraseModeOn || event.buttons !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+    eraseHighlightAtPoint(event.clientX, event.clientY);
+  };
+
+  const removeHighlightFromSelection = () => {
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return false;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const range = selection.getRangeAt(0);
+
+    if (
+      !editorElement ||
+      !editorElement.contains(range.commonAncestorContainer)
+    ) {
+      return false;
+    }
+
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("hiliteColor", false, "transparent");
+    clearTransparentHighlightArtifacts();
+    selection.removeAllRanges();
+    setHasRealitySelection(false);
+    setSelectedRealityFontSizePt(null);
+    setStudySummary(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+    return true;
+  };
+
+  const handleRealityEditorPaste = (event) => {
+    event.preventDefault();
+
+    const plainText = event.clipboardData?.getData("text/plain") || "";
+    const htmlToInsert = formatPastedPlainText(plainText);
+
+    if (!htmlToInsert) {
+      return;
+    }
+
+    focusRealityEditor();
+    insertHtmlAtCurrentSelection(htmlToInsert);
+
+    if (realityEditorRef.current) {
+      setStudySummary(
+        sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+      );
+    }
+  };
+
+  const handleRealityEditorBeforeInput = (event) => {
+    if (event.isComposing) {
+      return;
+    }
+
+    if (event.inputType === "insertText" && event.data) {
+      event.preventDefault();
+      focusRealityEditor();
+      insertHtmlAtCurrentSelection(
+        `<span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;">${escapeHtml(event.data)}</span>`,
+      );
+
+      if (realityEditorRef.current) {
+        setStudySummary(
+          sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+        );
+      }
+      return;
+    }
+
+    if (event.inputType === "insertParagraph") {
+      event.preventDefault();
+      focusRealityEditor();
+      insertHtmlAtCurrentSelection(
+        `<p><span style="font-size: 9pt; line-height: inherit; font-family: 'IBM Plex Mono', monospace;"><br></span></p>`,
+      );
+
+      if (realityEditorRef.current) {
+        setStudySummary(
+          sanitizeClinicalRealityHtml(realityEditorRef.current.innerHTML),
+        );
+      }
+    }
+  };
+
+  const adjustSelectedFontSize = (delta) => {
+    if (tool === "highlight") {
+      setHighlightStrokeWidth((currentWidth) =>
+        Math.max(8, Math.min(36, currentWidth + delta * 2)),
+      );
+      return;
+    }
+
+    const selection = window.getSelection();
+
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
+      return;
+    }
+
+    const editorElement = realityEditorRef.current;
+    const range = selection.getRangeAt(0);
+
+    if (
+      !editorElement ||
+      !editorElement.contains(range.commonAncestorContainer)
+    ) {
+      setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
+      return;
+    }
+
+    const selectedText = selection.toString();
+
+    if (!selectedText.trim()) {
+      setHasRealitySelection(false);
+      setSelectedRealityFontSizePt(null);
+      return;
+    }
+
+    const parentElement =
+      range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+    const computedFontSizePx = Number.parseFloat(
+      window.getComputedStyle(parentElement).fontSize,
+    );
+    const computedFontSizePt = computedFontSizePx * 0.75;
+    const roundedFontSizePt = Number(computedFontSizePt.toFixed(3));
+    const isWholePointSize = Number.isInteger(roundedFontSizePt);
+    let nextFontSizePt = roundedFontSizePt;
+
+    if (delta > 0) {
+      nextFontSizePt = isWholePointSize
+        ? roundedFontSizePt + delta
+        : Math.ceil(roundedFontSizePt);
+    } else if (delta < 0) {
+      nextFontSizePt = isWholePointSize
+        ? roundedFontSizePt + delta
+        : Math.floor(roundedFontSizePt);
+    }
+
+    nextFontSizePt = Math.max(9, Math.min(31.5, nextFontSizePt));
+    const extractedContent = range.extractContents();
+    const fragmentChildNodes = Array.from(extractedContent.childNodes);
+    const sizeWrapper = document.createElement("span");
+
+    sizeWrapper.style.fontSize = `${nextFontSizePt.toFixed(1)}pt`;
+    sizeWrapper.style.lineHeight = "inherit";
+    sizeWrapper.appendChild(extractedContent);
+    range.insertNode(sizeWrapper);
+
+    selection.removeAllRanges();
+    const updatedRange = document.createRange();
+
+    if (fragmentChildNodes.length > 0) {
+      updatedRange.setStartBefore(fragmentChildNodes[0]);
+      updatedRange.setEndAfter(
+        fragmentChildNodes[fragmentChildNodes.length - 1],
+      );
+    } else {
+      updatedRange.selectNodeContents(sizeWrapper);
+    }
+
+    selection.addRange(updatedRange);
+
+    setStudySummary(sanitizeClinicalRealityHtml(editorElement.innerHTML));
+    setHasRealitySelection(true);
+    setSelectedRealityFontSizePt(Number(nextFontSizePt.toFixed(1)));
+  };
+
+  const scrollToPage = (targetPageNumber) => {
+    const nextPage = clampPage(targetPageNumber, numPages);
+    const pageElement = pageContainerRefs.current[nextPage];
+
+    setPageNumber(nextPage);
+
+    if (pageElement) {
+      pageElement.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
   if (!isVisible) {
     return null;
   }
 
-  return (
-    <div className="pdfReader_overlay" role="dialog" aria-modal="true">
-      <div className="pdfReader_shell pdfReader_shell--study" dir={rtlMode ? "rtl" : "ltr"}>
-        <div className="pdfReader_toolbar">
-          <div className="pdfReader_titleWrap">
-            <p className="pdfReader_title">{title || "Telegram PDF"}</p>
-            <p className="pdfReader_subtitle">
+  const shell = (
+    <div
+      id="pdfReader_shell"
+      className="pdfReader_shell pdfReader_shell--study"
+      dir={rtlMode ? "rtl" : "ltr"}
+      style={{
+        "--pdf-reader-highlight-color": editorHighlightColor,
+      }}
+    >
+      <div id="PDF_controlwrapper" className="PDF_controlwrapper">
+        <div id="pdfReader_toolbar" className="pdfReader_toolbar">
+          <div id="pdfReader_titleWrap" className="pdfReader_titleWrap">
+            <p id="pdfReader_title" className="pdfReader_title">
+              {title || "Telegram PDF"}
+            </p>
+            <p id="pdfReader_subtitle" className="pdfReader_subtitle">
               {metadata?.sender ? `${metadata.sender} • ` : ""}
               {getReadableSize(metadata?.sizeBytes) || "PDF"}
             </p>
           </div>
-          <div className="pdfReader_controls">
+          <div id="pdfReader_controls" className="pdfReader_controls">
+            <div id="PDF_pageControls" className="PDF_pageControls">
+              <button
+                id="pdfReader_prevButton"
+                type="button"
+                onClick={() => scrollToPage(pageNumber - 1)}
+                disabled={pageNumber <= 1 || !numPages}
+              >
+                Prev
+              </button>
+              <span id="pdfReader_pageCounter">
+                {pageNumber}/{numPages || "-"}
+              </span>
+              <button
+                id="pdfReader_nextButton"
+                type="button"
+                onClick={() => scrollToPage(pageNumber + 1)}
+                disabled={!numPages || pageNumber >= numPages}
+              >
+                Next
+              </button>
+            </div>
+            <div id="PDF_zoomControls" className="PDF_zoomControls">
+              <button
+                id="pdfReader_zoomOutButton"
+                type="button"
+                onClick={() => setZoom((value) => Math.max(0.6, value - 0.1))}
+                disabled={zoom <= 0.6}
+              >
+                -
+              </button>
+              <span id="pdfReader_zoomPercent">{Math.round(zoom * 100)}%</span>
+              <button
+                id="pdfReader_zoomInButton"
+                type="button"
+                onClick={() => setZoom((value) => Math.min(2.5, value + 0.1))}
+                disabled={zoom >= 2.5}
+              >
+                +
+              </button>
+            </div>
+            {onChooseFile ? (
+              <div className="pdfReader_uploadWrapper">
+                <button
+                  id="pdfReader_choosePdfButton"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowUploadPanel((value) => !value);
+                  }}
+                >
+                  Choose PDF
+                </button>
+                {showUploadPanel ? (
+                  <div className="pdfReader_uploadDropdown">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChooseFile();
+                        setShowUploadPanel(false);
+                      }}
+                    >
+                      Upload local file
+                    </button>
+                    <p className="pdfReader_uploadHint">Cloud PDFs</p>
+                    {cloudPdfMessages.length ? (
+                      <ul className="pdfReader_uploadList">
+                        {cloudPdfMessages.map((message) => {
+                          const itemKey =
+                            String(message?.publicId || "").trim() ||
+                            String(message?.assetId || "").trim() ||
+                            String(message?.url || "").trim();
+                          const cloudTitle =
+                            String(message?.publicId || "")
+                              .trim()
+                              .split("/")
+                              .pop() || "Cloud PDF";
+
+                          return (
+                            <li
+                              key={itemKey || message?.url}
+                              className="pdfReader_uploadListItem"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  openCloudPdf?.(message);
+                                  setShowUploadPanel(false);
+                                }}
+                              >
+                                <span>{cloudTitle}</span>
+                                <small>
+                                  {Number(message?.bytes || 0) > 0
+                                    ? `${(Number(message?.bytes) / 1024).toFixed(
+                                        1,
+                                      )} KB`
+                                    : "Stored in Cloudinary"}
+                                </small>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="pdfReader_uploadHint">
+                        No Cloud PDFs were found in your saved media.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <button
+              id="pdfReader_openTabButton"
               type="button"
-              onClick={() =>
-                setPageNumber((currentPage) => clampPage(currentPage - 1, numPages))
-              }
-              disabled={pageNumber <= 1 || !numPages}
+              onClick={onOpenInNewTab}
+              disabled={!fileUrl}
             >
-              Prev
-            </button>
-            <span>
-              {pageNumber}/{numPages || "-"}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setPageNumber((currentPage) => clampPage(currentPage + 1, numPages))
-              }
-              disabled={!numPages || pageNumber >= numPages}
-            >
-              Next
-            </button>
-            <button
-              type="button"
-              onClick={() => setZoom((value) => Math.max(0.6, value - 0.1))}
-              disabled={zoom <= 0.6}
-            >
-              -
-            </button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button
-              type="button"
-              onClick={() => setZoom((value) => Math.min(2.5, value + 0.1))}
-              disabled={zoom >= 2.5}
-            >
-              +
-            </button>
-            <button type="button" onClick={onOpenInNewTab} disabled={!fileUrl}>
               Open Tab
             </button>
-            <button type="button" onClick={onDownload} disabled={!fileUrl}>
+            <button
+              id="pdfReader_downloadButton"
+              type="button"
+              onClick={onDownload}
+              disabled={!fileUrl}
+            >
               Download
             </button>
-            <button type="button" onClick={onClose}>
+            <button
+              id="pdfReader_settingsButton"
+              type="button"
+              aria-pressed={isSettingsPanelOpen}
+              onClick={() =>
+                setIsSettingsPanelOpen((currentValue) => !currentValue)
+              }
+            >
+              Settings
+            </button>
+            <button id="pdfReader_closeButton" type="button" onClick={onClose}>
               Close
             </button>
           </div>
         </div>
+        <div
+          id="PDF_tools"
+          className={`PDF_tools fr${isRealityToolbarOpen ? " is-open" : ""}`}
+          aria-hidden={!isRealityToolbarOpen}
+        >
+          <div id="PDF_textDecorationTools" className="PDF_tools_SubGroups">
+            <span id="PDF_textDecorationTools_formatLabel">Format</span>
+            <button
+              id="PDF_textDecorationTools_bold"
+              type="button"
+              className={`Login_realityControlButton${isPdfToolButtonActive("PDF_textDecorationTools_bold") ? " is-armed" : ""}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                handlePdfToolButton("PDF_textDecorationTools_bold", () =>
+                  applyEditorCommand("bold"),
+                )
+              }
+            >
+              B
+            </button>
+            <button
+              id="PDF_textDecorationTools_italic"
+              type="button"
+              className={`Login_realityControlButton${isPdfToolButtonActive("PDF_textDecorationTools_italic") ? " is-armed" : ""}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                handlePdfToolButton("PDF_textDecorationTools_italic", () =>
+                  applyEditorCommand("italic"),
+                )
+              }
+            >
+              I
+            </button>
+            <button
+              id="PDF_textDecorationTools_underline"
+              type="button"
+              className={`Login_realityControlButton${isPdfToolButtonActive("PDF_textDecorationTools_underline") ? " is-armed" : ""}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                handlePdfToolButton("PDF_textDecorationTools_underline", () =>
+                  applyEditorCommand("underline"),
+                )
+              }
+            >
+              U
+            </button>
+          </div>
+          <div id="PDF_textStyleTools" className="PDF_tools_SubGroups">
+            <label
+              id="PDF_textStyleTools_alignGroup"
+              className="Login_realityControlField"
+            >
+              <span id="PDF_textStyleTools_alignLabel">Align</span>
+              <button
+                id="PDF_textStyleTools_alignLeft"
+                type="button"
+                className={`Login_realityControlButton Login_realityControlButton--align${isPdfToolButtonActive("PDF_textStyleTools_alignLeft") ? " is-armed" : ""}`}
+                title="Align left"
+                aria-label="Align left"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  handlePdfToolButton("PDF_textStyleTools_alignLeft", () =>
+                    applyEditorCommand("justifyLeft"),
+                  )
+                }
+              >
+                <i className="fas fa-align-left"></i>
+              </button>
+              <button
+                id="PDF_textStyleTools_alignCenter"
+                type="button"
+                className={`Login_realityControlButton Login_realityControlButton--align${isPdfToolButtonActive("PDF_textStyleTools_alignCenter") ? " is-armed" : ""}`}
+                title="Align center"
+                aria-label="Align center"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  handlePdfToolButton("PDF_textStyleTools_alignCenter", () =>
+                    applyEditorCommand("justifyCenter"),
+                  )
+                }
+              >
+                <i className="fas fa-align-center"></i>
+              </button>
+              <button
+                id="PDF_textStyleTools_alignRight"
+                type="button"
+                className={`Login_realityControlButton Login_realityControlButton--align${isPdfToolButtonActive("PDF_textStyleTools_alignRight") ? " is-armed" : ""}`}
+                title="Align right"
+                aria-label="Align right"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  handlePdfToolButton("PDF_textStyleTools_alignRight", () =>
+                    applyEditorCommand("justifyRight"),
+                  )
+                }
+              >
+                <i className="fas fa-align-right"></i>
+              </button>
+            </label>
+          </div>
+          <div id="PDF_tools_penGroup" className="PDF_tools_SubGroups">
+            <span id="PDF_tools_penGroup_penLabel">Pen</span>
+            <button
+              id="PDF_tools_tool_pen"
+              type="button"
+              className={`Login_realityControlButton Login_realityControlButton--pen${tool === "pen" ? " is-armed" : ""}`}
+              title="Pen"
+              aria-label="Pen"
+              aria-pressed={tool === "pen"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                disableErasers({ keepPen: true });
+                setTool((currentTool) =>
+                  currentTool === "pen" ? null : "pen",
+                );
+              }}
+            >
+              <i className="fas fa-pen" style={{ color: editorTextColor }}></i>
+            </button>
+            <button
+              id="PDF_tools_penEraserButton"
+              type="button"
+              className={`Login_realityControlButton Login_realityControlButton--erase${isPenEraseModeOn ? " is-armed" : ""}`}
+              title="Pen eraser"
+              aria-label="Pen eraser"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                disableErasers({ keepPen: true });
+                setTool("pen");
+                setIsPenEraseModeOn((currentValue) => !currentValue);
+              }}
+            >
+              <i className="fas fa-eraser"></i>
+            </button>
+            <input
+              id="PDF_tools_textColorInput"
+              type="color"
+              value={editorTextColor}
+              onMouseDown={(event) => event.preventDefault()}
+              onChange={(event) => {
+                setEditorTextColor(event.target.value);
+                applyEditorCommand("foreColor", event.target.value);
+              }}
+            />
+          </div>
+          <label id="PDF_tools_toolGroup" className="Login_realityControlField">
+            <span id="PDF_tools_toolLabel">Tool</span>
+            {TOOLS.filter((entry) => entry.id !== "pen" && entry.id !== "hand").map((entry) => (
+              <button
+                id={`PDF_tools_tool_${entry.id}`}
+                key={entry.id}
+                type="button"
+                className={`Login_realityControlButton Login_realityControlButton--pen${tool === entry.id ? " is-armed" : ""}`}
+                title={
+                  entry.title ||
+                  entry.id.charAt(0).toUpperCase() + entry.id.slice(1)
+                }
+                aria-label={
+                  entry.title ||
+                  entry.id.charAt(0).toUpperCase() + entry.id.slice(1)
+                }
+                aria-pressed={tool === entry.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  disableErasers();
+                  setTool((currentTool) =>
+                    currentTool === entry.id ? null : entry.id,
+                  );
+                }}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </label>
+          <label
+            id="PDF_tools_highlightGroup"
+            className="PDF_tools_SubGroups"
+          >
+            <span id="PDF_tools_highlightLabel">Highlight</span>
+            <button
+              id="PDF_tools_highlightButton"
+              type="button"
+              className={`Login_realityControlButton Login_realityControlButton--pen${tool === "highlight" ? " is-armed" : ""}`}
+              title="Free highlight on PDF"
+              aria-label="Free highlight on PDF"
+              aria-pressed={tool === "highlight"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={applyHighlightToSelection}
+            >
+              <i className="fas fa-highlighter pdfReader_highlightIcon"></i>
+            </button>
+            <button
+              id="PDF_tools_highlightEraserButton"
+              type="button"
+              className={`Login_realityControlButton Login_realityControlButton--erase${isHighlightEraseModeOn ? " is-armed" : ""}`}
+              title="Eraser"
+              aria-label="Eraser"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                const removedSelectionHighlight =
+                  removeHighlightFromSelection();
 
-        <div className="pdfReader_studyLayout">
-          <aside className="pdfReader_studyPanel">
-            <div className="pdfReader_panelBlock">
-              <p className="pdfReader_panelEyebrow">Study tools</p>
-              <h2>Arabic-ready annotated reader</h2>
-              <p>
-                Draw, highlight, and place notes even when text extraction is weak
-                or blocked.
-              </p>
-            </div>
+                if (!removedSelectionHighlight) {
+                  disableErasers({ keepHighlight: true });
+                  setTool("pen");
+                  setIsHighlightEraseModeOn((currentValue) => !currentValue);
+                }
+              }}
+            >
+              <i className="fas fa-eraser"></i>
+            </button>
+            <input
+              id="PDF_tools_highlightColorInput"
+              type="color"
+              value={editorHighlightColor}
+              onMouseDown={(event) => event.preventDefault()}
+              onChange={(event) => {
+                setEditorHighlightColor(event.target.value);
+              }}
+            />
+          </label>
+          <label
+            id="PDF_tools_sizeGroup"
+            className="PDF_tools_SubGroups"
+          >
+            <span id="PDF_tools_sizeLabel">Size</span>
+            <output
+              id="PDF_tools_sizeOutput"
+              className={`Login_realityControlMonitor${tool === "highlight" || hasRealitySelection ? " is-active" : ""}`}
+              aria-live="polite"
+            >
+              {tool === "highlight"
+                ? `${highlightStrokeWidth}px`
+                : hasRealitySelection && selectedRealityFontSizePt !== null
+                  ? `${selectedRealityFontSizePt}pt`
+                  : "--"}
+            </output>
+            <button
+              id="PDF_tools_sizeDecreaseButton"
+              type="button"
+              className="Login_realityControlButton Login_realityControlButton--size"
+              title={
+                tool === "highlight"
+                  ? "Decrease highlight thickness"
+                  : "Decrease selected text size"
+              }
+              aria-label={
+                tool === "highlight"
+                  ? "Decrease highlight thickness"
+                  : "Decrease selected text size"
+              }
+              disabled={
+                tool === "highlight"
+                  ? highlightStrokeWidth <= 8
+                  : !hasRealitySelection
+              }
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                disableErasers();
+                adjustSelectedFontSize(-1);
+              }}
+            >
+              A-
+            </button>
+            <button
+              id="PDF_tools_sizeIncreaseButton"
+              type="button"
+              className="Login_realityControlButton Login_realityControlButton--size"
+              title={
+                tool === "highlight"
+                  ? "Increase highlight thickness"
+                  : "Increase selected text size"
+              }
+              aria-label={
+                tool === "highlight"
+                  ? "Increase highlight thickness"
+                  : "Increase selected text size"
+              }
+              disabled={
+                tool === "highlight"
+                  ? highlightStrokeWidth >= 36
+                  : !hasRealitySelection
+              }
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                disableErasers();
+                adjustSelectedFontSize(1);
+              }}
+            >
+              A+
+            </button>
+            <button
+              id="PDF_tools_tool_hand"
+              type="button"
+              className={`Login_realityControlButton Login_realityControlButton--pen${tool === "hand" ? " is-armed" : ""}`}
+              title="Hand"
+              aria-label="Hand"
+              aria-pressed={tool === "hand"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                disableErasers();
+                setTool((currentTool) => (currentTool === "hand" ? null : "hand"));
+              }}
+            >
+            <i className="fas fa-hand-paper"></i>
+          </button>
+          </label>
+        </div>
+      </div>
+      <div id="pdfReader_studyLayout" className="pdfReader_studyLayout">
+        <aside id="pdfReader_studyPanel" className="pdfReader_studyPanel">
+          <div
+            id="pdfReader_courseSelectBlock"
+            className="pdfReader_panelBlock"
+          >
+            <label
+              id="pdfReader_courseSelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_courseSelect"
+            >
+              Select course
+            </label>
+            <select
+              id="pdfReader_courseSelect"
+              className="pdfReader_courseSelect"
+              value={selectedCourseName}
+              onChange={(event) => onSelectCourseName?.(event.target.value)}
+            >
+              <option value="">Select course</option>
+              {storedCourseOptions.map((courseName) => (
+                <option key={courseName} value={courseName}>
+                  {courseName}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div className="pdfReader_panelBlock">
-              <div className="pdfReader_toolRow">
-                {TOOLS.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={tool === entry.id ? "is-active" : ""}
-                    onClick={() => setTool(entry.id)}
+          <div id="pdfReader_lectureListBlock" className="pdfReader_panelBlock">
+            <h3 id="pdfReader_lectureListHeading">Stored lectures</h3>
+            <ul id="pdfReader_lectureList" className="pdfReader_lectureList">
+              {selectedCourseLectures.length ? (
+                selectedCourseLectures.map((lecture) => (
+                  <li
+                    key={lecture.id}
+                    id={`pdfReader_lectureListItem-${lecture.id}`}
+                    className="pdfReader_lectureListItem"
                   >
-                    {entry.label}
-                  </button>
-                ))}
-              </div>
-              <div className="pdfReader_toggleRow">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={rtlMode}
-                    onChange={(event) => setRtlMode(event.target.checked)}
-                  />
-                  Arabic RTL
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={antiOcrMode}
-                    onChange={(event) => setAntiOcrMode(event.target.checked)}
-                  />
-                  Anti-OCR mode
-                </label>
-              </div>
-            </div>
-
-            <div className="pdfReader_panelBlock">
-              <label className="pdfReader_inputLabel" htmlFor="pdf-reader-default-note">
-                Default note text
-              </label>
-              <textarea
-                id="pdf-reader-default-note"
-                value={defaultNoteText}
-                onChange={(event) => setDefaultNoteText(event.target.value)}
-                rows={3}
-                placeholder="Type a note, then click the PDF page."
-              />
-            </div>
-
-            <div className="pdfReader_panelBlock">
-              <label className="pdfReader_inputLabel" htmlFor="pdf-reader-summary">
-                Study summary
-              </label>
-              <textarea
-                id="pdf-reader-summary"
-                value={studySummary}
-                onChange={(event) => setStudySummary(event.target.value)}
-                rows={7}
-                placeholder="Add chapter notes, questions, vocabulary, or revision prompts."
-              />
-            </div>
-
-            <div className="pdfReader_panelBlock">
-              <div className="pdfReader_inlineMeta">
-                <span>{currentAnnotations.length} annotations on this page</span>
-                <button type="button" onClick={resetStudyState}>
-                  Reset Notes
-                </button>
-              </div>
-              <p className="pdfReader_hint">
-                {antiOcrMode
-                  ? "Visual study mode is active. This works well for scanned or OCR-resistant PDFs."
-                  : "Standard view is active."}
-              </p>
-            </div>
-          </aside>
-
-          <div className="pdfReader_canvasSection">
-            <div className="pdfReader_canvasWrap pdfReader_canvasWrap--native" ref={canvasWrapRef}>
-              {isLoading || documentLoading ? (
-                <p className="pdfReader_status">Opening PDF...</p>
-              ) : error ? (
-                <p className="pdfReader_status">{error}</p>
-              ) : viewerError ? (
-                <p className="pdfReader_status">{viewerError}</p>
-              ) : !fileUrl ? (
-                <p className="pdfReader_status">No PDF selected.</p>
-              ) : (
-                <div className="pdfReader_canvasStage">
-                  {pageRendering ? (
-                    <p className="pdfReader_status pdfReader_status--floating">
-                      Rendering page...
-                    </p>
-                  ) : null}
-                  <div
-                    ref={overlayRef}
-                    className="pdfReader_annotationLayer"
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={finalizeDraft}
-                    onPointerLeave={finalizeDraft}
-                    style={{
-                      width: canvasSize.width ? `${canvasSize.width}px` : undefined,
-                      height: canvasSize.height ? `${canvasSize.height}px` : undefined,
-                    }}
-                  >
-                    <canvas ref={canvasRef} className="pdfReader_canvas" />
-                    <svg
-                      viewBox="0 0 1 1"
-                      preserveAspectRatio="none"
-                      className="pdfReader_annotationSvg"
+                    <button
+                      id={`pdfReader_lectureButton-${lecture.id}`}
+                      type="button"
+                      className={`pdfReader_lectureButton${
+                        lecture.id === selectedLectureId ? " is-selected" : ""
+                      }`}
+                      onClick={() => onSelectCourseLecture?.(lecture)}
+                      disabled={!lecture.pdfUrl}
                     >
-                      {currentAnnotations.map((annotation) => {
-                        if (annotation.type === "pen") {
-                          return (
+                      <strong>{lecture.title}</strong>
+                      <span>
+                        {lecture.pdfUrl
+                          ? "Open lecture PDF"
+                          : "No PDF available"}
+                      </span>
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li
+                  id="pdfReader_lectureListEmpty"
+                  className="pdfReader_lectureListEmpty"
+                >
+                  {selectedCourseName
+                    ? "No stored lectures found for this course."
+                    : "Choose a course to view its stored lectures."}
+                </li>
+              )}
+            </ul>
+          </div>
+        </aside>
+
+        <div id="pdfReader_canvasSection" className="pdfReader_canvasSection">
+          <div
+            id="pdfReader_canvasWrap"
+            className="pdfReader_canvasWrap pdfReader_canvasWrap--nativescrollable"
+            ref={canvasWrapRef}
+            onWheel={handleCanvasWheel}
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
+            onTouchCancel={handleCanvasTouchEnd}
+          >
+            {isLoading || documentLoading ? (
+              <p id="pdfReader_statusLoading" className="pdfReader_status">
+                Opening PDF...
+              </p>
+            ) : error ? (
+              <p id="pdfReader_statusError" className="pdfReader_status">
+                {error}
+              </p>
+            ) : viewerError ? (
+              <p id="pdfReader_statusViewerError" className="pdfReader_status">
+                {viewerError}
+              </p>
+            ) : !fileUrl ? (
+              <p id="pdfReader_statusEmpty" className="pdfReader_status">
+                No PDF selected.
+              </p>
+            ) : (
+              <div id="pdfReader_canvasStack" className="pdfReader_canvasStack">
+                {isCurrentPageRendering ? (
+                  <p
+                    id="pdfReader_statusRendering"
+                    className="pdfReader_status pdfReader_status--floating"
+                  >
+                    Rendering page {pageNumber}...
+                  </p>
+                ) : null}
+                {pageNumbers.map((pageIndex) => {
+                  const pageSize = pageSizes[String(pageIndex)] || {
+                    width: 0,
+                    height: 0,
+                  };
+                  const pageAnnotations =
+                    annotationsByPage[String(pageIndex)] || [];
+
+                  return (
+                    <div
+                      id={`pdfReader_canvasStage-${pageIndex}`}
+                      key={pageIndex}
+                      ref={(node) => {
+                        if (node) {
+                          pageContainerRefs.current[pageIndex] = node;
+                        } else {
+                          delete pageContainerRefs.current[pageIndex];
+                        }
+                      }}
+                      data-page-number={pageIndex}
+                      className={`pdfReader_canvasStage${pageIndex === pageNumber ? " is-current" : ""}`}
+                    >
+                      <div
+                        id={`pdfReader_annotationLayer-${pageIndex}`}
+                        ref={(node) => {
+                          if (node) {
+                            overlayRefs.current[pageIndex] = node;
+                          } else {
+                            delete overlayRefs.current[pageIndex];
+                          }
+                        }}
+                        className={`pdfReader_annotationLayer${tool === "hand" ? " pdfReader_annotationLayer--hand" : ""}${tool === "select" ? " pdfReader_annotationLayer--select" : ""}${!tool ? " pdfReader_annotationLayer--idle" : ""}${isHighlightEraseModeOn || isPenEraseModeOn ? " pdfReader_annotationLayer--erase" : ""}`}
+                        onPointerDown={(event) =>
+                          handlePointerDown(pageIndex, event)
+                        }
+                        onPointerMove={(event) =>
+                          handlePointerMove(pageIndex, event)
+                        }
+                        onPointerUp={finalizeDraft}
+                        onPointerLeave={finalizeDraft}
+                        style={{
+                          "--pdf-page-width": pageSize.width
+                            ? `${pageSize.width}px`
+                            : undefined,
+                          "--pdf-page-height": pageSize.height
+                            ? `${pageSize.height}px`
+                            : undefined,
+                        }}
+                      >
+                        <canvas
+                          id={`pdfReader_canvas-${pageIndex}`}
+                          ref={(node) => {
+                            if (node) {
+                              canvasRefs.current[pageIndex] = node;
+                            } else {
+                              delete canvasRefs.current[pageIndex];
+                            }
+                          }}
+                          className={`pdfReader_canvas${isSelectingText ? " is-textSelecting" : ""}`}
+                        />
+                        <div
+                          id={`pdfReader_textLayer-${pageIndex}`}
+                          ref={(node) => {
+                            if (node) {
+                              textLayerRefs.current[pageIndex] = node;
+                            } else {
+                              delete textLayerRefs.current[pageIndex];
+                            }
+                          }}
+                          className={`pdfReader_textLayer textLayer${isSelectingText ? " is-active" : ""}`}
+                          style={{
+                            "--pdf-page-width": pageSize.width
+                              ? `${pageSize.width}px`
+                              : undefined,
+                            "--pdf-page-height": pageSize.height
+                              ? `${pageSize.height}px`
+                              : undefined,
+                          }}
+                        />
+                        <svg
+                          id={`pdfReader_annotationSvg-${pageIndex}`}
+                          viewBox="0 0 1 1"
+                          preserveAspectRatio="none"
+                          className={`pdfReader_annotationSvg${isSelectingText ? " is-textSelecting" : ""}`}
+                        >
+                          {pageAnnotations.map((annotation) => {
+                            if (annotation.type === "pen") {
+                              return (
+                                <path
+                                  key={annotation.id}
+                                  d={pathFromPoints(annotation.points)}
+                                  fill="none"
+                                  stroke={annotation.color}
+                                  strokeWidth={(annotation.width || 3) / 1000}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              );
+                            }
+
+                            if (annotation.type === "highlight") {
+                              return (
+                                <path
+                                  key={annotation.id}
+                                  d={pathFromPoints(annotation.points)}
+                                  fill="none"
+                                  stroke={annotation.color}
+                                  strokeWidth={(annotation.width || 18) / 1000}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              );
+                            }
+
+                            if (annotation.type === "note") {
+                              return (
+                                <g key={annotation.id}>
+                                  <circle
+                                    cx={annotation.x}
+                                    cy={annotation.y}
+                                    r="0.017"
+                                    fill={annotation.color}
+                                  />
+                                  <text
+                                    x={annotation.x + 0.024}
+                                    y={annotation.y + 0.006}
+                                    fill="#ffffff"
+                                    fontSize="0.03"
+                                    fontWeight="700"
+                                  >
+                                    Note
+                                  </text>
+                                </g>
+                              );
+                            }
+
+                            return null;
+                          })}
+
+                          {draftAnnotation?.type === "pen" &&
+                          draftAnnotation.pageNumber === pageIndex ? (
                             <path
-                              key={annotation.id}
-                              d={pathFromPoints(annotation.points)}
+                              d={pathFromPoints(draftAnnotation.points)}
                               fill="none"
-                              stroke={annotation.color}
-                              strokeWidth={(annotation.width || 3) / 1000}
+                              stroke={draftAnnotation.color}
+                              strokeWidth={(draftAnnotation.width || 3) / 1000}
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
-                          );
-                        }
+                          ) : null}
 
-                        if (annotation.type === "highlight") {
-                          return (
-                            <rect
-                              key={annotation.id}
-                              x={Math.min(annotation.x, annotation.x + annotation.width)}
-                              y={Math.min(annotation.y, annotation.y + annotation.height)}
-                              width={Math.abs(annotation.width)}
-                              height={Math.abs(annotation.height)}
-                              fill={annotation.color}
-                              rx="0.01"
+                          {draftAnnotation?.type === "highlight" &&
+                          draftAnnotation.pageNumber === pageIndex ? (
+                            <path
+                              d={pathFromPoints(draftAnnotation.points)}
+                              fill="none"
+                              stroke={draftAnnotation.color}
+                              strokeWidth={(draftAnnotation.width || 18) / 1000}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
-                          );
-                        }
-
-                        if (annotation.type === "note") {
-                          return (
-                            <g key={annotation.id}>
-                              <circle cx={annotation.x} cy={annotation.y} r="0.017" fill={annotation.color} />
-                              <text
-                                x={annotation.x + 0.024}
-                                y={annotation.y + 0.006}
-                                fill="#ffffff"
-                                fontSize="0.03"
-                                fontWeight="700"
-                              >
-                                Note
-                              </text>
-                            </g>
-                          );
-                        }
-
-                        return null;
-                      })}
-
-                      {draftAnnotation?.type === "pen" ? (
-                        <path
-                          d={pathFromPoints(draftAnnotation.points)}
-                          fill="none"
-                          stroke={draftAnnotation.color}
-                          strokeWidth={(draftAnnotation.width || 3) / 1000}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      ) : null}
-
-                      {draftAnnotation?.type === "highlight" ? (
-                        <rect
-                          x={Math.min(draftAnnotation.x, draftAnnotation.x + draftAnnotation.width)}
-                          y={Math.min(draftAnnotation.y, draftAnnotation.y + draftAnnotation.height)}
-                          width={Math.abs(draftAnnotation.width)}
-                          height={Math.abs(draftAnnotation.height)}
-                          fill={draftAnnotation.color}
-                          rx="0.01"
-                        />
-                      ) : null}
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </div>
+                          ) : null}
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+        </div>
 
-          <aside className="pdfReader_notesPanel">
-            <div className="pdfReader_panelBlock">
-              <h3>Page annotations</h3>
-              <p>Highlights and pen marks stay visual. Notes remain editable.</p>
-            </div>
+        <aside id="pdfReader_notesPanel" className="pdfReader_notesPanel">
+          {isSettingsPanelOpen ? (
+            <>
+              <div id="pdfReader_settingsIntroBlock" className="pdfReader_panelBlock">
+                <span className="pdfReader_panelEyebrow">Reader settings</span>
+                <h3 id="pdfReader_settingsHeading">PDF reader settings</h3>
+                <p id="pdfReader_settingsDescription">
+                  Adjust the behavior of this reading session without leaving the page.
+                </p>
+              </div>
 
-            <div className="pdfReader_annotationList">
-              {currentAnnotations.length ? (
-                currentAnnotations.map((annotation, index) => (
+              <div id="pdfReader_settingsModeBlock" className="pdfReader_panelBlock">
+                <span className="pdfReader_inputLabel">Modes</span>
+                <div className="pdfReader_settingsGrid">
                   <button
-                    key={annotation.id}
+                    id="pdfReader_settingsOcrButton"
                     type="button"
-                    className={`pdfReader_annotationItem${
-                      annotation.id === selectedNoteId ? " is-selected" : ""
-                    }`}
+                    className={`pdfReader_settingsToggle${antiOcrMode ? " is-active" : ""}`}
+                    aria-pressed={antiOcrMode}
+                    onClick={() => setAntiOcrMode((currentValue) => !currentValue)}
+                  >
+                    <strong>OCR assist</strong>
+                    <span>{antiOcrMode ? "On" : "Off"}</span>
+                  </button>
+                  <button
+                    id="pdfReader_settingsDirectionButton"
+                    type="button"
+                    className={`pdfReader_settingsToggle${rtlMode ? " is-active" : ""}`}
+                    aria-pressed={rtlMode}
+                    onClick={() => setRtlMode((currentValue) => !currentValue)}
+                  >
+                    <strong>Direction</strong>
+                    <span>{rtlMode ? "RTL" : "LTR"}</span>
+                  </button>
+                  <button
+                    id="pdfReader_settingsToolbarButton"
+                    type="button"
+                    className={`pdfReader_settingsToggle${isRealityToolbarOpen ? " is-active" : ""}`}
+                    aria-pressed={isRealityToolbarOpen}
                     onClick={() =>
-                      setSelectedNoteId(annotation.type === "note" ? annotation.id : null)
+                      setIsRealityToolbarOpen((currentValue) => !currentValue)
                     }
                   >
-                    <strong>
-                      {annotation.type} #{index + 1}
-                    </strong>
-                    <span>
-                      {annotation.type === "note"
-                        ? annotation.text
-                        : annotation.type === "highlight"
-                        ? "Visual highlight region"
-                        : "Freehand pen markup"}
-                    </span>
-                    <span
-                      className="pdfReader_annotationDelete"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        deleteAnnotation(annotation.id);
-                      }}
-                    >
-                      Delete
-                    </span>
+                    <strong>Tools bar</strong>
+                    <span>{isRealityToolbarOpen ? "Visible" : "Hidden"}</span>
                   </button>
-                ))
-              ) : (
-                <div className="pdfReader_emptyState">
-                  No annotations yet. Pick a tool and interact directly with the page.
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="pdfReader_panelBlock">
-              <label className="pdfReader_inputLabel" htmlFor="pdf-reader-selected-note">
-                Selected note editor
-              </label>
-              <textarea
-                id="pdf-reader-selected-note"
-                value={selectedNote?.text || ""}
-                onChange={(event) => updateSelectedNote(event.target.value)}
-                disabled={!selectedNote}
-                rows={8}
-                placeholder="Click a note marker to edit it here."
-              />
-            </div>
-          </aside>
-        </div>
+              <div id="pdfReader_settingsStatsBlock" className="pdfReader_panelBlock">
+                <span className="pdfReader_inputLabel">Session</span>
+                <div className="pdfReader_settingsList">
+                  <div className="pdfReader_settingsRow">
+                    <span>Page</span>
+                    <strong>
+                      {pageNumber}/{numPages || "-"}
+                    </strong>
+                  </div>
+                  <div className="pdfReader_settingsRow">
+                    <span>Zoom</span>
+                    <strong>{Math.round(zoom * 100)}%</strong>
+                  </div>
+                  <div className="pdfReader_settingsRow">
+                    <span>Annotations</span>
+                    <strong>{currentAnnotations.length}</strong>
+                  </div>
+                  <div className="pdfReader_settingsRow">
+                    <span>Highlight size</span>
+                    <strong>{highlightStrokeWidth}px</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                id="pdfReader_settingsScrollBlock"
+                className="pdfReader_panelBlock"
+              >
+                <span className="pdfReader_inputLabel">Scrolling</span>
+                <div className="pdfReader_settingsControlCard">
+                  <label
+                    id="pdfReader_settingsScrollSpeedField"
+                    className="pdfReader_settingsControlField"
+                  >
+                    <div className="pdfReader_settingsControlText">
+                      <strong>Scroll speed</strong>
+                      <span>How quickly wheel and trackpad movement travels.</span>
+                    </div>
+                    <div className="pdfReader_settingsControlInputRow">
+                      <input
+                        id="pdfReader_settingsScrollSpeedInput"
+                        type="range"
+                        min="1"
+                        max="2.4"
+                        step="0.05"
+                        value={scrollSpeedFactor}
+                        onChange={(event) =>
+                          setScrollSpeedFactor(Number(event.target.value))
+                        }
+                      />
+                      <output id="pdfReader_settingsScrollSpeedValue">
+                        {scrollSpeedFactor.toFixed(2)}x
+                      </output>
+                    </div>
+                  </label>
+
+                  <label
+                    id="pdfReader_settingsTouchZoomField"
+                    className="pdfReader_settingsControlField"
+                  >
+                    <div className="pdfReader_settingsControlText">
+                      <strong>Touch response</strong>
+                      <span>How strongly two-finger touch changes zoom.</span>
+                    </div>
+                    <div className="pdfReader_settingsControlInputRow">
+                      <input
+                        id="pdfReader_settingsTouchZoomInput"
+                        type="range"
+                        min="0.6"
+                        max="1.6"
+                        step="0.05"
+                        value={touchZoomResponse}
+                        onChange={(event) =>
+                          setTouchZoomResponse(Number(event.target.value))
+                        }
+                      />
+                      <output id="pdfReader_settingsTouchZoomValue">
+                        {touchZoomResponse.toFixed(2)}x
+                      </output>
+                    </div>
+                  </label>
+
+                  <label
+                    id="pdfReader_settingsTransitionField"
+                    className="pdfReader_settingsControlField"
+                  >
+                    <div className="pdfReader_settingsControlText">
+                      <strong>Area transition</strong>
+                      <span>How smoothly the view eases into the next scroll area.</span>
+                    </div>
+                    <div className="pdfReader_settingsControlInputRow">
+                      <input
+                        id="pdfReader_settingsTransitionInput"
+                        type="range"
+                        min="0.12"
+                        max="0.4"
+                        step="0.01"
+                        value={scrollTransitionAmount}
+                        onChange={(event) =>
+                          setScrollTransitionAmount(Number(event.target.value))
+                        }
+                      />
+                      <output id="pdfReader_settingsTransitionValue">
+                        {scrollTransitionAmount.toFixed(2)}
+                      </output>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div id="pdfReader_settingsActionsBlock" className="pdfReader_panelBlock">
+                <span className="pdfReader_inputLabel">Actions</span>
+                <div className="pdfReader_settingsGrid">
+                  <button
+                    id="pdfReader_settingsResetNotesButton"
+                    type="button"
+                    className="pdfReader_settingsToggle"
+                    onClick={resetStudyState}
+                  >
+                    <strong>Reset notes</strong>
+                    <span>Clear annotations and summary</span>
+                  </button>
+                  <button
+                    id="pdfReader_settingsBackButton"
+                    type="button"
+                    className="pdfReader_settingsToggle is-active"
+                    onClick={() => setIsSettingsPanelOpen(false)}
+                  >
+                    <strong>Back to notes</strong>
+                    <span>Return to the notes panel</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div id="pdfReader_defaultNoteBlock" className="pdfReader_panelBlock">
+                <label
+                  id="pdfReader_defaultNoteLabel"
+                  className="pdfReader_inputLabel"
+                  htmlFor="pdf-reader-default-note"
+                >
+                  Default note text
+                </label>
+                <textarea
+                  id="pdf-reader-default-note"
+                  value={defaultNoteText}
+                  onChange={(event) => setDefaultNoteText(event.target.value)}
+                  rows={3}
+                  placeholder="Type a note, then click the PDF page."
+                />
+              </div>
+
+              <div id="pdfReader_summaryBlock" className="pdfReader_panelBlock">
+                <label
+                  id="pdfReader_summaryLabel"
+                  className="pdfReader_inputLabel"
+                  htmlFor="pdf-reader-summary"
+                >
+                  Study summary
+                </label>
+                <div
+                  id="pdf-reader-summary"
+                  ref={realityEditorRef}
+                  className={`pdfReader_richEditor${isHighlightEraseModeOn ? " is-eraseCursor" : ""}`}
+                  contentEditable
+                  suppressContentEditableWarning
+                  data-placeholder="Add chapter notes, questions, vocabulary, or revision prompts."
+                  onInput={(event) => {
+                    setStudySummary(
+                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                    );
+                  }}
+                  onBlur={(event) => {
+                    setStudySummary(
+                      sanitizeClinicalRealityHtml(event.currentTarget.innerHTML),
+                    );
+                  }}
+                  onMouseDown={handleRealityEditorMouseDown}
+                  onMouseMove={handleRealityEditorMouseMove}
+                  onBeforeInput={handleRealityEditorBeforeInput}
+                  onPaste={handleRealityEditorPaste}
+                ></div>
+              </div>
+
+              <div id="pdfReader_studyMetaBlock" className="pdfReader_panelBlock">
+                <div id="pdfReader_inlineMeta" className="pdfReader_inlineMeta">
+                  <span id="pdfReader_annotationCount">
+                    {currentAnnotations.length} annotations on this page
+                  </span>
+                  <button
+                    id="pdfReader_resetNotesButton"
+                    type="button"
+                    onClick={resetStudyState}
+                  >
+                    Reset Notes
+                  </button>
+                </div>
+                <p id="pdfReader_hint" className="pdfReader_hint">
+                  {antiOcrMode
+                    ? "Visual study mode is active. This works well for scanned or OCR-resistant PDFs."
+                    : "Standard view is active."}
+                </p>
+              </div>
+
+              <div id="pdfReader_notesIntroBlock" className="pdfReader_panelBlock">
+                <h3 id="pdfReader_notesHeading">Page annotations</h3>
+                <p id="pdfReader_notesDescription">
+                  Highlights and pen marks stay visual. Notes remain editable.
+                </p>
+              </div>
+
+              <div
+                id="pdfReader_annotationList"
+                className="pdfReader_annotationList"
+              >
+                {currentAnnotations.length ? (
+                  currentAnnotations.map((annotation, index) => (
+                    <button
+                      id={`pdfReader_annotationItem-${annotation.id}`}
+                      key={annotation.id}
+                      type="button"
+                      className={`pdfReader_annotationItem${
+                        annotation.id === selectedNoteId ? " is-selected" : ""
+                      }`}
+                      onClick={() =>
+                        setSelectedNoteId(
+                          annotation.type === "note" ? annotation.id : null,
+                        )
+                      }
+                    >
+                      <strong id={`pdfReader_annotationTitle-${annotation.id}`}>
+                        {annotation.type} #{index + 1}
+                      </strong>
+                      <span id={`pdfReader_annotationText-${annotation.id}`}>
+                        {annotation.type === "note"
+                          ? annotation.text
+                          : annotation.type === "highlight"
+                            ? "Freehand highlight markup"
+                            : "Freehand pen markup"}
+                      </span>
+                      <span
+                        id={`pdfReader_annotationDelete-${annotation.id}`}
+                        className="pdfReader_annotationDelete"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteAnnotation(annotation.id);
+                        }}
+                      >
+                        Delete
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div id="pdfReader_emptyState" className="pdfReader_emptyState">
+                    No annotations yet. Pick a tool and interact directly with the
+                    page.
+                  </div>
+                )}
+              </div>
+
+              <div
+                id="pdfReader_selectedNoteBlock"
+                className="pdfReader_panelBlock"
+              >
+                <label
+                  id="pdfReader_selectedNoteLabel"
+                  className="pdfReader_inputLabel"
+                  htmlFor="pdf-reader-selected-note"
+                >
+                  Selected note editor
+                </label>
+                <textarea
+                  id="pdf-reader-selected-note"
+                  value={selectedNote?.text || ""}
+                  onChange={(event) => updateSelectedNote(event.target.value)}
+                  disabled={!selectedNote}
+                  rows={8}
+                  placeholder="Click a note marker to edit it here."
+                />
+              </div>
+            </>
+          )}
+        </aside>
       </div>
+    </div>
+  );
+
+  if (renderInline) {
+    return (
+      <div id="pdfReader_inlineMount" className="pdfReader_inlineMount">
+        {shell}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      id="pdfReader_overlay"
+      className="pdfReader_overlay"
+      role="dialog"
+      aria-modal="true"
+    >
+      {shell}
     </div>
   );
 };

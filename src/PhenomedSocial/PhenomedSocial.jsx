@@ -322,6 +322,7 @@ const PhenomedSocial = (props) => {
           acceptFriend={props.acceptFriend}
           sendToThemMessage={props.sendToThemMessage}
           updateMyTypingPresence={props.updateMyTypingPresence}
+          getRealtimeSocket={props.getRealtimeSocket}
           content={content}
           type={props.type}
           counter={props.counter}

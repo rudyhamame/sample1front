@@ -137,6 +137,10 @@ body {
 }
 
 #Main_article {
+    /* Main color for dynamic server_answer background */
+    --main-article-color1: rgba(234, 147, 128, 0.95);
+    --main-article-color2: rgba(237, 159, 146, 0.92);
+    --main-article-color3: rgba(235, 148, 129, 0.95);
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -175,7 +179,6 @@ body {
   max-height: none;
   padding: 4px 10px 5px;
   border-top: 1px solid rgba(124, 157, 165, 0.14);
-  background-color: #1f6a70;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -8px 18px rgba(6, 29, 31, 0.18);
@@ -186,13 +189,7 @@ body {
 }
 
 #app_page.app_page--has-background-pattern #server_answer {
-  background: linear-gradient(
-    135deg,
-    rgba(234, 147, 128, 0.95) 0%,
-    rgba(237, 159, 146, 0.92) 50%,
-    rgba(235, 148, 129, 0.95) 100%
-  );
-  border-top-color: rgba(234, 147, 128, 0.3);
+  border-top-color: var(--main-article-color1, rgba(234, 147, 128, 0.3));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -8px 18px rgba(139, 85, 75, 0.15);
