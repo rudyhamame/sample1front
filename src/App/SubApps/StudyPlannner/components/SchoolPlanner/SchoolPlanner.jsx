@@ -311,7 +311,6 @@ export default class SchoolPlanner extends Component {
     this.coursePrintAudio = null;
     this.coursePrintSoundTimeouts = [];
     this.courseDetailsTypingTimeouts = [];
-    this.musicAudioRef = React.createRef();
     this.musicPlaylist = [];
     this.musicTrackIndex = 0;
     this.musicLibraryPromise = null;
@@ -322,9 +321,6 @@ export default class SchoolPlanner extends Component {
     this.isComponentMounted = true;
     this.retrieveLectures();
     this.retrieveCourses();
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.volume = this.state.music_volume;
-    }
     this.loadPlannerMusicLibrary();
     this.fetchTelegramConfig();
   }
@@ -340,12 +336,6 @@ export default class SchoolPlanner extends Component {
     this.courseDetailsTypingTimeouts = [];
     this.isComponentMounted = false;
     this.stopCoursePrintSound();
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.pause();
-      this.musicAudioRef.current.currentTime = 0;
-      this.musicAudioRef.current.removeAttribute("src");
-      this.musicAudioRef.current.load();
-    }
   }
 
   resolveInternetArchiveTrack = async (item) => {
@@ -464,24 +454,15 @@ export default class SchoolPlanner extends Component {
   };
 
   setPlannerMusicTrack = (trackIndex, autoplay = false) => {
-    const musicAudio = this.musicAudioRef.current;
     const track = this.musicPlaylist[trackIndex];
-
-    if (!musicAudio || !track) return;
-
+    if (!track) return;
     this.musicTrackIndex = trackIndex;
-    musicAudio.pause();
-    musicAudio.src = track.src;
-    musicAudio.load();
-    musicAudio.volume = this.state.music_volume;
-
     this.setState({
       music_trackTitle: track.title,
       music_trackArtist: track.artist,
     });
-
-    if (autoplay) {
-      musicAudio.play().catch(() => {});
+    if (autoplay && this.props.playPersistentMusic) {
+      this.props.playPersistentMusic(track.src, track.title, track.artist);
     }
   };
 
@@ -515,33 +496,27 @@ export default class SchoolPlanner extends Component {
   };
 
   togglePlannerMusic = async () => {
-    const musicAudio = this.musicAudioRef.current;
-    if (!musicAudio) return;
-
-    if (musicAudio.paused) {
-      if (!musicAudio.src) {
-        const playlist = await this.loadPlannerMusicLibrary();
-        if (!playlist || playlist.length === 0) {
-          return;
-        }
-      }
-      musicAudio.volume = this.state.music_volume;
-      musicAudio.play().catch(() => {});
+    if (!this.musicPlaylist.length) {
+      await this.loadPlannerMusicLibrary();
+    }
+    const track = this.musicPlaylist[this.musicTrackIndex];
+    if (!track) return;
+    if (this.props.persistentMusic?.isPlaying) {
+      this.props.pausePersistentMusic && this.props.pausePersistentMusic();
     } else {
-      musicAudio.pause();
+      this.props.playPersistentMusic &&
+        this.props.playPersistentMusic(track.src, track.title, track.artist);
     }
   };
 
   updatePlannerMusicVolume = (event) => {
     const nextVolume = Number(event.target.value);
-
+    if (this.props.setPersistentMusicVolume) {
+      this.props.setPersistentMusicVolume(nextVolume);
+    }
     this.setState({
       music_volume: nextVolume,
     });
-
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.volume = nextVolume;
-    }
   };
 
   fetchTelegramConfig = async () => {

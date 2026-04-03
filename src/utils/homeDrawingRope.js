@@ -470,11 +470,27 @@ export const drawHomeLedRopePath = (
   context,
   points,
   palette,
-  { ropeWidth = 0.75, bulbSpacing = 13 } = {},
+  { ropeWidth = 0.75, bulbSpacing = 13, musicSignal = null } = {},
 ) => {
   if (!context || !Array.isArray(points) || points.length < 2 || !palette) {
     return;
   }
+
+  const normalizedMusicSignal = {
+    energy: Math.max(0, Math.min(1, Number(musicSignal?.energy) || 0)),
+    pitch: Math.max(0, Math.min(1, Number(musicSignal?.pitch) || 0)),
+    tempo: Math.max(0, Math.min(1, Number(musicSignal?.tempo) || 0)),
+    pulse: Math.max(0, Math.min(1, Number(musicSignal?.pulse) || 0)),
+    fallbackTime: Math.max(0, Number(musicSignal?.fallbackTime) || 0),
+  };
+  const reactiveGlowBoost =
+    normalizedMusicSignal.energy * 0.38 +
+    normalizedMusicSignal.pitch * 0.18 +
+    normalizedMusicSignal.pulse * 0.22;
+  const reactiveTempoSwing =
+    0.9 +
+    normalizedMusicSignal.tempo * 0.24 +
+    normalizedMusicSignal.pulse * 0.1;
 
   context.save();
   context.beginPath();
@@ -485,15 +501,17 @@ export const drawHomeLedRopePath = (
   context.lineCap = "round";
   context.lineJoin = "round";
   context.strokeStyle = String(palette.stroke || "").replace("0.96", "0.34");
-  context.lineWidth = ropeWidth;
-  context.shadowBlur = 14;
+  context.lineWidth = ropeWidth * reactiveTempoSwing;
+  context.shadowBlur = 14 + reactiveGlowBoost * 16;
   context.shadowColor = palette.glow;
+  context.globalAlpha = 0.82 + normalizedMusicSignal.energy * 0.16;
   context.stroke();
 
   context.shadowBlur = 6;
   context.shadowColor = palette.bulb;
   context.strokeStyle = "rgba(255, 255, 255, 0.12)";
   context.lineWidth = Math.max(0.38, ropeWidth * 0.18);
+  context.globalAlpha = 0.58 + normalizedMusicSignal.pitch * 0.18;
   context.stroke();
   context.restore();
 
@@ -507,30 +525,51 @@ export const drawHomeLedRopePath = (
   context.lineJoin = "round";
   context.strokeStyle = String(palette.stroke || "").replace("0.96", "0.22");
   context.lineWidth = Math.max(0.9, ropeWidth);
-  context.globalAlpha = 0.35;
+  context.globalAlpha = 0.35 + normalizedMusicSignal.energy * 0.16;
   context.stroke();
   context.restore();
 
-  const drawBulb = (bulbPoint, radius = 1.8) => {
+  const drawBulb = (bulbPoint, radius = 1.8, bulbIndex = 0) => {
+    const bulbPhase =
+      normalizedMusicSignal.fallbackTime * (2.2 + normalizedMusicSignal.tempo * 4.6) +
+      bulbIndex * (0.48 + normalizedMusicSignal.pitch * 0.22);
+    const bulbWave = (Math.sin(bulbPhase) + 1) / 2;
+    const bulbIntensity =
+      0.48 +
+      normalizedMusicSignal.energy * 0.34 +
+      normalizedMusicSignal.pitch * 0.12 +
+      normalizedMusicSignal.pulse * 0.2 +
+      bulbWave * (0.08 + normalizedMusicSignal.tempo * 0.08);
+    const glowRadius =
+      radius *
+      (0.92 + normalizedMusicSignal.energy * 0.32 + normalizedMusicSignal.pulse * 0.16);
+    const coreRadius =
+      Math.max(
+        0.55,
+        radius * (0.42 + normalizedMusicSignal.pitch * 0.12 + bulbWave * 0.08),
+      );
+
     context.save();
     context.beginPath();
     context.fillStyle = palette.bulb;
-    context.shadowBlur = 34;
+    context.globalAlpha = Math.min(1, bulbIntensity);
+    context.shadowBlur = 24 + bulbIntensity * 22 + normalizedMusicSignal.tempo * 8;
     context.shadowColor = palette.glow;
-    context.arc(bulbPoint.x, bulbPoint.y, radius, 0, Math.PI * 2);
+    context.arc(bulbPoint.x, bulbPoint.y, glowRadius, 0, Math.PI * 2);
     context.fill();
 
     context.beginPath();
     context.fillStyle = "rgba(255, 255, 255, 0.72)";
-    context.shadowBlur = 12;
+    context.globalAlpha = 0.76 + bulbWave * 0.16;
+    context.shadowBlur = 10 + normalizedMusicSignal.pitch * 10;
     context.shadowColor = palette.bulb;
-    context.arc(bulbPoint.x, bulbPoint.y, Math.max(0.55, radius * 0.42), 0, Math.PI * 2);
+    context.arc(bulbPoint.x, bulbPoint.y, coreRadius, 0, Math.PI * 2);
     context.fill();
     context.restore();
   };
 
-  drawBulb(points[0], 1.7);
-  drawBulb(points[points.length - 1], 1.7);
+  drawBulb(points[0], 1.7, 0);
+  drawBulb(points[points.length - 1], 1.7, 1);
 
   let carriedDistance = 0;
   let lastBulbPoint = points[0];
@@ -548,7 +587,7 @@ export const drawHomeLedRopePath = (
         y: lastBulbPoint.y + (nextPoint.y - lastBulbPoint.y) * interpolationRatio,
       };
 
-      drawBulb(bulbPoint, 1.65);
+      drawBulb(bulbPoint, 1.65, renderedBulbCount);
 
       lastBulbPoint = bulbPoint;
       segmentDistance = pointDistance(lastBulbPoint, nextPoint);

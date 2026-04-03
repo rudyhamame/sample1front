@@ -3,7 +3,6 @@ import React from "react";
 
 //........import CSS...........
 import "./App.css";
-import "./Main/main.css";
 import "../Nav/Notifications/notifications.css";
 import "../Nav/nav.css";
 import "../home.css";
@@ -19,10 +18,8 @@ import NogaPlan, {
 import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
+import Profile from "../Profile/Profile.jsx";
 import { apiUrl } from "../config/api";
-import PhenomedSocial from "../PhenomedSocial/PhenomedSocial";
-import PhenomedSocialArabic from "../PhenomedSocial/PhenomedSocialArabic";
-import Profile from "../Profile/Profile";
 import { connectRealtime } from "../realtime/socket";
 import {
   logoutStoredSession,
@@ -57,7 +54,8 @@ class App extends React.Component {
           ? storedSession.profilePictureViewport
           : { scale: 1, offsetX: 0, offsetY: 0 },
       homeDrawing:
-        storedSession.homeDrawing && typeof storedSession.homeDrawing === "object"
+        storedSession.homeDrawing &&
+        typeof storedSession.homeDrawing === "object"
           ? storedSession.homeDrawing
           : { draftPaths: [], appliedPaths: [], textItems: [] },
       imageGallery: Array.isArray(storedSession.imageGallery)
@@ -216,8 +214,31 @@ class App extends React.Component {
   }
 
   handlePlannerMusicSessionChange = (event) => {
-    this.setState({
-      planner_music: event?.detail || getPlannerMusicSnapshot(),
+    const nextSnapshot = event?.detail || getPlannerMusicSnapshot();
+
+    this.setState((currentState) => {
+      const currentSnapshot = currentState.planner_music || {};
+
+      if (
+        currentSnapshot.isReady === nextSnapshot.isReady &&
+        currentSnapshot.isPlaying === nextSnapshot.isPlaying &&
+        currentSnapshot.trackTitle === nextSnapshot.trackTitle &&
+        currentSnapshot.trackArtist === nextSnapshot.trackArtist &&
+        currentSnapshot.volume === nextSnapshot.volume
+      ) {
+        return null;
+      }
+
+      return {
+        planner_music: {
+          ...currentSnapshot,
+          isReady: nextSnapshot.isReady,
+          isPlaying: nextSnapshot.isPlaying,
+          trackTitle: nextSnapshot.trackTitle,
+          trackArtist: nextSnapshot.trackArtist,
+          volume: nextSnapshot.volume,
+        },
+      };
     });
   };
 
@@ -1847,12 +1868,16 @@ class App extends React.Component {
           this.state.homeDrawing && typeof this.state.homeDrawing === "object"
             ? this.state.homeDrawing
             : { draftPaths: [], appliedPaths: [], textItems: [] };
-        const fetchedAppliedCount = Array.isArray(fetchedHomeDrawing.appliedPaths)
+        const fetchedAppliedCount = Array.isArray(
+          fetchedHomeDrawing.appliedPaths,
+        )
           ? fetchedHomeDrawing.appliedPaths.length
           : Array.isArray(fetchedHomeDrawing.paths)
             ? fetchedHomeDrawing.paths.length
             : 0;
-        const currentAppliedCount = Array.isArray(currentHomeDrawing.appliedPaths)
+        const currentAppliedCount = Array.isArray(
+          currentHomeDrawing.appliedPaths,
+        )
           ? currentHomeDrawing.appliedPaths.length
           : Array.isArray(currentHomeDrawing.paths)
             ? currentHomeDrawing.paths.length
@@ -2767,10 +2792,14 @@ class App extends React.Component {
           className="server_answer_noga_playerButton"
           onClick={() => toggleSharedPlannerMusic()}
           aria-label={
-            plannerMusic.isPlaying ? "Pause planner music" : "Play planner music"
+            plannerMusic.isPlaying
+              ? "Pause planner music"
+              : "Play planner music"
           }
           title={
-            plannerMusic.isPlaying ? "Pause planner music" : "Play planner music"
+            plannerMusic.isPlaying
+              ? "Pause planner music"
+              : "Play planner music"
           }
           disabled={!plannerMusic.isReady}
         >
@@ -2808,7 +2837,10 @@ class App extends React.Component {
     return (
       <React.Fragment>
         <Route exact path="/">
-          <article id="app_page" className={`${appPageClassName} app_page--home-dark`}>
+          <article
+            id="app_page"
+            className={`${appPageClassName} app_page--home-dark`}
+          >
             <main id="Main_article" className="fr">
               <Home
                 state={this.state}
@@ -2932,60 +2964,6 @@ class App extends React.Component {
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
                 makeNotificationsRead={this.makeNotificationsRead}
-              />
-            </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomedsocial/ar">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <PhenomedSocialArabic
-                state={this.state}
-                logOut={this.logOut}
-                friendConnectionColor={this.friendConnectionColor}
-                removeFriend={this.removeFriend}
-                selectFriendChat={this.get_current_friend_chat_id}
-                closeActiveChat={this.closeActiveChat}
-                postingTerminology={this.postingTerminology}
-                searchPosts={this.searchPosts}
-                prepare_searchPosts={this.prepare_searchPosts}
-                acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
-                sendToThemMessage={this.sendToThemMessage}
-                updateMyTypingPresence={this.updateMyTypingPresence}
-                getRealtimeSocket={this.getRealtimeSocket}
-                type={this.type}
-                counter={this.counter}
-                updateBeforeLeave={this.updateBeforeLeave}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomedsocial">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <PhenomedSocial
-                state={this.state}
-                logOut={this.logOut}
-                friendConnectionColor={this.friendConnectionColor}
-                removeFriend={this.removeFriend}
-                selectFriendChat={this.get_current_friend_chat_id}
-                closeActiveChat={this.closeActiveChat}
-                postingTerminology={this.postingTerminology}
-                searchPosts={this.searchPosts}
-                prepare_searchPosts={this.prepare_searchPosts}
-                acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
-                sendToThemMessage={this.sendToThemMessage}
-                updateMyTypingPresence={this.updateMyTypingPresence}
-                getRealtimeSocket={this.getRealtimeSocket}
-                type={this.type}
-                counter={this.counter}
-                updateBeforeLeave={this.updateBeforeLeave}
-                serverReply={this.serverReply}
               />
             </main>
             {showServerAnswerFooter ? serverAnswerFooter : null}

@@ -1,13 +1,27 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
-import { apiUrl } from "../../../../config/api";
+import "./emojie_picker.css";
+import "./friendchat.css";
+import { apiUrl } from "../config/api";
 import {
   attachStreamToElement,
   createPeerConnection,
   requestCallMedia,
   stopMediaStream,
-} from "../../../../realtime/webrtcCall";
+} from "../realtime/webrtcCall";
+
+const CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY =
+  "phenomed.friendChat.callPanelLayout";
+const DEFAULT_CALL_PANEL_LAYOUT = {
+  x: 24,
+  y: 24,
+  width: 360,
+  height: 430,
+};
+const CALL_PANEL_MIN_WIDTH = 300;
+const CALL_PANEL_MIN_HEIGHT = 220;
+const CALL_PANEL_MARGIN = 16;
 
 const keepTextareaFocus = (event) => {
   event.preventDefault();
@@ -39,6 +53,17 @@ const formatChatTimestamp = (rawValue, fallbackTimestamp) => {
   });
 };
 
+const getViewportBounds = () => {
+  if (typeof window === "undefined") {
+    return { width: 1280, height: 720 };
+  }
+
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+};
+
 const FriendChat = ({
   state,
   content,
@@ -59,6 +84,7 @@ const FriendChat = ({
     ? Boolean(state?.friendTypingPresence?.[state.activeChatFriendId])
     : false;
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = React.useState(false);
+  const emojiPickerWrapRef = React.useRef(null);
   const emojiPickerRef = React.useRef(null);
   const textareaRef = React.useRef(null);
   const [localMessages, setLocalMessages] = React.useState([]);
@@ -68,6 +94,7 @@ const FriendChat = ({
   const remoteVideoRef = React.useRef(null);
   const videoStageRef = React.useRef(null);
   const videoOverlayDragRef = React.useRef(null);
+  const callPanelInteractionRef = React.useRef(null);
   const peerConnectionRef = React.useRef(null);
   const localStreamRef = React.useRef(null);
   const remoteStreamRef = React.useRef(null);
@@ -89,8 +116,9 @@ const FriendChat = ({
     y: 18,
   });
   const [videoOverlayScale, setVideoOverlayScale] = React.useState(1);
-  const emojiPickerTheme = Theme.AUTO;
-
+  const [callPanelLayout, setCallPanelLayout] = React.useState(
+    DEFAULT_CALL_PANEL_LAYOUT,
+  );
   const normalizedRemoteMessages = React.useMemo(() => {
     const activeFriendId = String(state?.activeChatFriendId || "").trim();
     const chatHistory = Array.isArray(state?.chat) ? state.chat : [];
@@ -179,6 +207,35 @@ const FriendChat = ({
     },
     [clampVideoOverlayPosition],
   );
+
+  const clampCallPanelLayout = React.useCallback((nextLayout) => {
+    const viewport = getViewportBounds();
+    const safeWidth = clampValue(
+      Number(nextLayout?.width) || DEFAULT_CALL_PANEL_LAYOUT.width,
+      CALL_PANEL_MIN_WIDTH,
+      Math.max(viewport.width - CALL_PANEL_MARGIN * 2, CALL_PANEL_MIN_WIDTH),
+    );
+    const safeHeight = clampValue(
+      Number(nextLayout?.height) || DEFAULT_CALL_PANEL_LAYOUT.height,
+      CALL_PANEL_MIN_HEIGHT,
+      Math.max(viewport.height - CALL_PANEL_MARGIN * 2, CALL_PANEL_MIN_HEIGHT),
+    );
+
+    return {
+      width: safeWidth,
+      height: safeHeight,
+      x: clampValue(
+        Number(nextLayout?.x) || DEFAULT_CALL_PANEL_LAYOUT.x,
+        CALL_PANEL_MARGIN,
+        Math.max(viewport.width - safeWidth - CALL_PANEL_MARGIN, CALL_PANEL_MARGIN),
+      ),
+      y: clampValue(
+        Number(nextLayout?.y) || DEFAULT_CALL_PANEL_LAYOUT.y,
+        CALL_PANEL_MARGIN,
+        Math.max(viewport.height - safeHeight - CALL_PANEL_MARGIN, CALL_PANEL_MARGIN),
+      ),
+    };
+  }, []);
 
   const releasePeerConnection = React.useCallback(() => {
     if (peerConnectionRef.current) {
@@ -518,8 +575,8 @@ const FriendChat = ({
 
     const handleOutsideClick = (event) => {
       if (
-        emojiPickerRef.current &&
-        !emojiPickerRef.current.contains(event.target)
+        emojiPickerWrapRef.current &&
+        !emojiPickerWrapRef.current.contains(event.target)
       ) {
         setIsEmojiPickerOpen(false);
       }
@@ -654,6 +711,11 @@ const FriendChat = ({
     textarea.focus();
 
     setTypingPresence(Boolean(nextValue.trim()));
+  };
+
+  const handleEmojiPickerSelect = (emojiData) => {
+    handleEmojiSelect(emojiData.emoji);
+    setIsEmojiPickerOpen(false);
   };
 
   const handleTextareaFocus = () => {
@@ -821,6 +883,54 @@ const FriendChat = ({
   };
 
   React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    try {
+      const rawLayout = window.localStorage.getItem(
+        CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY,
+      );
+
+      if (!rawLayout) {
+        return undefined;
+      }
+
+      const parsedLayout = JSON.parse(rawLayout);
+      setCallPanelLayout(clampCallPanelLayout(parsedLayout));
+    } catch (_error) {
+      // Ignore malformed persisted layout and keep defaults.
+    }
+
+    return undefined;
+  }, [clampCallPanelLayout]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    window.localStorage.setItem(
+      CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY,
+      JSON.stringify(callPanelLayout),
+    );
+
+    return undefined;
+  }, [callPanelLayout]);
+
+  React.useEffect(() => {
+    const handleViewportResize = () => {
+      setCallPanelLayout((currentLayout) => clampCallPanelLayout(currentLayout));
+    };
+
+    window.addEventListener("resize", handleViewportResize);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportResize);
+    };
+  }, [clampCallPanelLayout]);
+
+  React.useEffect(() => {
     if (callMode !== "video") {
       videoOverlayDragRef.current = null;
       setVideoOverlayScale(1);
@@ -834,6 +944,78 @@ const FriendChat = ({
 
     return undefined;
   }, [callMode, clampVideoOverlayPosition, videoOverlayScale]);
+
+  React.useEffect(() => {
+    const handlePanelPointerMove = (event) => {
+      const interaction = callPanelInteractionRef.current;
+
+      if (!interaction) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const deltaX = event.clientX - interaction.pointerStartX;
+      const deltaY = event.clientY - interaction.pointerStartY;
+
+      if (interaction.type === "drag") {
+        setCallPanelLayout((currentLayout) =>
+          clampCallPanelLayout({
+            ...currentLayout,
+            x: interaction.originX + deltaX,
+            y: interaction.originY + deltaY,
+          }),
+        );
+        return;
+      }
+
+      setCallPanelLayout((currentLayout) => {
+        const draftLayout = {
+          ...currentLayout,
+          x: interaction.originX,
+          y: interaction.originY,
+          width: interaction.originWidth,
+          height: interaction.originHeight,
+        };
+
+        if (interaction.edge.includes("e")) {
+          draftLayout.width = interaction.originWidth + deltaX;
+        }
+
+        if (interaction.edge.includes("s")) {
+          draftLayout.height = interaction.originHeight + deltaY;
+        }
+
+        if (interaction.edge.includes("w")) {
+          draftLayout.width = interaction.originWidth - deltaX;
+          draftLayout.x = interaction.originX + deltaX;
+        }
+
+        if (interaction.edge.includes("n")) {
+          draftLayout.height = interaction.originHeight - deltaY;
+          draftLayout.y = interaction.originY + deltaY;
+        }
+
+        return clampCallPanelLayout(draftLayout);
+      });
+    };
+
+    const handlePanelPointerUp = () => {
+      callPanelInteractionRef.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePanelPointerMove, {
+      passive: false,
+    });
+    window.addEventListener("pointerup", handlePanelPointerUp);
+    window.addEventListener("pointercancel", handlePanelPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePanelPointerMove);
+      window.removeEventListener("pointerup", handlePanelPointerUp);
+      window.removeEventListener("pointercancel", handlePanelPointerUp);
+    };
+  }, [clampCallPanelLayout]);
 
   React.useEffect(() => {
     const handlePointerMove = (event) => {
@@ -885,6 +1067,47 @@ const FriendChat = ({
     [callMode, videoOverlayPosition.x, videoOverlayPosition.y],
   );
 
+  const handleCallPanelDragStart = React.useCallback(
+    (event) => {
+      if (event.target.closest(".Chat_callControlButton")) {
+        return;
+      }
+
+      callPanelInteractionRef.current = {
+        type: "drag",
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: callPanelLayout.x,
+        originY: callPanelLayout.y,
+      };
+    },
+    [callPanelLayout.x, callPanelLayout.y],
+  );
+
+  const handleCallPanelResizeStart = React.useCallback(
+    (edge, event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      callPanelInteractionRef.current = {
+        type: "resize",
+        edge,
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: callPanelLayout.x,
+        originY: callPanelLayout.y,
+        originWidth: callPanelLayout.width,
+        originHeight: callPanelLayout.height,
+      };
+    },
+    [
+      callPanelLayout.height,
+      callPanelLayout.width,
+      callPanelLayout.x,
+      callPanelLayout.y,
+    ],
+  );
+
   const handleToggleMute = () => {
     const localStream = localStreamRef.current;
 
@@ -922,6 +1145,13 @@ const FriendChat = ({
     });
 
     setIsVideoMuted(nextMuted);
+  };
+
+  const callPanelStyle = {
+    left: `${callPanelLayout.x}px`,
+    top: `${callPanelLayout.y}px`,
+    width: `${callPanelLayout.width}px`,
+    height: `${callPanelLayout.height}px`,
   };
 
   return (
@@ -1060,8 +1290,12 @@ const FriendChat = ({
                 <section
                   id="Chat_callPanel"
                   className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}`}
+                  style={callPanelStyle}
                 >
-                  <div className="Chat_callStatusRow fr">
+                  <div
+                    className="Chat_callStatusRow fr Chat_callPanelHeader"
+                    onPointerDown={handleCallPanelDragStart}
+                  >
                     <strong>
                       {callMode === "video" ? "Video call" : "Voice call"}
                     </strong>
@@ -1189,6 +1423,15 @@ const FriendChat = ({
                       <i className="fas fa-phone-slash"></i>
                     </button>
                   </div>
+                  {["n", "e", "s", "w", "ne", "nw", "se", "sw"].map((edge) => (
+                    <div
+                      key={edge}
+                      className={`Chat_callPanelResizeHandle Chat_callPanelResizeHandle--${edge}`}
+                      onPointerDown={(event) =>
+                        handleCallPanelResizeStart(edge, event)
+                      }
+                    />
+                  ))}
                 </section>
               ) : null}
               {callError ? (
@@ -1202,9 +1445,9 @@ const FriendChat = ({
                     {chatContent?.empty || "Open a conversation to view messages here."}
                   </li>
                 ) : (
-                  allMessages.map((msg) => (
+                  allMessages.map((msg, index) => (
                     <div
-                      key={msg.id || msg.timestamp}
+                      key={`${msg.id || msg.timestamp}-${msg.rawDate || ""}-${msg.sender}-${index}`}
                       className={msg.sender === "me" ? "sentMessagesDIV fc" : "receivedMessagesDIV fc"}
                     >
                       <li
@@ -1233,26 +1476,26 @@ const FriendChat = ({
                   ))
                 )}
               </ul>
-              {isEmojiPickerOpen ? (
-                <div id="Chat_emoji_picker" className="fc" ref={emojiPickerRef}>
-                  <EmojiPicker
-                    onEmojiClick={(emojiData) => {
-                      handleEmojiSelect(emojiData.emoji);
-                    }}
-                    theme={emojiPickerTheme}
-                    emojiStyle={EmojiStyle.APPLE}
-                    lazyLoadEmojis
-                    autoFocusSearch={false}
-                    previewConfig={{ showPreview: false }}
-                    width={272}
-                    height={320}
-                    searchPlaceholder="Search emoji"
-                    className="Chat_modernEmojiPicker"
-                  />
-                </div>
-              ) : null}
-              <section id="Chat_form" className="fr">
-                <div id="Chat_emoji_picker_wrap">
+              <div id="Chat_emoji_region" className="fc" ref={emojiPickerWrapRef}>
+                {isEmojiPickerOpen ? (
+                  <div id="Chat_emoji_picker" className="fc" ref={emojiPickerRef}>
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiPickerSelect}
+                      theme={Theme.AUTO}
+                      emojiStyle={EmojiStyle.APPLE}
+                      lazyLoadEmojis={true}
+                      skinTonesDisabled={false}
+                      searchDisabled={false}
+                      previewConfig={{
+                        showPreview: true,
+                        defaultCaption: "Pick an emoji",
+                      }}
+                      className="Chat_modernEmojiPicker"
+                    />
+                  </div>
+                ) : null}
+                <section id="Chat_form" className="fr">
+                  <div id="Chat_emoji_button_wrap">
                   <button
                     id="Chat_emoji_button"
                     type="button"
@@ -1269,11 +1512,9 @@ const FriendChat = ({
                       }
                     }}
                   >
-                    <span role="img" aria-hidden="true">
-                      ??
-                    </span>
+                    <i className="fas fa-smile" aria-hidden="true"></i>
                   </button>
-                </div>
+                  </div>
                 <textarea
                   id="Chat_textarea_input"
                   ref={textareaRef}
@@ -1300,7 +1541,8 @@ const FriendChat = ({
                 >
                   <i className="fc far fa-paper-plane"></i>
                 </button>
-              </section>
+                </section>
+              </div>
             </React.Fragment>
           ) : null}
         </section>

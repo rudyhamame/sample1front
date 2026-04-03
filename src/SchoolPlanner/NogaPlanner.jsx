@@ -37,6 +37,17 @@ let sharedPlannerMusicSnapshot = {
   trackTitle: "Planner Music",
   trackArtist: "Internet Archive",
   volume: 0.42,
+  audioSignal: {
+    energy: 0,
+    bass: 0,
+    mid: 0,
+    treble: 0,
+    pitch: 0,
+    tempo: 0,
+    pulse: 0,
+    fallbackTime: 0,
+    updatedAt: 0,
+  },
 };
 
 const emitPlannerMusicSnapshot = (nextSnapshot) => {
@@ -1160,6 +1171,17 @@ export default class NogaPlanner extends Component {
       trackTitle: this.state.music_trackTitle,
       trackArtist: this.state.music_trackArtist,
       volume: this.state.music_volume,
+      audioSignal: {
+        energy: 0,
+        bass: 0,
+        mid: 0,
+        treble: 0,
+        pitch: 0,
+        tempo: 0,
+        pulse: 0,
+        fallbackTime: 0,
+        updatedAt: Date.now(),
+      },
     });
     window.addEventListener("popstate", this.handlePlannerBrowserBack);
     if (this.plannerArticleRef.current) {
@@ -1196,6 +1218,17 @@ export default class NogaPlanner extends Component {
       emitPlannerMusicSnapshot({
         isReady: false,
         isPlaying: false,
+        audioSignal: {
+          energy: 0,
+          bass: 0,
+          mid: 0,
+          treble: 0,
+          pitch: 0,
+          tempo: 0,
+          pulse: 0,
+          fallbackTime: 0,
+          updatedAt: Date.now(),
+        },
       });
     }
     this.coursePrintSoundTimeouts.forEach((timeoutId) => {
@@ -1271,6 +1304,19 @@ export default class NogaPlanner extends Component {
         trackTitle: this.state.music_trackTitle,
         trackArtist: this.state.music_trackArtist,
         volume: this.state.music_volume,
+        audioSignal: this.state.music_isPlaying
+          ? sharedPlannerMusicSnapshot.audioSignal
+          : {
+              energy: 0,
+              bass: 0,
+              mid: 0,
+              treble: 0,
+              pitch: 0,
+              tempo: 0,
+              pulse: 0,
+              fallbackTime: 0,
+              updatedAt: Date.now(),
+            },
       });
     }
   }
@@ -1416,6 +1462,7 @@ export default class NogaPlanner extends Component {
 
     await this.ensurePlannerMusicAnalyser();
     this.stopPlannerMusicReactivePalette();
+    this.lastPlannerMusicSignalEmitAt = 0;
 
     const step = () => {
       if (!this.isComponentMounted || !this.musicAudioRef.current) {
@@ -1468,6 +1515,29 @@ export default class NogaPlanner extends Component {
         treble = 0.12 + fallbackBeat * 0.22;
       }
 
+      const normalizedTempo = Math.max(
+        0,
+        Math.min(1, (0.006 + energy * 0.018 + mid * 0.01 - 0.006) / 0.028),
+      );
+      const pitch = Math.max(
+        0,
+        Math.min(1, treble * 0.68 + mid * 0.32),
+      );
+      const pulse = Math.max(
+        0,
+        Math.min(
+          1,
+          bass * 0.52 +
+            energy * 0.28 +
+            Math.abs(
+              Math.sin(
+                (activeAudio.currentTime || 0) * (1.3 + normalizedTempo * 3.4),
+              ),
+            ) *
+              0.2,
+        ),
+      );
+
       this.applyPlannerMusicPalette({
         energy,
         bass,
@@ -1476,9 +1546,40 @@ export default class NogaPlanner extends Component {
         fallbackTime: activeAudio.currentTime || 0,
       });
 
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      if (now - this.lastPlannerMusicSignalEmitAt >= 72) {
+        this.lastPlannerMusicSignalEmitAt = now;
+        emitPlannerMusicSnapshot({
+          audioSignal: {
+            energy,
+            bass,
+            mid,
+            treble,
+            pitch,
+            tempo: normalizedTempo,
+            pulse,
+            fallbackTime: activeAudio.currentTime || 0,
+            updatedAt: Date.now(),
+          },
+        });
+      }
+
       if (!activeAudio.paused && !activeAudio.ended) {
         this.musicPaletteFrame = window.requestAnimationFrame(step);
       } else {
+        emitPlannerMusicSnapshot({
+          audioSignal: {
+            energy: 0,
+            bass: 0,
+            mid: 0,
+            treble: 0,
+            pitch: 0,
+            tempo: 0,
+            pulse: 0,
+            fallbackTime: activeAudio.currentTime || 0,
+            updatedAt: Date.now(),
+          },
+        });
         this.stopPlannerMusicReactivePalette();
       }
     };
