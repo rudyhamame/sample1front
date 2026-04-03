@@ -417,6 +417,17 @@ class App extends React.Component {
     });
   };
 
+  markMessagesRead = (friendId) => {
+    if (!this.realtimeSocket || !this.state.my_id || !friendId) {
+      return;
+    }
+
+    this.realtimeSocket.emit("user:message-read", {
+      userId: this.state.my_id,
+      friendId,
+    });
+  };
+
   getRealtimeSocket = () => this.realtimeSocket;
 
   requestGlobalCall = ({ friendId, friendName, mode }) => {
@@ -2908,6 +2919,7 @@ class App extends React.Component {
                 closeActiveChat={this.closeActiveChat}
                 sendToThemMessage={this.sendToThemMessage}
                 updateMyTypingPresence={this.updateMyTypingPresence}
+                markMessagesRead={this.markMessagesRead}
                 serverReply={this.serverReply}
                 requestGlobalCall={this.requestGlobalCall}
                 setAppFooterHidden={this.setAppFooterHidden}

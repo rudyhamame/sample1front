@@ -17,9 +17,16 @@ const DEFAULT_CALL_PANEL_LAYOUT = {
   width: 360,
   height: 430,
 };
+const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
+  x: 18,
+  y: 18,
+  scale: 1,
+};
 const CALL_PANEL_MIN_WIDTH = 300;
 const CALL_PANEL_MIN_HEIGHT = 220;
 const CALL_PANEL_MARGIN = 16;
+const VIDEO_OVERLAY_MIN_SCALE = 0.6;
+const VIDEO_OVERLAY_MAX_SCALE = 2;
 
 const clampValue = (value, min, max) => {
   if (!Number.isFinite(value)) {
@@ -79,6 +86,11 @@ function GlobalCallPanel({
   const localVideoRef = React.useRef(null);
   const remoteVideoRef = React.useRef(null);
   const videoStageRef = React.useRef(null);
+  const callControlsRef = React.useRef(null);
+  const videoOverlayRef = React.useRef(null);
+  const videoOverlayDragRef = React.useRef(null);
+  const videoOverlayResizeRef = React.useRef(null);
+  const videoOverlayPinchRef = React.useRef(null);
   const callPanelInteractionRef = React.useRef(null);
   const peerConnectionRef = React.useRef(null);
   const localStreamRef = React.useRef(null);
@@ -96,13 +108,17 @@ function GlobalCallPanel({
   const [isVideoMuted, setIsVideoMuted] = React.useState(false);
   const [activeCallDisplayName, setActiveCallDisplayName] = React.useState("");
   const [videoOverlayPosition, setVideoOverlayPosition] = React.useState({
-    x: 18,
-    y: 18,
+    x: DEFAULT_VIDEO_OVERLAY_LAYOUT.x,
+    y: DEFAULT_VIDEO_OVERLAY_LAYOUT.y,
   });
-  const [videoOverlayScale, setVideoOverlayScale] = React.useState(1);
+  const [videoOverlayScale, setVideoOverlayScale] = React.useState(
+    DEFAULT_VIDEO_OVERLAY_LAYOUT.scale,
+  );
   const [callPanelLayout, setCallPanelLayout] = React.useState(
     DEFAULT_CALL_PANEL_LAYOUT,
   );
+  const [isRemoteVideoHovered, setIsRemoteVideoHovered] = React.useState(false);
+  const [isCallControlsPinned, setIsCallControlsPinned] = React.useState(false);
 
   const friends = appState?.friends;
   const currentUserId = String(appState?.my_id || "").trim();
@@ -128,6 +144,12 @@ function GlobalCallPanel({
 
   const clampVideoOverlayPosition = React.useCallback((nextPosition, scale) => {
     const stageElement = videoStageRef.current;
+    const overlayElement = videoOverlayRef.current;
+
+    const overlayWidth =
+      overlayElement?.getBoundingClientRect?.().width || 128 * scale;
+    const overlayHeight =
+      overlayElement?.getBoundingClientRect?.().height || 116 * scale;
 
     if (!stageElement) {
       return {
@@ -138,33 +160,28 @@ function GlobalCallPanel({
 
     const stageWidth = stageElement.clientWidth || 0;
     const stageHeight = stageElement.clientHeight || 0;
-    const panelWidth = 320 * scale;
-    const panelHeight = 228 * scale;
 
     return {
       x: clampValue(
         Number(nextPosition?.x) || 0,
         0,
-        Math.max(stageWidth - panelWidth, 0),
+        Math.max(stageWidth - overlayWidth, 0),
       ),
       y: clampValue(
         Number(nextPosition?.y) || 0,
         0,
-        Math.max(stageHeight - panelHeight, 0),
+        Math.max(stageHeight - overlayHeight, 0),
       ),
     };
   }, []);
 
-  const setVideoOverlayScaleClamped = React.useCallback(
-    (nextScale) => {
-      const normalizedScale = clampValue(nextScale, 0.72, 1.45);
-      setVideoOverlayScale(normalizedScale);
-      setVideoOverlayPosition((currentPosition) =>
-        clampVideoOverlayPosition(currentPosition, normalizedScale),
-      );
-    },
-    [clampVideoOverlayPosition],
-  );
+  const clampVideoOverlayScale = React.useCallback((nextScale) => {
+    return clampValue(
+      Number(nextScale) || DEFAULT_VIDEO_OVERLAY_LAYOUT.scale,
+      VIDEO_OVERLAY_MIN_SCALE,
+      VIDEO_OVERLAY_MAX_SCALE,
+    );
+  }, []);
 
   const clampCallPanelLayout = React.useCallback((nextLayout) => {
     const viewport = getViewportBounds();
@@ -673,8 +690,16 @@ function GlobalCallPanel({
 
   React.useEffect(() => {
     if (callMode !== "video") {
-      setVideoOverlayScale(1);
-      setVideoOverlayPosition({ x: 18, y: 18 });
+      videoOverlayDragRef.current = null;
+      videoOverlayResizeRef.current = null;
+      videoOverlayPinchRef.current = null;
+      setVideoOverlayScale(DEFAULT_VIDEO_OVERLAY_LAYOUT.scale);
+      setVideoOverlayPosition({
+        x: DEFAULT_VIDEO_OVERLAY_LAYOUT.x,
+        y: DEFAULT_VIDEO_OVERLAY_LAYOUT.y,
+      });
+      setIsRemoteVideoHovered(false);
+      setIsCallControlsPinned(false);
       return undefined;
     }
 
@@ -684,6 +709,152 @@ function GlobalCallPanel({
 
     return undefined;
   }, [callMode, clampVideoOverlayPosition, videoOverlayScale]);
+
+  React.useEffect(() => {
+    if (!isCallControlsPinned) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      const target = event.target;
+
+      if (
+        videoStageRef.current?.contains(target) ||
+        callControlsRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setIsCallControlsPinned(false);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isCallControlsPinned]);
+
+  React.useEffect(() => {
+    const handlePointerMove = (event) => {
+      const dragState = videoOverlayDragRef.current;
+      const resizeState = videoOverlayResizeRef.current;
+
+      if (resizeState) {
+        event.preventDefault();
+
+        const deltaX = event.clientX - resizeState.pointerStartX;
+        const deltaY = event.clientY - resizeState.pointerStartY;
+        const widthRatioBase =
+          resizeState.originRect.width > 0
+            ? resizeState.originRect.width
+            : 1;
+        const heightRatioBase =
+          resizeState.originRect.height > 0
+            ? resizeState.originRect.height
+            : 1;
+
+        let widthRatio = 1;
+        let heightRatio = 1;
+
+        if (resizeState.edge.includes("e")) {
+          widthRatio =
+            (resizeState.originRect.width + deltaX) / widthRatioBase;
+        }
+        if (resizeState.edge.includes("w")) {
+          widthRatio =
+            (resizeState.originRect.width - deltaX) / widthRatioBase;
+        }
+        if (resizeState.edge.includes("s")) {
+          heightRatio =
+            (resizeState.originRect.height + deltaY) / heightRatioBase;
+        }
+        if (resizeState.edge.includes("n")) {
+          heightRatio =
+            (resizeState.originRect.height - deltaY) / heightRatioBase;
+        }
+
+        let dominantRatio = 1;
+
+        if (
+          resizeState.edge.length === 2 &&
+          Number.isFinite(widthRatio) &&
+          Number.isFinite(heightRatio)
+        ) {
+          const widthDeltaMagnitude = Math.abs(widthRatio - 1);
+          const heightDeltaMagnitude = Math.abs(heightRatio - 1);
+          dominantRatio =
+            widthDeltaMagnitude >= heightDeltaMagnitude
+              ? widthRatio
+              : heightRatio;
+        } else if (
+          (resizeState.edge.includes("e") || resizeState.edge.includes("w")) &&
+          Number.isFinite(widthRatio)
+        ) {
+          dominantRatio = widthRatio;
+        } else if (Number.isFinite(heightRatio)) {
+          dominantRatio = heightRatio;
+        }
+
+        const nextScale = clampVideoOverlayScale(
+          resizeState.originScale * dominantRatio,
+        );
+
+        const widthDelta =
+          resizeState.originRect.width * (nextScale / resizeState.originScale) -
+          resizeState.originRect.width;
+        const heightDelta =
+          resizeState.originRect.height *
+            (nextScale / resizeState.originScale) -
+          resizeState.originRect.height;
+
+        setVideoOverlayScale(nextScale);
+        setVideoOverlayPosition((currentPosition) =>
+          clampVideoOverlayPosition(
+            {
+              x: resizeState.edge.includes("w")
+                ? resizeState.originX - widthDelta
+                : resizeState.originX,
+              y: resizeState.edge.includes("n")
+                ? resizeState.originY - heightDelta
+                : resizeState.originY,
+            },
+            nextScale,
+          ),
+        );
+        return;
+      }
+
+      if (!dragState) {
+        return;
+      }
+
+      const nextPosition = clampVideoOverlayPosition(
+        {
+          x: dragState.originX + (event.clientX - dragState.pointerStartX),
+          y: dragState.originY + (event.clientY - dragState.pointerStartY),
+        },
+        videoOverlayScale,
+      );
+
+      setVideoOverlayPosition(nextPosition);
+    };
+
+    const handlePointerUp = () => {
+      videoOverlayDragRef.current = null;
+      videoOverlayResizeRef.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [clampVideoOverlayPosition, clampVideoOverlayScale, videoOverlayScale]);
 
   React.useEffect(() => {
     const handlePanelPointerMove = (event) => {
@@ -710,33 +881,65 @@ function GlobalCallPanel({
       }
 
       setCallPanelLayout((currentLayout) => {
-        const draftLayout = {
-          ...currentLayout,
-          x: interaction.originX,
-          y: interaction.originY,
-          width: interaction.originWidth,
-          height: interaction.originHeight,
-        };
+        const widthRatioBase =
+          interaction.originWidth > 0 ? interaction.originWidth : 1;
+        const heightRatioBase =
+          interaction.originHeight > 0 ? interaction.originHeight : 1;
+        let widthRatio = 1;
+        let heightRatio = 1;
 
         if (interaction.edge.includes("e")) {
-          draftLayout.width = interaction.originWidth + deltaX;
-        }
-
-        if (interaction.edge.includes("s")) {
-          draftLayout.height = interaction.originHeight + deltaY;
+          widthRatio = (interaction.originWidth + deltaX) / widthRatioBase;
         }
 
         if (interaction.edge.includes("w")) {
-          draftLayout.width = interaction.originWidth - deltaX;
-          draftLayout.x = interaction.originX + deltaX;
+          widthRatio = (interaction.originWidth - deltaX) / widthRatioBase;
+        }
+
+        if (interaction.edge.includes("s")) {
+          heightRatio = (interaction.originHeight + deltaY) / heightRatioBase;
         }
 
         if (interaction.edge.includes("n")) {
-          draftLayout.height = interaction.originHeight - deltaY;
-          draftLayout.y = interaction.originY + deltaY;
+          heightRatio = (interaction.originHeight - deltaY) / heightRatioBase;
         }
 
-        return clampCallPanelLayout(draftLayout);
+        let dominantRatio = 1;
+
+        if (
+          interaction.edge.length === 2 &&
+          Number.isFinite(widthRatio) &&
+          Number.isFinite(heightRatio)
+        ) {
+          const widthDeltaMagnitude = Math.abs(widthRatio - 1);
+          const heightDeltaMagnitude = Math.abs(heightRatio - 1);
+          dominantRatio =
+            widthDeltaMagnitude >= heightDeltaMagnitude
+              ? widthRatio
+              : heightRatio;
+        } else if (
+          (interaction.edge.includes("e") || interaction.edge.includes("w")) &&
+          Number.isFinite(widthRatio)
+        ) {
+          dominantRatio = widthRatio;
+        } else if (Number.isFinite(heightRatio)) {
+          dominantRatio = heightRatio;
+        }
+
+        const nextWidth = interaction.originWidth * dominantRatio;
+        const nextHeight = interaction.originHeight * dominantRatio;
+
+        return clampCallPanelLayout({
+          ...currentLayout,
+          x: interaction.edge.includes("w")
+            ? interaction.originX + (interaction.originWidth - nextWidth)
+            : interaction.originX,
+          y: interaction.edge.includes("n")
+            ? interaction.originY + (interaction.originHeight - nextHeight)
+            : interaction.originY,
+          width: nextWidth,
+          height: nextHeight,
+        });
       });
     };
 
@@ -756,6 +959,112 @@ function GlobalCallPanel({
       window.removeEventListener("pointercancel", handlePanelPointerUp);
     };
   }, [clampCallPanelLayout]);
+
+  const handleVideoOverlayDragStart = React.useCallback(
+    (event) => {
+      if (callMode !== "video") {
+        return;
+      }
+
+      if (event.target.closest(".Chat_videoOverlayScaleButton")) {
+        return;
+      }
+
+      videoOverlayDragRef.current = {
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: videoOverlayPosition.x,
+        originY: videoOverlayPosition.y,
+      };
+    },
+    [callMode, videoOverlayPosition.x, videoOverlayPosition.y],
+  );
+
+  const handleVideoOverlayResizeStart = React.useCallback(
+    (edge, event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const overlayRect = videoOverlayRef.current?.getBoundingClientRect?.();
+
+      if (!overlayRect) {
+        return;
+      }
+
+      videoOverlayResizeRef.current = {
+        edge,
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: videoOverlayPosition.x,
+        originY: videoOverlayPosition.y,
+        originScale: videoOverlayScale,
+        originRect: overlayRect,
+      };
+    },
+    [videoOverlayPosition.x, videoOverlayPosition.y, videoOverlayScale],
+  );
+
+  const handleVideoOverlayTouchStart = React.useCallback(
+    (event) => {
+      if (event.touches.length !== 2) {
+        return;
+      }
+
+      const [touchA, touchB] = event.touches;
+      const initialDistance = Math.hypot(
+        touchB.clientX - touchA.clientX,
+        touchB.clientY - touchA.clientY,
+      );
+
+      if (!initialDistance) {
+        return;
+      }
+
+      videoOverlayPinchRef.current = {
+        initialDistance,
+        originScale: videoOverlayScale,
+      };
+    },
+    [videoOverlayScale],
+  );
+
+  const handleVideoOverlayTouchMove = React.useCallback(
+    (event) => {
+      const pinchState = videoOverlayPinchRef.current;
+
+      if (!pinchState || event.touches.length !== 2) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const [touchA, touchB] = event.touches;
+      const nextDistance = Math.hypot(
+        touchB.clientX - touchA.clientX,
+        touchB.clientY - touchA.clientY,
+      );
+
+      if (!nextDistance) {
+        return;
+      }
+
+      const nextScale = clampVideoOverlayScale(
+        pinchState.originScale * (nextDistance / pinchState.initialDistance),
+      );
+
+      setVideoOverlayScale(nextScale);
+      setVideoOverlayPosition((currentPosition) =>
+        clampVideoOverlayPosition(currentPosition, nextScale),
+      );
+    },
+    [clampVideoOverlayPosition, clampVideoOverlayScale],
+  );
+
+  const handleVideoOverlayTouchEnd = React.useCallback(() => {
+    if (videoOverlayPinchRef.current) {
+      videoOverlayPinchRef.current = null;
+    }
+  }, []);
 
   const handleCallPanelDragStart = React.useCallback(
     (event) => {
@@ -1012,6 +1321,8 @@ function GlobalCallPanel({
       friends,
       activeCallPartnerRef.current || incomingCall?.fromUserId,
     );
+  const showCallControls =
+    callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
 
   return createPortal(
     <React.Fragment>
@@ -1058,7 +1369,9 @@ function GlobalCallPanel({
             className="Chat_callStatusRow fr Chat_callPanelHeader"
             onPointerDown={handleCallPanelDragStart}
           >
-            <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
+            <strong>
+              {callMode === "video" ? "Video call" : "Voice call"}
+            </strong>
             <span>
               {callState === "calling"
                 ? "Calling..."
@@ -1079,7 +1392,15 @@ function GlobalCallPanel({
           >
             {callMode === "video" ? (
               <React.Fragment>
-                <div className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote">
+                <div
+                  className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote"
+                  onMouseEnter={() => setIsRemoteVideoHovered(true)}
+                  onMouseLeave={() => setIsRemoteVideoHovered(false)}
+                  onClick={() =>
+                    setIsCallControlsPinned((currentValue) => !currentValue)
+                  }
+                  onTouchStart={() => setIsCallControlsPinned(true)}
+                >
                   <video
                     id="Chat_remoteVideo"
                     ref={remoteVideoRef}
@@ -1089,49 +1410,36 @@ function GlobalCallPanel({
                 </div>
                 <div
                   className="Chat_videoOverlay fc"
+                  ref={videoOverlayRef}
                   style={{
                     left: `${videoOverlayPosition.x}px`,
                     top: `${videoOverlayPosition.y}px`,
                     transform: `scale(${videoOverlayScale})`,
                   }}
+                  onPointerDown={handleVideoOverlayDragStart}
+                  onTouchStart={handleVideoOverlayTouchStart}
+                  onTouchMove={handleVideoOverlayTouchMove}
+                  onTouchEnd={handleVideoOverlayTouchEnd}
+                  onTouchCancel={handleVideoOverlayTouchEnd}
                 >
-                  <div className="Chat_videoOverlayHeader fr">
-                    <div className="Chat_videoOverlayScaleControls fr">
-                      <button
-                        type="button"
-                        className="Chat_videoOverlayScaleButton"
-                        onClick={() =>
-                          setVideoOverlayScaleClamped(videoOverlayScale - 0.12)
-                        }
-                        aria-label="Shrink video"
-                        title="Shrink video"
-                      >
-                        <i className="fas fa-search-minus"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="Chat_videoOverlayScaleButton"
-                        onClick={() =>
-                          setVideoOverlayScaleClamped(videoOverlayScale + 0.12)
-                        }
-                        aria-label="Enlarge video"
-                        title="Enlarge video"
-                      >
-                        <i className="fas fa-search-plus"></i>
-                      </button>
-                    </div>
+                  <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
+                    <video
+                      id="Chat_localVideo"
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                    />
                   </div>
-                  <div className="Chat_videoOverlayBody">
-                    <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
-                      <video
-                        id="Chat_localVideo"
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                      />
-                    </div>
-                  </div>
+                  {["n", "e", "s", "w", "ne", "nw", "se", "sw"].map((edge) => (
+                    <div
+                      key={edge}
+                      className={`Chat_videoOverlayResizeHandle Chat_videoOverlayResizeHandle--${edge}`}
+                      onPointerDown={(event) =>
+                        handleVideoOverlayResizeStart(edge, event)
+                      }
+                    />
+                  ))}
                 </div>
               </React.Fragment>
             ) : (
@@ -1151,7 +1459,19 @@ function GlobalCallPanel({
               </React.Fragment>
             )}
           </div>
-          <div className="Chat_callControls fr">
+          <div
+            ref={callControlsRef}
+            className={`Chat_callControls fr${showCallControls ? " is-visible" : ""}`}
+          >
+            {callState === "incoming" ? (
+              <button
+                type="button"
+                className="Chat_callControlButton Chat_callControlButton--accept"
+                onClick={handleAcceptIncomingCall}
+              >
+                <i className="fas fa-phone-alt"></i>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}

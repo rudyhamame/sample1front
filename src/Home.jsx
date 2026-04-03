@@ -2043,6 +2043,7 @@ function Home(props) {
                 content={HOME_CHAT_CONTENT}
                 sendToThemMessage={props.sendToThemMessage}
                 updateMyTypingPresence={props.updateMyTypingPresence}
+                markMessagesRead={props.markMessagesRead}
                 requestGlobalCall={props.requestGlobalCall}
                 globalCallSession={props.state?.global_call_session}
                 closeActiveChat={() => {
@@ -2061,6 +2062,7 @@ function Home(props) {
     [
       openChatFriendId,
       props.closeActiveChat,
+      props.markMessagesRead,
       props.requestGlobalCall,
       props.sendToThemMessage,
       props.state,

@@ -2707,6 +2707,15 @@ body.dark #Main_article,
 
 #Home_rightColumn_wrapper .Chat_messageStatus--read {
   color: #1fb96b;
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+#Home_rightColumn_wrapper .Chat_messageStatus--read::after {
+  content: "✓✓";
+  font-size: 0.54rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
 }
 
 #Home_rightColumn_wrapper .Chat_messageStatus--replying {
