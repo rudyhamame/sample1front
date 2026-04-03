@@ -2043,7 +2043,8 @@ function Home(props) {
                 content={HOME_CHAT_CONTENT}
                 sendToThemMessage={props.sendToThemMessage}
                 updateMyTypingPresence={props.updateMyTypingPresence}
-                getRealtimeSocket={props.getRealtimeSocket}
+                requestGlobalCall={props.requestGlobalCall}
+                globalCallSession={props.state?.global_call_session}
                 closeActiveChat={() => {
                   setInlineCallActionsTarget(null);
                   setOpenChatFriendId(null);
@@ -2060,6 +2061,7 @@ function Home(props) {
     [
       openChatFriendId,
       props.closeActiveChat,
+      props.requestGlobalCall,
       props.sendToThemMessage,
       props.state,
       props.updateMyTypingPresence,

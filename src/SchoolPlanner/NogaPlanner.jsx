@@ -8452,7 +8452,7 @@ export default class NogaPlanner extends Component {
               ) : null}
               {}
             </aside>
-            <div id="nogaPlanner_musicColumn" className="fc">
+            <React.Fragment>
               <input
                 ref={this.ringVideoFileInputRef}
                 id="nogaPlanner_ringVideoFileInput"
@@ -8460,199 +8460,6 @@ export default class NogaPlanner extends Component {
                 accept="video/mp4,video/webm,video/quicktime"
                 onChange={this.handleRingVideoFileSelected}
               />
-              <div
-                id="nogaPlanner_musicColumn_panel"
-                className={`nogaPlanner_stripMonogram${this.state.music_isPlaying ? " nogaPlanner_musicColumn_panel--playing" : ""}`}
-              >
-                <p id="nogaPlanner_musicColumn_title">{this.t("music")}</p>
-                <button
-                  id="nogaPlanner_musicColumn_prev"
-                  className="nogaPlanner_musicColumn_skip"
-                  type="button"
-                  aria-label="Previous track"
-                  title="Previous track"
-                  onClick={() =>
-                    this.playPreviousPlannerMusicTrack(
-                      this.state.music_isPlaying,
-                    )
-                  }
-                >
-                  <i className="fi fi-rr-angle-small-up"></i>
-                </button>
-                <button
-                  id="nogaPlanner_musicColumn_toggle"
-                  type="button"
-                  aria-label={
-                    this.state.music_isPlaying ? "Pause music" : "Play music"
-                  }
-                  onClick={this.togglePlannerMusic}
-                >
-                  <i
-                    className={
-                      this.state.music_isPlaying
-                        ? "fi fi-rr-pause"
-                        : "fi fi-rr-play"
-                    }
-                  ></i>
-                </button>
-                <button
-                  id="nogaPlanner_musicColumn_next"
-                  className="nogaPlanner_musicColumn_skip"
-                  type="button"
-                  aria-label="Next track"
-                  title="Next track"
-                  onClick={() =>
-                    this.playNextPlannerMusicTrack(this.state.music_isPlaying)
-                  }
-                >
-                  <i className="fi fi-rr-angle-small-down"></i>
-                </button>
-                <div
-                  id="nogaPlanner_musicColumn_bars"
-                  className={
-                    this.state.music_isPlaying
-                      ? "nogaPlanner_musicColumn_bars--playing"
-                      : ""
-                  }
-                  aria-hidden="true"
-                >
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <div id="nogaPlanner_musicColumn_volumeShell">
-                  <input
-                    id="nogaPlanner_musicColumn_volume"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={this.state.music_volume}
-                    onChange={this.updatePlannerMusicVolume}
-                    aria-label="Music volume"
-                  />
-                </div>
-                <p
-                  id="nogaPlanner_musicColumn_track"
-                  title={`${this.state.music_trackTitle} - ${this.state.music_trackArtist}`}
-                >
-                  {this.state.music_isLoading
-                    ? this.t("loadingArchive")
-                    : this.state.music_trackTitle}
-                </p>
-                <div
-                  id="nogaPlanner_musicColumn_timerShell"
-                  className="fc"
-                  data-running={
-                    this.state.music_timerIsRunning ? "true" : "false"
-                  }
-                  data-finished={
-                    this.state.music_timerFinished ? "true" : "false"
-                  }
-                >
-                  <div
-                    id="nogaPlanner_musicColumn_timerDial"
-                    ref={this.musicTimerDialRef}
-                    style={{
-                      "--nogaPlannerTimerProgress": `${
-                        this.state.music_timerTotalSeconds > 0
-                          ? Math.min(
-                              1,
-                              Math.max(
-                                0,
-                                1 -
-                                  this.state.music_timerRemainingSeconds /
-                                    this.state.music_timerTotalSeconds,
-                              ),
-                            )
-                          : 0
-                      }`,
-                      "--nogaPlannerTimerAngle": `${this.getMusicTimerDialAngle()}deg`,
-                    }}
-                    aria-label={this.t("timer")}
-                    role="slider"
-                    tabIndex={this.state.music_timerIsRunning ? -1 : 0}
-                    aria-valuemin={0}
-                    aria-valuemax={999}
-                    aria-valuenow={Math.floor(
-                      Number(this.state.music_timerRemainingSeconds || 0) / 60,
-                    )}
-                    aria-valuetext={this.formatMusicTimerClock(
-                      this.state.music_timerRemainingSeconds,
-                    )}
-                    onPointerDown={this.startMusicTimerDialInteraction}
-                    onWheel={(event) => {
-                      event.preventDefault();
-                      this.nudgeMusicTimerDial(event.deltaY > 0 ? -1 : 1);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "ArrowRight" ||
-                        event.key === "ArrowUp"
-                      ) {
-                        event.preventDefault();
-                        this.nudgeMusicTimerDial(1);
-                      } else if (
-                        event.key === "ArrowLeft" ||
-                        event.key === "ArrowDown"
-                      ) {
-                        event.preventDefault();
-                        this.nudgeMusicTimerDial(-1);
-                      }
-                    }}
-                  >
-                    <span className="nogaPlanner_musicColumn_timerTick"></span>
-                    <span className="nogaPlanner_musicColumn_timerTick"></span>
-                    <span className="nogaPlanner_musicColumn_timerTick"></span>
-                    <span className="nogaPlanner_musicColumn_timerTick"></span>
-                    <span id="nogaPlanner_musicColumn_timerHand"></span>
-                    <span id="nogaPlanner_musicColumn_timerCenter"></span>
-                    <strong id="nogaPlanner_musicColumn_timerLabel">
-                      {this.formatMusicTimerClock(
-                        this.state.music_timerRemainingSeconds,
-                      )}
-                    </strong>
-                  </div>
-                  <div id="nogaPlanner_musicColumn_timerActions" className="fc">
-                    <button
-                      type="button"
-                      className="nogaPlanner_musicColumn_timerButton"
-                      onClick={
-                        this.state.music_timerIsRunning
-                          ? this.stopMusicTimer
-                          : this.startMusicTimer
-                      }
-                      aria-label={
-                        this.state.music_timerIsRunning
-                          ? this.t("pauseTimer")
-                          : this.t("startTimer")
-                      }
-                      title={
-                        this.state.music_timerIsRunning
-                          ? this.t("pauseTimer")
-                          : this.t("startTimer")
-                      }
-                    >
-                      <i
-                        className={
-                          this.state.music_timerIsRunning
-                            ? "fi fi-rr-pause"
-                            : "fi fi-rr-play"
-                        }
-                      ></i>
-                    </button>
-                    <button
-                      type="button"
-                      className="nogaPlanner_musicColumn_timerButton nogaPlanner_musicColumn_timerButton--reset"
-                      onClick={this.resetMusicTimer}
-                      aria-label={this.t("resetTimer")}
-                      title={this.t("resetTimer")}
-                    >
-                      <i className="fi fi-rr-rotate-right"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
               <audio
                 ref={this.musicAudioRef}
                 crossOrigin="anonymous"
@@ -8670,7 +8477,7 @@ export default class NogaPlanner extends Component {
                   this.playNextPlannerMusicTrack(false);
                 }}
               />
-            </div>
+            </React.Fragment>
             <section id="nogaPlanner_lectures_section">
               {this.state.lecture_isLoading === true && (
                 <div id="lecture_loaderImg" className="loaderImg_div fc">

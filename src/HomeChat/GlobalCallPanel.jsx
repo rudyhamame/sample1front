@@ -1,0 +1,1204 @@
+import React from "react";
+import { createPortal } from "react-dom";
+import { apiUrl } from "../config/api";
+import {
+  attachStreamToElement,
+  createPeerConnection,
+  requestCallMedia,
+  stopMediaStream,
+} from "../realtime/webrtcCall";
+import "./globalcall.css";
+
+const CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY =
+  "phenomed.friendChat.callPanelLayout";
+const DEFAULT_CALL_PANEL_LAYOUT = {
+  x: 24,
+  y: 24,
+  width: 360,
+  height: 430,
+};
+const CALL_PANEL_MIN_WIDTH = 300;
+const CALL_PANEL_MIN_HEIGHT = 220;
+const CALL_PANEL_MARGIN = 16;
+
+const clampValue = (value, min, max) => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  if (min > max) {
+    return min;
+  }
+
+  return Math.min(Math.max(value, min), max);
+};
+
+const getViewportBounds = () => {
+  if (typeof window === "undefined") {
+    return { width: 1280, height: 720 };
+  }
+
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+};
+
+const getFriendDisplayName = (friends, userId, fallback = "") => {
+  const normalizedUserId = String(userId || "").trim();
+
+  if (!normalizedUserId) {
+    return String(fallback || "").trim();
+  }
+
+  const friend = (Array.isArray(friends) ? friends : []).find(
+    (entry) => String(entry?._id || "").trim() === normalizedUserId,
+  );
+
+  const firstName = String(friend?.info?.firstname || "").trim();
+  const lastName = String(friend?.info?.lastname || "").trim();
+  const username = String(friend?.info?.username || "").trim();
+
+  return (
+    `${firstName} ${lastName}`.trim() ||
+    username ||
+    String(fallback || "").trim() ||
+    "Your friend"
+  );
+};
+
+function GlobalCallPanel({
+  appState,
+  getRealtimeSocket,
+  callRequest,
+  onCallRequestHandled,
+  onSessionChange,
+}) {
+  const localAudioRef = React.useRef(null);
+  const remoteAudioRef = React.useRef(null);
+  const localVideoRef = React.useRef(null);
+  const remoteVideoRef = React.useRef(null);
+  const videoStageRef = React.useRef(null);
+  const callPanelInteractionRef = React.useRef(null);
+  const peerConnectionRef = React.useRef(null);
+  const localStreamRef = React.useRef(null);
+  const remoteStreamRef = React.useRef(null);
+  const rtcConfigRef = React.useRef(null);
+  const queuedIceCandidatesRef = React.useRef([]);
+  const activeCallPartnerRef = React.useRef("");
+  const [callState, setCallState] = React.useState("idle");
+  const [callMode, setCallMode] = React.useState("");
+  const [callError, setCallError] = React.useState("");
+  const [incomingCall, setIncomingCall] = React.useState(null);
+  const [remoteStreamVersion, setRemoteStreamVersion] = React.useState(0);
+  const [localStreamVersion, setLocalStreamVersion] = React.useState(0);
+  const [isAudioMuted, setIsAudioMuted] = React.useState(false);
+  const [isVideoMuted, setIsVideoMuted] = React.useState(false);
+  const [activeCallDisplayName, setActiveCallDisplayName] = React.useState("");
+  const [videoOverlayPosition, setVideoOverlayPosition] = React.useState({
+    x: 18,
+    y: 18,
+  });
+  const [videoOverlayScale, setVideoOverlayScale] = React.useState(1);
+  const [callPanelLayout, setCallPanelLayout] = React.useState(
+    DEFAULT_CALL_PANEL_LAYOUT,
+  );
+
+  const friends = appState?.friends;
+  const currentUserId = String(appState?.my_id || "").trim();
+  const currentUserDisplayName =
+    `${String(appState?.firstname || "").trim()} ${String(appState?.lastname || "").trim()}`.trim() ||
+    String(appState?.username || "").trim() ||
+    "Doctor";
+
+  const syncMediaElements = React.useCallback(() => {
+    attachStreamToElement(localAudioRef.current, localStreamRef.current, {
+      muted: true,
+    });
+    attachStreamToElement(remoteAudioRef.current, remoteStreamRef.current, {
+      muted: false,
+    });
+    attachStreamToElement(localVideoRef.current, localStreamRef.current, {
+      muted: true,
+    });
+    attachStreamToElement(remoteVideoRef.current, remoteStreamRef.current, {
+      muted: false,
+    });
+  }, []);
+
+  const clampVideoOverlayPosition = React.useCallback((nextPosition, scale) => {
+    const stageElement = videoStageRef.current;
+
+    if (!stageElement) {
+      return {
+        x: Math.max(0, Number(nextPosition?.x) || 0),
+        y: Math.max(0, Number(nextPosition?.y) || 0),
+      };
+    }
+
+    const stageWidth = stageElement.clientWidth || 0;
+    const stageHeight = stageElement.clientHeight || 0;
+    const panelWidth = 320 * scale;
+    const panelHeight = 228 * scale;
+
+    return {
+      x: clampValue(
+        Number(nextPosition?.x) || 0,
+        0,
+        Math.max(stageWidth - panelWidth, 0),
+      ),
+      y: clampValue(
+        Number(nextPosition?.y) || 0,
+        0,
+        Math.max(stageHeight - panelHeight, 0),
+      ),
+    };
+  }, []);
+
+  const setVideoOverlayScaleClamped = React.useCallback(
+    (nextScale) => {
+      const normalizedScale = clampValue(nextScale, 0.72, 1.45);
+      setVideoOverlayScale(normalizedScale);
+      setVideoOverlayPosition((currentPosition) =>
+        clampVideoOverlayPosition(currentPosition, normalizedScale),
+      );
+    },
+    [clampVideoOverlayPosition],
+  );
+
+  const clampCallPanelLayout = React.useCallback((nextLayout) => {
+    const viewport = getViewportBounds();
+    const safeWidth = clampValue(
+      Number(nextLayout?.width) || DEFAULT_CALL_PANEL_LAYOUT.width,
+      CALL_PANEL_MIN_WIDTH,
+      Math.max(viewport.width - CALL_PANEL_MARGIN * 2, CALL_PANEL_MIN_WIDTH),
+    );
+    const safeHeight = clampValue(
+      Number(nextLayout?.height) || DEFAULT_CALL_PANEL_LAYOUT.height,
+      CALL_PANEL_MIN_HEIGHT,
+      Math.max(viewport.height - CALL_PANEL_MARGIN * 2, CALL_PANEL_MIN_HEIGHT),
+    );
+
+    return {
+      width: safeWidth,
+      height: safeHeight,
+      x: clampValue(
+        Number(nextLayout?.x) || DEFAULT_CALL_PANEL_LAYOUT.x,
+        CALL_PANEL_MARGIN,
+        Math.max(
+          viewport.width - safeWidth - CALL_PANEL_MARGIN,
+          CALL_PANEL_MARGIN,
+        ),
+      ),
+      y: clampValue(
+        Number(nextLayout?.y) || DEFAULT_CALL_PANEL_LAYOUT.y,
+        CALL_PANEL_MARGIN,
+        Math.max(
+          viewport.height - safeHeight - CALL_PANEL_MARGIN,
+          CALL_PANEL_MARGIN,
+        ),
+      ),
+    };
+  }, []);
+
+  const releasePeerConnection = React.useCallback(() => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.onicecandidate = null;
+      peerConnectionRef.current.ontrack = null;
+      peerConnectionRef.current.onconnectionstatechange = null;
+      peerConnectionRef.current.oniceconnectionstatechange = null;
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+  }, []);
+
+  const resetCallMedia = React.useCallback(() => {
+    stopMediaStream(localStreamRef.current);
+    localStreamRef.current = null;
+
+    stopMediaStream(remoteStreamRef.current);
+    remoteStreamRef.current = null;
+
+    setLocalStreamVersion((value) => value + 1);
+    setRemoteStreamVersion((value) => value + 1);
+    setIsAudioMuted(false);
+    setIsVideoMuted(false);
+  }, []);
+
+  const teardownCall = React.useCallback(
+    ({
+      keepError = false,
+      nextError = "",
+      nextState = "idle",
+      clearIncoming = true,
+    } = {}) => {
+      releasePeerConnection();
+      resetCallMedia();
+      queuedIceCandidatesRef.current = [];
+      activeCallPartnerRef.current = "";
+      setActiveCallDisplayName("");
+      setCallMode("");
+      setCallState(nextState);
+      if (clearIncoming) {
+        setIncomingCall(null);
+      }
+      setCallError(keepError ? nextError : "");
+      setVideoOverlayScale(1);
+      setVideoOverlayPosition({ x: 18, y: 18 });
+    },
+    [releasePeerConnection, resetCallMedia],
+  );
+
+  const loadRtcConfiguration = React.useCallback(async () => {
+    const currentRtcConfig = rtcConfigRef.current;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    if (
+      currentRtcConfig &&
+      Array.isArray(currentRtcConfig.iceServers) &&
+      (!currentRtcConfig.expiresAt ||
+        currentRtcConfig.expiresAt - nowSeconds > 60)
+    ) {
+      return currentRtcConfig.iceServers;
+    }
+
+    const response = await fetch(apiUrl("/api/user/rtc/config"), {
+      method: "GET",
+      headers: appState?.token
+        ? {
+            Authorization: `Bearer ${appState.token}`,
+          }
+        : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load call configuration.");
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    rtcConfigRef.current = {
+      iceServers: Array.isArray(payload?.iceServers) ? payload.iceServers : [],
+      expiresAt: Number(payload?.expiresAt) || null,
+    };
+
+    return rtcConfigRef.current.iceServers;
+  }, [appState?.token]);
+
+  const flushQueuedIceCandidates = React.useCallback(async () => {
+    const peerConnection = peerConnectionRef.current;
+
+    if (!peerConnection || !peerConnection.remoteDescription) {
+      return;
+    }
+
+    while (queuedIceCandidatesRef.current.length > 0) {
+      const nextCandidate = queuedIceCandidatesRef.current.shift();
+
+      if (!nextCandidate) {
+        continue;
+      }
+
+      try {
+        await peerConnection.addIceCandidate(
+          new RTCIceCandidate(nextCandidate),
+        );
+      } catch {
+        // Ignore stale ICE candidates.
+      }
+    }
+  }, []);
+
+  const createManagedPeerConnection = React.useCallback(
+    async (partnerUserId) => {
+      const socket = getRealtimeSocket?.();
+
+      if (!socket) {
+        throw new Error("Realtime connection is not ready.");
+      }
+
+      releasePeerConnection();
+      queuedIceCandidatesRef.current = [];
+      activeCallPartnerRef.current = String(partnerUserId || "").trim();
+
+      const peerConnection = createPeerConnection({
+        iceServers: await loadRtcConfiguration(),
+        onIceCandidate: (candidate) => {
+          socket.emit("call:ice-candidate", {
+            toUserId: activeCallPartnerRef.current,
+            candidate,
+          });
+        },
+        onTrack: (event) => {
+          if (!remoteStreamRef.current) {
+            remoteStreamRef.current = new MediaStream();
+          }
+
+          event.streams.forEach((stream) => {
+            stream.getTracks().forEach((track) => {
+              const hasTrack = remoteStreamRef.current
+                .getTracks()
+                .some((existingTrack) => existingTrack.id === track.id);
+
+              if (!hasTrack) {
+                remoteStreamRef.current.addTrack(track);
+              }
+            });
+          });
+
+          if (event.track) {
+            const hasTrack = remoteStreamRef.current
+              .getTracks()
+              .some((existingTrack) => existingTrack.id === event.track.id);
+
+            if (!hasTrack) {
+              remoteStreamRef.current.addTrack(event.track);
+            }
+          }
+
+          setRemoteStreamVersion((value) => value + 1);
+        },
+        onConnectionStateChange: (connectionState) => {
+          if (connectionState === "connected") {
+            setCallState("connected");
+            setCallError("");
+            return;
+          }
+
+          if (connectionState === "connecting") {
+            setCallState("connecting");
+            return;
+          }
+
+          if (
+            connectionState === "failed" ||
+            connectionState === "disconnected" ||
+            connectionState === "closed"
+          ) {
+            teardownCall({
+              keepError: connectionState === "failed",
+              nextError:
+                connectionState === "failed"
+                  ? "The call connection failed."
+                  : "",
+            });
+          }
+        },
+        onIceConnectionStateChange: (iceConnectionState) => {
+          if (iceConnectionState === "failed") {
+            teardownCall({
+              keepError: true,
+              nextError:
+                "Unable to establish media through the current network.",
+            });
+          }
+        },
+      });
+
+      peerConnectionRef.current = peerConnection;
+
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current);
+        });
+      }
+
+      return peerConnection;
+    },
+    [
+      getRealtimeSocket,
+      loadRtcConfiguration,
+      releasePeerConnection,
+      teardownCall,
+    ],
+  );
+
+  const handleStartCall = React.useCallback(
+    async ({ friendId, friendName, mode }) => {
+      const targetUserId = String(friendId || "").trim();
+      const nextCallMode = mode === "video" ? "video" : "audio";
+
+      if (!targetUserId || !currentUserId) {
+        return;
+      }
+
+      try {
+        setCallError("");
+        setIncomingCall(null);
+        setCallMode(nextCallMode);
+        setCallState("requesting-media");
+        setActiveCallDisplayName(
+          getFriendDisplayName(friends, targetUserId, friendName),
+        );
+
+        const socket = getRealtimeSocket?.();
+
+        if (!socket) {
+          throw new Error("Realtime connection is not ready.");
+        }
+
+        const localStream = await requestCallMedia(nextCallMode);
+        localStreamRef.current = localStream;
+        setLocalStreamVersion((value) => value + 1);
+        setIsAudioMuted(false);
+        setIsVideoMuted(false);
+
+        const peerConnection = await createManagedPeerConnection(targetUserId);
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: nextCallMode === "video",
+        });
+
+        await peerConnection.setLocalDescription(offer);
+
+        socket.emit("call:offer", {
+          toUserId: targetUserId,
+          callType: nextCallMode,
+          offer: peerConnection.localDescription,
+          metadata: {
+            fromDisplayName: currentUserDisplayName,
+          },
+        });
+
+        setCallState("calling");
+      } catch (error) {
+        teardownCall({
+          keepError: true,
+          nextError: error?.message || "Unable to start the call.",
+        });
+      }
+    },
+    [
+      createManagedPeerConnection,
+      currentUserDisplayName,
+      currentUserId,
+      friends,
+      getRealtimeSocket,
+      teardownCall,
+    ],
+  );
+
+  const handleAcceptIncomingCall = React.useCallback(async () => {
+    if (!incomingCall?.fromUserId || !incomingCall?.offer) {
+      return;
+    }
+
+    try {
+      setCallError("");
+      setCallMode(incomingCall.callType);
+      setCallState("requesting-media");
+      setActiveCallDisplayName(
+        getFriendDisplayName(
+          friends,
+          incomingCall.fromUserId,
+          incomingCall?.metadata?.fromDisplayName,
+        ),
+      );
+
+      const socket = getRealtimeSocket?.();
+
+      if (!socket) {
+        throw new Error("Realtime connection is not ready.");
+      }
+
+      const localStream = await requestCallMedia(incomingCall.callType);
+      localStreamRef.current = localStream;
+      setLocalStreamVersion((value) => value + 1);
+      setIsAudioMuted(false);
+      setIsVideoMuted(incomingCall.callType !== "video");
+
+      const peerConnection = await createManagedPeerConnection(
+        incomingCall.fromUserId,
+      );
+
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(incomingCall.offer),
+      );
+      await flushQueuedIceCandidates();
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      socket.emit("call:answer", {
+        toUserId: incomingCall.fromUserId,
+        answer: peerConnection.localDescription,
+      });
+
+      setIncomingCall(null);
+      setCallState("connecting");
+    } catch (error) {
+      teardownCall({
+        keepError: true,
+        nextError: error?.message || "Unable to answer the call.",
+      });
+    }
+  }, [
+    createManagedPeerConnection,
+    flushQueuedIceCandidates,
+    friends,
+    getRealtimeSocket,
+    incomingCall,
+    teardownCall,
+  ]);
+
+  const handleRejectIncomingCall = React.useCallback(() => {
+    const socket = getRealtimeSocket?.();
+
+    if (socket && incomingCall?.fromUserId) {
+      socket.emit("call:reject", {
+        toUserId: incomingCall.fromUserId,
+        reason: "declined",
+      });
+    }
+
+    teardownCall({
+      keepError: true,
+      nextError: "Incoming call declined.",
+    });
+  }, [getRealtimeSocket, incomingCall, teardownCall]);
+
+  const handleEndCall = React.useCallback(
+    (reason = "ended") => {
+      const socket = getRealtimeSocket?.();
+      const targetUserId =
+        activeCallPartnerRef.current ||
+        incomingCall?.fromUserId ||
+        String(callRequest?.friendId || "").trim();
+
+      if (socket && targetUserId) {
+        socket.emit("call:end", {
+          toUserId: targetUserId,
+          reason,
+        });
+      }
+
+      teardownCall();
+    },
+    [callRequest?.friendId, getRealtimeSocket, incomingCall, teardownCall],
+  );
+
+  const handleToggleMute = React.useCallback(() => {
+    const localStream = localStreamRef.current;
+
+    if (!localStream) {
+      return;
+    }
+
+    const audioTracks = localStream.getAudioTracks();
+    const nextMuted = !isAudioMuted;
+
+    audioTracks.forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+
+    setIsAudioMuted(nextMuted);
+  }, [isAudioMuted]);
+
+  const handleToggleCamera = React.useCallback(() => {
+    const localStream = localStreamRef.current;
+
+    if (!localStream) {
+      return;
+    }
+
+    const videoTracks = localStream.getVideoTracks();
+
+    if (!videoTracks.length) {
+      return;
+    }
+
+    const nextMuted = !isVideoMuted;
+
+    videoTracks.forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+
+    setIsVideoMuted(nextMuted);
+  }, [isVideoMuted]);
+
+  React.useEffect(() => {
+    syncMediaElements();
+  }, [localStreamVersion, remoteStreamVersion, syncMediaElements]);
+
+  React.useEffect(() => () => teardownCall(), [teardownCall]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    try {
+      const rawLayout = window.localStorage.getItem(
+        CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY,
+      );
+
+      if (!rawLayout) {
+        return undefined;
+      }
+
+      const parsedLayout = JSON.parse(rawLayout);
+      setCallPanelLayout(clampCallPanelLayout(parsedLayout));
+    } catch {
+      // Ignore malformed persisted layout and keep defaults.
+    }
+
+    return undefined;
+  }, [clampCallPanelLayout]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    window.localStorage.setItem(
+      CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY,
+      JSON.stringify(callPanelLayout),
+    );
+
+    return undefined;
+  }, [callPanelLayout]);
+
+  React.useEffect(() => {
+    const handleViewportResize = () => {
+      setCallPanelLayout((currentLayout) =>
+        clampCallPanelLayout(currentLayout),
+      );
+    };
+
+    window.addEventListener("resize", handleViewportResize);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportResize);
+    };
+  }, [clampCallPanelLayout]);
+
+  React.useEffect(() => {
+    if (callMode !== "video") {
+      setVideoOverlayScale(1);
+      setVideoOverlayPosition({ x: 18, y: 18 });
+      return undefined;
+    }
+
+    setVideoOverlayPosition((currentPosition) =>
+      clampVideoOverlayPosition(currentPosition, videoOverlayScale),
+    );
+
+    return undefined;
+  }, [callMode, clampVideoOverlayPosition, videoOverlayScale]);
+
+  React.useEffect(() => {
+    const handlePanelPointerMove = (event) => {
+      const interaction = callPanelInteractionRef.current;
+
+      if (!interaction) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const deltaX = event.clientX - interaction.pointerStartX;
+      const deltaY = event.clientY - interaction.pointerStartY;
+
+      if (interaction.type === "drag") {
+        setCallPanelLayout((currentLayout) =>
+          clampCallPanelLayout({
+            ...currentLayout,
+            x: interaction.originX + deltaX,
+            y: interaction.originY + deltaY,
+          }),
+        );
+        return;
+      }
+
+      setCallPanelLayout((currentLayout) => {
+        const draftLayout = {
+          ...currentLayout,
+          x: interaction.originX,
+          y: interaction.originY,
+          width: interaction.originWidth,
+          height: interaction.originHeight,
+        };
+
+        if (interaction.edge.includes("e")) {
+          draftLayout.width = interaction.originWidth + deltaX;
+        }
+
+        if (interaction.edge.includes("s")) {
+          draftLayout.height = interaction.originHeight + deltaY;
+        }
+
+        if (interaction.edge.includes("w")) {
+          draftLayout.width = interaction.originWidth - deltaX;
+          draftLayout.x = interaction.originX + deltaX;
+        }
+
+        if (interaction.edge.includes("n")) {
+          draftLayout.height = interaction.originHeight - deltaY;
+          draftLayout.y = interaction.originY + deltaY;
+        }
+
+        return clampCallPanelLayout(draftLayout);
+      });
+    };
+
+    const handlePanelPointerUp = () => {
+      callPanelInteractionRef.current = null;
+    };
+
+    window.addEventListener("pointermove", handlePanelPointerMove, {
+      passive: false,
+    });
+    window.addEventListener("pointerup", handlePanelPointerUp);
+    window.addEventListener("pointercancel", handlePanelPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePanelPointerMove);
+      window.removeEventListener("pointerup", handlePanelPointerUp);
+      window.removeEventListener("pointercancel", handlePanelPointerUp);
+    };
+  }, [clampCallPanelLayout]);
+
+  const handleCallPanelDragStart = React.useCallback(
+    (event) => {
+      if (event.target.closest(".Chat_callControlButton")) {
+        return;
+      }
+
+      callPanelInteractionRef.current = {
+        type: "drag",
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: callPanelLayout.x,
+        originY: callPanelLayout.y,
+      };
+    },
+    [callPanelLayout.x, callPanelLayout.y],
+  );
+
+  const handleCallPanelResizeStart = React.useCallback(
+    (edge, event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      callPanelInteractionRef.current = {
+        type: "resize",
+        edge,
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: callPanelLayout.x,
+        originY: callPanelLayout.y,
+        originWidth: callPanelLayout.width,
+        originHeight: callPanelLayout.height,
+      };
+    },
+    [
+      callPanelLayout.height,
+      callPanelLayout.width,
+      callPanelLayout.x,
+      callPanelLayout.y,
+    ],
+  );
+
+  React.useEffect(() => {
+    const socket = getRealtimeSocket?.();
+
+    if (!socket) {
+      return undefined;
+    }
+
+    const handleOffer = ({ fromUserId, offer, callType, metadata }) => {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+
+      if (!normalizedFromUserId || normalizedFromUserId === currentUserId) {
+        return;
+      }
+
+      if (callState !== "idle" || callMode || incomingCall) {
+        socket.emit("call:reject", {
+          toUserId: normalizedFromUserId,
+          reason: "busy",
+        });
+        return;
+      }
+
+      setIncomingCall({
+        fromUserId: normalizedFromUserId,
+        offer,
+        callType: callType === "video" ? "video" : "audio",
+        metadata: metadata && typeof metadata === "object" ? metadata : {},
+      });
+      setActiveCallDisplayName(
+        getFriendDisplayName(
+          friends,
+          normalizedFromUserId,
+          metadata?.fromDisplayName,
+        ),
+      );
+      setCallMode(callType === "video" ? "video" : "audio");
+      setCallState("incoming");
+      setCallError("");
+    };
+
+    const handleAnswer = async ({ fromUserId, answer }) => {
+      if (
+        String(fromUserId || "").trim() !== activeCallPartnerRef.current ||
+        !answer
+      ) {
+        return;
+      }
+
+      const peerConnection = peerConnectionRef.current;
+
+      if (!peerConnection) {
+        return;
+      }
+
+      try {
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(answer),
+        );
+        await flushQueuedIceCandidates();
+        setCallState("connecting");
+      } catch {
+        teardownCall({
+          keepError: true,
+          nextError: "Unable to finish connecting the call.",
+        });
+      }
+    };
+
+    const handleIceCandidate = async ({ fromUserId, candidate }) => {
+      if (
+        String(fromUserId || "").trim() !== activeCallPartnerRef.current ||
+        !candidate
+      ) {
+        return;
+      }
+
+      const peerConnection = peerConnectionRef.current;
+
+      if (!peerConnection || !peerConnection.remoteDescription) {
+        queuedIceCandidatesRef.current.push(candidate);
+        return;
+      }
+
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        // Ignore stale ICE candidates.
+      }
+    };
+
+    const handleEnd = ({ fromUserId }) => {
+      if (String(fromUserId || "").trim() !== activeCallPartnerRef.current) {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError: "The call ended.",
+      });
+    };
+
+    const handleReject = ({ fromUserId }) => {
+      if (String(fromUserId || "").trim() !== activeCallPartnerRef.current) {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError: "The call was declined.",
+      });
+    };
+
+    socket.on("call:offer", handleOffer);
+    socket.on("call:answer", handleAnswer);
+    socket.on("call:ice-candidate", handleIceCandidate);
+    socket.on("call:end", handleEnd);
+    socket.on("call:reject", handleReject);
+
+    return () => {
+      socket.off("call:offer", handleOffer);
+      socket.off("call:answer", handleAnswer);
+      socket.off("call:ice-candidate", handleIceCandidate);
+      socket.off("call:end", handleEnd);
+      socket.off("call:reject", handleReject);
+    };
+  }, [
+    callMode,
+    callState,
+    currentUserId,
+    flushQueuedIceCandidates,
+    friends,
+    getRealtimeSocket,
+    incomingCall,
+    teardownCall,
+  ]);
+
+  React.useEffect(() => {
+    if (!callRequest?.id) {
+      return undefined;
+    }
+
+    onCallRequestHandled?.(callRequest.id);
+
+    if (callState !== "idle" || callMode || incomingCall) {
+      setCallError("Finish the current call first.");
+      return undefined;
+    }
+
+    handleStartCall({
+      friendId: callRequest.friendId,
+      friendName: callRequest.friendName,
+      mode: callRequest.mode,
+    });
+
+    return undefined;
+  }, [
+    callMode,
+    callRequest,
+    callState,
+    handleStartCall,
+    incomingCall,
+    onCallRequestHandled,
+  ]);
+
+  React.useEffect(() => {
+    const activeCallPartnerId =
+      activeCallPartnerRef.current ||
+      String(incomingCall?.fromUserId || "").trim();
+
+    if (!callMode && !incomingCall) {
+      onSessionChange?.(null);
+      return;
+    }
+
+    onSessionChange?.({
+      callState,
+      callMode,
+      incomingCall,
+      activeCallPartnerId,
+      activeCallDisplayName:
+        activeCallDisplayName ||
+        getFriendDisplayName(friends, activeCallPartnerId),
+    });
+  }, [
+    activeCallDisplayName,
+    callMode,
+    callState,
+    friends,
+    incomingCall,
+    onSessionChange,
+  ]);
+
+  const portalTarget =
+    typeof document !== "undefined"
+      ? document.getElementById("app_page")
+      : null;
+
+  if (!portalTarget || (!callMode && !incomingCall && !callError)) {
+    return null;
+  }
+
+  const callPanelStyle = {
+    left: `${callPanelLayout.x}px`,
+    top: `${callPanelLayout.y}px`,
+    width: `${callPanelLayout.width}px`,
+    height: `${callPanelLayout.height}px`,
+  };
+
+  const displayName =
+    activeCallDisplayName ||
+    getFriendDisplayName(
+      friends,
+      activeCallPartnerRef.current || incomingCall?.fromUserId,
+    );
+
+  return createPortal(
+    <React.Fragment>
+      <audio id="Chat_remoteAudio" ref={remoteAudioRef} autoPlay playsInline />
+      <audio
+        id="Chat_localAudio"
+        ref={localAudioRef}
+        autoPlay
+        playsInline
+        muted
+      />
+      {incomingCall ? (
+        <section id="Chat_incomingCallBanner" className="fc">
+          <strong>
+            Incoming {incomingCall.callType === "video" ? "video" : "voice"}{" "}
+            call
+          </strong>
+          <span>{displayName || "Your friend"} is calling.</span>
+          <div className="Chat_callBannerActions fr">
+            <button
+              type="button"
+              className="Chat_callBannerButton Chat_callBannerButton--accept"
+              onClick={handleAcceptIncomingCall}
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              className="Chat_callBannerButton Chat_callBannerButton--reject"
+              onClick={handleRejectIncomingCall}
+            >
+              Decline
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {callMode ? (
+        <section
+          id="Chat_callPanel"
+          className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}`}
+          style={callPanelStyle}
+        >
+          <div
+            className="Chat_callStatusRow fr Chat_callPanelHeader"
+            onPointerDown={handleCallPanelDragStart}
+          >
+            <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
+            <span>
+              {callState === "calling"
+                ? "Calling..."
+                : callState === "incoming"
+                  ? "Incoming call"
+                  : callState === "requesting-media"
+                    ? "Requesting media..."
+                    : callState === "connecting"
+                      ? "Connecting..."
+                      : callState === "connected"
+                        ? "Connected"
+                        : "Ready"}
+            </span>
+          </div>
+          <div
+            ref={videoStageRef}
+            className={`Chat_mediaStage${callMode === "video" ? " Chat_mediaStage--floating" : " fr"}`}
+          >
+            {callMode === "video" ? (
+              <React.Fragment>
+                <div className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote">
+                  <video
+                    id="Chat_remoteVideo"
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                  />
+                </div>
+                <div
+                  className="Chat_videoOverlay fc"
+                  style={{
+                    left: `${videoOverlayPosition.x}px`,
+                    top: `${videoOverlayPosition.y}px`,
+                    transform: `scale(${videoOverlayScale})`,
+                  }}
+                >
+                  <div className="Chat_videoOverlayHeader fr">
+                    <div className="Chat_videoOverlayScaleControls fr">
+                      <button
+                        type="button"
+                        className="Chat_videoOverlayScaleButton"
+                        onClick={() =>
+                          setVideoOverlayScaleClamped(videoOverlayScale - 0.12)
+                        }
+                        aria-label="Shrink video"
+                        title="Shrink video"
+                      >
+                        <i className="fas fa-search-minus"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className="Chat_videoOverlayScaleButton"
+                        onClick={() =>
+                          setVideoOverlayScaleClamped(videoOverlayScale + 0.12)
+                        }
+                        aria-label="Enlarge video"
+                        title="Enlarge video"
+                      >
+                        <i className="fas fa-search-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="Chat_videoOverlayBody">
+                    <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
+                      <video
+                        id="Chat_localVideo"
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                      />
+                    </div>
+                  </div>
+                </div>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <div className="Chat_mediaTile Chat_mediaTile--remote">
+                  <div className="Chat_audioPlaceholder">
+                    <i className="fas fa-user-md"></i>
+                    <span>Remote audio</span>
+                  </div>
+                </div>
+                <div className="Chat_mediaTile Chat_mediaTile--local">
+                  <div className="Chat_audioPlaceholder">
+                    <i className="fas fa-microphone"></i>
+                    <span>Local audio</span>
+                  </div>
+                </div>
+              </React.Fragment>
+            )}
+          </div>
+          <div className="Chat_callControls fr">
+            <button
+              type="button"
+              className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
+              onClick={handleToggleMute}
+              disabled={!localStreamRef.current}
+            >
+              <i
+                className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+              ></i>
+            </button>
+            {callMode === "video" ? (
+              <button
+                type="button"
+                className={`Chat_callControlButton${isVideoMuted ? " is-muted" : ""}`}
+                onClick={handleToggleCamera}
+                disabled={!localStreamRef.current}
+              >
+                <i
+                  className={`fas ${isVideoMuted ? "fa-video-slash" : "fa-video"}`}
+                ></i>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="Chat_callControlButton Chat_callControlButton--end"
+              onClick={() => handleEndCall("hangup")}
+            >
+              <i className="fas fa-phone-slash"></i>
+            </button>
+          </div>
+          {["n", "e", "s", "w", "ne", "nw", "se", "sw"].map((edge) => (
+            <div
+              key={edge}
+              className={`Chat_callPanelResizeHandle Chat_callPanelResizeHandle--${edge}`}
+              onPointerDown={(event) => handleCallPanelResizeStart(edge, event)}
+            />
+          ))}
+        </section>
+      ) : null}
+      {callError ? (
+        <div id="Chat_callError" className="Chat_callError">
+          {callError}
+        </div>
+      ) : null}
+    </React.Fragment>,
+    portalTarget,
+  );
+}
+
+export default GlobalCallPanel;

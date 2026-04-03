@@ -2350,7 +2350,7 @@ body.dark #Main_article,
   overflow: hidden;
 }
 #Home_rightColumn_wrapper{
-  overflow: hidden;
+  overflow: visible;
   border-radius: inherit;
 }
 
@@ -2727,6 +2727,7 @@ body.dark #Main_article,
 
 #Home_rightColumn_wrapper #Chat_form {
   position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   display: flex;
   flex-wrap: nowrap;
@@ -2922,11 +2923,7 @@ body.dark #Main_article,
   #Home_rightColumn_wrapper
   #Chat_emoji_button {
   color: #eef9fb;
-  background: linear-gradient(
-    180deg,
-    rgba(9, 24, 31, 0.9),
-    rgba(12, 31, 38, 0.88)
-  );
+  background: transparent;
   border-color: rgba(110, 168, 180, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),

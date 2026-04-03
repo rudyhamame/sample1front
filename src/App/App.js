@@ -19,6 +19,7 @@ import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
 import Profile from "../Profile/Profile.jsx";
+import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
 import { apiUrl } from "../config/api";
 import { connectRealtime } from "../realtime/socket";
 import {
@@ -115,6 +116,8 @@ class App extends React.Component {
       },
       planner_music: getPlannerMusicSnapshot(),
       hide_app_footer: hideFooterPreference,
+      global_call_request: null,
+      global_call_session: null,
     };
   }
   serverReplyTimeout = null;
@@ -415,6 +418,42 @@ class App extends React.Component {
   };
 
   getRealtimeSocket = () => this.realtimeSocket;
+
+  requestGlobalCall = ({ friendId, friendName, mode }) => {
+    const normalizedFriendId = String(friendId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.setState({
+      global_call_request: {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        friendId: normalizedFriendId,
+        friendName: String(friendName || "").trim(),
+        mode: mode === "video" ? "video" : "audio",
+      },
+    });
+  };
+
+  handleGlobalCallRequestHandled = (requestId) => {
+    this.setState((currentState) => {
+      if (currentState.global_call_request?.id !== requestId) {
+        return null;
+      }
+
+      return {
+        global_call_request: null,
+      };
+    });
+  };
+
+  handleGlobalCallSessionChange = (session) => {
+    this.setState({
+      global_call_session:
+        session && typeof session === "object" ? session : null,
+    });
+  };
 
   availableToChat = (isConnected) => {
     let url = apiUrl("/api/user/isOnline/") + this.state.my_id;
@@ -2775,51 +2814,70 @@ class App extends React.Component {
         >
           {this.state.server_answer}
         </p>
-        <button
-          type="button"
-          id="server_answer_noga_prev"
-          className="server_answer_noga_playerButton"
-          onClick={() => playPreviousSharedPlannerMusicTrack(true)}
-          aria-label="Previous planner track"
-          title="Previous planner track"
-          disabled={!plannerMusic.isReady}
+        <div
+          id="server_answer_musicPlayer"
+          className={!plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""}
         >
-          <i className="fi fi-rr-angle-small-left"></i>
-        </button>
-        <button
-          type="button"
-          id="server_answer_noga_toggle"
-          className="server_answer_noga_playerButton"
-          onClick={() => toggleSharedPlannerMusic()}
-          aria-label={
-            plannerMusic.isPlaying
-              ? "Pause planner music"
-              : "Play planner music"
-          }
-          title={
-            plannerMusic.isPlaying
-              ? "Pause planner music"
-              : "Play planner music"
-          }
-          disabled={!plannerMusic.isReady}
-        >
-          <i
-            className={
-              plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
+          <button
+            type="button"
+            id="server_answer_noga_prev"
+            className="server_answer_noga_playerButton"
+            onClick={() => playPreviousSharedPlannerMusicTrack(true)}
+            aria-label="Previous planner track"
+            title="Previous planner track"
+            disabled={!plannerMusic.isReady}
+          >
+            <i className="fi fi-rr-angle-small-left"></i>
+          </button>
+          <button
+            type="button"
+            id="server_answer_noga_toggle"
+            className="server_answer_noga_playerButton"
+            onClick={() => toggleSharedPlannerMusic()}
+            aria-label={
+              plannerMusic.isPlaying
+                ? "Pause planner music"
+                : "Play planner music"
             }
-          ></i>
-        </button>
-        <button
-          type="button"
-          id="server_answer_noga_next"
-          className="server_answer_noga_playerButton"
-          onClick={() => playNextSharedPlannerMusicTrack(true)}
-          aria-label="Next planner track"
-          title="Next planner track"
-          disabled={!plannerMusic.isReady}
-        >
-          <i className="fi fi-rr-angle-small-right"></i>
-        </button>
+            title={
+              plannerMusic.isPlaying
+                ? "Pause planner music"
+                : "Play planner music"
+            }
+            disabled={!plannerMusic.isReady}
+          >
+            <i
+              className={
+                plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
+              }
+            ></i>
+          </button>
+          <button
+            type="button"
+            id="server_answer_noga_next"
+            className="server_answer_noga_playerButton"
+            onClick={() => playNextSharedPlannerMusicTrack(true)}
+            aria-label="Next planner track"
+            title="Next planner track"
+            disabled={!plannerMusic.isReady}
+          >
+            <i className="fi fi-rr-angle-small-right"></i>
+          </button>
+          <div id="server_answer_musicMeta">
+            <span id="server_answer_musicLabel">
+              {plannerMusic.isReady ? "Planner music" : "Music unavailable"}
+            </span>
+            <span
+              id="server_answer_musicTrack"
+              title={`${plannerMusic.trackTitle || "Planner Music"} - ${plannerMusic.trackArtist || "Internet Archive"}`}
+            >
+              {plannerMusic.trackTitle || "Planner Music"}
+              {plannerMusic.trackArtist
+                ? ` / ${plannerMusic.trackArtist}`
+                : ""}
+            </span>
+          </div>
+        </div>
         <button
           type="button"
           className={`server_answer_locale_button${isArabicSchoolPlannerRoute ? " server_answer_locale_button--active" : ""}`}
@@ -2830,7 +2888,6 @@ class App extends React.Component {
         >
           Ar
         </button>
-        <div id="server_answer_noga_track_mount"></div>
       </footer>
     );
 
@@ -2852,7 +2909,7 @@ class App extends React.Component {
                 sendToThemMessage={this.sendToThemMessage}
                 updateMyTypingPresence={this.updateMyTypingPresence}
                 serverReply={this.serverReply}
-                getRealtimeSocket={this.getRealtimeSocket}
+                requestGlobalCall={this.requestGlobalCall}
                 setAppFooterHidden={this.setAppFooterHidden}
                 setUserAcademicInfo={this.setUserAcademicInfo}
                 setUserMediaInfo={this.setUserMediaInfo}
@@ -3001,6 +3058,13 @@ class App extends React.Component {
             />
           </div>
         )}
+        <GlobalCallPanel
+          appState={this.state}
+          getRealtimeSocket={this.getRealtimeSocket}
+          callRequest={this.state.global_call_request}
+          onCallRequestHandled={this.handleGlobalCallRequestHandled}
+          onSessionChange={this.handleGlobalCallSessionChange}
+        />
       </React.Fragment>
     );
   }

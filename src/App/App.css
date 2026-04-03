@@ -468,13 +468,13 @@ body {
 
 .server_answer_noga_playerButton {
   flex: 0 0 auto;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 1.65rem;
+  height: 1.65rem;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(124, 157, 165, 0.12);
   border-radius: 999px;
-  background: rgba(248, 251, 251, 0.92);
-  color: rgba(30, 82, 90, 0.84);
+  background: rgba(248, 251, 251, 0.56);
+  color: rgba(30, 82, 90, 0.78);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -489,10 +489,10 @@ body {
 
 .server_answer_noga_playerButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(124, 157, 165, 0.22);
+  background: rgba(255, 255, 255, 0.82);
   color: #114a4f;
-  box-shadow: 0 8px 18px rgba(6, 29, 31, 0.16);
+  box-shadow: 0 6px 12px rgba(6, 29, 31, 0.1);
 }
 
 .server_answer_noga_playerButton:disabled {
@@ -502,7 +502,7 @@ body {
 }
 
 .server_answer_noga_playerButton i {
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   line-height: 1;
 }
 
@@ -519,34 +519,82 @@ body {
   box-shadow: 0 8px 18px rgba(105, 72, 71, 0.12);
 }
 
-#server_answer_noga_track_mount {
-  flex: 0 1 14rem;
+#server_answer_musicPlayer {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.35rem;
+  padding: 0.18rem 0.24rem 0.18rem 0.18rem;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  background: rgba(248, 251, 251, 0.42);
+}
+
+#server_answer_musicPlayer.server_answer_musicPlayer--idle {
+  opacity: 0.72;
+}
+
+#server_answer_musicMeta {
   min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-left: 0.45rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 0.25rem 0 0.15rem;
 }
 
-#server_answer_noga_track_mount:empty {
-  display: none;
-}
-
-#server_answer_noga_track_mount #nogaPlanner_musicColumn_track {
+#server_answer_musicLabel,
+#server_answer_musicTrack {
   margin: 0;
   min-width: 0;
-  writing-mode: horizontal-tb;
-  transform: none;
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(246, 252, 252, 0.78);
-  opacity: 0.88;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#server_answer_musicLabel {
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(30, 82, 90, 0.52);
+}
+
+#server_answer_musicTrack {
+  max-width: 12rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(30, 82, 90, 0.84);
+}
+
+#app_page.app_page--home-dark #server_answer_musicPlayer {
+  border-color: rgba(110, 168, 180, 0.14);
+  background: rgba(14, 39, 46, 0.46);
+}
+
+#app_page.app_page--home-dark #server_answer_musicLabel {
+  color: rgba(216, 232, 237, 0.48);
+}
+
+#app_page.app_page--home-dark #server_answer_musicTrack {
+  color: rgba(226, 242, 244, 0.82);
+}
+
+#server_answer.server_answer--noga #server_answer_musicPlayer {
+  border-color: rgba(126, 79, 76, 0.12);
+  background: rgba(255, 250, 244, 0.46);
+}
+
+#server_answer.server_answer--noga #server_answer_musicLabel {
+  color: rgba(105, 72, 71, 0.5);
+}
+
+#server_answer.server_answer--noga #server_answer_musicTrack {
+  color: rgba(105, 72, 71, 0.86);
 }
 /* ...........loader.............. */
 .loaderImg_div {
