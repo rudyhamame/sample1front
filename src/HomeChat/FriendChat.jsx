@@ -29,6 +29,7 @@ const CALL_PANEL_MIN_HEIGHT = 220;
 const CALL_PANEL_MARGIN = 16;
 const VIDEO_OVERLAY_MIN_SCALE = 0.6;
 const VIDEO_OVERLAY_MAX_SCALE = 2;
+const CALL_CONNECTING_TIMEOUT_MS = 20000;
 
 const keepTextareaFocus = (event) => {
   event.preventDefault();
@@ -630,6 +631,28 @@ const FriendChat = ({
     getRealtimeSocket,
     teardownCall,
   ]);
+
+  React.useEffect(() => {
+    if (callState !== "connecting") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (peerConnectionRef.current?.connectionState === "connected") {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError:
+          "The call could not connect. Check the TURN server configuration or try a different network.",
+      });
+    }, CALL_CONNECTING_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [callState, teardownCall]);
 
   // Helper to generate a temporary ID for optimistic messages
   const generateTempId = () =>

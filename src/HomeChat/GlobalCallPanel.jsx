@@ -27,6 +27,7 @@ const CALL_PANEL_MIN_HEIGHT = 220;
 const CALL_PANEL_MARGIN = 16;
 const VIDEO_OVERLAY_MIN_SCALE = 0.6;
 const VIDEO_OVERLAY_MAX_SCALE = 2;
+const CALL_CONNECTING_TIMEOUT_MS = 20000;
 
 const clampValue = (value, min, max) => {
   if (!Number.isFinite(value)) {
@@ -734,6 +735,28 @@ function GlobalCallPanel({
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [isCallControlsPinned]);
+
+  React.useEffect(() => {
+    if (callState !== "connecting") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (peerConnectionRef.current?.connectionState === "connected") {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError:
+          "The call could not connect. Check the TURN server configuration or try a different network.",
+      });
+    }, CALL_CONNECTING_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [callState, teardownCall]);
 
   React.useEffect(() => {
     const handlePointerMove = (event) => {
