@@ -1584,39 +1584,77 @@ class App extends React.Component {
     }));
   };
 
+  markChatNotificationsReadLocally = (friendId) => {
+    this.setState((prevState) => ({
+      notifications: (prevState.notifications || []).map((notification) =>
+        String(notification?.id) === String(friendId) &&
+        notification?.type === "chat_message"
+          ? { ...notification, status: "read" }
+          : notification,
+      ),
+    }));
+  };
+
   markChatNotificationsRead = (friendId) => {
-    if (!friendId || !this.state?.token || !this.state?.my_id) {
-      return;
+    if (!friendId || !this.state?.my_id) {
+      return Promise.resolve(false);
     }
 
-    const hasUnreadChatNotification = (this.state.notifications || []).some(
+    const unreadChatNotifications = (this.state.notifications || []).filter(
       (notification) =>
         String(notification?.id) === String(friendId) &&
         notification?.type === "chat_message" &&
         notification?.status !== "read",
     );
 
-    if (!hasUnreadChatNotification) {
-      return;
+    if (!unreadChatNotifications.length) {
+      return Promise.resolve(false);
     }
 
-    const url =
-      apiUrl("/api/user/editUserInfo/") + this.state.my_id + "/" + friendId;
+    if (this.realtimeSocket) {
+      this.markMessagesRead(friendId);
+      this.markChatNotificationsReadLocally(friendId);
+      return Promise.resolve(true);
+    }
 
-    fetch(
-      new Request(url, {
-        method: "PUT",
-        mode: "cors",
-        headers: {
-          Authorization: "Bearer " + this.state.token,
-          "Content-Type": "application/json",
-        },
-      }),
-    ).then((response) => {
-      if (response.status === 200) {
-        this.markNotificationReadLocally(friendId);
-      }
-    });
+    if (!this.state?.token) {
+      return Promise.resolve(false);
+    }
+
+    const unreadNotificationIds = unreadChatNotifications
+      .map((notification) => String(notification?._id || "").trim())
+      .filter(Boolean);
+
+    if (!unreadNotificationIds.length) {
+      return Promise.resolve(false);
+    }
+
+    return Promise.all(
+      unreadNotificationIds.map((notificationId) =>
+        fetch(
+          new Request(
+            apiUrl("/api/user/notifications/") + notificationId + "/read",
+            {
+              method: "PUT",
+              mode: "cors",
+              headers: {
+                Authorization: "Bearer " + this.state.token,
+                "Content-Type": "application/json",
+              },
+            },
+          ),
+        ),
+      ),
+    )
+      .then((responses) => {
+        if (responses.every((response) => response.ok)) {
+          this.markChatNotificationsReadLocally(friendId);
+          return true;
+        }
+
+        return false;
+      })
+      .catch(() => false);
   };
 
   acceptFriend = (friend) => {
