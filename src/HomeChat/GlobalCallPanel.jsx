@@ -1364,12 +1364,16 @@ function GlobalCallPanel({
       activeCallDisplayName:
         activeCallDisplayName ||
         getFriendDisplayName(friends, activeCallPartnerId),
+      acceptIncomingCall: incomingCall ? handleAcceptIncomingCall : null,
+      declineIncomingCall: incomingCall ? handleRejectIncomingCall : null,
     });
   }, [
     activeCallDisplayName,
     callMode,
     callState,
     friends,
+    handleAcceptIncomingCall,
+    handleRejectIncomingCall,
     incomingCall,
     onSessionChange,
   ]);
@@ -1398,6 +1402,7 @@ function GlobalCallPanel({
     );
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
+  const shouldRenderCallPanel = Boolean(callMode) && callState !== "incoming";
 
   return createPortal(
     <React.Fragment>
@@ -1434,7 +1439,7 @@ function GlobalCallPanel({
           </div>
         </section>
       ) : null}
-      {callMode ? (
+      {shouldRenderCallPanel ? (
         <section
           id="Chat_callPanel"
           className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}`}

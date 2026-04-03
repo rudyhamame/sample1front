@@ -1553,6 +1553,8 @@ const FriendChat = ({
   };
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
+  const shouldRenderCallPanel =
+    !usesGlobalCallPanel && Boolean(callMode) && callState !== "incoming";
 
   return (
     <section id="FriendChat_article" className="fc">
@@ -1700,7 +1702,7 @@ const FriendChat = ({
                   </div>
                 </section>
               ) : null}
-              {!usesGlobalCallPanel && callMode ? (
+              {shouldRenderCallPanel ? (
                 <section
                   id="Chat_callPanel"
                   className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}`}

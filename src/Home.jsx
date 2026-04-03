@@ -1962,6 +1962,12 @@ function Home(props) {
         ? 0
         : unreadChatCountsByFriendId[friend.chatId] || 0;
       const friendPresenceState = getFriendPresenceState(friend);
+      const incomingCall = props.state?.global_call_session?.incomingCall || null;
+      const isIncomingCallForFriend =
+        String(incomingCall?.fromUserId || "").trim() ===
+        String(friend.chatId || "").trim();
+      const incomingCallMode =
+        incomingCall?.callType === "video" ? "video" : "voice";
       const inlineChatState = isFriendChatOpen
         ? {
             ...props.state,
@@ -2033,6 +2039,40 @@ function Home(props) {
               ) : null}
             </div>
           </button>
+          {isIncomingCallForFriend ? (
+            <div className="Home_socialFriendIncomingCall fc">
+              <div className="Home_socialFriendIncomingCallCopy fc">
+                <strong>
+                  Incoming {incomingCallMode} call
+                </strong>
+                <span>
+                  {friend.displayName || "Your friend"} is calling you.
+                </span>
+              </div>
+              <div className="Home_socialFriendIncomingCallActions fr">
+                <button
+                  type="button"
+                  className="Home_socialFriendCallButton Home_socialFriendCallButton--accept"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.state?.global_call_session?.acceptIncomingCall?.();
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="Home_socialFriendCallButton Home_socialFriendCallButton--decline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.state?.global_call_session?.declineIncomingCall?.();
+                  }}
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          ) : null}
           {isFriendChatOpen && friend.chatId ? (
             <div
               id={`Home_friendChat_${friend.chatId}`}
