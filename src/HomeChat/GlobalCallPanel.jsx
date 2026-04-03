@@ -4,6 +4,7 @@ import { apiUrl } from "../config/api";
 import {
   attachStreamToElement,
   createPeerConnection,
+  getIceCandidateType,
   requestCallMedia,
   stopMediaStream,
 } from "../realtime/webrtcCall";
@@ -50,6 +51,14 @@ const getViewportBounds = () => {
     width: window.innerWidth,
     height: window.innerHeight,
   };
+};
+
+const logCallDebug = (scope, event, details = {}) => {
+  try {
+    console.info(`[call][${scope}] ${event}`, details);
+  } catch {
+    // Ignore console failures.
+  }
 };
 
 const getFriendDisplayName = (friends, userId, fallback = "") => {
@@ -294,6 +303,17 @@ function GlobalCallPanel({
     }
 
     const payload = await response.json().catch(() => ({}));
+    logCallDebug("global", "rtc-config-loaded", {
+      turnEnabled: Boolean(payload?.turnEnabled),
+      authMode: String(payload?.authMode || "").trim(),
+      iceServers: Array.isArray(payload?.iceServers)
+        ? payload.iceServers.map((entry) => ({
+            urls: entry?.urls,
+            hasUsername: Boolean(entry?.username),
+            hasCredential: Boolean(entry?.credential),
+          }))
+        : [],
+    });
     rtcConfigRef.current = {
       iceServers: Array.isArray(payload?.iceServers) ? payload.iceServers : [],
       expiresAt: Number(payload?.expiresAt) || null,
@@ -341,6 +361,10 @@ function GlobalCallPanel({
       const peerConnection = createPeerConnection({
         iceServers: await loadRtcConfiguration(),
         onIceCandidate: (candidate) => {
+          logCallDebug("global", "ice-candidate-local", {
+            candidateType: getIceCandidateType(candidate),
+            friendId: activeCallPartnerRef.current,
+          });
           socket.emit("call:ice-candidate", {
             toUserId: activeCallPartnerRef.current,
             candidate,
@@ -376,6 +400,9 @@ function GlobalCallPanel({
           setRemoteStreamVersion((value) => value + 1);
         },
         onConnectionStateChange: (connectionState) => {
+          logCallDebug("global", "connection-state", {
+            connectionState,
+          });
           if (connectionState === "connected") {
             setCallState("connected");
             setCallError("");
@@ -402,6 +429,9 @@ function GlobalCallPanel({
           }
         },
         onIceConnectionStateChange: (iceConnectionState) => {
+          logCallDebug("global", "ice-connection-state", {
+            iceConnectionState,
+          });
           if (iceConnectionState === "failed") {
             teardownCall({
               keepError: true,
@@ -467,6 +497,10 @@ function GlobalCallPanel({
         });
 
         await peerConnection.setLocalDescription(offer);
+        logCallDebug("global", "offer-created", {
+          friendId: targetUserId,
+          callMode: nextCallMode,
+        });
 
         socket.emit("call:offer", {
           toUserId: targetUserId,
@@ -535,6 +569,10 @@ function GlobalCallPanel({
 
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
+      logCallDebug("global", "answer-created", {
+        fromUserId: incomingCall.fromUserId,
+        callMode: incomingCall.callType,
+      });
 
       socket.emit("call:answer", {
         toUserId: incomingCall.fromUserId,
@@ -1152,6 +1190,11 @@ function GlobalCallPanel({
         return;
       }
 
+      logCallDebug("global", "offer-received", {
+        fromUserId: normalizedFromUserId,
+        callType,
+      });
+
       setIncomingCall({
         fromUserId: normalizedFromUserId,
         offer,
@@ -1177,6 +1220,10 @@ function GlobalCallPanel({
       ) {
         return;
       }
+
+      logCallDebug("global", "answer-received", {
+        fromUserId: String(fromUserId || "").trim(),
+      });
 
       const peerConnection = peerConnectionRef.current;
 
@@ -1205,6 +1252,11 @@ function GlobalCallPanel({
       ) {
         return;
       }
+
+      logCallDebug("global", "ice-candidate-remote", {
+        fromUserId: String(fromUserId || "").trim(),
+        candidateType: getIceCandidateType(candidate),
+      });
 
       const peerConnection = peerConnectionRef.current;
 

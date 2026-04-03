@@ -474,8 +474,10 @@ class App extends React.Component {
     });
   };
 
-  handleChatRead = ({ friendId }) => {
-    const normalizedFriendId = String(friendId || "").trim();
+  handleChatRead = ({ friendId, readerUserId }) => {
+    const normalizedFriendId = String(
+      readerUserId || friendId || "",
+    ).trim();
 
     if (!normalizedFriendId) {
       return;

@@ -126,3 +126,13 @@ export const createPeerConnection = ({
 
   return peerConnection;
 };
+
+export const getIceCandidateType = (candidate) => {
+  const candidateText =
+    typeof candidate === "string"
+      ? candidate
+      : String(candidate?.candidate || "").trim();
+
+  const typeMatch = candidateText.match(/\btyp\s+([a-z]+)/i);
+  return String(typeMatch?.[1] || "unknown").toLowerCase();
+};

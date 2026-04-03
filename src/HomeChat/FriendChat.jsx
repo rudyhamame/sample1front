@@ -7,6 +7,7 @@ import { apiUrl } from "../config/api";
 import {
   attachStreamToElement,
   createPeerConnection,
+  getIceCandidateType,
   requestCallMedia,
   stopMediaStream,
 } from "../realtime/webrtcCall";
@@ -70,6 +71,14 @@ const getViewportBounds = () => {
     width: window.innerWidth,
     height: window.innerHeight,
   };
+};
+
+const logCallDebug = (scope, event, details = {}) => {
+  try {
+    console.info(`[call][${scope}] ${event}`, details);
+  } catch {
+    // Ignore console failures.
+  }
 };
 
 const FriendChat = ({
@@ -357,6 +366,17 @@ const FriendChat = ({
     }
 
     const payload = await response.json().catch(() => ({}));
+    logCallDebug("friend", "rtc-config-loaded", {
+      turnEnabled: Boolean(payload?.turnEnabled),
+      authMode: String(payload?.authMode || "").trim(),
+      iceServers: Array.isArray(payload?.iceServers)
+        ? payload.iceServers.map((entry) => ({
+            urls: entry?.urls,
+            hasUsername: Boolean(entry?.username),
+            hasCredential: Boolean(entry?.credential),
+          }))
+        : [],
+    });
     rtcConfigRef.current = {
       iceServers: Array.isArray(payload?.iceServers) ? payload.iceServers : [],
       expiresAt: Number(payload?.expiresAt) || null,
@@ -403,6 +423,10 @@ const FriendChat = ({
       const peerConnection = createPeerConnection({
         iceServers: await loadRtcConfiguration(),
         onIceCandidate: (candidate) => {
+          logCallDebug("friend", "ice-candidate-local", {
+            candidateType: getIceCandidateType(candidate),
+            friendId: activeCallPartnerRef.current,
+          });
           socket.emit("call:ice-candidate", {
             toUserId: activeCallPartnerRef.current,
             candidate,
@@ -438,6 +462,9 @@ const FriendChat = ({
           setRemoteStreamVersion((value) => value + 1);
         },
         onConnectionStateChange: (connectionState) => {
+          logCallDebug("friend", "connection-state", {
+            connectionState,
+          });
           if (connectionState === "connected") {
             setCallState("connected");
             setCallError("");
@@ -464,6 +491,9 @@ const FriendChat = ({
           }
         },
         onIceConnectionStateChange: (iceConnectionState) => {
+          logCallDebug("friend", "ice-connection-state", {
+            iceConnectionState,
+          });
           if (iceConnectionState === "failed") {
             teardownCall({
               keepError: true,
@@ -526,6 +556,11 @@ const FriendChat = ({
         return;
       }
 
+      logCallDebug("friend", "offer-received", {
+        fromUserId: String(fromUserId).trim(),
+        callType,
+      });
+
       setIncomingCall({
         fromUserId: String(fromUserId).trim(),
         offer,
@@ -541,6 +576,10 @@ const FriendChat = ({
       if (!fromUserId || String(fromUserId).trim() !== activeFriendId) {
         return;
       }
+
+      logCallDebug("friend", "answer-received", {
+        fromUserId: String(fromUserId).trim(),
+      });
 
       const peerConnection = peerConnectionRef.current;
 
@@ -570,6 +609,11 @@ const FriendChat = ({
       ) {
         return;
       }
+
+      logCallDebug("friend", "ice-candidate-remote", {
+        fromUserId: String(fromUserId).trim(),
+        candidateType: getIceCandidateType(candidate),
+      });
 
       const peerConnection = peerConnectionRef.current;
 
@@ -852,6 +896,10 @@ const FriendChat = ({
       });
 
       await peerConnection.setLocalDescription(offer);
+      logCallDebug("friend", "offer-created", {
+        friendId: activeFriendId,
+        callMode: nextCallMode,
+      });
 
       socket.emit("call:offer", {
         toUserId: activeFriendId,
@@ -904,6 +952,10 @@ const FriendChat = ({
 
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
+      logCallDebug("friend", "answer-created", {
+        fromUserId: incomingCall.fromUserId,
+        callMode: incomingCall.callType,
+      });
 
       socket.emit("call:answer", {
         toUserId: incomingCall.fromUserId,
