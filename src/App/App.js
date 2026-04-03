@@ -9,13 +9,13 @@ import "../home.css";
 import { Route } from "react-router-dom";
 import Home from "../Home";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import NogaPlan, {
+import NogaPlan from "../SchoolPlanner/NogaPlanner";
+import StudyPlanner, {
   getPlannerMusicSnapshot,
   playNextSharedPlannerMusicTrack,
   playPreviousSharedPlannerMusicTrack,
   toggleSharedPlannerMusic,
-} from "../SchoolPlanner/NogaPlanner";
-import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
+} from "./SubApps/StudyPlannner/StudyPlanner";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
 import Profile from "../Profile/Profile.jsx";
