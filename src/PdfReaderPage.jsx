@@ -15,6 +15,7 @@ const PdfReaderPage = ({ state }) => {
     >
       <PdfReaderModal
         isOpen={true}
+        renderInline
         fileUrl=""
         title={title}
         metadata={{

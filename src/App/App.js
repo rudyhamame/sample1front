@@ -10,12 +10,14 @@ import { Route } from "react-router-dom";
 import Home from "../Home";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
 import NogaPlan from "../SchoolPlanner/NogaPlanner";
-import StudyPlanner, {
+import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
+import {
   getPlannerMusicSnapshot,
   playNextSharedPlannerMusicTrack,
   playPreviousSharedPlannerMusicTrack,
   toggleSharedPlannerMusic,
-} from "./SubApps/StudyPlannner/StudyPlanner";
+  warmSharedPlannerMusic,
+} from "../music/globalMusicPlayer";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
 import Profile from "../Profile/Profile.jsx";
@@ -157,6 +159,7 @@ class App extends React.Component {
     });
     this.updateUserInfo();
     this.connectRealtime();
+    warmSharedPlannerMusic().catch(() => null);
     this.pollBackendHealth();
     this.backendHealthPollInterval = window.setInterval(
       this.pollBackendHealth,
