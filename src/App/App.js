@@ -126,6 +126,7 @@ class App extends React.Component {
   notificationAudioContext = null;
   realtimeSocket = null;
   backendHealthPollInterval = null;
+  sessionHeartbeatInterval = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -165,6 +166,7 @@ class App extends React.Component {
       this.pollBackendHealth,
       30000,
     );
+    this.startSessionHeartbeat();
     window.addEventListener(
       "planner-music-session-change",
       this.handlePlannerMusicSessionChange,
@@ -175,6 +177,10 @@ class App extends React.Component {
 
   componentDidUpdate(prevProps, prevState) {
     this.buildNotifications();
+
+    if (!prevState.my_id && this.state.my_id) {
+      this.startSessionHeartbeat();
+    }
 
     if (
       this.state.friendID_selected &&
@@ -207,6 +213,10 @@ class App extends React.Component {
     if (this.backendHealthPollInterval) {
       window.clearInterval(this.backendHealthPollInterval);
       this.backendHealthPollInterval = null;
+    }
+    if (this.sessionHeartbeatInterval) {
+      window.clearInterval(this.sessionHeartbeatInterval);
+      this.sessionHeartbeatInterval = null;
     }
     // if (this.props.path === "/study") {
     //   let input = window.confirm(
@@ -258,6 +268,34 @@ class App extends React.Component {
     logoutStoredSession({
       clear: false,
     });
+  };
+
+  sendSessionHeartbeat = () => {
+    if (!this.state?.my_id || typeof fetch !== "function") {
+      return Promise.resolve();
+    }
+
+    return fetch(apiUrl(`/api/user/heartbeat/${this.state.my_id}`), {
+      method: "PUT",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      keepalive: true,
+    })
+      .then(() => undefined)
+      .catch(() => undefined);
+  };
+
+  startSessionHeartbeat = () => {
+    if (this.sessionHeartbeatInterval || !this.state?.my_id) {
+      return;
+    }
+
+    this.sendSessionHeartbeat();
+    this.sessionHeartbeatInterval = window.setInterval(() => {
+      this.sendSessionHeartbeat();
+    }, 30000);
   };
 
   pollBackendHealth = () => {
