@@ -1412,13 +1412,21 @@ function GlobalCallPanel({
           <div
             ref={videoStageRef}
             className={`Chat_mediaStage${callMode === "video" ? " Chat_mediaStage--floating" : " fr"}`}
+            onMouseEnter={
+              callMode === "video"
+                ? () => setIsRemoteVideoHovered(true)
+                : undefined
+            }
+            onMouseLeave={
+              callMode === "video"
+                ? () => setIsRemoteVideoHovered(false)
+                : undefined
+            }
           >
             {callMode === "video" ? (
               <React.Fragment>
                 <div
                   className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote"
-                  onMouseEnter={() => setIsRemoteVideoHovered(true)}
-                  onMouseLeave={() => setIsRemoteVideoHovered(false)}
                   onClick={() =>
                     setIsCallControlsPinned((currentValue) => !currentValue)
                   }

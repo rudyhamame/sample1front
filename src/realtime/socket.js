@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../config/api";
 export const connectRealtime = ({
   userId,
   onUserRefresh,
+  onChatRead,
   onChatPresence,
   onTypingPresence,
   onVisitLog,
@@ -33,6 +34,10 @@ export const connectRealtime = ({
 
   if (typeof onUserRefresh === "function") {
     socket.on("user:refresh", onUserRefresh);
+  }
+
+  if (typeof onChatRead === "function") {
+    socket.on("chat:read", onChatRead);
   }
 
   if (typeof onChatPresence === "function") {

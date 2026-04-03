@@ -318,6 +318,11 @@ class App extends React.Component {
       onUserRefresh: () => {
         this.updateUserInfo();
       },
+      onChatRead: ({ friendId }) => {
+        this.handleChatRead({
+          friendId,
+        });
+      },
       onChatPresence: ({ userId, isChatting }) => {
         if (!userId || userId === this.state.my_id) {
           return;
@@ -426,6 +431,39 @@ class App extends React.Component {
       userId: this.state.my_id,
       friendId,
     });
+  };
+
+  handleChatRead = ({ friendId }) => {
+    const normalizedFriendId = String(friendId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.setState((prevState) => ({
+      chat: (Array.isArray(prevState.chat) ? prevState.chat : []).map(
+        (message) => {
+          if (
+            String(message?._id || "").trim() !== normalizedFriendId ||
+            String(message?.from || "").trim() !== "me" ||
+            String(message?.status || "").trim().toLowerCase() === "read"
+          ) {
+            return message;
+          }
+
+          return {
+            ...message,
+            status: "read",
+          };
+        },
+      ),
+      notifications: (prevState.notifications || []).map((notification) =>
+        String(notification?.id || "").trim() === normalizedFriendId &&
+        notification?.type === "chat_message"
+          ? { ...notification, status: "read" }
+          : notification,
+      ),
+    }));
   };
 
   getRealtimeSocket = () => this.realtimeSocket;
