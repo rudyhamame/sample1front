@@ -698,15 +698,7 @@ const PdfReaderModal = ({
     [pdfDocument],
   );
 
-  const isVisible =
-    (forceVisible || isOpen) &&
-    (isLoading ||
-      forceVisible ||
-      documentLoading ||
-      pageRendering ||
-      Boolean(fileUrl) ||
-      Boolean(error) ||
-      Boolean(viewerError));
+  const isVisible = forceVisible || isOpen;
 
   useEffect(() => {
     if (!isVisible) {
