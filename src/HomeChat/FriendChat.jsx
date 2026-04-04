@@ -78,6 +78,13 @@ const getViewportBounds = () => {
 const logCallDebug = (scope, event, details = {}) => {
   try {
     console.info(`[call][${scope}] ${event}`, details);
+
+    if (String(event || "").startsWith("ice-diagnostics")) {
+      console.info(
+        `[call][${scope}] ${event}:json`,
+        JSON.stringify(details, null, 2),
+      );
+    }
   } catch {
     // Ignore console failures.
   }
