@@ -59,7 +59,10 @@ const logCallDebug = (scope, event, details = {}) => {
   try {
     console.info(`[call][${scope}] ${event}`, details);
 
-    if (String(event || "").startsWith("ice-diagnostics")) {
+    if (
+      String(event || "").startsWith("ice-diagnostics") ||
+      String(event || "").startsWith("ice-candidate-")
+    ) {
       console.info(
         `[call][${scope}] ${event}:json`,
         JSON.stringify(details, null, 2),
@@ -446,6 +449,10 @@ function GlobalCallPanel({
           logCallDebug("global", "ice-candidate-local", {
             candidateType: getIceCandidateType(candidate),
             friendId: activeCallPartnerRef.current,
+            candidate:
+              typeof candidate?.toJSON === "function"
+                ? candidate.toJSON()
+                : candidate,
           });
           socket.emit("call:ice-candidate", {
             toUserId: activeCallPartnerRef.current,
@@ -1388,6 +1395,7 @@ function GlobalCallPanel({
       logCallDebug("global", "ice-candidate-remote", {
         fromUserId: String(fromUserId || "").trim(),
         candidateType: getIceCandidateType(candidate),
+        candidate,
       });
 
       const peerConnection = peerConnectionRef.current;
