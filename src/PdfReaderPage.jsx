@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import PdfReaderModal from "./App/components/pdf-reader/PdfReaderModal";
+import Nav from "./Nav/Nav";
 
-const PdfReaderPage = ({ state }) => {
+const PdfReaderPage = ({
+  state,
+  logOut,
+  acceptFriend,
+  makeNotificationsRead,
+}) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUrl, setFileUrl] = useState("");
   const fileInputRef = useRef(null);
@@ -40,10 +46,17 @@ const PdfReaderPage = ({ state }) => {
       style={{
         display: "flex",
         flex: "1 1 auto",
+        flexDirection: "column",
         minHeight: 0,
         width: "100%",
       }}
     >
+      <Nav
+        state={state}
+        logOut={logOut}
+        acceptFriend={acceptFriend}
+        makeNotificationsRead={makeNotificationsRead}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -51,20 +64,29 @@ const PdfReaderPage = ({ state }) => {
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
-      <PdfReaderModal
-        isOpen={true}
-        renderInline
-        fileUrl={fileUrl}
-        title={title}
-        metadata={{
-          source: "local",
-          owner: state?.username || "",
-          sizeBytes: selectedFile?.size || 0,
+      <div
+        style={{
+          display: "flex",
+          flex: "1 1 auto",
+          minHeight: 0,
+          width: "100%",
         }}
-        initialPage={1}
-        onClose={() => {}}
-        onChooseFile={handleChooseFile}
-      />
+      >
+        <PdfReaderModal
+          isOpen={true}
+          renderInline
+          fileUrl={fileUrl}
+          title={title}
+          metadata={{
+            source: "local",
+            owner: state?.username || "",
+            sizeBytes: selectedFile?.size || 0,
+          }}
+          initialPage={1}
+          onClose={() => {}}
+          onChooseFile={handleChooseFile}
+        />
+      </div>
     </section>
   );
 };
