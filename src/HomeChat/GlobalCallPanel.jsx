@@ -446,17 +446,19 @@ function GlobalCallPanel({
       const peerConnection = createPeerConnection({
         iceServers: await loadRtcConfiguration(),
         onIceCandidate: (candidate) => {
+          const serializedCandidate =
+            typeof candidate?.toJSON === "function"
+              ? candidate.toJSON()
+              : candidate;
+
           logCallDebug("global", "ice-candidate-local", {
             candidateType: getIceCandidateType(candidate),
             friendId: activeCallPartnerRef.current,
-            candidate:
-              typeof candidate?.toJSON === "function"
-                ? candidate.toJSON()
-                : candidate,
+            candidate: serializedCandidate,
           });
           socket.emit("call:ice-candidate", {
             toUserId: activeCallPartnerRef.current,
-            candidate,
+            candidate: serializedCandidate,
           });
         },
         onTrack: (event) => {
