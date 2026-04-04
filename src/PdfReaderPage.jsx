@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import PdfReaderModal from "./App/components/pdf-reader/PdfReaderModal";
 import Nav from "./Nav/Nav";
+import { getHomeSubApps } from "./utils/homeSubApps";
 
 const PdfReaderPage = ({
   state,
@@ -12,6 +13,7 @@ const PdfReaderPage = ({
   const [fileUrl, setFileUrl] = useState("");
   const fileInputRef = useRef(null);
   const title = selectedFile?.name || "Local PDF Reader";
+  const subApps = getHomeSubApps(state?.username);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -56,6 +58,7 @@ const PdfReaderPage = ({
         logOut={logOut}
         acceptFriend={acceptFriend}
         makeNotificationsRead={makeNotificationsRead}
+        subApps={subApps}
       />
       <input
         ref={fileInputRef}

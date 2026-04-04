@@ -8,6 +8,7 @@ import {
   attachStreamToElement,
   createPeerConnection,
   getIceCandidateType,
+  getPeerConnectionDiagnostics,
   requestCallMedia,
   stopMediaStream,
 } from "../realtime/webrtcCall";
@@ -31,6 +32,7 @@ const CALL_PANEL_MARGIN = 16;
 const VIDEO_OVERLAY_MIN_SCALE = 0.6;
 const VIDEO_OVERLAY_MAX_SCALE = 2;
 const CALL_CONNECTING_TIMEOUT_MS = 20000;
+const CALL_DISCONNECTED_GRACE_MS = 8000;
 
 const keepTextareaFocus = (event) => {
   event.preventDefault();
@@ -140,6 +142,8 @@ const FriendChat = ({
   const typingDebounceTimeoutRef = React.useRef(null);
   const lastTypingStateRef = React.useRef(false);
   const activeCallPartnerRef = React.useRef("");
+  const disconnectTimeoutRef = React.useRef(null);
+  const diagnosticsIntervalRef = React.useRef(null);
   const [callState, setCallState] = React.useState("idle");
   const [callMode, setCallMode] = React.useState("");
   const [callError, setCallError] = React.useState("");
@@ -383,6 +387,16 @@ const FriendChat = ({
       nextState = "idle",
       clearIncoming = true,
     } = {}) => {
+      if (diagnosticsIntervalRef.current) {
+        window.clearInterval(diagnosticsIntervalRef.current);
+        diagnosticsIntervalRef.current = null;
+      }
+
+      if (disconnectTimeoutRef.current) {
+        window.clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+
       releasePeerConnection();
       resetCallMedia();
       queuedIceCandidatesRef.current = [];
@@ -398,6 +412,65 @@ const FriendChat = ({
     },
     [releasePeerConnection, resetCallMedia],
   );
+
+  const logPeerDiagnostics = React.useCallback(async (event, extraDetails = {}) => {
+    const diagnostics = await getPeerConnectionDiagnostics(peerConnectionRef.current);
+
+    logCallDebug("friend", event, {
+      ...extraDetails,
+      diagnostics,
+    });
+  }, []);
+
+  const stopDiagnosticsPolling = React.useCallback(() => {
+    if (!diagnosticsIntervalRef.current) {
+      return;
+    }
+
+    window.clearInterval(diagnosticsIntervalRef.current);
+    diagnosticsIntervalRef.current = null;
+  }, []);
+
+  const startDiagnosticsPolling = React.useCallback(() => {
+    if (diagnosticsIntervalRef.current) {
+      return;
+    }
+
+    diagnosticsIntervalRef.current = window.setInterval(() => {
+      logPeerDiagnostics("ice-diagnostics-poll", {
+        friendId: activeCallPartnerRef.current,
+      });
+    }, 5000);
+  }, [logPeerDiagnostics]);
+
+  const clearDisconnectTimeout = React.useCallback(() => {
+    if (!disconnectTimeoutRef.current) {
+      return;
+    }
+
+    window.clearTimeout(disconnectTimeoutRef.current);
+    disconnectTimeoutRef.current = null;
+  }, []);
+
+  const scheduleDisconnectedTeardown = React.useCallback(() => {
+    if (disconnectTimeoutRef.current) {
+      return;
+    }
+
+    disconnectTimeoutRef.current = window.setTimeout(() => {
+      disconnectTimeoutRef.current = null;
+
+      if (peerConnectionRef.current?.connectionState === "connected") {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError:
+          "The call was interrupted by the network before it could recover.",
+      });
+    }, CALL_DISCONNECTED_GRACE_MS);
+  }, [teardownCall]);
 
   const loadRtcConfiguration = React.useCallback(async () => {
     const currentRtcConfig = rtcConfigRef.current;
@@ -526,21 +599,38 @@ const FriendChat = ({
             connectionState,
           });
           if (connectionState === "connected") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-connected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            clearDisconnectTimeout();
             setCallState("connected");
             setCallError("");
             return;
           }
 
           if (connectionState === "connecting") {
+            startDiagnosticsPolling();
+            clearDisconnectTimeout();
             setCallState("connecting");
             return;
           }
 
-          if (
-            connectionState === "failed" ||
-            connectionState === "disconnected" ||
-            connectionState === "closed"
-          ) {
+          if (connectionState === "disconnected") {
+            logPeerDiagnostics("ice-diagnostics-disconnected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            scheduleDisconnectedTeardown();
+            return;
+          }
+
+          if (connectionState === "failed" || connectionState === "closed") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-terminal", {
+              friendId: activeCallPartnerRef.current,
+              connectionState,
+            });
+            clearDisconnectTimeout();
             teardownCall({
               keepError: connectionState === "failed",
               nextError:
@@ -554,7 +644,29 @@ const FriendChat = ({
           logCallDebug("friend", "ice-connection-state", {
             iceConnectionState,
           });
+          if (
+            iceConnectionState === "connected" ||
+            iceConnectionState === "completed" ||
+            iceConnectionState === "checking"
+          ) {
+            clearDisconnectTimeout();
+            return;
+          }
+
+          if (iceConnectionState === "disconnected") {
+            logPeerDiagnostics("ice-diagnostics-ice-disconnected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            scheduleDisconnectedTeardown();
+            return;
+          }
+
           if (iceConnectionState === "failed") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-ice-failed", {
+              friendId: activeCallPartnerRef.current,
+            });
+            clearDisconnectTimeout();
             teardownCall({
               keepError: true,
               nextError:
@@ -575,9 +687,14 @@ const FriendChat = ({
       return peerConnection;
     },
     [
+      clearDisconnectTimeout,
       getRealtimeSocket,
       loadRtcConfiguration,
+      logPeerDiagnostics,
       releasePeerConnection,
+      scheduleDisconnectedTeardown,
+      startDiagnosticsPolling,
+      stopDiagnosticsPolling,
       teardownCall,
     ],
   );
@@ -746,6 +863,10 @@ const FriendChat = ({
         return;
       }
 
+      logPeerDiagnostics("ice-diagnostics-connect-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
       teardownCall({
         keepError: true,
         nextError:
@@ -756,7 +877,7 @@ const FriendChat = ({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [callState, teardownCall]);
+  }, [callState, logPeerDiagnostics, teardownCall]);
 
   // Helper to generate a temporary ID for optimistic messages
   const generateTempId = () =>

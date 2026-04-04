@@ -10,6 +10,7 @@ import {
   mergeNearbyHomeDrawingPaths,
   smoothHomeDrawingPoints,
 } from "./utils/homeDrawingRope";
+import { getHomeSubApps } from "./utils/homeSubApps";
 import FriendChat from "./HomeChat/FriendChat";
 
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
@@ -1711,12 +1712,10 @@ function Home(props) {
     loginRecords.length > 0 ? loginRecords[loginLogIndex] : null;
   const activeVisitLogRecord =
     visitLogEntries.length > 0 ? visitLogEntries[visitLogIndex] : null;
-  const isNogaPlanOwner =
-    String(props.state?.username || "").toLowerCase() === "naghamtrkmani";
-  const schoolPlannerPath = isNogaPlanOwner
-    ? "/phenomed/schoolplanner/nogaplan"
-    : "/phenomed/schoolplanner";
-  const schoolPlannerLabel = isNogaPlanOwner ? "Noga Plan" : "School Planner";
+  const homeSubApps = React.useMemo(
+    () => getHomeSubApps(props.state?.username),
+    [props.state?.username],
+  );
   const imageGallery = Array.isArray(props.state?.imageGallery)
     ? props.state.imageGallery
     : [];
@@ -4205,38 +4204,7 @@ function Home(props) {
                         ),
                     },
                   ]}
-                  subApps={[
-                    {
-                      id: "study",
-                      label: "Phenomed Student",
-                      icon: "fas fa-stopwatch",
-                      path: "/study",
-                    },
-                    {
-                      id: "ecg",
-                      label: "PhenoMed ECG",
-                      icon: "fas fa-heartbeat",
-                      path: "/ecg",
-                    },
-                    {
-                      id: "pdf-reader",
-                      label: "PDF Reader",
-                      icon: "fas fa-file-pdf",
-                      path: "/phenomed/pdf-reader",
-                    },
-                    {
-                      id: "school",
-                      label: schoolPlannerLabel,
-                      icon: "fas fa-layer-group",
-                      path: schoolPlannerPath,
-                    },
-                    {
-                      id: "social",
-                      label: "Home",
-                      icon: "fas fa-house-user",
-                      path: "/",
-                    },
-                  ]}
+                  subApps={homeSubApps}
                 />
               </div>
             </div>

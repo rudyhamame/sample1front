@@ -5,6 +5,7 @@ import {
   attachStreamToElement,
   createPeerConnection,
   getIceCandidateType,
+  getPeerConnectionDiagnostics,
   requestCallMedia,
   stopMediaStream,
 } from "../realtime/webrtcCall";
@@ -29,6 +30,7 @@ const CALL_PANEL_MARGIN = 16;
 const VIDEO_OVERLAY_MIN_SCALE = 0.6;
 const VIDEO_OVERLAY_MAX_SCALE = 2;
 const CALL_CONNECTING_TIMEOUT_MS = 20000;
+const CALL_DISCONNECTED_GRACE_MS = 8000;
 
 const clampValue = (value, min, max) => {
   if (!Number.isFinite(value)) {
@@ -108,6 +110,8 @@ function GlobalCallPanel({
   const rtcConfigRef = React.useRef(null);
   const queuedIceCandidatesRef = React.useRef([]);
   const activeCallPartnerRef = React.useRef("");
+  const disconnectTimeoutRef = React.useRef(null);
+  const diagnosticsIntervalRef = React.useRef(null);
   const [callState, setCallState] = React.useState("idle");
   const [callMode, setCallMode] = React.useState("");
   const [callError, setCallError] = React.useState("");
@@ -260,6 +264,16 @@ function GlobalCallPanel({
       nextState = "idle",
       clearIncoming = true,
     } = {}) => {
+      if (diagnosticsIntervalRef.current) {
+        window.clearInterval(diagnosticsIntervalRef.current);
+        diagnosticsIntervalRef.current = null;
+      }
+
+      if (disconnectTimeoutRef.current) {
+        window.clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+
       releasePeerConnection();
       resetCallMedia();
       queuedIceCandidatesRef.current = [];
@@ -277,6 +291,65 @@ function GlobalCallPanel({
     },
     [releasePeerConnection, resetCallMedia],
   );
+
+  const logPeerDiagnostics = React.useCallback(async (event, extraDetails = {}) => {
+    const diagnostics = await getPeerConnectionDiagnostics(peerConnectionRef.current);
+
+    logCallDebug("global", event, {
+      ...extraDetails,
+      diagnostics,
+    });
+  }, []);
+
+  const stopDiagnosticsPolling = React.useCallback(() => {
+    if (!diagnosticsIntervalRef.current) {
+      return;
+    }
+
+    window.clearInterval(diagnosticsIntervalRef.current);
+    diagnosticsIntervalRef.current = null;
+  }, []);
+
+  const startDiagnosticsPolling = React.useCallback(() => {
+    if (diagnosticsIntervalRef.current) {
+      return;
+    }
+
+    diagnosticsIntervalRef.current = window.setInterval(() => {
+      logPeerDiagnostics("ice-diagnostics-poll", {
+        friendId: activeCallPartnerRef.current,
+      });
+    }, 5000);
+  }, [logPeerDiagnostics]);
+
+  const clearDisconnectTimeout = React.useCallback(() => {
+    if (!disconnectTimeoutRef.current) {
+      return;
+    }
+
+    window.clearTimeout(disconnectTimeoutRef.current);
+    disconnectTimeoutRef.current = null;
+  }, []);
+
+  const scheduleDisconnectedTeardown = React.useCallback(() => {
+    if (disconnectTimeoutRef.current) {
+      return;
+    }
+
+    disconnectTimeoutRef.current = window.setTimeout(() => {
+      disconnectTimeoutRef.current = null;
+
+      if (peerConnectionRef.current?.connectionState === "connected") {
+        return;
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError:
+          "The call was interrupted by the network before it could recover.",
+      });
+    }, CALL_DISCONNECTED_GRACE_MS);
+  }, [teardownCall]);
 
   const loadRtcConfiguration = React.useCallback(async () => {
     const currentRtcConfig = rtcConfigRef.current;
@@ -406,21 +479,38 @@ function GlobalCallPanel({
             connectionState,
           });
           if (connectionState === "connected") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-connected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            clearDisconnectTimeout();
             setCallState("connected");
             setCallError("");
             return;
           }
 
           if (connectionState === "connecting") {
+            startDiagnosticsPolling();
+            clearDisconnectTimeout();
             setCallState("connecting");
             return;
           }
 
-          if (
-            connectionState === "failed" ||
-            connectionState === "disconnected" ||
-            connectionState === "closed"
-          ) {
+          if (connectionState === "disconnected") {
+            logPeerDiagnostics("ice-diagnostics-disconnected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            scheduleDisconnectedTeardown();
+            return;
+          }
+
+          if (connectionState === "failed" || connectionState === "closed") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-terminal", {
+              friendId: activeCallPartnerRef.current,
+              connectionState,
+            });
+            clearDisconnectTimeout();
             teardownCall({
               keepError: connectionState === "failed",
               nextError:
@@ -434,7 +524,29 @@ function GlobalCallPanel({
           logCallDebug("global", "ice-connection-state", {
             iceConnectionState,
           });
+          if (
+            iceConnectionState === "connected" ||
+            iceConnectionState === "completed" ||
+            iceConnectionState === "checking"
+          ) {
+            clearDisconnectTimeout();
+            return;
+          }
+
+          if (iceConnectionState === "disconnected") {
+            logPeerDiagnostics("ice-diagnostics-ice-disconnected", {
+              friendId: activeCallPartnerRef.current,
+            });
+            scheduleDisconnectedTeardown();
+            return;
+          }
+
           if (iceConnectionState === "failed") {
+            stopDiagnosticsPolling();
+            logPeerDiagnostics("ice-diagnostics-ice-failed", {
+              friendId: activeCallPartnerRef.current,
+            });
+            clearDisconnectTimeout();
             teardownCall({
               keepError: true,
               nextError:
@@ -455,9 +567,14 @@ function GlobalCallPanel({
       return peerConnection;
     },
     [
+      clearDisconnectTimeout,
       getRealtimeSocket,
       loadRtcConfiguration,
+      logPeerDiagnostics,
       releasePeerConnection,
+      scheduleDisconnectedTeardown,
+      startDiagnosticsPolling,
+      stopDiagnosticsPolling,
       teardownCall,
     ],
   );
@@ -788,6 +905,10 @@ function GlobalCallPanel({
         return;
       }
 
+      logPeerDiagnostics("ice-diagnostics-connect-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
       teardownCall({
         keepError: true,
         nextError:
@@ -798,7 +919,7 @@ function GlobalCallPanel({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [callState, teardownCall]);
+  }, [callState, logPeerDiagnostics, teardownCall]);
 
   React.useEffect(() => {
     const handlePointerMove = (event) => {

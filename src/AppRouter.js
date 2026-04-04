@@ -109,6 +109,17 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
+          <Route exact path="/phenomed/telegram-control">
+            {isAuthenticated ? (
+              <App
+                key="app-telegram-control"
+                path="/phenomed/telegram-control"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
           <Route path="/profile/:username">
             {isAuthenticated ? (
               <App key="app-profile" path="/profile" onLogout={handleLogout} />

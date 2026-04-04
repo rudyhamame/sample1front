@@ -20,6 +20,7 @@ import {
 } from "../music/globalMusicPlayer";
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
+import TelegramControlPage from "../TelegramControlPage.jsx";
 import Profile from "../Profile/Profile.jsx";
 import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
 import { apiUrl } from "../config/api";
@@ -3148,6 +3149,19 @@ class App extends React.Component {
           <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <PdfReaderPage
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/telegram-control">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <TelegramControlPage
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}

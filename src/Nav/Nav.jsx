@@ -6,15 +6,6 @@ import Refresh from "./Refresh/Refresh";
 import SubApps from "./SubApps/SubApps";
 
 const Nav = (props) => {
-    const [drawingMenuOpen, setDrawingMenuOpen] = React.useState(false);
-    const handleDrawingButtonClick = (e) => {
-      e.stopPropagation();
-      setDrawingMenuOpen((prev) => !prev);
-    };
-    const handleDrawingMenuNav = (path) => {
-      setDrawingMenuOpen(false);
-      window.location.href = path;
-    };
   const [navVisible, setNavVisible] = React.useState(false);
 
   const handleToggle = () => {
@@ -51,54 +42,6 @@ const Nav = (props) => {
                 </button>
               ))
             : null}
-          {/* Drawing button with vertical sub-apps list */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <button
-              className="Home_mainDrawingButton"
-              title="Drawing & Sub-Apps"
-              style={{ margin: "0 8px", width: 42, height: 42, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}
-              onClick={handleDrawingButtonClick}
-            >
-              <i className="fas fa-pen"></i>
-            </button>
-            {drawingMenuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 48,
-                  left: 0,
-                  background: "#fff",
-                  border: "1px solid #ccc",
-                  borderRadius: 12,
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                  zIndex: 1000,
-                  minWidth: 180,
-                  padding: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                }}
-              >
-                <button
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, border: "none", background: "none", cursor: "pointer", borderRadius: 8 }}
-                  onClick={() => handleDrawingMenuNav("/draw")}
-                >
-                  <i className="fas fa-paint-brush"></i>
-                  <span>Drawing Tool</span>
-                </button>
-                {Array.isArray(props.subApps) && props.subApps.map((app) => (
-                  <button
-                    key={app.id}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, border: "none", background: "none", cursor: "pointer", borderRadius: 8 }}
-                    onClick={() => handleDrawingMenuNav(app.path)}
-                  >
-                    <i className={app.icon}></i>
-                    <span>{app.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <SubApps subApps={props.subApps} />
           <Logout logOut={props.logOut} />
           <Notifications
