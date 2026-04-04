@@ -81,6 +81,19 @@ const logCallDebug = (scope, event, details = {}) => {
   }
 };
 
+const formatCallElapsed = (elapsedMs) => {
+  const totalSeconds = Math.max(0, Math.floor((Number(elapsedMs) || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 const FriendChat = ({
   state,
   content,
@@ -192,14 +205,61 @@ const FriendChat = ({
   const globalCallState =
     normalizedGlobalCallSession?.callState || "idle";
   const globalIncomingCall = normalizedGlobalCallSession?.incomingCall || null;
+  const globalCallPartnerId = String(
+    normalizedGlobalCallSession?.activeCallPartnerId ||
+      globalIncomingCall?.fromUserId ||
+      "",
+  ).trim();
+  const globalCallStartedAt = Number(
+    normalizedGlobalCallSession?.callStartedAt || 0,
+  );
+  const globalCallMode =
+    normalizedGlobalCallSession?.callMode === "video" ? "video" : "audio";
+  const globalAudioMuted = Boolean(normalizedGlobalCallSession?.isAudioMuted);
+  const globalVideoMuted = Boolean(normalizedGlobalCallSession?.isVideoMuted);
+  const globalToggleMute =
+    typeof normalizedGlobalCallSession?.toggleMute === "function"
+      ? normalizedGlobalCallSession.toggleMute
+      : null;
+  const globalToggleCamera =
+    typeof normalizedGlobalCallSession?.toggleCamera === "function"
+      ? normalizedGlobalCallSession.toggleCamera
+      : null;
   const globalCallIsBusy =
     globalCallState !== "idle" ||
     Boolean(normalizedGlobalCallSession?.callMode) ||
     Boolean(globalIncomingCall);
+  const isGlobalCallActiveForFriend =
+    usesGlobalCallPanel &&
+    activeFriendId &&
+    globalCallPartnerId === activeFriendId &&
+    (globalCallState === "calling" ||
+      globalCallState === "requesting-media" ||
+      globalCallState === "connecting" ||
+      globalCallState === "connected");
+  const [inlineCallElapsedMs, setInlineCallElapsedMs] = React.useState(0);
   const currentUserDisplayName =
     `${String(state?.firstname || "").trim()} ${String(state?.lastname || "").trim()}`.trim() ||
     String(state?.username || "").trim() ||
     "Doctor";
+
+  React.useEffect(() => {
+    if (!isGlobalCallActiveForFriend || !globalCallStartedAt) {
+      setInlineCallElapsedMs(0);
+      return undefined;
+    }
+
+    const updateElapsed = () => {
+      setInlineCallElapsedMs(Math.max(0, Date.now() - globalCallStartedAt));
+    };
+
+    updateElapsed();
+    const intervalId = window.setInterval(updateElapsed, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [globalCallStartedAt, isGlobalCallActiveForFriend]);
 
   const syncMediaElements = React.useCallback(() => {
     attachStreamToElement(localAudioRef.current, localStreamRef.current, {
@@ -972,40 +1032,6 @@ const FriendChat = ({
     }
   };
 
-  const inlineCallActions =
-    hideTitleContainer && hasActiveChat ? (
-      <div className="Chat_inlineCallActions Home_socialFriendPresence fr">
-        <button
-          type="button"
-          className="Chat_callButton"
-          title="Start voice call"
-          aria-label="Start voice call"
-          disabled={
-            usesGlobalCallPanel
-              ? globalCallIsBusy
-              : callState !== "idle" && callState !== "incoming"
-          }
-          onClick={() => handleCallButtonPress("audio")}
-        >
-          <i className="fas fa-phone-alt"></i>
-        </button>
-        <button
-          type="button"
-          className="Chat_callButton"
-          title="Start video call"
-          aria-label="Start video call"
-          disabled={
-            usesGlobalCallPanel
-              ? globalCallIsBusy
-              : callState !== "idle" && callState !== "incoming"
-          }
-          onClick={() => handleCallButtonPress("video")}
-        >
-          <i className="fas fa-video"></i>
-        </button>
-      </div>
-    ) : null;
-
   const handleRejectIncomingCall = () => {
     const socket = getRealtimeSocket?.();
 
@@ -1038,6 +1064,87 @@ const FriendChat = ({
 
     teardownCall();
   };
+
+  const inlineCallActions =
+    hideTitleContainer && hasActiveChat ? (
+      <div className="Chat_inlineCallActions Home_socialFriendPresence fr">
+        {isGlobalCallActiveForFriend ? (
+          <>
+            <span className="Chat_inlineCallElapsed" aria-label="Call duration">
+              {formatCallElapsed(inlineCallElapsedMs)}
+            </span>
+            <button
+              type="button"
+              className={`Chat_callButton${globalAudioMuted ? " is-muted" : ""}`}
+              title={globalAudioMuted ? "Enable microphone" : "Disable microphone"}
+              aria-label={globalAudioMuted ? "Enable microphone" : "Disable microphone"}
+              onClick={globalToggleMute || undefined}
+              disabled={!globalToggleMute}
+            >
+              <i
+                className={`fas ${globalAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+                aria-hidden="true"
+              ></i>
+            </button>
+            {globalCallMode === "video" ? (
+              <button
+                type="button"
+                className={`Chat_callButton${globalVideoMuted ? " is-muted" : ""}`}
+                title={globalVideoMuted ? "Enable camera" : "Disable camera"}
+                aria-label={globalVideoMuted ? "Enable camera" : "Disable camera"}
+                onClick={globalToggleCamera || undefined}
+                disabled={!globalToggleCamera}
+              >
+                <i
+                  className={`fas ${globalVideoMuted ? "fa-video-slash" : "fa-video"}`}
+                  aria-hidden="true"
+                ></i>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="Chat_callButton Chat_callButton--end"
+              title="End call"
+              aria-label="End call"
+              onClick={() => handleEndCall("hangup")}
+            >
+              <i className="fas fa-phone-slash" aria-hidden="true"></i>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="Chat_callButton"
+              title="Start voice call"
+              aria-label="Start voice call"
+              disabled={
+                usesGlobalCallPanel
+                  ? globalCallIsBusy
+                  : callState !== "idle" && callState !== "incoming"
+              }
+              onClick={() => handleCallButtonPress("audio")}
+            >
+              <i className="fas fa-phone-alt"></i>
+            </button>
+            <button
+              type="button"
+              className="Chat_callButton"
+              title="Start video call"
+              aria-label="Start video call"
+              disabled={
+                usesGlobalCallPanel
+                  ? globalCallIsBusy
+                  : callState !== "idle" && callState !== "incoming"
+              }
+              onClick={() => handleCallButtonPress("video")}
+            >
+              <i className="fas fa-video"></i>
+            </button>
+          </>
+        )}
+      </div>
+    ) : null;
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -1820,15 +1927,6 @@ const FriendChat = ({
                     ref={callControlsRef}
                     className={`Chat_callControls fr${showCallControls ? " is-visible" : ""}`}
                   >
-                    {callState === "incoming" ? (
-                      <button
-                        type="button"
-                        className="Chat_callControlButton Chat_callControlButton--accept"
-                        onClick={handleAcceptIncomingCall}
-                      >
-                        <i className="fas fa-phone-alt"></i>
-                      </button>
-                    ) : null}
                     <button
                       type="button"
                       className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}

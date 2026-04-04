@@ -112,6 +112,7 @@ function GlobalCallPanel({
   const [callMode, setCallMode] = React.useState("");
   const [callError, setCallError] = React.useState("");
   const [incomingCall, setIncomingCall] = React.useState(null);
+  const [callStartedAt, setCallStartedAt] = React.useState(null);
   const [remoteStreamVersion, setRemoteStreamVersion] = React.useState(0);
   const [localStreamVersion, setLocalStreamVersion] = React.useState(0);
   const [isAudioMuted, setIsAudioMuted] = React.useState(false);
@@ -264,6 +265,7 @@ function GlobalCallPanel({
       queuedIceCandidatesRef.current = [];
       activeCallPartnerRef.current = "";
       setActiveCallDisplayName("");
+      setCallStartedAt(null);
       setCallMode("");
       setCallState(nextState);
       if (clearIncoming) {
@@ -472,6 +474,7 @@ function GlobalCallPanel({
       try {
         setCallError("");
         setIncomingCall(null);
+        setCallStartedAt(Date.now());
         setCallMode(nextCallMode);
         setCallState("requesting-media");
         setActiveCallDisplayName(
@@ -536,6 +539,7 @@ function GlobalCallPanel({
 
     try {
       setCallError("");
+      setCallStartedAt(Date.now());
       setCallMode(incomingCall.callType);
       setCallState("requesting-media");
       setActiveCallDisplayName(
@@ -1364,17 +1368,31 @@ function GlobalCallPanel({
       activeCallDisplayName:
         activeCallDisplayName ||
         getFriendDisplayName(friends, activeCallPartnerId),
+      callStartedAt,
+      isAudioMuted,
+      isVideoMuted,
+      toggleMute:
+        activeCallPartnerId && !incomingCall ? handleToggleMute : null,
+      toggleCamera:
+        callMode === "video" && activeCallPartnerId && !incomingCall
+          ? handleToggleCamera
+          : null,
       acceptIncomingCall: incomingCall ? handleAcceptIncomingCall : null,
       declineIncomingCall: incomingCall ? handleRejectIncomingCall : null,
     });
   }, [
     activeCallDisplayName,
+    callStartedAt,
     callMode,
     callState,
     friends,
     handleAcceptIncomingCall,
+    handleToggleCamera,
+    handleToggleMute,
     handleRejectIncomingCall,
     incomingCall,
+    isAudioMuted,
+    isVideoMuted,
     onSessionChange,
   ]);
 
@@ -1414,31 +1432,6 @@ function GlobalCallPanel({
         playsInline
         muted
       />
-      {incomingCall ? (
-        <section id="Chat_incomingCallBanner" className="fc">
-          <strong>
-            Incoming {incomingCall.callType === "video" ? "video" : "voice"}{" "}
-            call
-          </strong>
-          <span>{displayName || "Your friend"} is calling.</span>
-          <div className="Chat_callBannerActions fr">
-            <button
-              type="button"
-              className="Chat_callBannerButton Chat_callBannerButton--accept"
-              onClick={handleAcceptIncomingCall}
-            >
-              Accept
-            </button>
-            <button
-              type="button"
-              className="Chat_callBannerButton Chat_callBannerButton--reject"
-              onClick={handleRejectIncomingCall}
-            >
-              Decline
-            </button>
-          </div>
-        </section>
-      ) : null}
       {shouldRenderCallPanel ? (
         <section
           id="Chat_callPanel"
@@ -1551,15 +1544,6 @@ function GlobalCallPanel({
             ref={callControlsRef}
             className={`Chat_callControls fr${showCallControls ? " is-visible" : ""}`}
           >
-            {callState === "incoming" ? (
-              <button
-                type="button"
-                className="Chat_callControlButton Chat_callControlButton--accept"
-                onClick={handleAcceptIncomingCall}
-              >
-                <i className="fas fa-phone-alt"></i>
-              </button>
-            ) : null}
             <button
               type="button"
               className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
