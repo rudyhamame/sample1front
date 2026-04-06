@@ -165,26 +165,26 @@ body.dark #Main_article,
 
 #Home_studysessions_article.Home_themeDark .Home_bioWrapper {
   background:
-    linear-gradient(180deg, rgba(16, 43, 51, 0.98) 0%, rgba(10, 28, 34, 0.96) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(208, 235, 240, 0.08),
-    inset 0 -7px 12px rgba(0, 0, 0, 0.3),
-    0 14px 24px rgba(0, 0, 0, 0.34),
-    0 6px 10px rgba(0, 0, 0, 0.28);
+    linear-gradient(
+      180deg,
+      var(--home-dark-bio-start) 0%,
+      var(--home-dark-bio-end) 100%
+    );
+  box-shadow: var(--home-dark-bio-shadow);
 }
 
 #Home_studysessions_article.Home_themeDark .Home_bioWrapper::before {
   background:
     repeating-linear-gradient(
       90deg,
-      rgba(173, 217, 226, 0.18) 0 26px,
-      rgba(41, 100, 112, 0.22) 26px 52px
+      var(--home-dark-bio-stripe-a) 0 26px,
+      var(--home-dark-bio-stripe-b) 26px 52px
     ),
     linear-gradient(
       180deg,
-      rgba(200, 231, 236, 0.14) 0%,
-      rgba(200, 231, 236, 0.04) 34%,
-      rgba(200, 231, 236, 0) 62%
+      var(--home-dark-bio-glow-a) 0%,
+      var(--home-dark-bio-glow-b) 34%,
+      var(--home-dark-bio-glow-c) 62%
     );
 }
 
@@ -276,19 +276,105 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark {
+  --home-dark-bg-accent-a: rgba(20, 78, 88, 0.22);
+  --home-dark-bg-accent-b: rgba(10, 116, 105, 0.18);
+  --home-dark-bg-base-start: #09161b;
+  --home-dark-bg-base-mid: #0d2026;
+  --home-dark-bg-base-end: #122930;
+  --home-dark-bio-start: rgba(16, 43, 51, 0.98);
+  --home-dark-bio-end: rgba(10, 28, 34, 0.96);
+  --home-dark-bio-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.08),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.3),
+    0 14px 24px rgba(0, 0, 0, 0.34),
+    0 6px 10px rgba(0, 0, 0, 0.28);
+  --home-dark-bio-stripe-a: rgba(173, 217, 226, 0.18);
+  --home-dark-bio-stripe-b: rgba(41, 100, 112, 0.22);
+  --home-dark-bio-glow-a: rgba(200, 231, 236, 0.14);
+  --home-dark-bio-glow-b: rgba(200, 231, 236, 0.04);
+  --home-dark-bio-glow-c: rgba(200, 231, 236, 0);
+  --home-dark-border: rgba(110, 168, 180, 0.22);
+  --home-dark-border-strong: rgba(132, 193, 203, 0.62);
+  --home-dark-panel-start: rgba(14, 36, 44, 0.5);
+  --home-dark-panel-end: rgba(11, 28, 35, 0.42);
+  --home-dark-panel-solid-start: rgba(17, 46, 54, 0.96);
+  --home-dark-panel-solid-end: rgba(11, 33, 40, 0.94);
+  --home-dark-panel-fill: rgba(9, 24, 31, 0.32);
+  --home-dark-profile-bg: rgba(15, 25, 30, 0.7);
+  --home-dark-heading: #eef9fb;
+  --home-dark-subtle-text: rgba(185, 219, 226, 0.62);
+  --home-dark-subtle-text-strong: rgba(187, 220, 226, 0.64);
+  --home-dark-body-text: rgba(236, 245, 247, 0.9);
+  --home-dark-reports-border: rgba(110, 168, 180, 0.26);
+  --home-dark-reports-spot: rgba(171, 219, 227, 0.08);
+  --home-dark-reports-stripe: rgba(86, 137, 146, 0.12);
+  --home-dark-reports-start: rgba(9, 26, 33, 0.5);
+  --home-dark-reports-end: rgba(11, 31, 39, 0.44);
+  --home-dark-reports-shadow:
+    inset 0 1px 0 rgba(196, 230, 236, 0.08),
+    0 18px 34px rgba(0, 0, 0, 0.34);
   background:
     radial-gradient(
       circle at top left,
-      rgba(20, 78, 88, 0.22),
+      var(--home-dark-bg-accent-a),
       transparent 28%
     ),
     radial-gradient(
       circle at 85% 18%,
-      rgba(10, 116, 105, 0.18),
+      var(--home-dark-bg-accent-b),
       transparent 24%
     ),
-    linear-gradient(180deg, #09161b 0%, #0d2026 46%, #122930 100%);
+    linear-gradient(
+      180deg,
+      var(--home-dark-bg-base-start) 0%,
+      var(--home-dark-bg-base-mid) 46%,
+      var(--home-dark-bg-base-end) 100%
+    );
   background-attachment: scroll;
+}
+
+#Home_studysessions_article.Home_themeDark.Home_themeGreen {
+  --home-main-wrapper-dominant: #4f8f69;
+  --home-main-wrapper-soft: #dcefe2;
+  --home-main-wrapper-accent: #b8dbc3;
+  --home-main-wrapper-text: #f5fff8;
+  --home-dark-bg-accent-a: rgba(71, 148, 109, 0.26);
+  --home-dark-bg-accent-b: rgba(109, 176, 96, 0.2);
+  --home-dark-bg-base-start: #071510;
+  --home-dark-bg-base-mid: #0c2118;
+  --home-dark-bg-base-end: #143126;
+  --home-dark-bio-start: rgba(19, 53, 39, 0.98);
+  --home-dark-bio-end: rgba(12, 36, 27, 0.96);
+  --home-dark-bio-shadow:
+    inset 0 1px 0 rgba(224, 245, 232, 0.08),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.32),
+    0 14px 24px rgba(0, 0, 0, 0.34),
+    0 6px 10px rgba(0, 0, 0, 0.28);
+  --home-dark-bio-stripe-a: rgba(180, 226, 196, 0.2);
+  --home-dark-bio-stripe-b: rgba(64, 128, 96, 0.24);
+  --home-dark-bio-glow-a: rgba(210, 241, 219, 0.14);
+  --home-dark-bio-glow-b: rgba(210, 241, 219, 0.04);
+  --home-dark-bio-glow-c: rgba(210, 241, 219, 0);
+  --home-dark-border: rgba(120, 189, 145, 0.24);
+  --home-dark-border-strong: rgba(164, 220, 183, 0.62);
+  --home-dark-panel-start: rgba(18, 45, 33, 0.56);
+  --home-dark-panel-end: rgba(13, 33, 24, 0.48);
+  --home-dark-panel-solid-start: rgba(22, 55, 41, 0.96);
+  --home-dark-panel-solid-end: rgba(14, 37, 28, 0.94);
+  --home-dark-panel-fill: rgba(10, 28, 20, 0.34);
+  --home-dark-profile-bg: rgba(13, 28, 20, 0.72);
+  --home-dark-heading: #f0fff5;
+  --home-dark-subtle-text: rgba(202, 233, 213, 0.7);
+  --home-dark-subtle-text-strong: rgba(210, 237, 219, 0.76);
+  --home-dark-body-text: rgba(241, 250, 244, 0.92);
+  --home-dark-reports-border: rgba(120, 189, 145, 0.3);
+  --home-dark-reports-spot: rgba(177, 225, 192, 0.1);
+  --home-dark-reports-stripe: rgba(103, 154, 120, 0.14);
+  --home-dark-reports-start: rgba(11, 31, 22, 0.54);
+  --home-dark-reports-end: rgba(14, 39, 28, 0.46);
+  --home-dark-reports-shadow:
+    inset 0 1px 0 rgba(220, 242, 227, 0.08),
+    0 18px 34px rgba(0, 0, 0, 0.34);
 }
 
 #Home_topControls {
@@ -768,22 +854,24 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark #Home_preStart_reportsWrapper {
-  border-color: rgba(110, 168, 180, 0.26);
+  border-color: var(--home-dark-reports-border);
   background:
     radial-gradient(
       circle at 16% 14%,
-      rgba(171, 219, 227, 0.08),
+      var(--home-dark-reports-spot),
       transparent 42%
     ),
     repeating-linear-gradient(
       -35deg,
-      rgba(86, 137, 146, 0.12) 0 2px,
+      var(--home-dark-reports-stripe) 0 2px,
       rgba(0, 0, 0, 0) 2px 9px
     ),
-    linear-gradient(180deg, rgba(9, 26, 33, 0.5), rgba(11, 31, 39, 0.44));
-  box-shadow:
-    inset 0 1px 0 rgba(196, 230, 236, 0.08),
-    0 18px 34px rgba(0, 0, 0, 0.34);
+    linear-gradient(
+      180deg,
+      var(--home-dark-reports-start),
+      var(--home-dark-reports-end)
+    );
+  box-shadow: var(--home-dark-reports-shadow);
 }
 
 .Home_preStart_reports .Home_preStart_reportsCard {
@@ -1033,22 +1121,22 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark .Home_editPicButton {
-  border-color: rgba(110, 168, 180, 0.35);
+  border-color: var(--home-dark-border);
   background: linear-gradient(
     180deg,
-    rgba(17, 46, 54, 0.96),
-    rgba(11, 33, 40, 0.94)
+    var(--home-dark-panel-solid-start),
+    var(--home-dark-panel-solid-end)
   );
-  color: rgba(219, 241, 245, 0.92);
+  color: var(--home-dark-body-text);
 }
 
 #Home_studysessions_article.Home_themeDark .Home_editPicButton:hover {
-  border-color: rgba(132, 193, 203, 0.62);
+  border-color: var(--home-dark-border-strong);
 }
 
 #Home_studysessions_article.Home_themeDark #Home_preStart_profileWrapper {
-  background: rgba(15, 25, 30, 0.7);
-  border-color: rgba(110, 168, 180, 0.2);
+  background: var(--home-dark-profile-bg);
+  border-color: var(--home-dark-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 16px 32px rgba(0, 0, 0, 0.28);
@@ -1068,7 +1156,7 @@ body.dark #Main_article,
 /* Removed duplicate overflow property for #Home_main_leftColumn_wrapper */
 
 #Home_studysessions_article.Home_themeDark #Home_preStart_eyebrow {
-  color: rgba(185, 219, 226, 0.62);
+  color: var(--home-dark-subtle-text);
 }
 
 #Home_main_leftColumn_wrapper{
@@ -1090,7 +1178,7 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark #Home_preStart h1 {
-  color: #eef9fb;
+  color: var(--home-dark-heading);
 }
 
 #Home_preStart_personalWrapper {
@@ -1111,11 +1199,11 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark #Home_preStart_personalWrapper {
-  border-color: rgba(110, 168, 180, 0.22);
+  border-color: var(--home-dark-border);
   background: linear-gradient(
     180deg,
-    rgba(14, 36, 44, 0.5),
-    rgba(11, 28, 35, 0.42)
+    var(--home-dark-panel-start),
+    var(--home-dark-panel-end)
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -1141,8 +1229,8 @@ body.dark #Main_article,
 }
 
 #Home_studysessions_article.Home_themeDark #Home_preStart_personalInfoGrid p {
-  border-color: rgba(110, 168, 180, 0.2);
-  background: rgba(9, 24, 31, 0.32);
+  border-color: var(--home-dark-border);
+  background: var(--home-dark-panel-fill);
 }
 
 #Home_preStart_personalInfoGrid span {
@@ -1156,7 +1244,7 @@ body.dark #Main_article,
 #Home_studysessions_article.Home_themeDark
   #Home_preStart_personalInfoGrid
   span {
-  color: rgba(187, 220, 226, 0.64);
+  color: var(--home-dark-subtle-text-strong);
 }
 
 #Home_preStart_personalInfoGrid strong {
@@ -1170,7 +1258,7 @@ body.dark #Main_article,
 #Home_studysessions_article.Home_themeDark
   #Home_preStart_personalInfoGrid
   strong {
-  color: rgba(236, 245, 247, 0.9);
+  color: var(--home-dark-body-text);
 }
 
 /* Flex row for left/right columns inside personal bio */

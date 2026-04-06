@@ -6,7 +6,7 @@ import {
   playNextSharedPlannerMusicTrack as playNextNogaPlannerMusicTrack,
   playPreviousSharedPlannerMusicTrack as playPreviousNogaPlannerMusicTrack,
   toggleSharedPlannerMusic as toggleNogaPlannerMusic,
-} from "../../../SchoolPlanner/NogaPlanner";
+} from "../../../NogaPlan/NogaPlanner";
 
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 

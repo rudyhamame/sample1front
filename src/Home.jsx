@@ -452,6 +452,9 @@ function Home(props) {
   // Determine if the current user is naghamtrkmani
   const isNaghamtrkmani =
     String(props.state?.username || "").toLowerCase() === "naghamtrkmani";
+  const homeThemeClassName = isNaghamtrkmani
+    ? "Home_themeNoga"
+    : "Home_themeGreen";
   // Set background style for everyone except naghamtrkmani
   const baseUrl =
     typeof import.meta !== "undefined" &&
@@ -4065,7 +4068,11 @@ function Home(props) {
     <>
       <article
         id="Home_studysessions_article"
-        className={["Home_themeDark", !isNaghamtrkmani ? "Home_root--bg" : ""]
+        className={[
+          "Home_themeDark",
+          homeThemeClassName,
+          !isNaghamtrkmani ? "Home_root--bg" : "",
+        ]
           .filter(Boolean)
           .join(" ")}
       >

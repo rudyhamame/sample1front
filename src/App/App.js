@@ -9,7 +9,7 @@ import "../home.css";
 import { Route } from "react-router-dom";
 import Home from "../Home";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import NogaPlan from "../SchoolPlanner/NogaPlanner";
+import NogaPlan from "../NogaPlan/NogaPlanner";
 import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import {
   getPlannerMusicSnapshot,
