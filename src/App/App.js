@@ -241,7 +241,12 @@ class App extends React.Component {
         currentSnapshot.isPlaying === nextSnapshot.isPlaying &&
         currentSnapshot.trackTitle === nextSnapshot.trackTitle &&
         currentSnapshot.trackArtist === nextSnapshot.trackArtist &&
-        currentSnapshot.volume === nextSnapshot.volume
+        currentSnapshot.volume === nextSnapshot.volume &&
+        currentSnapshot.audioSignal?.updatedAt === nextSnapshot.audioSignal?.updatedAt &&
+        currentSnapshot.audioSignal?.energy === nextSnapshot.audioSignal?.energy &&
+        currentSnapshot.audioSignal?.pitch === nextSnapshot.audioSignal?.pitch &&
+        currentSnapshot.audioSignal?.tempo === nextSnapshot.audioSignal?.tempo &&
+        currentSnapshot.audioSignal?.pulse === nextSnapshot.audioSignal?.pulse
       ) {
         return null;
       }
@@ -254,6 +259,8 @@ class App extends React.Component {
           trackTitle: nextSnapshot.trackTitle,
           trackArtist: nextSnapshot.trackArtist,
           volume: nextSnapshot.volume,
+          audioSignal:
+            nextSnapshot.audioSignal || currentSnapshot.audioSignal || null,
         },
       };
     });
