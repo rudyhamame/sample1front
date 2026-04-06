@@ -258,7 +258,11 @@ const FriendChat = ({
     "Doctor";
 
   React.useEffect(() => {
-    if (!isGlobalCallActiveForFriend || !globalCallStartedAt) {
+    if (
+      !isGlobalCallActiveForFriend ||
+      globalCallState !== "connected" ||
+      !globalCallStartedAt
+    ) {
       setInlineCallElapsedMs(0);
       return undefined;
     }
@@ -273,7 +277,7 @@ const FriendChat = ({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [globalCallStartedAt, isGlobalCallActiveForFriend]);
+  }, [globalCallStartedAt, globalCallState, isGlobalCallActiveForFriend]);
 
   const syncMediaElements = React.useCallback(() => {
     attachStreamToElement(localAudioRef.current, localStreamRef.current, {

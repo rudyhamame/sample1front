@@ -1,7 +1,11 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { apiUrl } from "../config/api";
-import { attachStreamToElement, stopMediaStream } from "../realtime/webrtcCall";
+import {
+  attachStreamToElement,
+  requestCallMedia,
+  stopMediaStream,
+} from "../realtime/webrtcCall";
 import {
   RoomEvent,
   Track,
@@ -68,6 +72,7 @@ function GlobalCallPanel({
   const remoteVideoRef = React.useRef(null);
   const roomRef = React.useRef(null);
   const localStreamRef = React.useRef(null);
+  const localPreviewStreamRef = React.useRef(null);
   const remoteStreamRef = React.useRef(null);
   const activeCallPartnerRef = React.useRef("");
   const activeRoomNameRef = React.useRef("");
@@ -91,13 +96,15 @@ function GlobalCallPanel({
     "Doctor";
 
   const syncMediaElements = React.useCallback(() => {
+    const activeLocalStream = localStreamRef.current || localPreviewStreamRef.current;
+
     attachStreamToElement(localAudioRef.current, localStreamRef.current, {
       muted: true,
     });
     attachStreamToElement(remoteAudioRef.current, remoteStreamRef.current, {
       muted: false,
     });
-    attachStreamToElement(localVideoRef.current, localStreamRef.current, {
+    attachStreamToElement(localVideoRef.current, activeLocalStream, {
       muted: true,
     });
     attachStreamToElement(remoteVideoRef.current, remoteStreamRef.current, {
@@ -108,6 +115,8 @@ function GlobalCallPanel({
   const resetMediaStreams = React.useCallback(() => {
     stopMediaStream(localStreamRef.current);
     localStreamRef.current = null;
+    stopMediaStream(localPreviewStreamRef.current);
+    localPreviewStreamRef.current = null;
     stopMediaStream(remoteStreamRef.current);
     remoteStreamRef.current = null;
     setLocalStreamVersion((value) => value + 1);
@@ -179,6 +188,19 @@ function GlobalCallPanel({
     [appState?.token],
   );
 
+  const prepareLocalMedia = React.useCallback(async (nextCallMode) => {
+    if (localPreviewStreamRef.current) {
+      return localPreviewStreamRef.current;
+    }
+
+    const previewStream = await requestCallMedia(nextCallMode);
+    localPreviewStreamRef.current = previewStream;
+    setLocalStreamVersion((value) => value + 1);
+    setIsAudioMuted(false);
+    setIsVideoMuted(nextCallMode !== "video");
+    return previewStream;
+  }, []);
+
   const joinRoom = React.useCallback(
     async ({ roomName, partnerUserId, nextCallMode }) => {
       const connection = await fetchLiveKitConnection(roomName, nextCallMode);
@@ -188,6 +210,11 @@ function GlobalCallPanel({
       activeRoomNameRef.current = roomName;
 
       const handleLocalTrackAdded = (track) => {
+        if (localPreviewStreamRef.current) {
+          stopMediaStream(localPreviewStreamRef.current);
+          localPreviewStreamRef.current = null;
+        }
+
         if (addTrackToStream(localStreamRef, track)) {
           setLocalStreamVersion((value) => value + 1);
         }
@@ -310,10 +337,13 @@ function GlobalCallPanel({
         setCallError("");
         setIncomingCall(null);
         setCallMode(nextCallMode);
-        setCallState("calling");
+        setCallState("requesting-media");
         setActiveCallDisplayName(
           getFriendDisplayName(friends, targetUserId, friendName),
         );
+
+        await prepareLocalMedia(nextCallMode);
+        setCallState("calling");
 
         socket.emit("call:offer", {
           toUserId: targetUserId,
@@ -344,6 +374,7 @@ function GlobalCallPanel({
       currentUserId,
       friends,
       getRealtimeSocket,
+      prepareLocalMedia,
       teardownCall,
     ],
   );
@@ -365,7 +396,7 @@ function GlobalCallPanel({
 
       setCallError("");
       setCallMode(incomingCall.callType);
-      setCallState("connecting");
+      setCallState("requesting-media");
       setActiveCallDisplayName(
         getFriendDisplayName(
           friends,
@@ -373,6 +404,9 @@ function GlobalCallPanel({
           incomingCall?.metadata?.fromDisplayName,
         ),
       );
+
+      await prepareLocalMedia(incomingCall.callType);
+      setCallState("connecting");
 
       await joinRoom({
         roomName,
@@ -395,7 +429,14 @@ function GlobalCallPanel({
         nextError: error?.message || "Unable to answer the call.",
       });
     }
-  }, [friends, getRealtimeSocket, incomingCall, joinRoom, teardownCall]);
+  }, [
+    friends,
+    getRealtimeSocket,
+    incomingCall,
+    joinRoom,
+    prepareLocalMedia,
+    teardownCall,
+  ]);
 
   const handleRejectIncomingCall = React.useCallback(() => {
     const socket = getRealtimeSocket?.();
@@ -609,7 +650,7 @@ function GlobalCallPanel({
       activeCallDisplayName:
         activeCallDisplayName ||
         getFriendDisplayName(friends, activeCallPartnerId),
-      callStartedAt,
+      callStartedAt: callState === "connected" ? callStartedAt : null,
       isAudioMuted,
       isVideoMuted,
       toggleMute:
@@ -655,6 +696,8 @@ function GlobalCallPanel({
 
   const showCallControls =
     Boolean(callMode) && callState !== "incoming" && callState !== "idle";
+  const shouldShowVideoMonitor =
+    callMode === "video" && callState === "connected";
 
   return createPortal(
     <React.Fragment>
@@ -715,23 +758,25 @@ function GlobalCallPanel({
                 <div className="Chat_mediaTile Chat_mediaTile--remote Chat_mediaTile--floatingRemote">
                   <video ref={remoteVideoRef} autoPlay playsInline />
                 </div>
-                <div
-                  className="Chat_videoOverlay fc"
-                  style={{
-                    left: `${DEFAULT_VIDEO_OVERLAY_LAYOUT.x}px`,
-                    top: `${DEFAULT_VIDEO_OVERLAY_LAYOUT.y}px`,
-                  }}
-                >
-                  <div className="Chat_videoOverlayHeader fr">
-                    <span className="Chat_videoOverlayHandle">
-                      <i className="fas fa-video"></i>
-                      <span>You</span>
-                    </span>
+                {shouldShowVideoMonitor ? (
+                  <div
+                    className="Chat_videoOverlay fc"
+                    style={{
+                      left: `${DEFAULT_VIDEO_OVERLAY_LAYOUT.x}px`,
+                      top: `${DEFAULT_VIDEO_OVERLAY_LAYOUT.y}px`,
+                    }}
+                  >
+                    <div className="Chat_videoOverlayHeader fr">
+                      <span className="Chat_videoOverlayHandle">
+                        <i className="fas fa-video"></i>
+                        <span>You</span>
+                      </span>
+                    </div>
+                    <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
+                      <video ref={localVideoRef} autoPlay playsInline muted />
+                    </div>
                   </div>
-                  <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
-                    <video ref={localVideoRef} autoPlay playsInline muted />
-                  </div>
-                </div>
+                ) : null}
               </>
             ) : (
               <>
