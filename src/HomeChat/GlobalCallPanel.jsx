@@ -698,11 +698,22 @@ function GlobalCallPanel({
     Boolean(callMode) && callState !== "incoming" && callState !== "idle";
   const shouldShowVideoMonitor =
     callMode === "video" && callState === "connected";
+  const shouldMountHiddenLocalVideoElement =
+    callMode === "video" && !shouldShowVideoMonitor;
 
   return createPortal(
     <React.Fragment>
       <audio ref={remoteAudioRef} autoPlay playsInline />
       <audio ref={localAudioRef} autoPlay playsInline muted />
+      {shouldMountHiddenLocalVideoElement ? (
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ display: "none" }}
+        />
+      ) : null}
       {incomingCall ? (
         <section id="Chat_incomingCallBanner" className="fc">
           <strong>
@@ -773,7 +784,7 @@ function GlobalCallPanel({
                       </span>
                     </div>
                     <div className="Chat_mediaTile Chat_mediaTile--local Chat_mediaTile--floatingLocal">
-                      <video ref={localVideoRef} autoPlay playsInline muted />
+                      <video autoPlay playsInline muted ref={localVideoRef} />
                     </div>
                   </div>
                 ) : null}
