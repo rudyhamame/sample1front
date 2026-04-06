@@ -484,13 +484,13 @@ export const drawHomeLedRopePath = (
     fallbackTime: Math.max(0, Number(musicSignal?.fallbackTime) || 0),
   };
   const reactiveGlowBoost =
-    normalizedMusicSignal.energy * 0.38 +
-    normalizedMusicSignal.pitch * 0.18 +
-    normalizedMusicSignal.pulse * 0.22;
+    normalizedMusicSignal.energy * 0.54 +
+    normalizedMusicSignal.pitch * 0.24 +
+    normalizedMusicSignal.pulse * 0.34;
   const reactiveTempoSwing =
-    0.9 +
-    normalizedMusicSignal.tempo * 0.24 +
-    normalizedMusicSignal.pulse * 0.1;
+    0.96 +
+    normalizedMusicSignal.tempo * 0.34 +
+    normalizedMusicSignal.pulse * 0.16;
 
   context.save();
   context.beginPath();
@@ -502,16 +502,16 @@ export const drawHomeLedRopePath = (
   context.lineJoin = "round";
   context.strokeStyle = String(palette.stroke || "").replace("0.96", "0.34");
   context.lineWidth = ropeWidth * reactiveTempoSwing;
-  context.shadowBlur = 14 + reactiveGlowBoost * 16;
+  context.shadowBlur = 16 + reactiveGlowBoost * 24;
   context.shadowColor = palette.glow;
-  context.globalAlpha = 0.82 + normalizedMusicSignal.energy * 0.16;
+  context.globalAlpha = 0.84 + normalizedMusicSignal.energy * 0.24;
   context.stroke();
 
-  context.shadowBlur = 6;
+  context.shadowBlur = 7 + normalizedMusicSignal.pulse * 4;
   context.shadowColor = palette.bulb;
   context.strokeStyle = "rgba(255, 255, 255, 0.12)";
   context.lineWidth = Math.max(0.38, ropeWidth * 0.18);
-  context.globalAlpha = 0.58 + normalizedMusicSignal.pitch * 0.18;
+  context.globalAlpha = 0.62 + normalizedMusicSignal.pitch * 0.24;
   context.stroke();
   context.restore();
 
@@ -525,7 +525,7 @@ export const drawHomeLedRopePath = (
   context.lineJoin = "round";
   context.strokeStyle = String(palette.stroke || "").replace("0.96", "0.22");
   context.lineWidth = Math.max(0.9, ropeWidth);
-  context.globalAlpha = 0.35 + normalizedMusicSignal.energy * 0.16;
+  context.globalAlpha = 0.38 + normalizedMusicSignal.energy * 0.24;
   context.stroke();
   context.restore();
 
@@ -535,33 +535,33 @@ export const drawHomeLedRopePath = (
       bulbIndex * (0.48 + normalizedMusicSignal.pitch * 0.22);
     const bulbWave = (Math.sin(bulbPhase) + 1) / 2;
     const bulbIntensity =
-      0.48 +
-      normalizedMusicSignal.energy * 0.34 +
-      normalizedMusicSignal.pitch * 0.12 +
-      normalizedMusicSignal.pulse * 0.2 +
-      bulbWave * (0.08 + normalizedMusicSignal.tempo * 0.08);
+      0.62 +
+      normalizedMusicSignal.energy * 0.46 +
+      normalizedMusicSignal.pitch * 0.18 +
+      normalizedMusicSignal.pulse * 0.28 +
+      bulbWave * (0.16 + normalizedMusicSignal.tempo * 0.16);
     const glowRadius =
       radius *
-      (0.92 + normalizedMusicSignal.energy * 0.32 + normalizedMusicSignal.pulse * 0.16);
+      (1.04 + normalizedMusicSignal.energy * 0.5 + normalizedMusicSignal.pulse * 0.24);
     const coreRadius =
       Math.max(
         0.55,
-        radius * (0.42 + normalizedMusicSignal.pitch * 0.12 + bulbWave * 0.08),
+        radius * (0.5 + normalizedMusicSignal.pitch * 0.18 + bulbWave * 0.12),
       );
 
     context.save();
     context.beginPath();
     context.fillStyle = palette.bulb;
     context.globalAlpha = Math.min(1, bulbIntensity);
-    context.shadowBlur = 24 + bulbIntensity * 22 + normalizedMusicSignal.tempo * 8;
+    context.shadowBlur = 28 + bulbIntensity * 28 + normalizedMusicSignal.tempo * 12;
     context.shadowColor = palette.glow;
     context.arc(bulbPoint.x, bulbPoint.y, glowRadius, 0, Math.PI * 2);
     context.fill();
 
     context.beginPath();
     context.fillStyle = "rgba(255, 255, 255, 0.72)";
-    context.globalAlpha = 0.76 + bulbWave * 0.16;
-    context.shadowBlur = 10 + normalizedMusicSignal.pitch * 10;
+    context.globalAlpha = Math.min(1, 0.82 + bulbWave * 0.22);
+    context.shadowBlur = 12 + normalizedMusicSignal.pitch * 14;
     context.shadowColor = palette.bulb;
     context.arc(bulbPoint.x, bulbPoint.y, coreRadius, 0, Math.PI * 2);
     context.fill();

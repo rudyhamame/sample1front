@@ -1030,15 +1030,53 @@ function Home(props) {
 
       const palette = resolveHomeDrawingPalette(segment);
       const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
-      const isMusicReactive = Boolean(
-        props.state?.planner_music?.isPlaying &&
-        (homeMusicSignal.energy > 0.02 ||
-          homeMusicSignal.pitch > 0.02 ||
-          homeMusicSignal.tempo > 0.02),
-      );
+      const nowSeconds =
+        typeof performance !== "undefined" ? performance.now() / 1000 : Date.now() / 1000;
+      const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
+      const signalAgeMs =
+        signalUpdatedAt > 0 ? Math.max(0, Date.now() - signalUpdatedAt) : Number.POSITIVE_INFINITY;
+      const hasFreshSignal = signalAgeMs < 1400;
+      const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
+      const effectiveMusicSignal = props.state?.planner_music?.isPlaying
+        ? {
+            energy: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
+              0.2 + fallbackBeat * 0.18,
+            ),
+            bass: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
+              0.24 + fallbackBeat * 0.22,
+            ),
+            mid: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
+              0.16 + fallbackBeat * 0.14,
+            ),
+            treble: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
+              0.12 + fallbackBeat * 0.12,
+            ),
+            pitch: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
+              0.18 + fallbackBeat * 0.16,
+            ),
+            tempo: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
+              0.24 + fallbackBeat * 0.12,
+            ),
+            pulse: Math.max(
+              hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
+              0.3 + fallbackBeat * 0.32,
+            ),
+            fallbackTime:
+              hasFreshSignal && Number.isFinite(Number(homeMusicSignal.fallbackTime))
+                ? Number(homeMusicSignal.fallbackTime)
+                : nowSeconds,
+            updatedAt: signalUpdatedAt || Date.now(),
+          }
+        : null;
 
       drawHomeLedRopePath(appliedContext, smoothedPoints, palette, {
-        musicSignal: isMusicReactive ? homeMusicSignal : null,
+        musicSignal: effectiveMusicSignal,
       });
     });
 
