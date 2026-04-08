@@ -62,17 +62,60 @@
 
 .telegramControlPage_grid {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(340px, 0.9fr);
+  grid-template-areas: "controls predictions stream";
   gap: 16px;
   min-height: 0;
   flex: 1 1 auto;
 }
 
 .telegramControlPage_leftColumn {
+  grid-area: controls;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+}
+
+.telegramControlPage_card--predictions {
+  grid-area: predictions;
+}
+
+.telegramControlPage_card--stream {
+  grid-area: stream;
+  min-height: 0;
+}
+
+
+
+.telegramControlPage_mountLabel {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(17, 72, 81, 0.74);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.telegramControlPage_mountLabel:hover {
+  transform: translateY(-1px);
+}
+
+.telegramControlPage_mountLabel.is-active {
+  background: linear-gradient(135deg, #1cc7b4, #1693a1);
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(59, 100, 109, 0.14);
 }
 
 .telegramControlPage_card {
@@ -80,6 +123,7 @@
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  flex: 1 1 auto;
   padding: 16px;
   border-radius: 22px;
   border: 1px solid rgba(112, 158, 168, 0.18);
@@ -88,7 +132,17 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
     0 18px 34px rgba(59, 100, 109, 0.08);
   backdrop-filter: blur(16px);
-  overflow: scroll;
+  overflow: auto;
+}
+
+.telegramControlPage_card--control,
+.telegramControlPage_card--predictions {
+  max-height: min(72vh, 920px);
+}
+
+.telegramControlPage_card--predictions,
+.telegramControlPage_card--stream {
+  height: min(72vh, 920px);
 }
 
 .telegramControlPage_cardHeader {
@@ -96,6 +150,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.telegramControlPage_controlCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .telegramControlPage_cardHeader h2,
@@ -135,6 +195,7 @@
   color: rgba(16, 63, 71, 0.94);
   outline: none;
   box-sizing: border-box;
+  font-size: 0.78rem;
 }
 
 .telegramControlPage_input:focus {
@@ -260,28 +321,141 @@
   gap: 10px;
 }
 
-.telegramControlPage_dependencyChecklist {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.telegramControlPage_predictionTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.telegramControlPage_predictionTab {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(112, 158, 168, 0.16);
+  border-radius: 999px;
+  background: rgba(240, 247, 248, 0.94);
+  color: rgba(17, 72, 81, 0.84);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.telegramControlPage_predictionTab.is-active {
+  background: linear-gradient(135deg, #1cc7b4, #1693a1);
+  border-color: rgba(22, 147, 161, 0.36);
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(59, 100, 109, 0.12);
+}
+
+.telegramControlPage_dependencyPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.telegramControlPage_dependencySection {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.telegramControlPage_dependencyItem {
+.telegramControlPage_dependencySectionTitle {
+  color: rgba(24, 113, 118, 0.68);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.telegramControlPage_dependencyChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.telegramControlPage_dependencyToken {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(244, 249, 249, 0.92);
-  border: 1px solid rgba(112, 158, 168, 0.14);
-  color: rgba(17, 72, 81, 0.86);
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(112, 158, 168, 0.26);
+  background: rgba(246, 251, 251, 0.95);
+  color: rgba(17, 72, 81, 0.88);
   font-size: 0.66rem;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.telegramControlPage_dependencyToken:hover {
+  border-color: rgba(28, 199, 180, 0.45);
+  background: rgba(239, 249, 249, 0.98);
+  box-shadow: 0 6px 14px rgba(59, 100, 109, 0.07);
+}
+
+.telegramControlPage_dependencyToken.is-active {
+  border-style: solid;
+  border-color: rgba(22, 147, 161, 0.4);
+  background: rgba(228, 248, 246, 0.95);
+  color: rgba(12, 92, 103, 0.96);
+}
+
+.telegramControlPage_dependencyTokenInput {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #1ba6b0;
+  cursor: pointer;
+}
+
+.telegramControlPage_dependencyChip {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 158, 168, 0.16);
+  background: rgba(244, 249, 249, 0.92);
+  color: rgba(17, 72, 81, 0.88);
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.telegramControlPage_dependencyChip:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(34, 207, 187, 0.32);
+  box-shadow: 0 10px 18px rgba(59, 100, 109, 0.08);
+}
+
+.telegramControlPage_dependencyChip.is-active {
+  background: linear-gradient(135deg, #1cc7b4, #1693a1);
+  border-color: rgba(22, 147, 161, 0.36);
+  color: #ffffff;
 }
 
 .telegramControlPage_dependencyAddRow,
 .telegramControlPage_sectionTitleRow {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.telegramControlPage_inlineActions {
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -330,6 +504,108 @@
   border-radius: 14px;
   background: rgba(245, 250, 250, 0.92);
   border: 1px solid rgba(112, 158, 168, 0.14);
+}
+
+.telegramControlPage_predictionCardTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.telegramControlPage_predictionCardInfo {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.telegramControlPage_decisionToggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 158, 168, 0.16);
+  background: rgba(240, 247, 248, 0.96);
+}
+
+.telegramControlPage_decisionButton {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.telegramControlPage_decisionButton:hover {
+  transform: translateY(-1px);
+}
+
+.telegramControlPage_decisionButton--accept {
+  color: rgba(12, 111, 83, 0.92);
+  background: rgba(28, 199, 180, 0.12);
+}
+
+.telegramControlPage_decisionButton--reject {
+  color: rgba(151, 61, 61, 0.9);
+  background: rgba(217, 114, 114, 0.12);
+}
+
+.telegramControlPage_predictionCard--rejected {
+  opacity: 0.82;
+  border-style: dashed;
+}
+
+.telegramControlPage_predictionCard--stored {
+  border-color: rgba(24, 113, 118, 0.2);
+  background: rgba(240, 247, 248, 0.9);
+}
+
+.telegramControlPage_rejectedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(112, 158, 168, 0.18);
+}
+
+.telegramControlPage_predictionMeta {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.telegramControlPage_predictionMetaRow {
+  display: grid;
+  gap: 2px;
+}
+
+.telegramControlPage_predictionMetaRow strong {
+  color: rgba(24, 113, 118, 0.76);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.telegramControlPage_predictionMetaRow span {
+  color: rgba(16, 63, 71, 0.92);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .telegramControlPage_conceptCard ul,
@@ -430,6 +706,27 @@
   word-break: break-word;
 }
 
+.telegramControlPage_streamControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(112, 158, 168, 0.14);
+  background: rgba(243, 249, 249, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.telegramControlPage_streamControlsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telegramControlPage_streamControlsRow .telegramControlPage_input {
+  flex: 1 1 auto;
+}
+
 .telegramControlPage_stream {
   display: flex;
   flex: 1 1 auto;
@@ -526,6 +823,10 @@
 
   .telegramControlPage_grid {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "controls"
+      "predictions"
+      "stream";
   }
 
   .telegramControlPage_card--stream {
@@ -533,8 +834,7 @@
   }
 
   .telegramControlPage_toggleRow,
-  .telegramControlPage_dateGrid,
-  .telegramControlPage_dependencyChecklist {
+  .telegramControlPage_dateGrid {
     grid-template-columns: 1fr;
   }
 
@@ -542,5 +842,14 @@
   .telegramControlPage_sectionTitleRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .telegramControlPage_streamControlsRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .telegramControlPage_predictionCardTopRow {
+    flex-direction: column;
   }
 }

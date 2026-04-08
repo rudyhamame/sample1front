@@ -1,15 +1,15 @@
-﻿//...........import..................
+//...........import..................
 import React from "react";
 
 //........import CSS...........
 import "./App.css";
 import "../Nav/Notifications/notifications.css";
 import "../Nav/nav.css";
-import "../home.css";
 import { Route } from "react-router-dom";
-import Home from "../Home";
+import Home from "../Home/Home";
+import HomeNoga from "../Home/Home_noga";
 import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import NogaPlan from "../NogaPlan/NogaPlanner";
+import NogaPlan from "../NogaPlan/NogaPlanner.jsx";
 import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import {
   getPlannerMusicSnapshot,
@@ -241,12 +241,7 @@ class App extends React.Component {
         currentSnapshot.isPlaying === nextSnapshot.isPlaying &&
         currentSnapshot.trackTitle === nextSnapshot.trackTitle &&
         currentSnapshot.trackArtist === nextSnapshot.trackArtist &&
-        currentSnapshot.volume === nextSnapshot.volume &&
-        currentSnapshot.audioSignal?.updatedAt === nextSnapshot.audioSignal?.updatedAt &&
-        currentSnapshot.audioSignal?.energy === nextSnapshot.audioSignal?.energy &&
-        currentSnapshot.audioSignal?.pitch === nextSnapshot.audioSignal?.pitch &&
-        currentSnapshot.audioSignal?.tempo === nextSnapshot.audioSignal?.tempo &&
-        currentSnapshot.audioSignal?.pulse === nextSnapshot.audioSignal?.pulse
+        currentSnapshot.volume === nextSnapshot.volume
       ) {
         return null;
       }
@@ -259,8 +254,6 @@ class App extends React.Component {
           trackTitle: nextSnapshot.trackTitle,
           trackArtist: nextSnapshot.trackArtist,
           volume: nextSnapshot.volume,
-          audioSignal:
-            nextSnapshot.audioSignal || currentSnapshot.audioSignal || null,
         },
       };
     });
@@ -483,9 +476,7 @@ class App extends React.Component {
   };
 
   handleChatRead = ({ friendId, readerUserId }) => {
-    const normalizedFriendId = String(
-      readerUserId || friendId || "",
-    ).trim();
+    const normalizedFriendId = String(readerUserId || friendId || "").trim();
 
     if (!normalizedFriendId) {
       return;
@@ -497,7 +488,9 @@ class App extends React.Component {
           if (
             String(message?._id || "").trim() !== normalizedFriendId ||
             String(message?.from || "").trim() !== "me" ||
-            String(message?.status || "").trim().toLowerCase() === "read"
+            String(message?.status || "")
+              .trim()
+              .toLowerCase() === "read"
           ) {
             return message;
           }
@@ -1545,13 +1538,13 @@ class App extends React.Component {
         status.className = "Chat_messageStatus";
 
         if (message.status === "read") {
-          status.textContent = "âœ“âœ“";
+          status.textContent = "Ã¢Å“â€œÃ¢Å“â€œ";
           status.classList.add("Chat_messageStatus--read");
         } else if (message.status === "received") {
-          status.textContent = "âœ“âœ“";
+          status.textContent = "Ã¢Å“â€œÃ¢Å“â€œ";
           status.classList.add("Chat_messageStatus--received");
         } else {
-          status.textContent = "âœ“";
+          status.textContent = "Ã¢Å“â€œ";
           status.classList.add("Chat_messageStatus--sent");
         }
 
@@ -2954,7 +2947,9 @@ class App extends React.Component {
         </p>
         <div
           id="server_answer_musicPlayer"
-          className={!plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""}
+          className={
+            !plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""
+          }
         >
           <button
             type="button"
@@ -3010,9 +3005,7 @@ class App extends React.Component {
               title={`${plannerMusic.trackTitle || "Planner Music"} - ${plannerMusic.trackArtist || "Internet Archive"}`}
             >
               {plannerMusic.trackTitle || "Planner Music"}
-              {plannerMusic.trackArtist
-                ? ` / ${plannerMusic.trackArtist}`
-                : ""}
+              {plannerMusic.trackArtist ? ` / ${plannerMusic.trackArtist}` : ""}
             </span>
           </div>
         </div>
@@ -3031,13 +3024,33 @@ class App extends React.Component {
 
     return (
       <React.Fragment>
-        <Route exact path="/">
-          <article
-            id="app_page"
-            className={`${appPageClassName} app_page--home-dark`}
-          >
+        <Route exact path="/phenomed/home">
+          <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <Home
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                makeNotificationsRead={this.makeNotificationsRead}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                sendToThemMessage={this.sendToThemMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
+                markMessagesRead={this.markMessagesRead}
+                serverReply={this.serverReply}
+                requestGlobalCall={this.requestGlobalCall}
+                setAppFooterHidden={this.setAppFooterHidden}
+                setUserAcademicInfo={this.setUserAcademicInfo}
+                setUserMediaInfo={this.setUserMediaInfo}
+              />
+            </main>
+            {showServerAnswerFooter ? serverAnswerFooter : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/home/noga">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <HomeNoga
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
@@ -3076,6 +3089,7 @@ class App extends React.Component {
           <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
               <NogaPlan
+                locale="ar"
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}

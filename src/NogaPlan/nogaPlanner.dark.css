@@ -1,0 +1,288 @@
+/* =============================================
+   NogaPlanner — Dark Theme
+   All body.dark / .dark overrides in one place.
+   Imported alongside nogaPlanner.css.
+   ============================================= */
+
+/* Dark palette variables */
+:root {
+  --nogaPlanner-dark-bg-start: #09161b;
+  --nogaPlanner-dark-bg-mid: #0d2026;
+  --nogaPlanner-dark-bg-end: #122930;
+  --nogaPlanner-dark-panel-start: rgba(14, 36, 44, 0.5);
+  --nogaPlanner-dark-panel-end: rgba(11, 28, 35, 0.42);
+  --nogaPlanner-dark-card-start: rgba(17, 46, 54, 0.96);
+  --nogaPlanner-dark-card-end: rgba(11, 33, 40, 0.94);
+  --nogaPlanner-dark-card-strong-start: rgba(23, 65, 76, 0.98);
+  --nogaPlanner-dark-card-strong-end: rgba(14, 39, 48, 0.96);
+  --nogaPlanner-dark-border: rgba(110, 168, 180, 0.22);
+  --nogaPlanner-dark-border-strong: rgba(132, 193, 203, 0.62);
+  --nogaPlanner-dark-ink: rgba(236, 245, 247, 0.9);
+  --nogaPlanner-dark-heading: #eef9fb;
+  --nogaPlanner-dark-subtle: rgba(185, 219, 226, 0.62);
+  --nogaPlanner-dark-accent: #88d4c7;
+  --nogaPlanner-dark-accent-strong: #7ed8e8;
+  --nogaPlanner-dark-pill: rgba(12, 35, 43, 0.8);
+  --nogaPlanner-dark-chip-text: #dcf5f7;
+  --nogaPlanner-dark-input-bg: rgba(9, 24, 31, 0.54);
+  --nogaPlanner-dark-input-border: rgba(110, 168, 180, 0.22);
+  --nogaPlanner-dark-overlay: rgba(4, 11, 14, 0.46);
+}
+
+/* Semantic variables — switched to dark palette */
+body.dark #nogaPlanner_article,
+.dark #nogaPlanner_article {
+  --nogaPlanner-page-bg-start: var(--nogaPlanner-dark-bg-start);
+  --nogaPlanner-page-bg-mid: var(--nogaPlanner-dark-bg-mid);
+  --nogaPlanner-page-bg-end: var(--nogaPlanner-dark-bg-end);
+  --nogaPlanner-panel-start: var(--nogaPlanner-dark-panel-start);
+  --nogaPlanner-panel-end: var(--nogaPlanner-dark-panel-end);
+  --nogaPlanner-card-start: var(--nogaPlanner-dark-card-start);
+  --nogaPlanner-card-end: var(--nogaPlanner-dark-card-end);
+  --nogaPlanner-card-strong-start: var(--nogaPlanner-dark-card-strong-start);
+  --nogaPlanner-card-strong-end: var(--nogaPlanner-dark-card-strong-end);
+  --nogaPlanner-border: var(--nogaPlanner-dark-border);
+  --nogaPlanner-border-strong: var(--nogaPlanner-dark-border-strong);
+  --nogaPlanner-ink: var(--nogaPlanner-dark-ink);
+  --nogaPlanner-heading: var(--nogaPlanner-dark-heading);
+  --nogaPlanner-subtle: var(--nogaPlanner-dark-subtle);
+  --nogaPlanner-accent: var(--nogaPlanner-dark-accent);
+  --nogaPlanner-accent-strong: var(--nogaPlanner-dark-accent-strong);
+  --nogaPlanner-pill: var(--nogaPlanner-dark-pill);
+  --nogaPlanner-chip-text: var(--nogaPlanner-dark-chip-text);
+  --nogaPlanner-input-bg: var(--nogaPlanner-dark-input-bg);
+  --nogaPlanner-input-border: var(--nogaPlanner-dark-input-border);
+  --nogaPlanner-overlay: var(--nogaPlanner-dark-overlay);
+  --nogaPlanner-bg-overlay-start: rgba(9, 26, 33, 0.54);
+  --nogaPlanner-bg-overlay-end: rgba(11, 31, 39, 0.5);
+  --nogaPlanner-bg-image: none;
+  background-color: var(--nogaPlanner-page-bg-mid);
+  background-image:
+    radial-gradient(circle at 12% 9%, rgba(20, 78, 88, 0.22), transparent 30%),
+    radial-gradient(circle at 85% 18%, rgba(10, 116, 105, 0.18), transparent 26%),
+    linear-gradient(
+      180deg,
+      var(--nogaPlanner-page-bg-start) 0%,
+      var(--nogaPlanner-page-bg-mid) 48%,
+      var(--nogaPlanner-page-bg-end) 100%
+    );
+  background-size: cover;
+  background-position: center;
+}
+
+/* Input focus ring */
+body.dark #nogaPlanner_article input:focus,
+body.dark #nogaPlanner_article select:focus,
+body.dark #nogaPlanner_article textarea:focus,
+.dark #nogaPlanner_article input:focus,
+.dark #nogaPlanner_article select:focus,
+.dark #nogaPlanner_article textarea:focus {
+  box-shadow: 0 0 0 3px rgba(126, 216, 232, 0.16);
+}
+
+/* Panel shadows */
+body.dark #nogaPlanner_courses_aside,
+body.dark #nogaPlanner_lectures_section,
+body.dark #nogaPlanner_exam_section,
+body.dark #nogaPlanner_plan_scheduleBoard,
+body.dark #nogaPlanner_lectureDetailsCard,
+.dark #nogaPlanner_courses_aside,
+.dark #nogaPlanner_lectures_section,
+.dark #nogaPlanner_exam_section,
+.dark #nogaPlanner_plan_scheduleBoard,
+.dark #nogaPlanner_lectureDetailsCard {
+  box-shadow: var(--nogaPlanner-shadow-dark);
+}
+
+/* Exam meta card */
+body.dark .nogaPlanner_exam_metaItem,
+.dark .nogaPlanner_exam_metaItem {
+  background: rgba(9, 24, 31, 0.38);
+}
+
+/* Lecture progress bar */
+body.dark #nogaPlanner_lectureDetailsProgressBar,
+.dark #nogaPlanner_lectureDetailsProgressBar {
+  background: rgba(9, 24, 31, 0.46);
+}
+
+/* Wrapper tabs modernized */
+body.dark .nogaPlanner_wrapperTabs,
+.dark .nogaPlanner_wrapperTabs {
+  border-color: rgba(110, 168, 180, 0.26);
+  background: rgba(11, 28, 35, 0.62);
+  backdrop-filter: blur(10px) saturate(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(196, 230, 236, 0.12),
+    0 12px 24px rgba(0, 0, 0, 0.32);
+}
+
+body.dark .nogaPlanner_wrapperTabBtn,
+.dark .nogaPlanner_wrapperTabBtn {
+  background: linear-gradient(
+    180deg,
+    rgba(23, 65, 76, 0.95) 0%,
+    rgba(14, 39, 48, 0.95) 100%
+  );
+  border: 1px solid rgba(132, 193, 203, 0.28);
+  color: var(--nogaPlanner-chip-text);
+}
+
+body.dark .nogaPlanner_wrapperTabBtn--active,
+.dark .nogaPlanner_wrapperTabBtn--active {
+  box-shadow:
+    0 0 0 2px rgba(136, 212, 199, 0.28),
+    0 10px 20px rgba(0, 0, 0, 0.34);
+}
+
+/* Main cards */
+body.dark #nogaPlanner_courses_aside,
+body.dark #nogaPlanner_lectures_section,
+body.dark #nogaPlanner_exam_section,
+body.dark #nogaPlanner_plan_scheduleBoard,
+body.dark #nogaPlanner_lectureDetailsCard,
+.dark #nogaPlanner_courses_aside,
+.dark #nogaPlanner_lectures_section,
+.dark #nogaPlanner_exam_section,
+.dark #nogaPlanner_plan_scheduleBoard,
+.dark #nogaPlanner_lectureDetailsCard {
+  border-color: rgba(110, 168, 180, 0.24);
+  background:
+    linear-gradient(180deg, rgba(196, 230, 236, 0.09), rgba(196, 230, 236, 0.02)),
+    linear-gradient(180deg, rgba(17, 46, 54, 0.9), rgba(11, 33, 40, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(196, 230, 236, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.72),
+    0 20px 34px rgba(0, 0, 0, 0.34),
+    0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+body.dark #nogaPlanner_courses_aside,
+.dark #nogaPlanner_courses_aside {
+  background: linear-gradient(180deg, rgba(17, 46, 54, 0.9), rgba(11, 33, 40, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(196, 230, 236, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.72);
+}
+
+/* Table shell and header */
+
+body.dark .nogaPlanner_tabTable,
+.dark .nogaPlanner_tabTable {
+  background: transparent;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 168, 180, 0.22);
+  box-shadow: none;
+}
+
+body.dark .nogaPlanner_tabTable thead tr,
+.dark .nogaPlanner_tabTable thead tr {
+  background: rgba(8, 20, 26, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(220, 244, 249, 0.14),
+    inset 0 -1px 0 rgba(136, 212, 199, 0.32);
+}
+
+body.dark .nogaPlanner_tabTable th,
+.dark .nogaPlanner_tabTable th {
+  color: rgba(242, 251, 255, 0.98);
+  text-shadow: none;
+}
+
+body.dark .nogaPlanner_tabTable td,
+.dark .nogaPlanner_tabTable td {
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--nogaPlanner-ink);
+  border-bottom-color: rgba(110, 168, 180, 0.08);
+  background: rgba(11, 33, 40, 0.4);
+  box-shadow: none;
+}
+
+body.dark .nogaPlanner_tabTable th,
+body.dark .nogaPlanner_tabTable td,
+.dark .nogaPlanner_tabTable th,
+.dark .nogaPlanner_tabTable td {
+  border-right: 1px solid rgba(110, 168, 180, 0.26);
+}
+
+body.dark .nogaPlanner_tabTable th:nth-last-child(2),
+body.dark .nogaPlanner_tabTable td:nth-last-child(2),
+.dark .nogaPlanner_tabTable th:nth-last-child(2),
+.dark .nogaPlanner_tabTable td:nth-last-child(2) {
+  border-right: 1px solid rgba(136, 212, 199, 0.4);
+}
+
+body.dark .nogaPlanner_tabTableRow:hover,
+.dark .nogaPlanner_tabTableRow:hover {
+  background: rgba(126, 216, 232, 0.1);
+  box-shadow:
+    inset 3px 0 0 rgba(136, 212, 199, 0.82),
+    0 8px 16px rgba(0, 0, 0, 0.34);
+}
+
+body.dark .nogaPlanner_tabTableRow,
+.dark .nogaPlanner_tabTableRow {
+  height: auto;
+  max-height: max-content;
+}
+
+body.dark .nogaPlanner_tabTableRow.selected,
+.dark .nogaPlanner_tabTableRow.selected {
+  background: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 4px 0 0 rgba(136, 212, 199, 0.95),
+    inset 0 1px 0 rgba(208, 235, 240, 0.16),
+    0 12px 20px rgba(0, 0, 0, 0.36);
+}
+
+body.dark .nogaPlanner_inlineCourseForm,
+.dark .nogaPlanner_inlineCourseForm {
+  border-color: rgba(110, 168, 180, 0.28);
+  background:
+    linear-gradient(180deg, rgba(20, 56, 66, 0.92), rgba(11, 33, 40, 0.9)),
+    rgba(11, 33, 40, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .nogaPlanner_inlineCourseFormTitle,
+.dark .nogaPlanner_inlineCourseFormTitle {
+  color: rgba(242, 251, 255, 0.98);
+}
+
+body.dark .nogaPlanner_inlineCourseFormField span,
+.dark .nogaPlanner_inlineCourseFormField span {
+  color: rgba(210, 235, 240, 0.9);
+}
+
+body.dark .nogaPlanner_inlineCourseFormField input,
+.dark .nogaPlanner_inlineCourseFormField input {
+  background: rgba(8, 24, 31, 0.92);
+  color: var(--nogaPlanner-ink);
+  border-color: rgba(110, 168, 180, 0.3);
+}
+
+/* Action and utility buttons */
+body.dark #nogaPlanner_article button,
+body.dark .nogaPlanner_telegramSendButton,
+body.dark #nogaPlanner_addLecture_div label,
+body.dark #nogaPlanner_addLecture_div [role="button"],
+.dark #nogaPlanner_article button,
+.dark .nogaPlanner_telegramSendButton,
+.dark #nogaPlanner_addLecture_div label,
+.dark #nogaPlanner_addLecture_div [role="button"] {
+  background: linear-gradient(180deg, rgba(23, 65, 76, 0.95), rgba(14, 39, 48, 0.95));
+  border: 1px solid rgba(132, 193, 203, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.18),
+    0 12px 22px rgba(0, 0, 0, 0.34);
+}
+
+body.dark #nogaPlanner_article button:hover,
+body.dark .nogaPlanner_telegramSendButton:hover,
+.dark #nogaPlanner_article button:hover,
+.dark .nogaPlanner_telegramSendButton:hover {
+  filter: saturate(1.1) brightness(1.06);
+}

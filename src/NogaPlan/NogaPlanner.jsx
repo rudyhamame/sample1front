@@ -1,107 +1,22 @@
-//..............IMPORT................
+﻿//..............IMPORT................
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import "./nogaPlanner.css";
+import "./nogaPlanner.dark.css";
 import { apiUrl } from "../config/api";
-import PdfReaderModal from "../App/components/pdf-reader/PdfReaderModal";
-import {
-  getStoredPdfReaderState,
-  setStoredPdfReaderState,
-} from "../utils/pdfReaderState";
-//.........VARIABLES................
+import Nav from "../Nav/Nav";
+import { getHomeSubApps } from "../utils/homeSubApps";
+
 var courses = [];
 var lectures = [];
 var courses_partOfPlan = [];
+var course_pages = [];
 var checkedLectures = [];
 var checkedCourses = [];
-var courseDayAndTime = [];
-var courseExams = [];
-var lectureOutlines = [];
 var courseNames = [];
 var courseNames_filtered = [];
 var courseInstructorsNames = [];
 var courseInstructorsNames_filtered = [];
-var target_editCourse;
-var selectedLecture;
-var course_pages = [];
-var lectureInEdit = {};
-var lectureCorrections = [];
-const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY = "nogaPlanner_reduce_motion";
-const NOGA_RING_VIDEO_DEFAULT_URL = "";
-const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
-
-let sharedPlannerMusicController = null;
-let sharedPlannerMusicSnapshot = {
-  isReady: false,
-  isPlaying: false,
-  trackTitle: "Planner Music",
-  trackArtist: "Internet Archive",
-  volume: 0.42,
-  audioSignal: {
-    energy: 0,
-    bass: 0,
-    mid: 0,
-    treble: 0,
-    pitch: 0,
-    tempo: 0,
-    pulse: 0,
-    fallbackTime: 0,
-    updatedAt: 0,
-  },
-};
-
-const emitPlannerMusicSnapshot = (nextSnapshot) => {
-  sharedPlannerMusicSnapshot = {
-    ...sharedPlannerMusicSnapshot,
-    ...nextSnapshot,
-  };
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(PLANNER_MUSIC_SESSION_EVENT, {
-        detail: { ...sharedPlannerMusicSnapshot },
-      }),
-    );
-  }
-};
-
-export const getPlannerMusicSnapshot = () => ({
-  ...sharedPlannerMusicSnapshot,
-});
-
-export const toggleSharedPlannerMusic = () =>
-  sharedPlannerMusicController?.togglePlannerMusic?.() || Promise.resolve();
-
-export const playNextSharedPlannerMusicTrack = (autoplay = true) =>
-  sharedPlannerMusicController?.playNextPlannerMusicTrack?.(autoplay) ||
-  Promise.resolve();
-
-export const playPreviousSharedPlannerMusicTrack = (autoplay = true) =>
-  sharedPlannerMusicController?.playPreviousPlannerMusicTrack?.(autoplay) ||
-  Promise.resolve();
-
-var timezone = new Date().getTimezoneOffset();
-var todayDate = Date.now() - timezone * 60000;
-
-const toSafeNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const getProgressStats = (progressValue, lengthValue) => {
-  const progress = Math.max(0, toSafeNumber(progressValue));
-  const length = Math.max(0, toSafeNumber(lengthValue));
-  const remaining = Math.max(0, length - progress);
-  const percent = length > 0 ? Math.round((progress * 100) / length) : 0;
-
-  return {
-    progress,
-    length,
-    remaining,
-    percent,
-    indicatorWidth: (150 * percent) / 100,
-  };
-};
 
 const getSafePagesPerDay = (lengthValue, progressValue, daysValue) => {
   const length = toSafeNumber(lengthValue);
@@ -302,6 +217,43 @@ const formatCourseStringListDisplay = (value) => {
   return normalizedValue || "-";
 };
 
+const detectContentDirection = (value) => {
+  const normalizedValue = String(value || "").trim();
+
+  const isLatinCodePoint = (codePoint) =>
+    (codePoint >= 65 && codePoint <= 90) ||
+    (codePoint >= 97 && codePoint <= 122);
+
+  const isArabicCodePoint = (codePoint) =>
+    (codePoint >= 0x0600 && codePoint <= 0x06ff) ||
+    (codePoint >= 0x0750 && codePoint <= 0x077f) ||
+    (codePoint >= 0x08a0 && codePoint <= 0x08ff) ||
+    (codePoint >= 0xfb50 && codePoint <= 0xfdff) ||
+    (codePoint >= 0xfe70 && codePoint <= 0xfeff);
+
+  for (const char of normalizedValue) {
+    const codePoint = char.codePointAt(0) || 0;
+
+    if (isLatinCodePoint(codePoint)) {
+      return "ltr";
+    }
+
+    if (isArabicCodePoint(codePoint)) {
+      return "rtl";
+    }
+  }
+
+  return "ltr";
+};
+
+const getCellAlignmentStyle = (value) => {
+  const direction = detectContentDirection(value);
+  return {
+    direction,
+    textAlign: direction === "rtl" ? "right" : "left",
+  };
+};
+
 const mergeCoursePayloadWithAiResult = (
   existingCourse = {},
   nextCoursePayload = {},
@@ -330,6 +282,25 @@ const splitCourseTextList = (value = "") =>
     .split("|")
     .map((entry) => String(entry || "").trim())
     .filter(Boolean);
+
+const getDefaultInlineCourseDraft = () => ({
+  course_component: "",
+  course_name: "",
+  course_class: "",
+  course_dayAndTime: "",
+  course_daySelection: "",
+  course_timeSelection: "",
+  course_instructorSelection: "",
+  course_instructorCustomInput: "",
+  course_year: "",
+  course_term: "",
+  course_status: "",
+  course_instructors: "",
+  course_grade: "",
+  course_fullGrade: "",
+  course_length: "0",
+  course_progress: "0",
+});
 
 const getEditableCourseDraft = (course = {}) => {
   const examEntries =
@@ -797,107 +768,10 @@ const COURSE_PRINT_SOUND_START_OFFSET = 0.109;
 const COURSE_PRINT_SOUND_BASE_DURATION = 26.204;
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "nogaPlanner_nagham_course_letters";
 const NAGHAM_COURSE_LIST_STORAGE_KEY = "nogaPlanner_nagham_course_list";
-const SCHOOLPLANNER_MUSIC_STORAGE_KEY = "nogaPlanner_music_archive_items";
+const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY = "nogaPlanner_reducedMotion";
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
 const TELEGRAM_DISPLAY_TIMEZONE = "Asia/Damascus";
-const INTERNET_ARCHIVE_CLASSICAL_ITEMS = [
-  {
-    identifier: "MoonlightSonata_755",
-    fallbackTitle: "Moonlight Sonata",
-    fallbackCreator: "Beethoven",
-  },
-  {
-    identifier: "fur-elise-by-beethoven-beethoven",
-    fallbackTitle: "Fur Elise",
-    fallbackCreator: "Beethoven",
-  },
-  {
-    identifier: "gymnopedie-no.-1",
-    fallbackTitle: "Gymnopedie No. 1",
-    fallbackCreator: "Erik Satie",
-  },
-  {
-    identifier: "NocturneCSharpMinor",
-    fallbackTitle: "Nocturne in C# Minor",
-    fallbackCreator: "Chopin",
-  },
-];
-
-const buildInternetArchiveDownloadUrl = (identifier, fileName) =>
-  `https://archive.org/download/${encodeURIComponent(identifier)}/${encodeURIComponent(fileName)}`;
-
-const PLANNER_MUSIC_PALETTES = [
-  ["#16333a", "#1f6a70", "#d8b16d"],
-  ["#1d3048", "#2f847c", "#c86b5b"],
-  ["#23314a", "#3f7890", "#e0c27a"],
-  ["#2b2644", "#4b6f8f", "#b96b78"],
-  ["#223b3c", "#3f7a6f", "#d7a48f"],
-  ["#182f33", "#497f97", "#e1d0a8"],
-];
-
-const hexToRgb = (hexValue) => {
-  const normalized = String(hexValue || "").replace("#", "");
-  const padded =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((char) => `${char}${char}`)
-          .join("")
-      : normalized;
-
-  return {
-    r: parseInt(padded.slice(0, 2), 16) || 0,
-    g: parseInt(padded.slice(2, 4), 16) || 0,
-    b: parseInt(padded.slice(4, 6), 16) || 0,
-  };
-};
-
-const interpolateRgb = (startColor, endColor, amount) => {
-  const clampedAmount = Math.max(0, Math.min(1, Number(amount) || 0));
-
-  return {
-    r: Math.round(startColor.r + (endColor.r - startColor.r) * clampedAmount),
-    g: Math.round(startColor.g + (endColor.g - startColor.g) * clampedAmount),
-    b: Math.round(startColor.b + (endColor.b - startColor.b) * clampedAmount),
-  };
-};
-
-const rgbToCss = ({ r, g, b }, alpha = 1) =>
-  `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
-
-const getInternetArchivePlayableFile = (files = []) => {
-  const preferredFile = files.find((file) => {
-    const format = String(file?.format || "").toLowerCase();
-    const name = String(file?.name || "").toLowerCase();
-
-    return (
-      name.endsWith(".mp3") &&
-      !name.endsWith(".zip") &&
-      !name.endsWith(".m3u") &&
-      (format.includes("vbr mp3") ||
-        format.includes("192kbps mp3") ||
-        format.includes("64kbps mp3") ||
-        format.includes("mp3"))
-    );
-  });
-
-  return preferredFile || null;
-};
-
-const buildInternetArchiveSearchUrl = (queryText) => {
-  const normalizedQuery = String(queryText || "").trim();
-  const searchQuery = `mediatype:audio AND collection:opensource_audio AND (${[
-    `identifier:"${normalizedQuery}"`,
-    `title:"${normalizedQuery}"`,
-    `subject:"${normalizedQuery}"`,
-    `creator:"${normalizedQuery}"`,
-  ].join(" OR ")})`;
-
-  return `https://archive.org/advancedsearch.php?q=${encodeURIComponent(
-    searchQuery,
-  )}&fl[]=identifier,title,creator&sort[]=downloads desc&rows=1&page=1&output=json`;
-};
 
 const TELEGRAM_LECTURE_STOP_WORDS = new Set([
   "the",
@@ -937,88 +811,1426 @@ const normalizeLectureCorrections = (entries = []) =>
     }))
     .filter((entry) => entry.page > 0 && entry.text);
 
-const buildResolvedArchiveTrack = (item, payload) => {
-  const playableFile = getInternetArchivePlayableFile(payload?.files);
-
-  if (!playableFile?.name) {
-    return null;
-  }
-
-  const title =
-    playableFile.title ||
-    payload?.metadata?.title ||
-    item.fallbackTitle ||
-    item.identifier;
-  const artist =
-    playableFile.creator ||
-    playableFile.artist ||
-    payload?.metadata?.creator ||
-    item.fallbackCreator ||
-    "Internet Archive";
-
-  return {
-    identifier: item.identifier,
-    title,
-    artist: Array.isArray(artist) ? artist.join(", ") : artist,
-    src: buildInternetArchiveDownloadUrl(item.identifier, playableFile.name),
-  };
-};
-
-const getConfiguredInternetArchiveItems = () => {
-  if (typeof window === "undefined") {
-    return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
-  }
-
-  try {
-    const storedIdentifiers = JSON.parse(
-      window.localStorage.getItem(SCHOOLPLANNER_MUSIC_STORAGE_KEY) || "[]",
-    );
-
-    if (!Array.isArray(storedIdentifiers) || storedIdentifiers.length === 0) {
-      return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
-    }
-
-    return storedIdentifiers
-      .map((identifier) => String(identifier || "").trim())
-      .filter(Boolean)
-      .map((identifier) => {
-        const matchingDefaultItem = INTERNET_ARCHIVE_CLASSICAL_ITEMS.find(
-          (item) => item.identifier === identifier,
-        );
-
-        return (
-          matchingDefaultItem || {
-            identifier,
-            fallbackTitle: identifier.replace(/[-_]+/g, " "),
-            fallbackCreator: "Internet Archive",
-          }
-        );
-      });
-  } catch (error) {
-    return INTERNET_ARCHIVE_CLASSICAL_ITEMS;
-  }
+const getDefaultPlannerLocale = (localeProp) => {
+  const normalized = String(localeProp || "")
+    .trim()
+    .toLowerCase();
+  return normalized === "ar" ? "ar" : "en";
 };
 
 export default class NogaPlanner extends Component {
+  handleWrapperTabChange = (tab) => {
+    this.setState({
+      wrapperTab: tab === "exams" ? "exams" : "courses",
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      inlineCourseRowVisible: false,
+      inlineCourseDraft: getDefaultInlineCourseDraft(),
+    });
+  };
+
+  handleTabChange = (tab) => {
+    this.setState({
+      plannerTab: tab,
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+      selectedCourseForLecturesId: "",
+      selectedCourseForLecturesName: "",
+      inlineCourseRowVisible: false,
+      inlineCourseDraft: getDefaultInlineCourseDraft(),
+    });
+  };
+
+  handleTabItemClick = (id) => {
+    const { plannerTab, courses, deleteSelectionMode, deleteSelectionIds } =
+      this.state;
+
+    if (deleteSelectionMode) {
+      const normalizedId = String(id || "");
+      const nextSelection = deleteSelectionIds.includes(normalizedId)
+        ? deleteSelectionIds.filter((entry) => entry !== normalizedId)
+        : [...deleteSelectionIds, normalizedId];
+
+      this.setState({ deleteSelectionIds: nextSelection });
+      return;
+    }
+
+    if (plannerTab === "courses") {
+      const selectedCourse = (courses || []).find(
+        (course) => String(course?._id) === String(id),
+      );
+
+      if (!selectedCourse) {
+        return;
+      }
+
+      this.setState({
+        selectedTabItemId: null,
+        plannerTab: "lectures",
+        selectedCourseForLecturesId: String(selectedCourse._id || ""),
+        selectedCourseForLecturesName: String(
+          selectedCourse.course_name || "",
+        ).trim(),
+      });
+      return;
+    }
+
+    this.setState({ selectedTabItemId: id });
+  };
+
+  getLecturesForSelectedCourse = () => {
+    const { lectures, selectedCourseForLecturesName } = this.state;
+    const normalizedCourseName = String(selectedCourseForLecturesName || "")
+      .trim()
+      .toLowerCase();
+
+    if (!normalizedCourseName) {
+      return Array.isArray(lectures) ? lectures : [];
+    }
+
+    return (Array.isArray(lectures) ? lectures : []).filter(
+      (lecture) =>
+        String(lecture?.lecture_course || "")
+          .trim()
+          .toLowerCase() === normalizedCourseName,
+    );
+  };
+
+  handleMiniBarAction = () => {
+    const { plannerTab } = this.state;
+
+    if (plannerTab === "courses") {
+      this.setState(
+        {
+          inlineCourseRowVisible: true,
+          inlineCourseFormTab: "traditional",
+          inlineCourseDraft: getDefaultInlineCourseDraft(),
+        },
+        () => {
+          this.fetchTelegramInstructorSuggestions();
+          this.fetchInlineCoursePredictions();
+        },
+      );
+      return;
+    }
+
+    this.openAddLectureForm({ buttonName: "Add" });
+  };
+
+  handleMiniBarEdit = () => {
+    const {
+      plannerTab,
+      selectedTabItemId,
+      selectedCourseForLecturesId,
+      courses,
+    } = this.state;
+    const targetId = selectedTabItemId || selectedCourseForLecturesId;
+
+    if (!targetId) {
+      return;
+    }
+
+    if (plannerTab === "courses") {
+      const selectedCourse = (courses || []).find(
+        (course) => String(course?._id) === String(targetId),
+      );
+
+      if (!selectedCourse) {
+        return;
+      }
+
+      this.openAddCourseForm({
+        buttonName: "Edit",
+        course: selectedCourse,
+      });
+      return;
+    }
+
+    const selectedLecture = this.getSelectedTabItem();
+    if (!selectedLecture) {
+      return;
+    }
+
+    this.openAddLectureForm({
+      ...selectedLecture,
+      buttonName: "Edit",
+    });
+  };
+
+  deleteCoursesByIds = async (courseIds = []) => {
+    const normalizedIds = courseIds
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+
+    for (let index = 0; index < normalizedIds.length; index += 1) {
+      const targetCourseId = normalizedIds[index];
+      const url =
+        apiUrl("/api/user/deleteCourse/") +
+        this.props.state.my_id +
+        "/" +
+        targetCourseId;
+      const options = {
+        method: "DELETE",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.props.state.token,
+          "Content-Type": "application/json",
+        },
+      };
+      const request = new Request(url, options);
+      await fetch(request);
+    }
+
+    this.setState(
+      {
+        selectedTabItemId: null,
+        selectedCourseForLecturesId: "",
+        selectedCourseForLecturesName: "",
+      },
+      () => {
+        this.retrieveCourses();
+      },
+    );
+  };
+
+  deleteLecturesByIds = async (lectureIds = []) => {
+    checkedLectures = lectureIds
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    await this.deleteLecture();
+  };
+
+  handleMiniBarDelete = async () => {
+    const { plannerTab, deleteSelectionMode, deleteSelectionIds } = this.state;
+
+    if (!deleteSelectionMode) {
+      this.setState({
+        deleteSelectionMode: true,
+        deleteSelectionIds: [],
+        selectedTabItemId: null,
+      });
+      return;
+    }
+
+    if (deleteSelectionIds.length === 0) {
+      this.setState({ deleteSelectionMode: false, deleteSelectionIds: [] });
+      return;
+    }
+
+    if (plannerTab === "courses") {
+      await this.deleteCoursesByIds(deleteSelectionIds);
+    } else {
+      await this.deleteLecturesByIds(deleteSelectionIds);
+    }
+
+    this.setState({
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+    });
+  };
+
+  handleBackToCoursesTab = () => {
+    const { selectedCourseForLecturesId } = this.state;
+    this.setState({
+      plannerTab: "courses",
+      selectedTabItemId: selectedCourseForLecturesId || null,
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+    });
+  };
+
+  handleInlineCourseFieldChange = (fieldName, nextValue) => {
+    this.setState((previousState) => ({
+      inlineCourseDraft: {
+        ...previousState.inlineCourseDraft,
+        [fieldName]: nextValue,
+      },
+    }));
+  };
+
+  handleInlineCourseMultiEntryEnter = (fieldName, event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+
+    const currentValue = String(this.state.inlineCourseDraft?.[fieldName] || "");
+    const normalizedValue = currentValue
+      .replace(/\s*(\||\n|;)\s*$/, "")
+      .trim();
+
+    if (!normalizedValue) {
+      return;
+    }
+
+    this.handleInlineCourseFieldChange(fieldName, `${normalizedValue} | `);
+  };
+
+  appendInlineCourseDayTimeEntry = () => {
+    const dayValue = String(this.state.inlineCourseDraft?.course_daySelection || "").trim();
+    const timeValue = String(this.state.inlineCourseDraft?.course_timeSelection || "").trim();
+
+    if (!dayValue || !timeValue) {
+      return;
+    }
+
+    const nextEntry = `${dayValue} ${timeValue}`.trim();
+
+    this.setState((previousState) => {
+      const currentUnits = this.splitInlineCourseMultiValue(
+        previousState.inlineCourseDraft?.course_dayAndTime,
+      );
+
+      return {
+        inlineCourseDraft: {
+          ...previousState.inlineCourseDraft,
+          course_dayAndTime: [...currentUnits, nextEntry].join(" | "),
+          course_daySelection: "",
+          course_timeSelection: "",
+        },
+      };
+    });
+  };
+
+  handleInlineCourseDayTimeEnter = (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    this.appendInlineCourseDayTimeEntry();
+  };
+
+  fetchTelegramInstructorSuggestions = async () => {
+    if (!this.props.state?.token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/instructor-suggestions?allGroups=true"),
+        {
+          method: "GET",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${this.props.state.token}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load instructors.");
+      }
+
+      const instructorNames = (Array.isArray(payload?.instructors)
+        ? payload.instructors
+        : []
+      )
+        .flatMap((entry) => {
+          if (typeof entry === "string") {
+            return [entry];
+          }
+
+          return [entry?.name, entry?.instructorName, entry?.value];
+        })
+        .map((entry) => String(entry || "").trim())
+        .filter((entry) => Boolean(entry) && entry !== "-" && entry !== "(pending)");
+
+      if (this.isComponentMounted) {
+        this.setState({
+          telegram_instructorSuggestions: Array.from(new Set(instructorNames)),
+        });
+      }
+    } catch {
+      if (this.isComponentMounted) {
+        this.setState({ telegram_instructorSuggestions: [] });
+      }
+    }
+  };
+
+  fetchInlineCoursePredictions = async () => {
+    if (!this.props.state?.token) {
+      return;
+    }
+
+    this.setState({
+      inlineCoursePredictionsLoading: true,
+      inlineCoursePredictionsError: "",
+    });
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/course-suggestions?allGroups=true"),
+        {
+          method: "GET",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${this.props.state.token}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to load saved course predictions.",
+        );
+      }
+
+      if (this.isComponentMounted) {
+        this.setState({
+          inlineCoursePredictions: this.sortTelegramCourseSuggestionsByConfidence(
+            payload?.suggestions,
+          ),
+          inlineCoursePredictionsLoading: false,
+          inlineCoursePredictionsError: "",
+        });
+      }
+    } catch (error) {
+      if (this.isComponentMounted) {
+        this.setState({
+          inlineCoursePredictions: [],
+          inlineCoursePredictionsLoading: false,
+          inlineCoursePredictionsError:
+            error?.message || "Unable to load saved course predictions.",
+        });
+      }
+    }
+  };
+
+  applyInlinePredictionToDraft = (suggestion = {}) => {
+    const payload = suggestion?.coursePayload || suggestion || {};
+    const editableDraft = getEditableCourseDraft(payload);
+
+    this.setState((previousState) => ({
+      inlineCourseFormTab: "traditional",
+      inlineCourseDraft: {
+        ...previousState.inlineCourseDraft,
+        ...previousState.inlineCourseDraft,
+        course_name: editableDraft.course_name,
+        course_component: editableDraft.course_component,
+        course_dayAndTime: editableDraft.course_dayAndTime,
+        course_year: editableDraft.course_year,
+        course_term: editableDraft.course_term,
+        course_class: editableDraft.course_class,
+        course_status: editableDraft.course_status,
+        course_instructors: editableDraft.course_instructors,
+        course_grade: editableDraft.course_grade,
+        course_fullGrade: editableDraft.course_fullGrade,
+        course_length: editableDraft.course_length,
+        course_progress: editableDraft.course_progress,
+      },
+    }));
+  };
+
+  getInlineInstructorOptions = () => {
+    const fromCourses = (Array.isArray(this.state.courses)
+      ? this.state.courses
+      : []
+    )
+      .flatMap((course) =>
+        Array.isArray(course?.course_instructors)
+          ? course.course_instructors
+          : [course?.course_instructors],
+      )
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+
+    const fromCourseSuggestions = (Array.isArray(this.state.telegram_courseSuggestions)
+      ? this.state.telegram_courseSuggestions
+      : []
+    )
+      .flatMap((suggestion) => {
+        const payload = suggestion?.coursePayload || suggestion || {};
+        const instructors = payload?.course_instructors;
+
+        return Array.isArray(instructors) ? instructors : [instructors];
+      })
+      .map((entry) => String(entry || "").trim())
+      .filter((entry) => Boolean(entry) && entry !== "-" && entry !== "(pending)");
+
+    const fromStoredInstructorSuggestions = (
+      Array.isArray(this.state.telegram_instructorSuggestions)
+        ? this.state.telegram_instructorSuggestions
+        : []
+    )
+      .map((entry) => String(entry || "").trim())
+      .filter((entry) => Boolean(entry) && entry !== "-" && entry !== "(pending)");
+
+    return Array.from(
+      new Set([
+        ...fromCourses,
+        ...fromCourseSuggestions,
+        ...fromStoredInstructorSuggestions,
+      ]),
+    );
+  };
+
+  appendInlineInstructorEntry = (rawName = "") => {
+    const instructorName = String(rawName || "").trim();
+
+    if (!instructorName) {
+      return;
+    }
+
+    this.setState((previousState) => {
+      const existingEntries = this.splitInlineCourseMultiValue(
+        previousState.inlineCourseDraft?.course_instructors,
+      );
+      const hasDuplicate = existingEntries.some(
+        (entry) =>
+          String(entry || "").trim().toLowerCase() ===
+          instructorName.toLowerCase(),
+      );
+      const nextEntries = hasDuplicate
+        ? existingEntries
+        : [...existingEntries, instructorName];
+
+      return {
+        inlineCourseDraft: {
+          ...previousState.inlineCourseDraft,
+          course_instructors: nextEntries.join(" | "),
+          course_instructorSelection: "",
+          course_instructorCustomInput: "",
+        },
+      };
+    });
+  };
+
+  handleInlineInstructorSelectChange = (event) => {
+    const selectedInstructor = String(event.target.value || "").trim();
+
+    if (!selectedInstructor) {
+      this.handleInlineCourseFieldChange("course_instructorSelection", "");
+      return;
+    }
+
+    this.appendInlineInstructorEntry(selectedInstructor);
+  };
+
+  handleInlineInstructorCustomEnter = (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    this.appendInlineInstructorEntry(
+      this.state.inlineCourseDraft?.course_instructorCustomInput,
+    );
+  };
+
+  closeInlineCourseRow = () => {
+    this.setState({
+      inlineCourseRowVisible: false,
+      inlineCourseFormTab: "traditional",
+      inlineCourseDraft: getDefaultInlineCourseDraft(),
+    });
+  };
+
+  splitInlineCourseMultiValue = (value = "") =>
+    String(value || "")
+      .split(/\||\n|;/)
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+
+  submitInlineCourseRow = async () => {
+    const { inlineCourseDraft } = this.state;
+    const trimmedName = String(inlineCourseDraft?.course_name || "").trim();
+
+    if (!trimmedName) {
+      this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
+      return;
+    }
+
+    const normalizedComponent =
+      String(inlineCourseDraft?.course_component || "").trim() || "-";
+    const parsedLength = Number(inlineCourseDraft?.course_length);
+    const parsedProgress = Number(inlineCourseDraft?.course_progress);
+
+    const payload = {
+      course_name:
+        normalizedComponent === "-"
+          ? trimmedName
+          : `${trimmedName} (${normalizedComponent})`,
+      course_component: normalizedComponent,
+      course_dayAndTime: this.splitInlineCourseMultiValue(
+        inlineCourseDraft?.course_dayAndTime,
+      ),
+      course_year: String(inlineCourseDraft?.course_year || "").trim() || "-",
+      course_term: String(inlineCourseDraft?.course_term || "").trim() || "-",
+      course_class: String(inlineCourseDraft?.course_class || "").trim() || "-",
+      course_status:
+        String(inlineCourseDraft?.course_status || "").trim() || "-",
+      course_instructors: this.splitInlineCourseMultiValue(
+        inlineCourseDraft?.course_instructors,
+      ),
+      course_grade: String(inlineCourseDraft?.course_grade || "").trim(),
+      course_fullGrade: String(
+        inlineCourseDraft?.course_fullGrade || "",
+      ).trim(),
+      course_length: Number.isFinite(parsedLength) ? parsedLength : 0,
+      course_progress: Number.isFinite(parsedProgress) ? parsedProgress : 0,
+      course_exams: [],
+      exam_type: "-",
+      exam_date: "-",
+      exam_time: "-",
+    };
+
+    const url = apiUrl("/api/user/addCourse/") + this.props.state.my_id;
+    const req = new Request(url, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        Authorization: "Bearer " + this.props.state.token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await fetch(req);
+
+    if (response.status === 201) {
+      this.closeInlineCourseRow();
+      this.retrieveCourses();
+      return;
+    }
+
+    this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
+  };
+
+  getSelectedTabItem = () => {
+    const { plannerTab, selectedTabItemId, courses } = this.state;
+    if (plannerTab === "courses") {
+      return (
+        (courses || []).find(
+          (c) => String(c._id) === String(selectedTabItemId),
+        ) || null
+      );
+    } else {
+      return (
+        this.getLecturesForSelectedCourse().find(
+          (l) => String(l._id) === String(selectedTabItemId),
+        ) || null
+      );
+    }
+  };
+
+  renderCoursesLecturesTabs = () => {
+    const {
+      plannerTab,
+      courses,
+      selectedTabItemId,
+      selectedCourseForLecturesId,
+      deleteSelectionMode,
+      deleteSelectionIds,
+      inlineCourseRowVisible,
+      inlineCourseDraft,
+      inlineCourseFormTab,
+      inlineCoursePredictions,
+      inlineCoursePredictionsLoading,
+      inlineCoursePredictionsError,
+    } = this.state;
+    const deleteSelectionCount = deleteSelectionIds.length;
+    const deleteButtonLabel = deleteSelectionMode
+      ? this.isArabic()
+        ? `حذف المحدد "${deleteSelectionCount}"`
+        : `delete selected "${deleteSelectionCount}"`
+      : this.isArabic()
+        ? "حذف"
+        : "Delete";
+    const visibleLectures = this.getLecturesForSelectedCourse();
+    const currentYear = new Date().getFullYear();
+    const inlineYearOptions = Array.from({ length: 12 }, (_, yearOffset) =>
+      String(currentYear - 1 + yearOffset),
+    );
+    const inlineInstructorOptions = this.getInlineInstructorOptions();
+    return (
+      <aside
+        id="nogaPlanner_courses_aside"
+        className="nogaPlanner_courses_aside_tabbed fc"
+      >
+        <div className="nogaPlanner_coursesTitleRow fr">
+          {plannerTab === "lectures" && (
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn"
+              onClick={this.handleBackToCoursesTab}
+            >
+              {this.isArabic() ? "رجوع" : "Back"}
+            </button>
+          )}
+          <div className="nogaPlanner_coursesMiniBar fr">
+            {plannerTab === "courses" && inlineCourseRowVisible ? (
+              <div className="fr" style={{ gap: "6px" }}>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={this.submitInlineCourseRow}
+                >
+                  {this.t("save")}
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={this.closeInlineCourseRow}
+                >
+                  {this.t("close")}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn"
+                onClick={this.handleMiniBarAction}
+              >
+                {this.isArabic() ? "جديد" : "New"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn"
+              onClick={this.handleMiniBarDelete}
+            >
+              {deleteButtonLabel}
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn"
+              onClick={this.handleMiniBarEdit}
+            >
+              {this.isArabic() ? "تعديل" : "Edit"}
+            </button>
+          </div>
+        </div>
+        <div className="nogaPlanner_tabBody">
+          <table className="nogaPlanner_tabTable">
+            {plannerTab === "courses" ? (
+              <>
+                <thead>
+                  <tr>
+                    <th>{this.isArabic() ? "المركبّة" : "Component"}</th>
+                    <th>{this.isArabic() ? "اسم المقرر" : "Name"}</th>
+                    <th>{this.isArabic() ? "اليوم والوقت" : "Day & Time"}</th>
+                    <th>{this.isArabic() ? "السنة" : "Year"}</th>
+                    <th>{this.isArabic() ? "الفصل" : "Term"}</th>
+                    <th>{this.isArabic() ? "المدرسون" : "Instructors"}</th>
+                    <th>{this.isArabic() ? "الوزن" : "Weight"}</th>
+                    <th>
+                      {this.isArabic() ? "الدرجة النهائية" : "Final Result"}
+                    </th>
+                    <th>{this.isArabic() ? "الحجم" : "Volume"}</th>
+                    <th>{this.isArabic() ? "التقدم" : "Progress"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inlineCourseRowVisible && (
+                    <tr className="nogaPlanner_tabTableRow selected">
+                      <td
+                        style={getCellAlignmentStyle(
+                          inlineCourseDraft.course_component,
+                        )}
+                      >
+                        {String(inlineCourseDraft.course_component || "").trim() ||
+                          "-"}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_name)}>
+                        {String(inlineCourseDraft.course_name || "").trim() || "-"}
+                      </td>
+                      <td
+                        className="nogaPlanner_tabTableCell--stacked"
+                        style={getCellAlignmentStyle(
+                          inlineCourseDraft.course_dayAndTime,
+                        )}
+                      >
+                        {(() => {
+                          const dayAndTimeUnits = this.splitInlineCourseMultiValue(
+                            inlineCourseDraft.course_dayAndTime,
+                          );
+
+                          return dayAndTimeUnits.length > 0
+                            ? dayAndTimeUnits.map((unit, unitIndex) => (
+                                <div
+                                  key={`inline-daytime-${unitIndex}`}
+                                  className="nogaPlanner_tabTableCellLine"
+                                >
+                                  {unit}
+                                </div>
+                              ))
+                            : "-";
+                        })()}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_year)}>
+                        {String(inlineCourseDraft.course_year || "").trim() || "-"}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_term)}>
+                        {String(inlineCourseDraft.course_term || "").trim() || "-"}
+                      </td>
+                      <td
+                        className="nogaPlanner_tabTableCell--stacked"
+                        style={getCellAlignmentStyle(
+                          inlineCourseDraft.course_instructors,
+                        )}
+                      >
+                        {(() => {
+                          const instructorUnits = this.splitInlineCourseMultiValue(
+                            inlineCourseDraft.course_instructors,
+                          );
+
+                          return instructorUnits.length > 0
+                            ? instructorUnits.map((unit, unitIndex) => (
+                                <div
+                                  key={`inline-instructor-${unitIndex}`}
+                                  className="nogaPlanner_tabTableCellLine"
+                                >
+                                  {unit}
+                                </div>
+                              ))
+                            : "-";
+                        })()}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_grade)}>
+                        {String(inlineCourseDraft.course_grade || "").trim() || "-"}
+                      </td>
+                      <td
+                        style={getCellAlignmentStyle(
+                          inlineCourseDraft.course_fullGrade,
+                        )}
+                      >
+                        {String(inlineCourseDraft.course_fullGrade || "").trim() ||
+                          "-"}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_length)}>
+                        {String(inlineCourseDraft.course_length || "").trim() || "0"}
+                      </td>
+                      <td style={getCellAlignmentStyle(inlineCourseDraft.course_progress)}>
+                        {String(inlineCourseDraft.course_progress || "").trim() ||
+                          "0"}
+                      </td>
+                    </tr>
+                  )}
+                  {courses.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={10}
+                        style={{
+                          textAlign: "center",
+                          opacity: 0.5,
+                          padding: "18px",
+                        }}
+                      >
+                        No courses
+                      </td>
+                    </tr>
+                  )}
+                  {courses.map((item) => (
+                    <tr
+                      key={item._id}
+                      className={
+                        "nogaPlanner_tabTableRow" +
+                        ((
+                          deleteSelectionMode
+                            ? deleteSelectionIds.includes(String(item._id))
+                            : String(
+                                selectedTabItemId ||
+                                  selectedCourseForLecturesId,
+                              ) === String(item._id)
+                        )
+                          ? " selected"
+                          : "")
+                      }
+                      onClick={() => this.handleTabItemClick(item._id)}
+                    >
+                      <td style={getCellAlignmentStyle(item.course_component)}>
+                        {item.course_component}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_name)}>
+                        {item.course_name}
+                      </td>
+                      <td
+                        className="nogaPlanner_tabTableCell--stacked"
+                        style={getCellAlignmentStyle(
+                          formatCourseScheduleDisplay(item.course_dayAndTime),
+                        )}
+                      >
+                        {(() => {
+                          const dayAndTimeUnits = Array.isArray(
+                            item.course_dayAndTime,
+                          )
+                            ? item.course_dayAndTime
+                                .map((slot) =>
+                                  slot && typeof slot === "object"
+                                    ? [slot.day, slot.time]
+                                        .filter(Boolean)
+                                        .join(" ")
+                                    : String(slot ?? ""),
+                                )
+                                .map((value) => String(value || "").trim())
+                                .filter(Boolean)
+                            : [
+                                String(item.course_dayAndTime ?? "").trim(),
+                              ].filter(Boolean);
+
+                          return dayAndTimeUnits.length > 0
+                            ? dayAndTimeUnits.map((unit, unitIndex) => (
+                                <div
+                                  key={`${item._id}-daytime-${unitIndex}`}
+                                  className="nogaPlanner_tabTableCellLine"
+                                >
+                                  {unit}
+                                </div>
+                              ))
+                            : "-";
+                        })()}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_year)}>
+                        {item.course_year}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_term)}>
+                        {item.course_term}
+                      </td>
+                      <td
+                        className="nogaPlanner_tabTableCell--stacked"
+                        style={getCellAlignmentStyle(
+                          formatCourseStringListDisplay(
+                            item.course_instructors,
+                          ),
+                        )}
+                      >
+                        {(() => {
+                          const instructorUnits = Array.isArray(
+                            item.course_instructors,
+                          )
+                            ? item.course_instructors
+                                .map((value) => String(value || "").trim())
+                                .filter(Boolean)
+                            : [
+                                String(item.course_instructors ?? "").trim(),
+                              ].filter(Boolean);
+
+                          return instructorUnits.length > 0
+                            ? instructorUnits.map((unit, unitIndex) => (
+                                <div
+                                  key={`${item._id}-instructor-${unitIndex}`}
+                                  className="nogaPlanner_tabTableCellLine"
+                                >
+                                  {unit}
+                                </div>
+                              ))
+                            : "-";
+                        })()}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_grade)}>
+                        {item.course_grade}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_fullGrade)}>
+                        {item.course_fullGrade}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_length)}>
+                        {item.course_length}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.course_progress)}>
+                        {item.course_progress}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead>
+                  <tr>
+                    <th>{this.isArabic() ? "عنوان المحاضرة" : "Title"}</th>
+                    <th>{this.isArabic() ? "المقرر" : "Course"}</th>
+                    <th>{this.isArabic() ? "المدرس" : "Instructor"}</th>
+                    <th>{this.isArabic() ? "الكاتب" : "Writer"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleLectures.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        style={{
+                          textAlign: "center",
+                          opacity: 0.5,
+                          padding: "18px",
+                        }}
+                      >
+                        {this.isArabic() ? "لا توجد محاضرات" : "No lectures"}
+                      </td>
+                    </tr>
+                  )}
+                  {visibleLectures.map((item) => (
+                    <tr
+                      key={item._id}
+                      className={
+                        "nogaPlanner_tabTableRow" +
+                        ((
+                          deleteSelectionMode
+                            ? deleteSelectionIds.includes(String(item._id))
+                            : String(selectedTabItemId) === String(item._id)
+                        )
+                          ? " selected"
+                          : "")
+                      }
+                      onClick={() => this.handleTabItemClick(item._id)}
+                    >
+                      <td style={getCellAlignmentStyle(item.lecture_name)}>
+                        {item.lecture_name}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.lecture_course)}>
+                        {item.lecture_course}
+                      </td>
+                      <td
+                        style={getCellAlignmentStyle(item.lecture_instructor)}
+                      >
+                        {item.lecture_instructor}
+                      </td>
+                      <td style={getCellAlignmentStyle(item.lecture_writer)}>
+                        {item.lecture_writer}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </>
+            )}
+          </table>
+          {plannerTab === "courses" && inlineCourseRowVisible && (
+            <aside className="nogaPlanner_inlineCourseForm fc">
+              <p className="nogaPlanner_inlineCourseFormTitle">
+                {this.isArabic() ? "مقرر جديد" : "New course"}
+              </p>
+              <div className="fr" style={{ gap: "6px" }}>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() => this.setState({ inlineCourseFormTab: "traditional" })}
+                  style={{
+                    opacity: inlineCourseFormTab === "traditional" ? 1 : 0.7,
+                  }}
+                >
+                  {this.isArabic() ? "تقليدي" : "Traditional"}
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() => {
+                    this.setState({ inlineCourseFormTab: "predictions" });
+                    this.fetchInlineCoursePredictions();
+                  }}
+                  style={{
+                    opacity: inlineCourseFormTab === "predictions" ? 1 : 0.7,
+                  }}
+                >
+                  {this.isArabic() ? "بالتوقعات" : "By predictions"}
+                </button>
+              </div>
+              {inlineCourseFormTab === "traditional" ? (
+                <>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <input
+                  type="text"
+                  value={inlineCourseDraft.course_name}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_name",
+                      event.target.value,
+                    )
+                  }
+                  placeholder={this.isArabic() ? "اسم المقرر" : "Name"}
+                />
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <select
+                  value={inlineCourseDraft.course_component}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_component",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    {this.isArabic() ? "المركبّة" : "Course component"}
+                  </option>
+                  <option value="Lecture">
+                    {this.isArabic() ? "محاضرة" : "Lecture"}
+                  </option>
+                  <option value="Lab">
+                    {this.isArabic() ? "مختبر" : "Lab"}
+                  </option>
+                  <option value="Clinical rotation">
+                    {this.isArabic() ? "دورة سريرية" : "Clinical rotation"}
+                  </option>
+                  <option value="Pharmacy training">
+                    {this.isArabic() ? "تدريب صيدلي" : "Pharmacy training"}
+                  </option>
+                </select>
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <div className="fr" style={{ gap: "6px" }}>
+                  <select
+                    value={inlineCourseDraft.course_daySelection}
+                    onChange={(event) =>
+                      this.handleInlineCourseFieldChange(
+                        "course_daySelection",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="">
+                      {this.isArabic() ? "اختر اليوم" : "Select day"}
+                    </option>
+                    {(this.isArabic()
+                      ? [
+                          "الاثنين",
+                          "الثلاثاء",
+                          "الأربعاء",
+                          "الخميس",
+                          "الجمعة",
+                          "السبت",
+                          "الأحد",
+                        ]
+                      : [
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ]
+                    ).map((dayLabel) => (
+                      <option key={dayLabel} value={dayLabel}>
+                        {dayLabel}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    value={inlineCourseDraft.course_timeSelection}
+                    onChange={(event) =>
+                      this.handleInlineCourseFieldChange(
+                        "course_timeSelection",
+                        event.target.value,
+                      )
+                    }
+                    onKeyDown={this.handleInlineCourseDayTimeEnter}
+                  />
+                  <button
+                    type="button"
+                    className="nogaPlanner_coursesMiniBarBtn"
+                    onClick={this.appendInlineCourseDayTimeEntry}
+                    title={this.isArabic() ? "إضافة" : "Add"}
+                  >
+                    +
+                  </button>
+                </div>
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <select
+                  value={inlineCourseDraft.course_year}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_year",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    {this.isArabic() ? "السنة" : "Year"}
+                  </option>
+                  {inlineYearOptions.map((yearValue) => (
+                    <option key={yearValue} value={yearValue}>
+                      {yearValue}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <select
+                  value={inlineCourseDraft.course_term}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_term",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">{this.isArabic() ? "الفصل" : "Term"}</option>
+                  <option value="Fall">{this.isArabic() ? "خريف" : "Fall"}</option>
+                  <option value="Winter">{this.isArabic() ? "شتاء" : "Winter"}</option>
+                  <option value="Summer">{this.isArabic() ? "صيف" : "Summer"}</option>
+                </select>
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <div className="fc" style={{ gap: "6px" }}>
+                  <div className="fr" style={{ gap: "6px" }}>
+                    <select
+                      value={inlineCourseDraft.course_instructorSelection}
+                      onChange={this.handleInlineInstructorSelectChange}
+                    >
+                      <option value="">
+                        {this.isArabic()
+                          ? "اختر مدرسًا من المحفوظ"
+                          : "Select saved instructor"}
+                      </option>
+                      {inlineInstructorOptions.map((instructorName) => (
+                        <option key={instructorName} value={instructorName}>
+                          {instructorName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="fr" style={{ gap: "6px" }}>
+                    <input
+                      type="text"
+                      value={inlineCourseDraft.course_instructorCustomInput}
+                      onChange={(event) =>
+                        this.handleInlineCourseFieldChange(
+                          "course_instructorCustomInput",
+                          event.target.value,
+                        )
+                      }
+                      onKeyDown={this.handleInlineInstructorCustomEnter}
+                      placeholder={
+                        this.isArabic()
+                          ? "أدخل اسم مدرس جديد"
+                          : "Enter a new instructor name"
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="nogaPlanner_coursesMiniBarBtn"
+                      onClick={() =>
+                        this.appendInlineInstructorEntry(
+                          inlineCourseDraft.course_instructorCustomInput,
+                        )
+                      }
+                      title={this.isArabic() ? "إضافة" : "Add"}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={inlineCourseDraft.course_instructors}
+                    onChange={(event) =>
+                      this.handleInlineCourseFieldChange(
+                        "course_instructors",
+                        event.target.value,
+                      )
+                    }
+                    onKeyDown={(event) =>
+                      this.handleInlineCourseMultiEntryEnter(
+                        "course_instructors",
+                        event,
+                      )
+                    }
+                    placeholder={
+                      this.isArabic()
+                        ? "قائمة المدرسين (Enter أو |)"
+                        : "Instructors list (Enter or |)"
+                    }
+                  />
+                </div>
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <input
+                  type="text"
+                  value={inlineCourseDraft.course_grade}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_grade",
+                      event.target.value,
+                    )
+                  }
+                  placeholder={this.isArabic() ? "الوزن" : "Weight"}
+                />
+              </label>
+              <label className="nogaPlanner_inlineCourseFormField fc">
+                <input
+                  type="text"
+                  value={inlineCourseDraft.course_fullGrade}
+                  onChange={(event) =>
+                    this.handleInlineCourseFieldChange(
+                      "course_fullGrade",
+                      event.target.value,
+                    )
+                  }
+                  placeholder={
+                    this.isArabic() ? "الدرجة النهائية" : "Final Result"
+                  }
+                />
+              </label>
+                </>
+              ) : (
+                <div className="fc" style={{ gap: "8px" }}>
+                  <button
+                    type="button"
+                    className="nogaPlanner_coursesMiniBarBtn"
+                    onClick={this.fetchInlineCoursePredictions}
+                  >
+                    {this.isArabic() ? "تحديث التوقعات" : "Refresh predictions"}
+                  </button>
+                  {inlineCoursePredictionsLoading && (
+                    <p style={{ opacity: 0.8 }}>
+                      {this.isArabic() ? "جارٍ التحميل..." : "Loading..."}
+                    </p>
+                  )}
+                  {!inlineCoursePredictionsLoading &&
+                    inlineCoursePredictionsError && (
+                      <p style={{ color: "var(--red2)" }}>
+                        {inlineCoursePredictionsError}
+                      </p>
+                    )}
+                  {!inlineCoursePredictionsLoading &&
+                    !inlineCoursePredictionsError &&
+                    (Array.isArray(inlineCoursePredictions)
+                      ? inlineCoursePredictions
+                      : []
+                    ).length === 0 && (
+                      <p style={{ opacity: 0.7 }}>
+                        {this.isArabic()
+                          ? "لا توجد توقعات محفوظة بعد."
+                          : "No saved predictions yet."}
+                      </p>
+                    )}
+                  {(Array.isArray(inlineCoursePredictions)
+                    ? inlineCoursePredictions
+                    : []
+                  )
+                    .slice(0, 10)
+                    .map((suggestion, suggestionIndex) => {
+                      const payload = suggestion?.coursePayload || suggestion || {};
+                      const suggestionTitle = String(payload?.course_name || "").trim();
+                      const suggestionComponent = String(
+                        payload?.course_component || "",
+                      ).trim();
+
+                      return (
+                        <div
+                          key={
+                            suggestion?.suggestionKey ||
+                            `${suggestionTitle || "prediction"}-${suggestionIndex}`
+                          }
+                          className="fc"
+                          style={{
+                            gap: "4px",
+                            padding: "8px",
+                            border: "1px solid var(--nogaPlanner-border)",
+                            borderRadius: "10px",
+                          }}
+                        >
+                          <strong>{suggestionTitle || "-"}</strong>
+                          <span style={{ opacity: 0.8 }}>
+                            {suggestionComponent || "-"}
+                          </span>
+                          <button
+                            type="button"
+                            className="nogaPlanner_coursesMiniBarBtn"
+                            onClick={() => this.applyInlinePredictionToDraft(suggestion)}
+                          >
+                            {this.isArabic() ? "استخدم" : "Use prediction"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </aside>
+          )}
+        </div>
+      </aside>
+    );
+  };
+
+  renderTabDetailsPanel = () => {
+    const { plannerTab } = this.state;
+    const item = this.getSelectedTabItem();
+    if (!item) {
+      return (
+        <section
+          id="nogaPlanner_lectures_section"
+          className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
+        >
+          <div className="nogaPlanner_monitorEmpty fc">
+            {this.isArabic()
+              ? "اختر مقررًا أو محاضرة من القائمة لعرض التفاصيل."
+              : "Select a course or lecture from the list to view details."}
+          </div>
+        </section>
+      );
+    }
+    if (plannerTab === "courses") {
+      // Show course details
+      return (
+        <section
+          id="nogaPlanner_lectures_section"
+          className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
+        >
+          <div className="nogaPlanner_monitorDetails fc">
+            <h2>{item.course_name}</h2>
+            <p>{item.course_component}</p>
+            <p>
+              {item.course_instructors && item.course_instructors.join(", ")}
+            </p>
+            <p>
+              {item.course_year} {item.course_term}
+            </p>
+            {/* Add more course fields as needed */}
+          </div>
+        </section>
+      );
+    } else {
+      // Show lecture details
+      return (
+        <section
+          id="nogaPlanner_lectures_section"
+          className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
+        >
+          <div className="nogaPlanner_monitorDetails fc">
+            <h2>{item.lecture_title}</h2>
+            <p>{item.lecture_courseName}</p>
+            <p>{item.lecture_instructorName}</p>
+            <p>{item.lecture_writerName}</p>
+            {/* Add more lecture fields as needed */}
+          </div>
+        </section>
+      );
+    }
+  };
   telegramCourseSuggestionsRequestInFlight = false;
 
   constructor(props) {
     super(props);
+    const initialLocale = getDefaultPlannerLocale(props.locale);
 
     this.state = {
+      ui_locale: initialLocale,
+      wrapperTab: "courses",
+      plannerTab: "courses",
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+      selectedCourseForLecturesId: "",
+      selectedCourseForLecturesName: "",
       lectures: [],
       lecture_details: null,
       lecture_detailsPagesExpanded: false,
       show_addCourseForm: false,
+      show_addExamForm: false,
       courses: [],
+      selected_course_id: "",
+      selected_exam_index: -1,
+      exam_form_mode: "Add",
+      exam_form_index: -1,
       course_isLoading: false,
       lecture_isLoading: false,
-      music_isPlaying: false,
-      music_volume: 0.42,
-      music_trackTitle:
-        props.locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
-      music_trackArtist: "Internet Archive",
-      music_isLoading: false,
       telegram_isLoading: false,
       telegram_error: "",
       telegram_messages: [],
@@ -1073,6 +2285,11 @@ export default class NogaPlanner extends Component {
       telegram_courseSuggestionsProgressSteps: [],
       telegram_courseSuggestionsVisible: false,
       telegram_courseSuggestionsLiveStatus: "",
+      telegram_instructorSuggestions: [],
+      inlineCourseFormTab: "traditional",
+      inlineCoursePredictions: [],
+      inlineCoursePredictionsLoading: false,
+      inlineCoursePredictionsError: "",
       telegram_approvingSuggestionKey: "",
       telegram_courseAiLoadingCourseId: "",
       telegram_courseAiStatusCourseId: "",
@@ -1082,44 +2299,19 @@ export default class NogaPlanner extends Component {
       telegram_courseAiDraftPayload: null,
       telegram_courseAiDraftSaving: false,
       planner_swipeView: "main",
-      ringVideo_isOpen: false,
-      ringVideo_url: NOGA_RING_VIDEO_DEFAULT_URL,
-      ringVideo_publicId: "",
-      ringVideo_isUploading: false,
-      ringVideo_uploadError: "",
-      music_timerMinutes: "15",
-      music_timerSeconds: "00",
-      music_timerTotalSeconds: 900,
-      music_timerRemainingSeconds: 900,
-      music_timerIsRunning: false,
-      music_timerFinished: false,
+      inlineCourseRowVisible: false,
+      inlineCourseDraft: getDefaultInlineCourseDraft(),
     };
 
     this.coursePrintAudio = null;
     this.coursePrintSoundTimeouts = [];
     this.courseDetailsTypingTimeouts = [];
-    this.musicAudioRef = React.createRef();
-    this.ringVideoRef = React.createRef();
-    this.ringVideoFileInputRef = React.createRef();
+    this.courseActionsPointerState = null;
     this.plannerArticleRef = React.createRef();
+    this.courseActionsWindowRef = React.createRef();
     this.lectureActionsWindowRef = React.createRef();
-    this.musicTimerDialRef = React.createRef();
-    this.musicPlaylist = [];
-    this.musicTrackIndex = 0;
-    this.musicLibraryPromise = null;
     this.telegramSyncStatusTimeout = null;
-    this.musicAudioContext = null;
-    this.musicAnalyser = null;
-    this.musicAnalyserData = null;
-    this.musicSourceNode = null;
-    this.musicPaletteFrame = null;
-    this.musicPaletteCursor = 0;
-    this.musicTimerInterval = null;
-    this.musicTimerAlarmContext = null;
-    this.musicTimerAlarmTimeouts = [];
-    this.musicTimerDialDragActive = false;
-    this.musicTimerDialLastAngle = null;
-    this.musicTimerDialAngleCarry = 0;
+    this.courseActionsSnapTimeout = null;
     this.isComponentMounted = false;
     this.plannerSwipeStart = null;
     this.lectureActionsPointerState = null;
@@ -1128,7 +2320,445 @@ export default class NogaPlanner extends Component {
     this.telegramCourseSuggestionStatusTimeout = null;
   }
 
-  isArabic = () => this.props.locale === "ar";
+  isArabic = () => this.state.ui_locale === "ar";
+
+  getRenderableCourseExamEntries = (course) => {
+    if (!course) {
+      return [];
+    }
+
+    if (Array.isArray(course.course_exams) && course.course_exams.length > 0) {
+      return course.course_exams;
+    }
+
+    if (course.exam_date || course.exam_time || course.exam_type) {
+      return [
+        {
+          exam_type: course.exam_type || "-",
+          exam_date: course.exam_date || "-",
+          exam_time: course.exam_time || "-",
+          course_grade: course.course_grade || "-",
+          course_fullGrade: course.course_fullGrade || "-",
+        },
+      ];
+    }
+
+    return [];
+  };
+
+  getSelectedCourse = () =>
+    (this.state.courses || []).find(
+      (course) =>
+        String(course?._id || "") ===
+        String(this.state.selected_course_id || ""),
+    ) || null;
+
+  setSelectedCourseWithExamFocus = (courseId = "", examIndex = -1) => {
+    const selectedCourse =
+      (this.state.courses || []).find(
+        (course) => String(course?._id || "") === String(courseId || ""),
+      ) || null;
+    const examEntries = this.getRenderableCourseExamEntries(selectedCourse);
+    const parsedExamIndex = Number(examIndex);
+    const safeExamIndex =
+      examEntries.length === 0
+        ? -1
+        : Math.min(
+            Math.max(0, Number.isFinite(parsedExamIndex) ? parsedExamIndex : 0),
+            examEntries.length - 1,
+          );
+
+    this.setState({
+      selected_course_id: selectedCourse?._id || "",
+      selected_exam_index: safeExamIndex,
+    });
+  };
+
+  openAddExamForm = (mode = "Add") => {
+    const selectedCourse = this.getSelectedCourse();
+    const examEntries = this.getRenderableCourseExamEntries(selectedCourse);
+    const selectedExamIndex = this.state.selected_exam_index;
+    const safeMode = mode === "Edit" ? "Edit" : "Add";
+    const targetExam =
+      safeMode === "Edit" && selectedExamIndex >= 0
+        ? examEntries[selectedExamIndex] || null
+        : null;
+
+    this.setState(
+      {
+        show_addExamForm: true,
+        exam_form_mode: safeMode,
+        exam_form_index: safeMode === "Edit" ? selectedExamIndex : -1,
+      },
+      () => {
+        this.setElementValueById(
+          "nogaPlanner_addExam_examType_input",
+          targetExam?.exam_type || "Exam type",
+        );
+        const examDateParts = formatExamDateParts(targetExam?.exam_date);
+        this.setElementValueById(
+          "nogaPlanner_addExam_examDate_day_input",
+          examDateParts.day,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addExam_examDate_month_input",
+          examDateParts.month,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addExam_examDate_year_input",
+          examDateParts.year,
+        );
+        const examTimeParts = formatExamTimeParts(targetExam?.exam_time);
+        this.setElementValueById(
+          "nogaPlanner_addExam_examTime_hour_input",
+          examTimeParts.hour,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addExam_examTime_minute_input",
+          examTimeParts.minute,
+        );
+        this.setElementValueById(
+          "nogaPlanner_addExam_grade_input",
+          targetExam?.course_grade || "",
+        );
+        this.setElementValueById(
+          "nogaPlanner_addExam_fullGrade_input",
+          targetExam?.course_fullGrade || "",
+        );
+      },
+    );
+  };
+
+  closeAddExamForm = () => {
+    this.setState({
+      show_addExamForm: false,
+      exam_form_mode: "Add",
+      exam_form_index: -1,
+    });
+  };
+
+  saveCourseExamEntries = async (course, nextExamEntries = []) => {
+    if (!course?._id || !this.props.state?.my_id) {
+      return;
+    }
+
+    const cleanedExamEntries = nextExamEntries.map((examEntry) => ({
+      exam_type: String(examEntry?.exam_type || "-").trim() || "-",
+      exam_date: String(examEntry?.exam_date || "-").trim() || "-",
+      exam_time: String(examEntry?.exam_time || "-").trim() || "-",
+      course_grade: String(examEntry?.course_grade || "").trim(),
+      course_fullGrade: String(examEntry?.course_fullGrade || "").trim(),
+    }));
+    const primaryExam = getPrimaryCourseExam(cleanedExamEntries);
+
+    const payload = {
+      ...course,
+      course_exams: cleanedExamEntries,
+      course_grade: primaryExam.course_grade,
+      course_fullGrade: primaryExam.course_fullGrade,
+      exam_type: primaryExam.exam_type,
+      exam_date: primaryExam.exam_date,
+      exam_time: primaryExam.exam_time,
+    };
+
+    const url =
+      apiUrl("/api/user/editCourse/") +
+      this.props.state.my_id +
+      "/" +
+      course._id;
+
+    const req = new Request(url, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await fetch(req);
+
+    if (response.status !== 201) {
+      throw new Error("Unable to save exam changes.");
+    }
+  };
+
+  submitExamForm = async () => {
+    const selectedCourse = this.getSelectedCourse();
+
+    if (!selectedCourse) {
+      return;
+    }
+
+    const exam_type =
+      document.getElementById("nogaPlanner_addExam_examType_input")?.value ||
+      "";
+    const exam_date = buildExamDateValue({
+      day:
+        document.getElementById("nogaPlanner_addExam_examDate_day_input")
+          ?.value || "",
+      month:
+        document.getElementById("nogaPlanner_addExam_examDate_month_input")
+          ?.value || "",
+      year:
+        document.getElementById("nogaPlanner_addExam_examDate_year_input")
+          ?.value || "",
+    });
+    const exam_time = buildExamTimeValue({
+      hour:
+        document.getElementById("nogaPlanner_addExam_examTime_hour_input")
+          ?.value || "",
+      minute:
+        document.getElementById("nogaPlanner_addExam_examTime_minute_input")
+          ?.value || "",
+    });
+    const course_grade =
+      document.getElementById("nogaPlanner_addExam_grade_input")?.value || "";
+    const course_fullGrade =
+      document.getElementById("nogaPlanner_addExam_fullGrade_input")?.value ||
+      "";
+
+    if (!exam_type || !exam_date || !exam_time) {
+      return;
+    }
+
+    const currentExamEntries =
+      this.getRenderableCourseExamEntries(selectedCourse);
+    const nextExamEntries = currentExamEntries.slice();
+    const nextExam = {
+      exam_type,
+      exam_date,
+      exam_time,
+      course_grade,
+      course_fullGrade,
+    };
+
+    if (
+      this.state.exam_form_mode === "Edit" &&
+      this.state.exam_form_index >= 0
+    ) {
+      nextExamEntries[this.state.exam_form_index] = nextExam;
+    } else {
+      nextExamEntries.push(nextExam);
+    }
+
+    await this.saveCourseExamEntries(selectedCourse, nextExamEntries);
+    this.closeAddExamForm();
+    this.retrieveCourses(selectedCourse._id);
+  };
+
+  deleteSelectedExam = async () => {
+    const selectedCourse = this.getSelectedCourse();
+    const selectedExamIndex = this.state.selected_exam_index;
+
+    if (!selectedCourse || selectedExamIndex < 0) {
+      return;
+    }
+
+    const currentExamEntries =
+      this.getRenderableCourseExamEntries(selectedCourse);
+    const nextExamEntries = currentExamEntries.filter(
+      (_, examIndex) => examIndex !== selectedExamIndex,
+    );
+
+    await this.saveCourseExamEntries(selectedCourse, nextExamEntries);
+    this.setState({ selected_exam_index: -1 });
+    this.retrieveCourses(selectedCourse._id);
+  };
+
+  renderSelectedCourseExamBoard = () => {
+    const selectedCourse = this.getSelectedCourse();
+    const examEntries = this.getRenderableCourseExamEntries(selectedCourse);
+    const examActionItems = [
+      {
+        key: "add",
+        label: this.t("add"),
+        onClick: () => this.openAddExamForm("Add"),
+      },
+      {
+        key: "edit",
+        label: this.t("edit"),
+        onClick: () => this.openAddExamForm("Edit"),
+      },
+      {
+        key: "delete",
+        label: this.t("delete"),
+        onClick: this.deleteSelectedExam,
+      },
+    ];
+    const orderedExamActionItems = this.isArabic()
+      ? [...examActionItems].reverse()
+      : examActionItems;
+
+    return (
+      <section
+        id="nogaPlanner_exam_section"
+        className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--exam"
+      >
+        <nav id="nogaPlanner_exam_nav" className="fc">
+          <div className="nogaPlanner_examHeaderTop fr">
+            <div className="nogaPlanner_examHeaderCopy fc">
+              <p className="nogaPlanner_homeSoulEyebrow">
+                {this.isArabic() ? "الامتحانات" : "Exams"}
+              </p>
+              <h2 className="nogaPlanner_homeSoulTitle">
+                {this.isArabic() ? "لوحة الامتحانات" : "Exam board"}
+              </h2>
+              <p className="nogaPlanner_homeSoulSubtitle">
+                {selectedCourse
+                  ? this.isArabic()
+                    ? `المقرر الحالي: ${selectedCourse.course_name || "-"}`
+                    : `Current course: ${selectedCourse.course_name || "-"}`
+                  : this.isArabic()
+                    ? "احتفظ بمواعيد الامتحانات ودرجات المقرر المحدد بجانب لوحة المحاضرات."
+                    : "Keep the selected course exams and grades visible beside the lecture board."}
+              </p>
+            </div>
+          </div>
+        </nav>
+        <div id="nogaPlanner_exam_body" className="fc">
+          {!selectedCourse ? (
+            <p id="nogaPlanner_exam_empty">
+              {this.isArabic() ? "لم يتم اختيار مقرر." : "No course selected."}
+            </p>
+          ) : examEntries.length === 0 ? (
+            <p id="nogaPlanner_exam_empty">{this.t("noExamEntries")}</p>
+          ) : (
+            <ul id="nogaPlanner_exam_ul" className="fc">
+              {examEntries.map((examEntry, examIndex) => (
+                <li
+                  key={`${selectedCourse._id || "course"}-exam-${examIndex}`}
+                  className={`nogaPlanner_exam_li fc ${
+                    this.state.selected_exam_index === examIndex
+                      ? "nogaPlanner_exam_li--selected"
+                      : ""
+                  }`.trim()}
+                  onClick={() =>
+                    this.setState({ selected_exam_index: examIndex })
+                  }
+                >
+                  <div className="nogaPlanner_exam_liHeader fr">
+                    <p className="nogaPlanner_exam_courseName">
+                      {selectedCourse.course_name || "-"}
+                    </p>
+                    <span className="nogaPlanner_exam_typeBadge">
+                      {examEntry.exam_type || "-"}
+                    </span>
+                  </div>
+                  <div className="nogaPlanner_exam_metaGrid">
+                    <div className="nogaPlanner_exam_metaItem fc">
+                      <span className="nogaPlanner_exam_metaLabel">
+                        {this.t("examDate")}
+                      </span>
+                      <strong className="nogaPlanner_exam_metaValue">
+                        {examEntry.exam_date || "-"}
+                      </strong>
+                    </div>
+                    <div className="nogaPlanner_exam_metaItem fc">
+                      <span className="nogaPlanner_exam_metaLabel">
+                        {this.t("examTime")}
+                      </span>
+                      <strong className="nogaPlanner_exam_metaValue">
+                        {examEntry.exam_time || "-"}
+                      </strong>
+                    </div>
+                    <div className="nogaPlanner_exam_metaItem fc">
+                      <span className="nogaPlanner_exam_metaLabel">
+                        {this.t("grades")}
+                      </span>
+                      <strong className="nogaPlanner_exam_metaValue">
+                        {examEntry.course_grade || "-"} /{" "}
+                        {examEntry.course_fullGrade || "-"}
+                      </strong>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div id="nogaPlanner_exam_actionsShell" className="fc">
+          <div id="nogaPlanner_exam_actionsWindow" className="fr">
+            {orderedExamActionItems.map((actionItem) => (
+              <button
+                key={actionItem.key}
+                className="nogaPlanner_courses_actionChip fr"
+                type="button"
+                data-action-key={actionItem.key}
+                onClick={actionItem.onClick}
+              >
+                <span>{actionItem.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  syncLocaleDependentLabels = () => {
+    this.setState((currentState) => {
+      const nextIsArabic = currentState.ui_locale === "ar";
+
+      return {
+        telegram_groupTitle: nextIsArabic
+          ? "مجموعة تيليجرام"
+          : "Telegram Group",
+        telegram_panelGroupTitle: nextIsArabic
+          ? "مجموعة تيليجرام"
+          : "Telegram Group",
+      };
+    });
+  };
+
+  setPlannerLocale = (nextLocale) => {
+    const normalizedLocale = String(nextLocale || "ar")
+      .trim()
+      .toLowerCase();
+    const safeLocale = normalizedLocale === "en" ? "en" : "ar";
+
+    this.setState(
+      {
+        ui_locale: safeLocale,
+        planner_swipeView: "main",
+      },
+      () => {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            NOGA_PLANNER_UI_LOCALE_STORAGE_KEY,
+            safeLocale,
+          );
+        }
+
+        this.syncLocaleDependentLabels();
+      },
+    );
+  };
+
+  togglePlannerLocale = () => {
+    this.setPlannerLocale(this.isArabic() ? "en" : "ar");
+  };
+
+  alignActionsWindowToLocale = (actionsWindow, snapCallback) => {
+    if (!actionsWindow) {
+      return;
+    }
+
+    const targetLeft = this.isArabic()
+      ? Math.max(0, actionsWindow.scrollWidth - actionsWindow.clientWidth)
+      : 0;
+
+    actionsWindow.scrollTo({
+      left: targetLeft,
+      behavior: "auto",
+    });
+
+    if (typeof snapCallback === "function") {
+      window.requestAnimationFrame(() => {
+        snapCallback("auto");
+      });
+    }
+  };
 
   isReducedMotionEnabled = () => {
     if (typeof window === "undefined") {
@@ -1164,25 +2794,7 @@ export default class NogaPlanner extends Component {
 
   componentDidMount() {
     this.isComponentMounted = true;
-    sharedPlannerMusicController = this;
-    emitPlannerMusicSnapshot({
-      isReady: true,
-      isPlaying: false,
-      trackTitle: this.state.music_trackTitle,
-      trackArtist: this.state.music_trackArtist,
-      volume: this.state.music_volume,
-      audioSignal: {
-        energy: 0,
-        bass: 0,
-        mid: 0,
-        treble: 0,
-        pitch: 0,
-        tempo: 0,
-        pulse: 0,
-        fallbackTime: 0,
-        updatedAt: Date.now(),
-      },
-    });
+    this.syncLocaleDependentLabels();
     window.addEventListener("popstate", this.handlePlannerBrowserBack);
     if (this.plannerArticleRef.current) {
       this.plannerArticleRef.current.addEventListener(
@@ -1200,37 +2812,20 @@ export default class NogaPlanner extends Component {
         },
       );
     }
-    this.retrieveLectures();
-    this.retrieveCourses();
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.volume = this.state.music_volume;
+    if (this.props.state?.my_id) {
+      this.retrieveLectures();
+      this.retrieveCourses();
     }
-    this.loadPlannerMusicLibrary();
     this.fetchTelegramConfig();
-    this.fetchTelegramGroups();
-    this.fetchStoredTelegramGroups();
-    this.loadRingVideoSource();
+    window.requestAnimationFrame(() => {
+      this.alignActionsWindowToLocale(
+        this.lectureActionsWindowRef.current,
+        this.snapLectureActionsToNearest,
+      );
+    });
   }
 
   componentWillUnmount() {
-    if (sharedPlannerMusicController === this) {
-      sharedPlannerMusicController = null;
-      emitPlannerMusicSnapshot({
-        isReady: false,
-        isPlaying: false,
-        audioSignal: {
-          energy: 0,
-          bass: 0,
-          mid: 0,
-          treble: 0,
-          pitch: 0,
-          tempo: 0,
-          pulse: 0,
-          fallbackTime: 0,
-          updatedAt: Date.now(),
-        },
-      });
-    }
     this.coursePrintSoundTimeouts.forEach((timeoutId) => {
       clearTimeout(timeoutId);
     });
@@ -1246,35 +2841,13 @@ export default class NogaPlanner extends Component {
       clearTimeout(this.lectureActionsSnapTimeout);
       this.lectureActionsSnapTimeout = null;
     }
+    if (this.courseActionsSnapTimeout) {
+      clearTimeout(this.courseActionsSnapTimeout);
+      this.courseActionsSnapTimeout = null;
+    }
     if (this.telegramSyncStatusTimeout) {
       clearTimeout(this.telegramSyncStatusTimeout);
       this.telegramSyncStatusTimeout = null;
-    }
-    this.stopPlannerMusicReactivePalette();
-    if (this.musicSourceNode) {
-      this.musicSourceNode.disconnect();
-      this.musicSourceNode = null;
-    }
-    if (this.musicAnalyser) {
-      this.musicAnalyser.disconnect();
-      this.musicAnalyser = null;
-    }
-    if (this.musicAudioContext) {
-      this.musicAudioContext.close().catch(() => {});
-      this.musicAudioContext = null;
-    }
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.pause();
-      this.musicAudioRef.current.currentTime = 0;
-      this.musicAudioRef.current.removeAttribute("src");
-      this.musicAudioRef.current.load();
-    }
-    this.stopMusicTimer();
-    this.stopMusicTimerAlarm();
-    this.stopMusicTimerDialInteraction();
-    if (this.ringVideoRef.current) {
-      this.ringVideoRef.current.pause();
-      this.ringVideoRef.current.currentTime = 0;
     }
     if (this.plannerArticleRef.current) {
       this.plannerArticleRef.current.removeEventListener(
@@ -1292,300 +2865,23 @@ export default class NogaPlanner extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (
-      prevState.music_isPlaying !== this.state.music_isPlaying ||
-      prevState.music_trackTitle !== this.state.music_trackTitle ||
-      prevState.music_trackArtist !== this.state.music_trackArtist ||
-      prevState.music_volume !== this.state.music_volume ||
-      prevState.music_isLoading !== this.state.music_isLoading
+      this.props.state?.my_id &&
+      prevProps.state?.my_id !== this.props.state?.my_id
     ) {
-      emitPlannerMusicSnapshot({
-        isReady: !this.state.music_isLoading,
-        isPlaying: this.state.music_isPlaying,
-        trackTitle: this.state.music_trackTitle,
-        trackArtist: this.state.music_trackArtist,
-        volume: this.state.music_volume,
-        audioSignal: this.state.music_isPlaying
-          ? sharedPlannerMusicSnapshot.audioSignal
-          : {
-              energy: 0,
-              bass: 0,
-              mid: 0,
-              treble: 0,
-              pitch: 0,
-              tempo: 0,
-              pulse: 0,
-              fallbackTime: 0,
-              updatedAt: Date.now(),
-            },
-      });
+      this.retrieveCourses();
+      this.retrieveLectures();
+    }
+    if (prevState.ui_locale !== this.state.ui_locale) {
+      this.alignActionsWindowToLocale(
+        this.courseActionsWindowRef.current,
+        this.snapCourseActionsToNearest,
+      );
+      this.alignActionsWindowToLocale(
+        this.lectureActionsWindowRef.current,
+        this.snapLectureActionsToNearest,
+      );
     }
   }
-
-  ensurePlannerMusicAnalyser = async () => {
-    const musicAudio = this.musicAudioRef.current;
-
-    if (!musicAudio || typeof window === "undefined") {
-      return false;
-    }
-
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext || null;
-
-    if (!AudioContextClass) {
-      return false;
-    }
-
-    try {
-      if (!this.musicAudioContext) {
-        this.musicAudioContext = new AudioContextClass();
-      }
-
-      if (this.musicAudioContext.state === "suspended") {
-        await this.musicAudioContext.resume();
-      }
-
-      if (!this.musicSourceNode) {
-        this.musicSourceNode =
-          this.musicAudioContext.createMediaElementSource(musicAudio);
-      }
-
-      if (!this.musicAnalyser) {
-        this.musicAnalyser = this.musicAudioContext.createAnalyser();
-        this.musicAnalyser.fftSize = 256;
-        this.musicAnalyser.smoothingTimeConstant = 0.84;
-        this.musicAnalyserData = new Uint8Array(
-          this.musicAnalyser.frequencyBinCount,
-        );
-        this.musicSourceNode.connect(this.musicAnalyser);
-        this.musicAnalyser.connect(this.musicAudioContext.destination);
-      }
-
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  applyPlannerMusicPalette = ({
-    energy = 0,
-    bass = 0,
-    treble = 0,
-    speed = 0.01,
-    fallbackTime = 0,
-  } = {}) => {
-    const articleNode = this.plannerArticleRef.current;
-
-    if (!articleNode) {
-      return;
-    }
-
-    const boundedEnergy = Math.max(0, Math.min(1, energy));
-    const boundedBass = Math.max(0, Math.min(1, bass));
-    const boundedTreble = Math.max(0, Math.min(1, treble));
-    const boundedSpeed = Math.max(0.004, Math.min(0.045, speed));
-
-    this.musicPaletteCursor =
-      (this.musicPaletteCursor + boundedSpeed + boundedTreble * 0.012) %
-      PLANNER_MUSIC_PALETTES.length;
-
-    const paletteIndex = Math.floor(this.musicPaletteCursor);
-    const nextPaletteIndex = (paletteIndex + 1) % PLANNER_MUSIC_PALETTES.length;
-    const mixAmount = this.musicPaletteCursor - paletteIndex;
-
-    const currentPalette = PLANNER_MUSIC_PALETTES[paletteIndex].map(hexToRgb);
-    const nextPalette = PLANNER_MUSIC_PALETTES[nextPaletteIndex].map(hexToRgb);
-    const mixedPalette = currentPalette.map((color, colorIndex) =>
-      interpolateRgb(color, nextPalette[colorIndex], mixAmount),
-    );
-    const glowStrength = 0.14 + boundedEnergy * 0.26 + boundedBass * 0.08;
-    const highlightStrength = 0.1 + boundedTreble * 0.18;
-    const grainShift = `${Math.round((fallbackTime * 22) % 260)}px ${Math.round(
-      (fallbackTime * 14) % 200,
-    )}px`;
-
-    articleNode.style.setProperty(
-      "--planner-audio-bg",
-      rgbToCss(mixedPalette[0], 1),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-wave-a",
-      rgbToCss(mixedPalette[1], 0.28 + boundedEnergy * 0.22),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-wave-b",
-      rgbToCss(mixedPalette[2], 0.18 + boundedTreble * 0.2),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-glow",
-      rgbToCss(mixedPalette[1], glowStrength),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-highlight",
-      rgbToCss(mixedPalette[2], highlightStrength),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-sheen",
-      rgbToCss(mixedPalette[0], 0.08 + boundedBass * 0.1),
-    );
-    articleNode.style.setProperty("--planner-audio-grain-offset", grainShift);
-  };
-
-  stopPlannerMusicReactivePalette = () => {
-    if (this.musicPaletteFrame) {
-      window.cancelAnimationFrame(this.musicPaletteFrame);
-      this.musicPaletteFrame = null;
-    }
-
-    const articleNode = this.plannerArticleRef.current;
-    if (articleNode) {
-      articleNode.style.removeProperty("--planner-audio-bg");
-      articleNode.style.removeProperty("--planner-audio-wave-a");
-      articleNode.style.removeProperty("--planner-audio-wave-b");
-      articleNode.style.removeProperty("--planner-audio-glow");
-      articleNode.style.removeProperty("--planner-audio-highlight");
-      articleNode.style.removeProperty("--planner-audio-sheen");
-      articleNode.style.removeProperty("--planner-audio-grain-offset");
-    }
-  };
-
-  startPlannerMusicReactivePalette = async () => {
-    if (this.isReducedMotionEnabled()) {
-      this.stopPlannerMusicReactivePalette();
-      return;
-    }
-
-    const musicAudio = this.musicAudioRef.current;
-
-    if (!musicAudio) {
-      return;
-    }
-
-    await this.ensurePlannerMusicAnalyser();
-    this.stopPlannerMusicReactivePalette();
-    this.lastPlannerMusicSignalEmitAt = 0;
-
-    const step = () => {
-      if (!this.isComponentMounted || !this.musicAudioRef.current) {
-        this.stopPlannerMusicReactivePalette();
-        return;
-      }
-
-      const activeAudio = this.musicAudioRef.current;
-      let bass = 0;
-      let mid = 0;
-      let treble = 0;
-      let energy = 0;
-
-      if (this.musicAnalyser && this.musicAnalyserData) {
-        this.musicAnalyser.getByteFrequencyData(this.musicAnalyserData);
-        const bucketCount = this.musicAnalyserData.length;
-        const bassEnd = Math.max(1, Math.floor(bucketCount * 0.18));
-        const midEnd = Math.max(bassEnd + 1, Math.floor(bucketCount * 0.55));
-        let bassTotal = 0;
-        let midTotal = 0;
-        let trebleTotal = 0;
-
-        for (let index = 0; index < bucketCount; index += 1) {
-          const sample = this.musicAnalyserData[index] / 255;
-          energy += sample;
-
-          if (index < bassEnd) {
-            bassTotal += sample;
-          } else if (index < midEnd) {
-            midTotal += sample;
-          } else {
-            trebleTotal += sample;
-          }
-        }
-
-        energy /= bucketCount || 1;
-        bass = bassTotal / bassEnd;
-        mid = midTotal / Math.max(1, midEnd - bassEnd);
-        treble = trebleTotal / Math.max(1, bucketCount - midEnd);
-      } else {
-        const fallbackBeat = Math.abs(
-          Math.sin(
-            (activeAudio.currentTime || 0) *
-              (1.2 + this.state.music_volume * 2),
-          ),
-        );
-        energy = 0.18 + fallbackBeat * 0.42;
-        bass = 0.22 + fallbackBeat * 0.34;
-        mid = 0.16 + fallbackBeat * 0.26;
-        treble = 0.12 + fallbackBeat * 0.22;
-      }
-
-      const normalizedTempo = Math.max(
-        0,
-        Math.min(1, (0.006 + energy * 0.018 + mid * 0.01 - 0.006) / 0.028),
-      );
-      const pitch = Math.max(
-        0,
-        Math.min(1, treble * 0.68 + mid * 0.32),
-      );
-      const pulse = Math.max(
-        0,
-        Math.min(
-          1,
-          bass * 0.52 +
-            energy * 0.28 +
-            Math.abs(
-              Math.sin(
-                (activeAudio.currentTime || 0) * (1.3 + normalizedTempo * 3.4),
-              ),
-            ) *
-              0.2,
-        ),
-      );
-
-      this.applyPlannerMusicPalette({
-        energy,
-        bass,
-        treble,
-        speed: 0.006 + energy * 0.018 + mid * 0.01,
-        fallbackTime: activeAudio.currentTime || 0,
-      });
-
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-      if (now - this.lastPlannerMusicSignalEmitAt >= 72) {
-        this.lastPlannerMusicSignalEmitAt = now;
-        emitPlannerMusicSnapshot({
-          audioSignal: {
-            energy,
-            bass,
-            mid,
-            treble,
-            pitch,
-            tempo: normalizedTempo,
-            pulse,
-            fallbackTime: activeAudio.currentTime || 0,
-            updatedAt: Date.now(),
-          },
-        });
-      }
-
-      if (!activeAudio.paused && !activeAudio.ended) {
-        this.musicPaletteFrame = window.requestAnimationFrame(step);
-      } else {
-        emitPlannerMusicSnapshot({
-          audioSignal: {
-            energy: 0,
-            bass: 0,
-            mid: 0,
-            treble: 0,
-            pitch: 0,
-            tempo: 0,
-            pulse: 0,
-            fallbackTime: activeAudio.currentTime || 0,
-            updatedAt: Date.now(),
-          },
-        });
-        this.stopPlannerMusicReactivePalette();
-      }
-    };
-
-    this.musicPaletteFrame = window.requestAnimationFrame(step);
-  };
 
   handlePlannerBrowserBack = () => {
     if (typeof window === "undefined") {
@@ -1595,783 +2891,6 @@ export default class NogaPlanner extends Component {
     if (window.location.pathname === "/") {
       window.location.reload();
     }
-  };
-
-  resolveInternetArchiveTrack = async (item) => {
-    try {
-      const metadataResponse = await fetch(
-        `https://archive.org/metadata/${encodeURIComponent(item.identifier)}`,
-      );
-
-      if (metadataResponse.ok) {
-        const metadataPayload = await metadataResponse.json();
-        const resolvedFromIdentifier = buildResolvedArchiveTrack(
-          item,
-          metadataPayload,
-        );
-
-        if (resolvedFromIdentifier) {
-          return resolvedFromIdentifier;
-        }
-      }
-
-      ensurePlannerMusicAnalyser = async () => {
-        const musicAudio = this.musicAudioRef.current;
-
-        if (!musicAudio || typeof window === "undefined") {
-          return false;
-        }
-
-        const AudioContextClass =
-          window.AudioContext || window.webkitAudioContext || null;
-
-        if (!AudioContextClass) {
-          return false;
-        }
-
-        try {
-          if (!this.musicAudioContext) {
-            this.musicAudioContext = new AudioContextClass();
-          }
-
-          if (this.musicAudioContext.state === "suspended") {
-            await this.musicAudioContext.resume();
-          }
-
-          if (!this.musicSourceNode) {
-            this.musicSourceNode =
-              this.musicAudioContext.createMediaElementSource(musicAudio);
-          }
-
-          if (!this.musicAnalyser) {
-            this.musicAnalyser = this.musicAudioContext.createAnalyser();
-            this.musicAnalyser.fftSize = 256;
-            this.musicAnalyser.smoothingTimeConstant = 0.84;
-            this.musicAnalyserData = new Uint8Array(
-              this.musicAnalyser.frequencyBinCount,
-            );
-            this.musicSourceNode.connect(this.musicAnalyser);
-            this.musicAnalyser.connect(this.musicAudioContext.destination);
-          }
-
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      applyPlannerMusicPalette = ({
-        energy = 0,
-        bass = 0,
-        treble = 0,
-        speed = 0.01,
-        fallbackTime = 0,
-      } = {}) => {
-        const articleNode = this.plannerArticleRef.current;
-
-        if (!articleNode) {
-          return;
-        }
-
-        const boundedEnergy = Math.max(0, Math.min(1, energy));
-        const boundedBass = Math.max(0, Math.min(1, bass));
-        const boundedTreble = Math.max(0, Math.min(1, treble));
-        const boundedSpeed = Math.max(0.004, Math.min(0.045, speed));
-
-        this.musicPaletteCursor =
-          (this.musicPaletteCursor + boundedSpeed + boundedTreble * 0.012) %
-          PLANNER_MUSIC_PALETTES.length;
-
-        const paletteIndex = Math.floor(this.musicPaletteCursor);
-        const nextPaletteIndex =
-          (paletteIndex + 1) % PLANNER_MUSIC_PALETTES.length;
-        const mixAmount = this.musicPaletteCursor - paletteIndex;
-
-        const currentPalette =
-          PLANNER_MUSIC_PALETTES[paletteIndex].map(hexToRgb);
-        const nextPalette =
-          PLANNER_MUSIC_PALETTES[nextPaletteIndex].map(hexToRgb);
-        const mixedPalette = currentPalette.map((color, colorIndex) =>
-          interpolateRgb(color, nextPalette[colorIndex], mixAmount),
-        );
-        const glowStrength = 0.14 + boundedEnergy * 0.26 + boundedBass * 0.08;
-        const highlightStrength = 0.1 + boundedTreble * 0.18;
-        const grainShift = `${Math.round((fallbackTime * 22) % 260)}px ${Math.round(
-          (fallbackTime * 14) % 200,
-        )}px`;
-
-        articleNode.style.setProperty(
-          "--planner-audio-bg",
-          rgbToCss(mixedPalette[0], 1),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-wave-a",
-          rgbToCss(mixedPalette[1], 0.28 + boundedEnergy * 0.22),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-wave-b",
-          rgbToCss(mixedPalette[2], 0.18 + boundedTreble * 0.2),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-glow",
-          rgbToCss(mixedPalette[1], glowStrength),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-highlight",
-          rgbToCss(mixedPalette[2], highlightStrength),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-sheen",
-          rgbToCss(mixedPalette[0], 0.08 + boundedBass * 0.1),
-        );
-        articleNode.style.setProperty(
-          "--planner-audio-grain-offset",
-          grainShift,
-        );
-      };
-
-      stopPlannerMusicReactivePalette = () => {
-        if (this.musicPaletteFrame) {
-          window.cancelAnimationFrame(this.musicPaletteFrame);
-          this.musicPaletteFrame = null;
-        }
-
-        const articleNode = this.plannerArticleRef.current;
-        if (articleNode) {
-          articleNode.style.removeProperty("--planner-audio-bg");
-          articleNode.style.removeProperty("--planner-audio-wave-a");
-          articleNode.style.removeProperty("--planner-audio-wave-b");
-          articleNode.style.removeProperty("--planner-audio-glow");
-          articleNode.style.removeProperty("--planner-audio-highlight");
-          articleNode.style.removeProperty("--planner-audio-sheen");
-          articleNode.style.removeProperty("--planner-audio-grain-offset");
-        }
-      };
-
-      startPlannerMusicReactivePalette = async () => {
-        if (this.isReducedMotionEnabled()) {
-          this.stopPlannerMusicReactivePalette();
-          return;
-        }
-
-        const musicAudio = this.musicAudioRef.current;
-
-        if (!musicAudio) {
-          return;
-        }
-
-        await this.ensurePlannerMusicAnalyser();
-        this.stopPlannerMusicReactivePalette();
-
-        const step = () => {
-          if (!this.isComponentMounted || !this.musicAudioRef.current) {
-            this.stopPlannerMusicReactivePalette();
-            return;
-          }
-
-          const activeAudio = this.musicAudioRef.current;
-          let bass = 0;
-          let mid = 0;
-          let treble = 0;
-          let energy = 0;
-
-          if (this.musicAnalyser && this.musicAnalyserData) {
-            this.musicAnalyser.getByteFrequencyData(this.musicAnalyserData);
-            const bucketCount = this.musicAnalyserData.length;
-            const bassEnd = Math.max(1, Math.floor(bucketCount * 0.18));
-            const midEnd = Math.max(
-              bassEnd + 1,
-              Math.floor(bucketCount * 0.55),
-            );
-            let bassTotal = 0;
-            let midTotal = 0;
-            let trebleTotal = 0;
-
-            for (let index = 0; index < bucketCount; index += 1) {
-              const sample = this.musicAnalyserData[index] / 255;
-              energy += sample;
-
-              if (index < bassEnd) {
-                bassTotal += sample;
-              } else if (index < midEnd) {
-                midTotal += sample;
-              } else {
-                trebleTotal += sample;
-              }
-            }
-
-            energy /= bucketCount || 1;
-            bass = bassTotal / bassEnd;
-            mid = midTotal / Math.max(1, midEnd - bassEnd);
-            treble = trebleTotal / Math.max(1, bucketCount - midEnd);
-          } else {
-            const fallbackBeat = Math.abs(
-              Math.sin(
-                (activeAudio.currentTime || 0) *
-                  (1.2 + this.state.music_volume * 2),
-              ),
-            );
-            energy = 0.18 + fallbackBeat * 0.42;
-            bass = 0.22 + fallbackBeat * 0.34;
-            mid = 0.16 + fallbackBeat * 0.26;
-            treble = 0.12 + fallbackBeat * 0.22;
-          }
-
-          this.applyPlannerMusicPalette({
-            energy,
-            bass,
-            treble,
-            speed: 0.006 + energy * 0.018 + mid * 0.01,
-            fallbackTime: activeAudio.currentTime || 0,
-          });
-
-          if (!activeAudio.paused && !activeAudio.ended) {
-            this.musicPaletteFrame = window.requestAnimationFrame(step);
-          } else {
-            this.stopPlannerMusicReactivePalette();
-          }
-        };
-
-        this.musicPaletteFrame = window.requestAnimationFrame(step);
-      };
-    } catch (error) {
-      // Fall through to search mode.
-    }
-
-    try {
-      const searchResponse = await fetch(
-        buildInternetArchiveSearchUrl(
-          item.fallbackTitle || item.identifier || item.fallbackCreator,
-        ),
-      );
-
-      if (!searchResponse.ok) {
-        return null;
-      }
-
-      const searchPayload = await searchResponse.json();
-      const matchedDoc = searchPayload?.response?.docs?.[0];
-
-      if (!matchedDoc?.identifier) {
-        return null;
-      }
-
-      const matchedIdentifier = String(matchedDoc.identifier).trim();
-      const metadataResponse = await fetch(
-        `https://archive.org/metadata/${encodeURIComponent(matchedIdentifier)}`,
-      );
-
-      if (!metadataResponse.ok) {
-        return null;
-      }
-
-      const metadataPayload = await metadataResponse.json();
-
-      return buildResolvedArchiveTrack(
-        {
-          ...item,
-          identifier: matchedIdentifier,
-          fallbackTitle:
-            matchedDoc.title || item.fallbackTitle || matchedIdentifier,
-          fallbackCreator:
-            matchedDoc.creator || item.fallbackCreator || "Internet Archive",
-        },
-        metadataPayload,
-      );
-    } catch (error) {
-      return null;
-    }
-  };
-
-  loadPlannerMusicLibrary = async () => {
-    if (this.musicPlaylist.length > 0) {
-      return this.musicPlaylist;
-    }
-
-    if (this.musicLibraryPromise) {
-      return this.musicLibraryPromise;
-    }
-
-    this.setState({
-      music_isLoading: true,
-    });
-
-    const configuredArchiveItems = getConfiguredInternetArchiveItems();
-
-    this.musicLibraryPromise = Promise.all(
-      configuredArchiveItems.map((item) =>
-        this.resolveInternetArchiveTrack(item),
-      ),
-    )
-      .then((tracks) => tracks.filter(Boolean))
-      .catch(() => [])
-      .finally(() => {
-        this.musicLibraryPromise = null;
-      });
-
-    const resolvedTracks = await this.musicLibraryPromise;
-
-    if (!this.isComponentMounted) {
-      return resolvedTracks;
-    }
-
-    this.musicPlaylist = resolvedTracks;
-    this.setState({
-      music_isLoading: false,
-    });
-
-    if (this.musicPlaylist.length > 0 && this.musicAudioRef.current) {
-      this.setPlannerMusicTrack(0);
-    } else if (this.isComponentMounted) {
-      this.setState({
-        music_trackTitle: "Archive Unavailable",
-        music_trackArtist: "Try again later",
-      });
-    }
-
-    return this.musicPlaylist;
-  };
-
-  setPlannerMusicTrack = (trackIndex, autoplay = false) => {
-    const musicAudio = this.musicAudioRef.current;
-    const track = this.musicPlaylist[trackIndex];
-
-    if (!musicAudio || !track) return;
-
-    this.musicTrackIndex = trackIndex;
-    musicAudio.pause();
-    musicAudio.src = track.src;
-    musicAudio.load();
-    musicAudio.volume = this.state.music_volume;
-
-    this.setState({
-      music_trackTitle: track.title,
-      music_trackArtist: track.artist,
-    });
-
-    if (autoplay) {
-      musicAudio
-        .play()
-        .then(() => {
-          this.startPlannerMusicReactivePalette();
-        })
-        .catch(() => {});
-    }
-  };
-
-  playPreviousPlannerMusicTrack = async (autoplay = true) => {
-    const playlist =
-      this.musicPlaylist.length > 0
-        ? this.musicPlaylist
-        : await this.loadPlannerMusicLibrary();
-
-    if (!playlist || playlist.length === 0) {
-      return;
-    }
-
-    const previousIndex =
-      (this.musicTrackIndex - 1 + playlist.length) % playlist.length;
-    this.setPlannerMusicTrack(previousIndex, autoplay);
-  };
-
-  playNextPlannerMusicTrack = async (autoplay = true) => {
-    const playlist =
-      this.musicPlaylist.length > 0
-        ? this.musicPlaylist
-        : await this.loadPlannerMusicLibrary();
-
-    if (!playlist || playlist.length === 0) {
-      return;
-    }
-
-    const nextIndex = (this.musicTrackIndex + 1) % playlist.length;
-    this.setPlannerMusicTrack(nextIndex, autoplay);
-  };
-
-  togglePlannerMusic = async () => {
-    const musicAudio = this.musicAudioRef.current;
-    if (!musicAudio) return;
-
-    if (musicAudio.paused) {
-      if (!musicAudio.src) {
-        const playlist = await this.loadPlannerMusicLibrary();
-        if (!playlist || playlist.length === 0) {
-          return;
-        }
-      }
-      musicAudio.volume = this.state.music_volume;
-      musicAudio
-        .play()
-        .then(() => {
-          this.startPlannerMusicReactivePalette();
-        })
-        .catch(() => {});
-    } else {
-      musicAudio.pause();
-      this.stopPlannerMusicReactivePalette();
-    }
-  };
-
-  updatePlannerMusicVolume = (event) => {
-    const nextVolume = Number(event.target.value);
-
-    this.setState({
-      music_volume: nextVolume,
-    });
-
-    if (this.musicAudioRef.current) {
-      this.musicAudioRef.current.volume = nextVolume;
-    }
-  };
-
-  getMusicTimerDurationFromInputs = () => {
-    const minutes = Math.max(
-      0,
-      Math.min(999, Number(this.state.music_timerMinutes || 0) || 0),
-    );
-    const seconds = Math.max(
-      0,
-      Math.min(59, Number(this.state.music_timerSeconds || 0) || 0),
-    );
-
-    return minutes * 60 + seconds;
-  };
-
-  getMusicTimerDurationFromState = () =>
-    Math.max(0, Number(this.state.music_timerRemainingSeconds || 0) || 0);
-
-  formatMusicTimerClock = (totalSeconds) => {
-    const normalizedSeconds = Math.max(0, Number(totalSeconds || 0) || 0);
-    const minutes = Math.floor(normalizedSeconds / 60);
-    const seconds = normalizedSeconds % 60;
-
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  };
-
-  applyMusicTimerDuration = (nextDuration) => {
-    const normalizedDuration = Math.max(
-      0,
-      Math.min(999 * 60 + 59, Number(nextDuration || 0) || 0),
-    );
-    const nextMinutes = Math.floor(normalizedDuration / 60);
-    const nextSeconds = normalizedDuration % 60;
-
-    this.setState({
-      music_timerMinutes: String(nextMinutes).padStart(2, "0"),
-      music_timerSeconds: String(nextSeconds).padStart(2, "0"),
-      music_timerTotalSeconds: normalizedDuration,
-      music_timerRemainingSeconds: normalizedDuration,
-      music_timerFinished: false,
-    });
-  };
-
-  getMusicTimerDialPointerAngle = (event) => {
-    const dialNode = this.musicTimerDialRef.current;
-    if (!dialNode) {
-      return null;
-    }
-
-    const rect = dialNode.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const deltaX = event.clientX - centerX;
-    const deltaY = event.clientY - centerY;
-
-    if (deltaX === 0 && deltaY === 0) {
-      return null;
-    }
-
-    return (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
-  };
-
-  stopMusicTimerDialInteraction = () => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener(
-        "pointermove",
-        this.handleMusicTimerDialPointerMove,
-      );
-      window.removeEventListener(
-        "pointerup",
-        this.stopMusicTimerDialInteraction,
-      );
-      window.removeEventListener(
-        "pointercancel",
-        this.stopMusicTimerDialInteraction,
-      );
-    }
-
-    this.musicTimerDialDragActive = false;
-    this.musicTimerDialLastAngle = null;
-    this.musicTimerDialAngleCarry = 0;
-  };
-
-  handleMusicTimerDialPointerMove = (event) => {
-    if (!this.musicTimerDialDragActive || this.state.music_timerIsRunning) {
-      return;
-    }
-
-    const nextAngle = this.getMusicTimerDialPointerAngle(event);
-    if (nextAngle === null || this.musicTimerDialLastAngle === null) {
-      this.musicTimerDialLastAngle = nextAngle;
-      return;
-    }
-
-    let angleDelta = nextAngle - this.musicTimerDialLastAngle;
-    if (angleDelta > 180) {
-      angleDelta -= 360;
-    } else if (angleDelta < -180) {
-      angleDelta += 360;
-    }
-
-    this.musicTimerDialLastAngle = nextAngle;
-    this.musicTimerDialAngleCarry += angleDelta;
-
-    const minuteStepAngle = 6;
-    let minuteSteps = 0;
-
-    if (this.musicTimerDialAngleCarry >= minuteStepAngle) {
-      minuteSteps = Math.floor(this.musicTimerDialAngleCarry / minuteStepAngle);
-    } else if (this.musicTimerDialAngleCarry <= -minuteStepAngle) {
-      minuteSteps = Math.ceil(this.musicTimerDialAngleCarry / minuteStepAngle);
-    }
-
-    if (minuteSteps === 0) {
-      return;
-    }
-
-    this.musicTimerDialAngleCarry -= minuteSteps * minuteStepAngle;
-    this.applyMusicTimerDuration(
-      this.getMusicTimerDurationFromState() + minuteSteps * 60,
-    );
-  };
-
-  startMusicTimerDialInteraction = (event) => {
-    if (this.state.music_timerIsRunning) {
-      return;
-    }
-
-    const nextAngle = this.getMusicTimerDialPointerAngle(event);
-    if (nextAngle === null) {
-      return;
-    }
-
-    event.preventDefault();
-    this.stopMusicTimerAlarm();
-    this.musicTimerDialDragActive = true;
-    this.musicTimerDialLastAngle = nextAngle;
-    this.musicTimerDialAngleCarry = 0;
-
-    if (typeof window !== "undefined") {
-      window.addEventListener(
-        "pointermove",
-        this.handleMusicTimerDialPointerMove,
-      );
-      window.addEventListener("pointerup", this.stopMusicTimerDialInteraction);
-      window.addEventListener(
-        "pointercancel",
-        this.stopMusicTimerDialInteraction,
-      );
-    }
-  };
-
-  nudgeMusicTimerDial = (direction) => {
-    if (this.state.music_timerIsRunning) {
-      return;
-    }
-
-    this.applyMusicTimerDuration(
-      this.getMusicTimerDurationFromState() + direction * 60,
-    );
-  };
-
-  getMusicTimerDialAngle = () => {
-    if (
-      this.state.music_timerIsRunning ||
-      (this.state.music_timerFinished && this.state.music_timerTotalSeconds > 0)
-    ) {
-      return this.state.music_timerTotalSeconds > 0
-        ? Math.min(
-            360,
-            Math.max(
-              0,
-              (1 -
-                this.state.music_timerRemainingSeconds /
-                  this.state.music_timerTotalSeconds) *
-                360,
-            ),
-          )
-        : 0;
-    }
-
-    return (
-      ((Math.max(0, Number(this.state.music_timerRemainingSeconds || 0) || 0) %
-        3600) /
-        3600) *
-      360
-    );
-  };
-
-  updateMusicTimerField = (fieldName, event) => {
-    const nextValue = String(event.target.value || "").replace(/\D/g, "");
-    const maxLength = fieldName === "music_timerMinutes" ? 3 : 2;
-    const trimmedValue = nextValue.slice(0, maxLength);
-
-    this.setState({
-      [fieldName]: trimmedValue,
-      music_timerFinished: false,
-    });
-  };
-
-  syncMusicTimerWithInputs = () => {
-    const nextDuration = this.getMusicTimerDurationFromInputs();
-
-    this.applyMusicTimerDuration(nextDuration);
-  };
-
-  stopMusicTimerAlarm = () => {
-    this.musicTimerAlarmTimeouts.forEach((timeoutId) => {
-      clearTimeout(timeoutId);
-    });
-    this.musicTimerAlarmTimeouts = [];
-
-    if (this.musicTimerAlarmContext) {
-      this.musicTimerAlarmContext.close().catch(() => {});
-      this.musicTimerAlarmContext = null;
-    }
-  };
-
-  ringMusicTimerAlarm = () => {
-    this.stopMusicTimerAlarm();
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext || null;
-
-    if (!AudioContextClass) {
-      return;
-    }
-
-    try {
-      const context = new AudioContextClass();
-      this.musicTimerAlarmContext = context;
-      const now = context.currentTime;
-      const chimePattern = [0, 0.22, 0.52];
-
-      chimePattern.forEach((offset, index) => {
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.type = index === 1 ? "triangle" : "sine";
-        oscillator.frequency.setValueAtTime(
-          index === 1 ? 740 : 988,
-          now + offset,
-        );
-        gainNode.gain.setValueAtTime(0.0001, now + offset);
-        gainNode.gain.exponentialRampToValueAtTime(0.12, now + offset + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.32);
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start(now + offset);
-        oscillator.stop(now + offset + 0.34);
-      });
-
-      this.musicTimerAlarmTimeouts.push(
-        window.setTimeout(() => {
-          this.stopMusicTimerAlarm();
-        }, 1600),
-      );
-    } catch (error) {
-      this.stopMusicTimerAlarm();
-    }
-  };
-
-  stopMusicTimer = () => {
-    if (this.musicTimerInterval) {
-      clearInterval(this.musicTimerInterval);
-      this.musicTimerInterval = null;
-    }
-
-    if (this.isComponentMounted) {
-      this.setState({
-        music_timerIsRunning: false,
-      });
-    }
-  };
-
-  resetMusicTimer = () => {
-    const nextDuration = this.getMusicTimerDurationFromInputs();
-    this.stopMusicTimer();
-    this.stopMusicTimerAlarm();
-    this.applyMusicTimerDuration(nextDuration);
-  };
-
-  startMusicTimer = () => {
-    const nextDuration = this.getMusicTimerDurationFromInputs();
-
-    if (nextDuration <= 0) {
-      return;
-    }
-
-    this.stopMusicTimer();
-    this.stopMusicTimerAlarm();
-
-    this.setState((currentState) => ({
-      music_timerTotalSeconds:
-        currentState.music_timerRemainingSeconds > 0 &&
-        currentState.music_timerRemainingSeconds !==
-          currentState.music_timerTotalSeconds &&
-        !currentState.music_timerFinished
-          ? currentState.music_timerTotalSeconds
-          : nextDuration,
-      music_timerRemainingSeconds:
-        currentState.music_timerRemainingSeconds > 0 &&
-        currentState.music_timerRemainingSeconds !==
-          currentState.music_timerTotalSeconds &&
-        !currentState.music_timerFinished
-          ? currentState.music_timerRemainingSeconds
-          : nextDuration,
-      music_timerIsRunning: true,
-      music_timerFinished: false,
-    }));
-
-    this.musicTimerInterval = window.setInterval(() => {
-      if (!this.isComponentMounted) {
-        this.stopMusicTimer();
-        return;
-      }
-
-      this.setState(
-        (currentState) => {
-          const nextRemainingSeconds = Math.max(
-            0,
-            Number(currentState.music_timerRemainingSeconds || 0) - 1,
-          );
-
-          if (nextRemainingSeconds <= 0) {
-            this.stopMusicTimer();
-            return {
-              music_timerRemainingSeconds: 0,
-              music_timerFinished: true,
-              music_timerIsRunning: false,
-            };
-          }
-
-          return {
-            music_timerRemainingSeconds: nextRemainingSeconds,
-            music_timerFinished: false,
-            music_timerIsRunning: true,
-          };
-        },
-        () => {
-          if (this.state.music_timerFinished) {
-            this.ringMusicTimerAlarm();
-            this.openRingVideoOverlay();
-          }
-        },
-      );
-    }, 1000);
   };
 
   fetchTelegramConfig = async (options = {}) => {
@@ -3833,12 +4352,6 @@ export default class NogaPlanner extends Component {
     }
   };
 
-  openTelegramSwipeView = () => {
-    this.setState({
-      planner_swipeView: "telegram",
-    });
-  };
-
   openMainPlannerSwipeView = () => {
     this.setState({
       planner_swipeView: "main",
@@ -4010,13 +4523,6 @@ export default class NogaPlanner extends Component {
     });
   };
 
-  toggleTelegramSwipeView = () => {
-    this.setState((currentState) => ({
-      planner_swipeView:
-        currentState.planner_swipeView === "telegram" ? "main" : "telegram",
-    }));
-  };
-
   toggleScheduleSwipeView = () => {
     this.setState((currentState) => ({
       planner_swipeView:
@@ -4079,12 +4585,9 @@ export default class NogaPlanner extends Component {
       return;
     }
 
-    if (deltaX < 0) {
-      this.openTelegramSwipeView();
-      return;
+    if (deltaX > 0) {
+      this.openMainPlannerSwipeView();
     }
-
-    this.openMainPlannerSwipeView();
   };
 
   handlePlannerTouchMove = (event) => {
@@ -4104,225 +4607,6 @@ export default class NogaPlanner extends Component {
     ) {
       event.preventDefault();
     }
-  };
-
-  loadRingVideoSource = async () => {
-    try {
-      if (!String(this.props.state?.token || "").trim()) {
-        return;
-      }
-
-      const response = await fetch(
-        apiUrl("/api/user/schoolPlanner/ring-video"),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.props.state.token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        return;
-      }
-
-      const payload = await response.json();
-      const savedUrl = String(payload?.ringVideo?.url || "").trim();
-      const savedPublicId = String(payload?.ringVideo?.publicId || "").trim();
-
-      if (!this.isComponentMounted) {
-        return;
-      }
-
-      this.setState({
-        ringVideo_url: savedUrl,
-        ringVideo_publicId: savedPublicId,
-      });
-    } catch {}
-  };
-
-  triggerRingVideoFilePicker = () => {
-    if (this.ringVideoFileInputRef.current) {
-      this.ringVideoFileInputRef.current.click();
-    }
-  };
-
-  uploadRingVideoToCloudinary = async (file) => {
-    if (!file) {
-      return;
-    }
-
-    if (!String(this.props.state?.token || "").trim()) {
-      this.setState({
-        ringVideo_uploadError: "Please sign in first.",
-      });
-      return;
-    }
-
-    this.setState({
-      ringVideo_isUploading: true,
-      ringVideo_uploadError: "",
-    });
-
-    try {
-      const signatureResponse = await fetch(
-        apiUrl("/api/user/schoolPlanner/ring-video/signature"),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.props.state.token}`,
-          },
-          body: JSON.stringify({
-            publicId: `noga-${Date.now()}`,
-          }),
-        },
-      );
-
-      if (!signatureResponse.ok) {
-        let signatureErrorMessage = "Could not generate Cloudinary signature.";
-
-        try {
-          const signatureErrorPayload = await signatureResponse.json();
-          signatureErrorMessage =
-            String(signatureErrorPayload?.message || "").trim() ||
-            String(signatureErrorPayload?.error?.message || "").trim() ||
-            signatureErrorMessage;
-        } catch {}
-
-        throw new Error(signatureErrorMessage);
-      }
-
-      const signaturePayload = await signatureResponse.json();
-      const uploadForm = new FormData();
-      uploadForm.append("file", file);
-      uploadForm.append("api_key", signaturePayload.apiKey);
-      uploadForm.append("timestamp", String(signaturePayload.timestamp));
-      uploadForm.append("signature", signaturePayload.signature);
-      uploadForm.append("folder", signaturePayload.folder);
-      uploadForm.append("public_id", signaturePayload.publicId);
-
-      const uploadResponse = await fetch(signaturePayload.uploadUrl, {
-        method: "POST",
-        body: uploadForm,
-      });
-
-      if (!uploadResponse.ok) {
-        let uploadErrorMessage = "Cloudinary upload failed.";
-
-        try {
-          const uploadErrorPayload = await uploadResponse.json();
-          uploadErrorMessage =
-            String(uploadErrorPayload?.error?.message || "").trim() ||
-            String(uploadErrorPayload?.message || "").trim() ||
-            uploadErrorMessage;
-        } catch {}
-
-        throw new Error(uploadErrorMessage);
-      }
-
-      const uploadPayload = await uploadResponse.json();
-      const secureUrl = String(uploadPayload?.secure_url || "").trim();
-      const publicId = String(uploadPayload?.public_id || "").trim();
-
-      if (!secureUrl) {
-        throw new Error("Upload did not return a video URL.");
-      }
-
-      const persistResponse = await fetch(
-        apiUrl("/api/user/schoolPlanner/ring-video"),
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.props.state.token}`,
-          },
-          body: JSON.stringify({
-            videoUrl: secureUrl,
-            publicId,
-          }),
-        },
-      );
-
-      if (!persistResponse.ok) {
-        let persistErrorMessage = "Could not save uploaded URL.";
-
-        try {
-          const persistErrorPayload = await persistResponse.json();
-          persistErrorMessage =
-            String(persistErrorPayload?.message || "").trim() ||
-            String(persistErrorPayload?.error?.message || "").trim() ||
-            persistErrorMessage;
-        } catch {}
-
-        throw new Error(persistErrorMessage);
-      }
-
-      if (!this.isComponentMounted) {
-        return;
-      }
-
-      this.setState({
-        ringVideo_url: secureUrl,
-        ringVideo_publicId: publicId,
-        ringVideo_isUploading: false,
-        ringVideo_uploadError: "",
-      });
-    } catch (error) {
-      if (!this.isComponentMounted) {
-        return;
-      }
-
-      this.setState({
-        ringVideo_isUploading: false,
-        ringVideo_uploadError: String(error?.message || "Video upload failed."),
-      });
-    }
-  };
-
-  handleRingVideoFileSelected = async (event) => {
-    const selectedFile = event?.target?.files?.[0] || null;
-    if (!selectedFile) {
-      return;
-    }
-
-    await this.uploadRingVideoToCloudinary(selectedFile);
-
-    if (this.ringVideoFileInputRef.current) {
-      this.ringVideoFileInputRef.current.value = "";
-    }
-  };
-
-  openRingVideoOverlay = () => {
-    this.setState(
-      {
-        ringVideo_isOpen: true,
-      },
-      () => {
-        const videoNode = this.ringVideoRef.current;
-        if (!videoNode) {
-          return;
-        }
-
-        videoNode.currentTime = 0;
-        const playbackPromise = videoNode.play();
-        if (playbackPromise && typeof playbackPromise.catch === "function") {
-          playbackPromise.catch(() => {});
-        }
-      },
-    );
-  };
-
-  closeRingVideoOverlay = () => {
-    const videoNode = this.ringVideoRef.current;
-    if (videoNode) {
-      videoNode.pause();
-      videoNode.currentTime = 0;
-    }
-
-    this.setState({
-      ringVideo_isOpen: false,
-    });
   };
 
   appendLectureRow = (tbody, lecture, progressionStats, interactivePages) => {
@@ -4888,32 +5172,6 @@ export default class NogaPlanner extends Component {
           "nogaPlanner_addCourse_status_input",
           "Course status",
         );
-        this.setElementValueById("nogaPlanner_addCourse_grade_input", "");
-        this.setElementValueById("nogaPlanner_addCourse_fullGrade_input", "");
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examType_input",
-          "Exam type",
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_day_input",
-          "",
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_month_input",
-          "",
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_year_input",
-          "",
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examTime_hour_input",
-          "",
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examTime_minute_input",
-          "",
-        );
         this.setElementValueById(
           "nogaPlanner_addCourse_instructorName_input",
           "",
@@ -4923,7 +5181,6 @@ export default class NogaPlanner extends Component {
           "",
         );
         this.setElementHtmlById("nogaPlanner_addCourse_dayAndTime_ul", "");
-        this.setElementHtmlById("nogaPlanner_addCourse_exams_ul", "");
       }
       if (object.buttonName === "Edit") {
         courseDayAndTime = object.course.course_dayAndTime;
@@ -4985,41 +5242,6 @@ export default class NogaPlanner extends Component {
           "nogaPlanner_addCourse_instructorsNames_ul",
           "",
         );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_grade_input",
-          object.course.course_grade,
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_fullGrade_input",
-          object.course.course_fullGrade,
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examType_input",
-          object.course.exam_type || "Exam type",
-        );
-        const examDateParts = formatExamDateParts(object.course.exam_date);
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_day_input",
-          examDateParts.day,
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_month_input",
-          examDateParts.month,
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examDate_year_input",
-          examDateParts.year,
-        );
-        const examTimeParts = formatExamTimeParts(object.course.exam_time);
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examTime_hour_input",
-          examTimeParts.hour,
-        );
-        this.setElementValueById(
-          "nogaPlanner_addCourse_examTime_minute_input",
-          examTimeParts.minute,
-        );
-
         if (document.getElementById("nogaPlanner_addCourse_dayAndTime_ul")) {
           this.retrieveCourseDayAndTime();
         }
@@ -5027,9 +5249,6 @@ export default class NogaPlanner extends Component {
           document.getElementById("nogaPlanner_addCourse_instructorsNames_ul")
         ) {
           this.retrieveCourseInstructorsNames();
-        }
-        if (document.getElementById("nogaPlanner_addCourse_exams_ul")) {
-          this.retrieveCourseExams();
         }
       }
     });
@@ -5337,11 +5556,9 @@ export default class NogaPlanner extends Component {
 
     actionsMount.innerHTML = "";
     const actionsShell = document.createElement("div");
+    const actionsWindow = document.createElement("div");
     const actionRail = document.createElement("div");
-    const actionsOverlay = document.createElement("div");
-    const overlayWindow = document.createElement("div");
     let activeTimerId = null;
-    let lastCenteredActionKey = null;
 
     const triggerAction = (actionConfig) => {
       if (
@@ -5436,6 +5653,9 @@ export default class NogaPlanner extends Component {
         },
       },
     ];
+    const orderedActionItems = this.isArabic()
+      ? [...actionItems].reverse()
+      : actionItems;
 
     actionsShell.setAttribute("id", "nogaPlanner_courses_actions");
     actionsShell.setAttribute(
@@ -5443,14 +5663,21 @@ export default class NogaPlanner extends Component {
       `fc${isIdle ? " nogaPlanner_courses_actions--idle" : ""}`,
     );
 
-    actionsOverlay.setAttribute("class", "nogaPlanner_courses_actionsOverlay");
-    overlayWindow.setAttribute("class", "nogaPlanner_courses_actionsWindow");
-    actionsOverlay.appendChild(overlayWindow);
+    actionsWindow.setAttribute("class", "nogaPlanner_courses_actionsWindow");
+    this.courseActionsWindowRef.current = actionsWindow;
+    actionsWindow.addEventListener("pointerdown", this.startCourseActionsDrag);
+    actionsWindow.addEventListener("pointermove", this.moveCourseActionsDrag);
+    actionsWindow.addEventListener("pointerup", this.stopCourseActionsDrag);
+    actionsWindow.addEventListener("pointercancel", this.stopCourseActionsDrag);
+    actionsWindow.addEventListener("pointerleave", this.stopCourseActionsDrag);
+    actionsWindow.addEventListener("scroll", this.queueCourseActionsSnap, {
+      passive: true,
+    });
 
     actionRail.setAttribute("id", "nogaPlanner_courses_actionRail");
     actionRail.setAttribute("class", "fr");
 
-    actionItems.forEach((actionConfig) => {
+    orderedActionItems.forEach((actionConfig) => {
       const actionButton = document.createElement("button");
       const actionText = document.createElement("span");
 
@@ -5483,55 +5710,15 @@ export default class NogaPlanner extends Component {
       actionRail.appendChild(actionButton);
     });
 
-    const syncIdleWindowSelection = () => {
-      if (!isIdle) return;
-
-      const windowRect = overlayWindow.getBoundingClientRect();
-      const actionButtons = Array.from(
-        actionRail.querySelectorAll(".nogaPlanner_courses_actionChip"),
+    actionsWindow.append(actionRail);
+    actionsShell.append(actionsWindow);
+    actionsMount.append(actionsShell);
+    window.requestAnimationFrame(() => {
+      this.alignActionsWindowToLocale(
+        actionsWindow,
+        this.snapCourseActionsToNearest,
       );
-
-      let centeredButton = null;
-      actionButtons.forEach((button) => {
-        const buttonRect = button.getBoundingClientRect();
-        const isFullyVisibleInWindow =
-          buttonRect.left >= windowRect.left &&
-          buttonRect.right <= windowRect.right &&
-          buttonRect.top >= windowRect.top &&
-          buttonRect.bottom <= windowRect.bottom;
-
-        button.classList.toggle(
-          "nogaPlanner_courses_actionChip--windowActive",
-          isFullyVisibleInWindow,
-        );
-
-        if (isFullyVisibleInWindow && !centeredButton) {
-          centeredButton = button;
-        }
-      });
-
-      const centeredActionKey = centeredButton?.dataset?.actionKey || null;
-      if (
-        centeredButton &&
-        centeredActionKey &&
-        centeredActionKey !== lastCenteredActionKey
-      ) {
-        lastCenteredActionKey = centeredActionKey;
-        centeredButton.click();
-      } else if (!centeredButton) {
-        lastCenteredActionKey = null;
-      }
-    };
-
-    actionsShell.append(actionRail);
-    actionsMount.append(actionsShell, actionsOverlay);
-
-    if (isIdle) {
-      actionsShell.addEventListener("scroll", syncIdleWindowSelection, {
-        passive: true,
-      });
-      window.requestAnimationFrame(syncIdleWindowSelection);
-    }
+    });
   };
   renderCourseDetailsCard = (course) => {
     let detailsDiv = document.getElementById("nogaPlanner_courses_details_div");
@@ -5892,32 +6079,6 @@ export default class NogaPlanner extends Component {
     this.playCourseDetailsPrintAnimation();
   };
 
-  renderScheduleSwipePage = () => {
-    return (
-      <section id="nogaPlanner_scheduleSwipePage" className="fc">
-        <div id="nogaPlanner_plan_scheduleBoard" className="fc">
-          <div className="nogaPlanner_plan_boardHeader fc">
-            <p className="nogaPlanner_plan_boardEyebrow">
-              {this.t("plannerControl")}
-            </p>
-            <div className="nogaPlanner_plan_boardTitleRow fr">
-              <p className="nogaPlanner_plan_boardTitle">
-                {this.t("planDays")}
-              </p>
-              <span className="nogaPlanner_plan_boardBadge">
-                {this.t("dailyLoad")}
-              </span>
-            </div>
-            <p className="nogaPlanner_plan_boardCopy">
-              {this.t("planDaysCopy")}
-            </p>
-          </div>
-          <ul id="nogaPlanner_plan_days_list"></ul>
-        </div>
-      </section>
-    );
-  };
-
   fetchTelegramGroups = async () => {
     if (!this.props.state?.token) {
       return;
@@ -6154,6 +6315,121 @@ export default class NogaPlanner extends Component {
     return suggestion?.coursePayload || {};
   };
 
+  startCourseActionsDrag = (event) => {
+    const actionRail = this.courseActionsWindowRef.current;
+
+    if (!actionRail) {
+      return;
+    }
+
+    this.courseActionsPointerState = {
+      pointerId: event.pointerId,
+      startClientX: Number(event.clientX || 0),
+      startScrollLeft: actionRail.scrollLeft,
+    };
+
+    if (this.courseActionsSnapTimeout) {
+      clearTimeout(this.courseActionsSnapTimeout);
+      this.courseActionsSnapTimeout = null;
+    }
+
+    actionRail.classList.add("nogaPlanner_actionsRail--dragging");
+    if (actionRail.setPointerCapture) {
+      actionRail.setPointerCapture(event.pointerId);
+    }
+  };
+
+  moveCourseActionsDrag = (event) => {
+    const actionRail = this.courseActionsWindowRef.current;
+    const pointerState = this.courseActionsPointerState;
+
+    if (!actionRail || !pointerState) {
+      return;
+    }
+
+    const deltaX = Number(event.clientX || 0) - pointerState.startClientX;
+    actionRail.scrollLeft = pointerState.startScrollLeft - deltaX;
+  };
+
+  stopCourseActionsDrag = (event) => {
+    const actionRail = this.courseActionsWindowRef.current;
+
+    if (!actionRail) {
+      this.courseActionsPointerState = null;
+      return;
+    }
+
+    if (
+      this.courseActionsPointerState &&
+      actionRail.releasePointerCapture &&
+      typeof event?.pointerId !== "undefined"
+    ) {
+      try {
+        actionRail.releasePointerCapture(event.pointerId);
+      } catch {}
+    }
+
+    actionRail.classList.remove("nogaPlanner_actionsRail--dragging");
+    this.courseActionsPointerState = null;
+    this.queueCourseActionsSnap();
+  };
+
+  snapCourseActionsToNearest = (behavior = "smooth") => {
+    const actionsWindow = this.courseActionsWindowRef.current;
+
+    if (!actionsWindow) {
+      return;
+    }
+
+    const actionButtons = Array.from(
+      actionsWindow.querySelectorAll(".nogaPlanner_courses_actionChip"),
+    );
+
+    if (actionButtons.length === 0) {
+      return;
+    }
+
+    const windowRect = actionsWindow.getBoundingClientRect();
+    const windowCenter = windowRect.left + windowRect.width / 2;
+    let nearestButton = actionButtons[0];
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    actionButtons.forEach((button) => {
+      const buttonRect = button.getBoundingClientRect();
+      const buttonCenter = buttonRect.left + buttonRect.width / 2;
+      const distance = Math.abs(buttonCenter - windowCenter);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestButton = button;
+      }
+    });
+
+    const buttonRect = nearestButton.getBoundingClientRect();
+    const buttonCenter = buttonRect.left + buttonRect.width / 2;
+    const targetLeft = actionsWindow.scrollLeft + (buttonCenter - windowCenter);
+
+    actionsWindow.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior,
+    });
+  };
+
+  queueCourseActionsSnap = () => {
+    if (this.courseActionsPointerState) {
+      return;
+    }
+
+    if (this.courseActionsSnapTimeout) {
+      clearTimeout(this.courseActionsSnapTimeout);
+    }
+
+    this.courseActionsSnapTimeout = setTimeout(() => {
+      this.courseActionsSnapTimeout = null;
+      this.snapCourseActionsToNearest("smooth");
+    }, 120);
+  };
+
   startLectureActionsDrag = (event) => {
     const actionsWindow = this.lectureActionsWindowRef.current;
 
@@ -6220,10 +6496,9 @@ export default class NogaPlanner extends Component {
       }
     });
 
-    const targetLeft =
-      nearestButton.offsetLeft +
-      nearestButton.offsetWidth / 2 -
-      actionsWindow.clientWidth / 2;
+    const buttonRect = nearestButton.getBoundingClientRect();
+    const buttonCenter = buttonRect.left + buttonRect.width / 2;
+    const targetLeft = actionsWindow.scrollLeft + (buttonCenter - windowCenter);
 
     actionsWindow.scrollTo({
       left: Math.max(0, targetLeft),
@@ -7304,7 +7579,7 @@ export default class NogaPlanner extends Component {
           return;
         }
         const selectedLectureId = this.state.lecture_details?._id;
-        var lecture_sorted = jsonData.nogaPlanner.lectures.sort((a, b) =>
+        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -7329,7 +7604,7 @@ export default class NogaPlanner extends Component {
           (lecture) => lecture._id === selectedLectureId,
         );
         this.setState({
-          lectures: jsonData.nogaPlanner.lectures,
+          lectures: jsonData.schoolPlanner.lectures,
           lecture_details: matchedLecture || null,
         });
       })
@@ -7344,13 +7619,9 @@ export default class NogaPlanner extends Component {
       lecture_isLoading: true,
     });
     let ul = document.getElementById("nogaPlanner_lectures_ul");
-    if (!ul) {
-      this.setState({
-        lecture_isLoading: false,
-      });
-      return;
+    if (ul) {
+      ul.innerHTML = "";
     }
-    ul.innerHTML = "";
     let url = apiUrl("/api/user/update/") + this.props.state.my_id;
     let req = new Request(url, {
       method: "GET",
@@ -7366,12 +7637,11 @@ export default class NogaPlanner extends Component {
         }
       })
       .then((jsonData) => {
-        if (!this.isComponentMounted || !ul) {
+        if (!this.isComponentMounted) {
           return null;
         }
-        console.log(jsonData.nogaPlanner.lectures);
         const selectedLectureId = this.state.lecture_details?._id;
-        var lecture_sorted = jsonData.nogaPlanner.lectures.sort((a, b) =>
+        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -7381,7 +7651,7 @@ export default class NogaPlanner extends Component {
             lecture.lecture_length,
           );
           lecture_courses.push(lecture.lecture_course);
-          if (lecture.lecture_hidden === false) {
+          if (ul && lecture.lecture_hidden === false) {
             this.appendLectureRow(ul, lecture, progressionStats, true);
           }
         });
@@ -7391,7 +7661,7 @@ export default class NogaPlanner extends Component {
             lecture.lecture_hidden === false,
         );
         this.setState({
-          lectures: jsonData.nogaPlanner.lectures,
+          lectures: jsonData.schoolPlanner.lectures,
           lecture_details: matchedLecture || null,
         });
         return {
@@ -7408,7 +7678,7 @@ export default class NogaPlanner extends Component {
         unique_lecture_courses.forEach((unique_lecture_course) => {
           let course_length = 0;
           let course_progress = 0;
-          object.jsonData.nogaPlanner.lectures.forEach((lecture) => {
+          object.jsonData.schoolPlanner.lectures.forEach((lecture) => {
             if (
               lecture.lecture_course === unique_lecture_course &&
               lecture.lecture_partOfPlan === true
@@ -7488,10 +7758,19 @@ export default class NogaPlanner extends Component {
         if (!this.isComponentMounted) {
           return null;
         }
-        const incomingCourses = Array.isArray(jsonData?.nogaPlanner?.courses)
-          ? jsonData.nogaPlanner.courses
+        const incomingCourses = Array.isArray(jsonData?.schoolPlanner?.courses)
+          ? jsonData.schoolPlanner.courses
           : [];
+        console.log(
+          "[retrieveCourses] schoolPlanner:",
+          jsonData?.schoolPlanner,
+          "courses count:",
+          incomingCourses.length,
+        );
         courses = incomingCourses;
+        if (this.isComponentMounted) {
+          this.setState({ courses: incomingCourses });
+        }
         if (
           String(this.props.state?.username || "").toLowerCase() ===
           "naghamtrkmani"
@@ -7544,14 +7823,17 @@ export default class NogaPlanner extends Component {
               courseSelect.value = selectedCourse._id;
               courseSelect.setAttribute("data-empty", "false");
               this.renderCourseDetailsCard(selectedCourse);
+              this.setSelectedCourseWithExamFocus(selectedCourse._id, 0);
             } else {
               courseSelect.selectedIndex = 0;
               courseSelect.setAttribute("data-empty", "true");
               this.renderCourseDetailsCard(null);
+              this.setSelectedCourseWithExamFocus("", -1);
             }
           } else {
             courseSelect.setAttribute("data-empty", "true");
             this.renderCourseDetailsCard(null);
+            this.setSelectedCourseWithExamFocus("", -1);
           }
 
           courseSelect.onchange = (event) => {
@@ -7563,6 +7845,7 @@ export default class NogaPlanner extends Component {
               selectedCourse ? "false" : "true",
             );
             this.renderCourseDetailsCard(selectedCourse);
+            this.setSelectedCourseWithExamFocus(selectedCourse?._id || "", 0);
           };
         }
       })
@@ -7600,7 +7883,8 @@ export default class NogaPlanner extends Component {
           }
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[retrieveCourses] fetch failed:", err);
         if (this.isComponentMounted) {
           if (courseSelect) {
             ensureCourseSelectPlaceholder();
@@ -7617,7 +7901,6 @@ export default class NogaPlanner extends Component {
   deleteLecture = async () => {
     //......DELETEING item FROM itemS DB
     for (var i = 0; i < checkedLectures.length; i++) {
-      console.log(checkedLectures[i]);
       let url =
         apiUrl("/api/user/deleteLecture/") +
         this.props.state.my_id +
@@ -7632,14 +7915,12 @@ export default class NogaPlanner extends Component {
         },
       };
       let req = new Request(url, options);
-      await fetch(req).then((result) => {
-        if (result.status === 201) {
-          document.getElementById(checkedLectures[i] + "menuLi_div").remove();
-        }
-      });
+      await fetch(req);
     }
 
     checkedLectures = [];
+    this.setState({ selectedTabItemId: null });
+    this.retrieveLectures();
   };
 
   //.............DELETE COURSE.....................
@@ -8101,33 +8382,7 @@ export default class NogaPlanner extends Component {
     const course_status =
       document.getElementById("nogaPlanner_addCourse_status_input")?.value ||
       "";
-    const course_grade =
-      document.getElementById("nogaPlanner_addCourse_grade_input")?.value || "";
-    const course_fullGrade =
-      document.getElementById("nogaPlanner_addCourse_fullGrade_input")?.value ||
-      "";
-    const exam_type =
-      document.getElementById("nogaPlanner_addCourse_examType_input")?.value ||
-      "";
-    const exam_date = buildExamDateValue({
-      day:
-        document.getElementById("nogaPlanner_addCourse_examDate_day_input")
-          ?.value || "",
-      month:
-        document.getElementById("nogaPlanner_addCourse_examDate_month_input")
-          ?.value || "",
-      year:
-        document.getElementById("nogaPlanner_addCourse_examDate_year_input")
-          ?.value || "",
-    });
-    const exam_time = buildExamTimeValue({
-      hour:
-        document.getElementById("nogaPlanner_addCourse_examTime_hour_input")
-          ?.value || "",
-      minute:
-        document.getElementById("nogaPlanner_addCourse_examTime_minute_input")
-          ?.value || "",
-    });
+    const primaryExam = getPrimaryCourseExam(courseExams);
     const nextCourse = {
       course_name: `${course_name} (${course_component})`,
       course_component,
@@ -8135,13 +8390,13 @@ export default class NogaPlanner extends Component {
       course_term,
       course_class,
       course_status,
-      course_grade,
-      course_fullGrade,
+      course_grade: primaryExam.course_grade,
+      course_fullGrade: primaryExam.course_fullGrade,
       course_length: 0,
       course_progress: 0,
-      exam_type,
-      exam_date,
-      exam_time,
+      exam_type: primaryExam.exam_type,
+      exam_date: primaryExam.exam_date,
+      exam_time: primaryExam.exam_time,
     };
 
     if (this.isActionLabel(buttonName, "Add")) {
@@ -8153,12 +8408,26 @@ export default class NogaPlanner extends Component {
     }
   };
   render() {
-    const activeTelegramPdfMessage = this.state.telegram_pdfViewerMessage;
-    const activeTelegramPdfKey = this.getTelegramPdfMessageKey(
-      activeTelegramPdfMessage,
-    );
-    const activeTelegramPdfReaderState =
-      getStoredPdfReaderState(activeTelegramPdfKey);
+    const plannerSubApps = getHomeSubApps(this.props.state?.username);
+    const wrapperTab = this.state.wrapperTab === "exams" ? "exams" : "courses";
+    const lectureActionItems = [
+      {
+        key: "add",
+        label: this.t("addLecture"),
+        onClick: () =>
+          this.openAddLectureForm({
+            buttonName: "Add",
+          }),
+      },
+      {
+        key: "delete",
+        label: this.t("deleteLecture"),
+        onClick: () => this.deleteLecture(checkedLectures),
+      },
+    ];
+    const orderedLectureActionItems = this.isArabic()
+      ? [...lectureActionItems].reverse()
+      : lectureActionItems;
 
     return (
       <React.Fragment>
@@ -8172,1394 +8441,84 @@ export default class NogaPlanner extends Component {
           data-swipe-view={this.state.planner_swipeView}
           data-reduced-motion={this.isReducedMotionEnabled() ? "true" : "false"}
         >
-          <div
-            className={`fr ${
-              this.state.ringVideo_isOpen
-                ? "nogaPlanner_coursesLectures_wrapper--videoOpen"
-                : ""
-            }`.trim()}
-            id="nogaPlanner_coursesLectures_wrapper"
+          <div id="nogaPlanner_navWrap">
+            <Nav
+              state={this.props.state}
+              logOut={this.props.logOut}
+              acceptFriend={this.props.acceptFriend}
+              makeNotificationsRead={this.props.makeNotificationsRead}
+              subApps={plannerSubApps}
+            />
+          </div>
+          <button
+            id="nogaPlanner_localeToggle"
+            type="button"
+            onClick={this.togglePlannerLocale}
+            aria-label={
+              this.isArabic() ? "Switch to English" : "الانتقال إلى العربية"
+            }
+            title={
+              this.isArabic() ? "Switch to English" : "الانتقال إلى العربية"
+            }
           >
-            <aside id="nogaPlanner_courses_aside" className="fc">
-              <div id="nogaPlanner_courses_headerBlock" className="fc"></div>
-              <div id="nogaPlanner_courses_panelWrapper" className="fc">
-                {this.state.course_isLoading === true && (
-                  <div id="course_loaderImg" className="loaderImg_div fc">
-                    <img src="/img/loader.gif" alt="" width="50px" />
-                  </div>
-                )}
-                <div id="nogaPlanner_courses_select_shell">
-                  <select id="nogaPlanner_courses_select"></select>
-                </div>
-                <div
-                  id="nogaPlanner_courses_details_div"
-                  className="fc nogaPlanner_courses_panel--hidden"
-                >
-                  {this.state.show_addCourseForm ? (
-                    <div id="nogaPlanner_addCourse_div" className="fc">
-                      <form id="nogaPlanner_addCourse_form" className="fc">
-                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowSplit">
-                          <input
-                            id="nogaPlanner_addCourse_name_input"
-                            placeholder={this.t("courseNamePlaceholder")}
-                          />
-                          <select
-                            id="nogaPlanner_addCourse_component_input"
-                            defaultValue="Course component"
-                          >
-                            <option
-                              disabled="disabled"
-                              value="Course component"
-                            >
-                              {this.t("courseComponentPlaceholder")}
-                            </option>
-                            <option value="In-class">
-                              {this.t("inClass")}
-                            </option>
-                            <option value="Out-of-class">
-                              {this.t("outOfClass")}
-                            </option>
-                          </select>
-                        </div>
-                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
-                          <div
-                            id="nogaPlanner_addCourse_dayAndTime_div"
-                            className="fr"
-                          >
-                            <div
-                              id="nogaPlanner_addCourse_dayAndTime_input_section"
-                              className="fc"
-                            >
-                              <div className="fc">
-                                <div className="nogaPlanner_addCourse_dayAndTime_row">
-                                  <input
-                                    id="nogaPlanner_addCourse_day_input"
-                                    placeholder={this.t("courseDayPlaceholder")}
-                                  />
-                                  <div
-                                    id="nogaPlanner_addCourse_time_inputs"
-                                    className="fr"
-                                  >
-                                    <input
-                                      id="nogaPlanner_addCourse_time_hour_input"
-                                      placeholder="HH"
-                                    />
-                                    <input
-                                      id="nogaPlanner_addCourse_time_minute_input"
-                                      placeholder="MM"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="nogaPlanner_addCourse_dayAndTime_row">
-                                  <input
-                                    id="nogaPlanner_addCourse_year_input"
-                                    placeholder={this.t(
-                                      "courseYearPlaceholder",
-                                    )}
-                                  />
-                                  <input
-                                    id="nogaPlanner_addCourse_term_input"
-                                    placeholder={this.t(
-                                      "courseTermPlaceholder",
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                              <ul
-                                id="nogaPlanner_addCourse_dayAndTime_ul"
-                                className="fr"
-                              ></ul>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowQuad">
-                          <select
-                            id="nogaPlanner_addCourse_class_input"
-                            defaultValue="Course classification"
-                          >
-                            <option
-                              disabled="disabled"
-                              value="Course classification"
-                            >
-                              {this.t("courseClassificationPlaceholder")}
-                            </option>
-                            <option disabled="disabled">
-                              {this.t("inClassGroup")}
-                            </option>
-                            <option value="Basic science">
-                              {this.t("basicScience")}
-                            </option>
-                            <option value="Applied science">
-                              {this.t("appliedScience")}
-                            </option>
-                            <option disabled="disabled">
-                              {this.t("outOfClassGroup")}
-                            </option>
-                            <option value="Lab">{this.t("lab")}</option>
-                            <option value="Clinical rotation">
-                              {this.t("clinicalRotation")}
-                            </option>
-                          </select>
-                          <select
-                            id="nogaPlanner_addCourse_status_input"
-                            defaultValue="Course status"
-                          >
-                            <option disabled="disabled" value="Course status">
-                              {this.t("courseStatusPlaceholder")}
-                            </option>
-                            <option value="Unstarted">
-                              {this.t("unstarted")}
-                            </option>
-                            <option value="Ongoing">{this.t("ongoing")}</option>
-                            <option value="Pass">{this.t("pass")}</option>
-                            <option value="Fail">{this.t("fail")}</option>
-                          </select>
-                        </div>
-                        <div className="nogaPlanner_addCourse_row nogaPlanner_addCourse_rowWide">
-                          <div
-                            id="nogaPlanner_addCourse_instructorsNames_div"
-                            className="fr"
-                          >
-                            <div
-                              id="nogaPlanner_addCourse_instructorName_section"
-                              className="fr"
-                            >
-                              <input
-                                id="nogaPlanner_addCourse_instructorName_input"
-                                placeholder={this.t(
-                                  "courseInstructorsPlaceholder",
-                                )}
-                              />
-                              <ul
-                                id="nogaPlanner_addCourse_instructorsNames_ul"
-                                className="fr"
-                              ></ul>
-                            </div>
-                          </div>
-                        </div>
-                      </form>
+            {this.isArabic() ? "EN" : "AR"}
+          </button>
+          <div className="fc" id="nogaPlanner_coursesLectures_wrapper">
+            <div className="nogaPlanner_wrapperTabs fr">
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_wrapperTabBtn" +
+                  (wrapperTab === "courses"
+                    ? " nogaPlanner_wrapperTabBtn--active"
+                    : "")
+                }
+                onClick={() => this.handleWrapperTabChange("courses")}
+              >
+                {this.isArabic() ? "المقررات" : "Courses"}
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_wrapperTabBtn" +
+                  (wrapperTab === "exams"
+                    ? " nogaPlanner_wrapperTabBtn--active"
+                    : "")
+                }
+                onClick={() => this.handleWrapperTabChange("exams")}
+              >
+                {this.isArabic() ? "الامتحانات" : "Exams"}
+              </button>
+            </div>
+            {/* <div id="nogaPlanner_courses_headerBlock" className="fc">
+              <h2 className="nogaPlanner_homeSoulTitle">
+                {this.isArabic() ? "خزانة المقررات" : "Course cabinet"}
+              </h2>
+              <p className="nogaPlanner_homeSoulSubtitle">
+                {this.isArabic()
+                  ? "واجهة مقررات بروح صفحة نوغا الرئيسية."
+                  : "A softer course panel shaped in the spirit of Noga Home."}
+              </p>
+            </div> */}
+            <div className="nogaPlanner_wrapperTabPanel fc">
+              {wrapperTab === "courses" ? (
+                <div id="nogaPlanner_courses_panelWrapper" className="fc">
+                  {this.state.course_isLoading === true && (
+                    <div id="course_loaderImg" className="loaderImg_div fc">
+                      <img src="/img/loader.gif" alt="" width="50px" />
                     </div>
-                  ) : null}
+                  )}
+                  {this.renderCoursesLecturesTabs()}
                 </div>
-                <div
-                  id="nogaPlanner_courses_actions_mount"
-                  className="fc nogaPlanner_courses_panel--hidden"
-                ></div>
-              </div>
-              {this.state.show_addCourseForm ? (
-                <div className="nogaPlanner_addCourse_examPanelWrapper">
-                  <div id="nogaPlanner_addCourse_examSection" className="fc">
-                    <div id="nogaPlanner_addCourse_exam_div" className="fr">
-                      <section
-                        id="nogaPlanner_addCourse_exam_input_section"
-                        className="fr"
-                      >
-                        <div
-                          id="nogaPlanner_addCourse_exam_input_section_inner"
-                          className="fc"
-                        >
-                          <label
-                            htmlFor="nogaPlanner_addCourse_examDate_day_input"
-                            className="nogaPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examDateLabel")}
-                          </label>
-                          <div
-                            id="nogaPlanner_addCourse_examDate_inputs"
-                            className="fr"
-                          >
-                            <input
-                              id="nogaPlanner_addCourse_examDate_day_input"
-                              placeholder="DD"
-                            />
-                            <input
-                              id="nogaPlanner_addCourse_examDate_month_input"
-                              placeholder="MM"
-                            />
-                            <input
-                              id="nogaPlanner_addCourse_examDate_year_input"
-                              placeholder="YYYY"
-                            />
-                          </div>
-                          <label
-                            htmlFor="nogaPlanner_addCourse_examTime_hour_input"
-                            className="nogaPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examTimeLabel")}
-                          </label>
-                          <div
-                            id="nogaPlanner_addCourse_examTime_inputs"
-                            className="fr"
-                          >
-                            <input
-                              id="nogaPlanner_addCourse_examTime_hour_input"
-                              placeholder="HH"
-                            />
-                            <input
-                              id="nogaPlanner_addCourse_examTime_minute_input"
-                              placeholder="MM"
-                            />
-                          </div>
-                          <label
-                            htmlFor="nogaPlanner_addCourse_examType_input"
-                            className="nogaPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examTypeLabel")}
-                          </label>
-                          <select
-                            id="nogaPlanner_addCourse_examType_input"
-                            defaultValue="Exam type"
-                          >
-                            <option disabled="disabled" value="Exam type">
-                              {this.t("examTypeLabel")}
-                            </option>
-                            <option value="Quiz">{this.t("quiz")}</option>
-                            <option value="Midterm">{this.t("midterm")}</option>
-                            <option value="Final">{this.t("final")}</option>
-                            <option value="Practical">
-                              {this.t("practical")}
-                            </option>
-                            <option value="Oral">{this.t("oral")}</option>
-                          </select>
-                          <label
-                            htmlFor="nogaPlanner_addCourse_grade_input"
-                            className="nogaPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("gradesLabel")}
-                          </label>
-                          <div
-                            id="nogaPlanner_addCourse_grade_div"
-                            className="fr"
-                          >
-                            <input
-                              id="nogaPlanner_addCourse_grade_input"
-                              placeholder={this.t("actualGrade")}
-                            />
-                            <input
-                              id="nogaPlanner_addCourse_fullGrade_input"
-                              placeholder={this.t("fullGrade")}
-                            />
-                          </div>
-                        </div>
-                      </section>
-                      <ul
-                        id="nogaPlanner_addCourse_exams_ul"
-                        className="fr"
-                      ></ul>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {}
-            </aside>
-            <React.Fragment>
-              <input
-                ref={this.ringVideoFileInputRef}
-                id="nogaPlanner_ringVideoFileInput"
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime"
-                onChange={this.handleRingVideoFileSelected}
-              />
-              <audio
-                ref={this.musicAudioRef}
-                crossOrigin="anonymous"
-                onPlay={() => {
-                  this.setState({ music_isPlaying: true });
-                  this.startPlannerMusicReactivePalette();
-                }}
-                onPause={() => {
-                  this.setState({ music_isPlaying: false });
-                  this.stopPlannerMusicReactivePalette();
-                }}
-                onEnded={() => this.playNextPlannerMusicTrack(true)}
-                onError={() => {
-                  this.stopPlannerMusicReactivePalette();
-                  this.playNextPlannerMusicTrack(false);
-                }}
-              />
-            </React.Fragment>
-            <section id="nogaPlanner_lectures_section">
-              {this.state.lecture_isLoading === true && (
-                <div id="lecture_loaderImg" className="loaderImg_div fc">
-                  <img src="/img/loader.gif" alt="" width="50px" />
+              ) : (
+                <div id="nogaPlanner_lecturesExamCluster" className="fr">
+                  {/* {this.renderTabDetailsPanel()} */}
+                  {this.renderSelectedCourseExamBoard()}
                 </div>
               )}
-              <nav id="nogaPlanner_lectures_nav" className="fr">
-                <div id="nogaPlanner_lectures_actionsShell" className="fc">
-                  <div
-                    id="nogaPlanner_lectures_actions"
-                    className="fc nogaPlanner_courses_actions--idle"
-                  >
-                    <div
-                      id="nogaPlanner_lectures_actionsWindow"
-                      className="fr"
-                      ref={this.lectureActionsWindowRef}
-                      onPointerDown={this.startLectureActionsDrag}
-                      onPointerMove={this.moveLectureActionsDrag}
-                      onPointerUp={this.stopLectureActionsDrag}
-                      onPointerCancel={this.stopLectureActionsDrag}
-                      onPointerLeave={this.stopLectureActionsDrag}
-                      onScroll={this.queueLectureActionsSnap}
-                    >
-                      <button
-                        className="nogaPlanner_courses_actionChip fr"
-                        type="button"
-                        data-action-key="add"
-                        aria-disabled="false"
-                        tabIndex={0}
-                        draggable={false}
-                        onClick={() =>
-                          this.openAddLectureForm({
-                            buttonName: "Add",
-                          })
-                        }
-                      >
-                        <span>{this.t("addLecture")}</span>
-                      </button>
-                      <button
-                        className="nogaPlanner_courses_actionChip fr"
-                        type="button"
-                        data-action-key="delete"
-                        aria-disabled="false"
-                        tabIndex={0}
-                        draggable={false}
-                        onClick={() => this.deleteLecture(checkedLectures)}
-                      >
-                        <span>{this.t("deleteLecture")}</span>
-                      </button>
-                      <button
-                        className="nogaPlanner_courses_actionChip fr"
-                        type="button"
-                        id="nogaPlanner_lectures_hideUnchecked_button"
-                        data-action-key="hide-unchecked"
-                        aria-disabled="false"
-                        tabIndex={0}
-                        draggable={false}
-                        onClick={() => this.hideUncheckedLectures()}
-                      >
-                        <span>{this.t("hideUncheckedLectures")}</span>
-                      </button>
-                      <button
-                        className="nogaPlanner_courses_actionChip fr"
-                        type="button"
-                        id="nogaPlanner_lectures_unhideUnchecked_button"
-                        data-action-key="unhide-unchecked"
-                        aria-disabled="false"
-                        tabIndex={0}
-                        draggable={false}
-                        onClick={() => this.unhideUncheckedLectures()}
-                      >
-                        <span>{this.t("unhideUncheckedLectures")}</span>
-                      </button>
-                    </div>
-                    <div className="nogaPlanner_courses_actionsOverlay">
-                      <div className="nogaPlanner_courses_actionsWindow"></div>
-                    </div>
-                  </div>
-                </div>
-                <div id="nogaPlanner_lectures_search_div" className="fr">
-                  <input
-                    placeholder={this.t("searchPlaceholder")}
-                    id="nogaPlanner_lectures_search_input"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        this.retrieveLecturesSearched(
-                          document.getElementById(
-                            "nogaPlanner_lectures_search_input",
-                          ).value,
-                        );
-                      }
-                    }}
-                    onChange={() => {
-                      if (
-                        document.getElementById(
-                          "nogaPlanner_lectures_search_input",
-                        ).value === ""
-                      )
-                        this.retrieveLectures();
-                    }}
-                  />
-                </div>
-              </nav>
-              <div id="nogaPlanner_lectures_tableShell">
-                <table id="nogaPlanner_lectures_table">
-                  <thead id="nogaPlanner_lectures_tableLabels_section">
-                    <tr id="nogaPlanner_lectures_tableLabels_div">
-                      <th>{this.t("titleHeader")}</th>
-                      <th>{this.t("courseHeader")}</th>
-                      <th>{this.t("instructorNameHeader")}</th>
-                      <th>{this.t("writerNameHeader")}</th>
-                    </tr>
-                  </thead>
-                  <tbody id="nogaPlanner_lectures_ul"></tbody>
-                </table>
-              </div>
-            </section>
-            {this.state.ringVideo_isOpen && (
-              <div
-                id="nogaPlanner_ringVideoOverlay"
-                onClick={this.closeRingVideoOverlay}
-              >
-                <div
-                  id="nogaPlanner_ringVideoWrapper"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button
-                    id="nogaPlanner_ringVideoUpload"
-                    type="button"
-                    onClick={this.triggerRingVideoFilePicker}
-                    disabled={this.state.ringVideo_isUploading}
-                  >
-                    {this.state.ringVideo_isUploading
-                      ? "Uploading..."
-                      : "Upload video"}
-                  </button>
-                  <button
-                    id="nogaPlanner_ringVideoClose"
-                    type="button"
-                    aria-label="Close video"
-                    title="Close video"
-                    onClick={this.closeRingVideoOverlay}
-                  >
-                    <i className="fi fi-rr-cross-small"></i>
-                  </button>
-                  <video
-                    id="nogaPlanner_ringVideoPlayer"
-                    ref={this.ringVideoRef}
-                    src={this.state.ringVideo_url}
-                    controls
-                    autoPlay
-                    playsInline
-                    preload="metadata"
-                  />
-                  {!this.state.ringVideo_url &&
-                  !this.state.ringVideo_uploadError ? (
-                    <p id="nogaPlanner_ringVideoUploadHint">
-                      No cloud video yet. Upload one to play.
-                    </p>
-                  ) : null}
-                  {this.state.ringVideo_uploadError ? (
-                    <p id="nogaPlanner_ringVideoUploadError">
-                      {this.state.ringVideo_uploadError}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </div>
-          <div
-            id="nogaPlanner_planDoor_div"
-            className="fc"
-            data-open={this.state.lecture_details ? "true" : "false"}
-          >
-            {this.renderLectureDetailsPanel()}
-          </div>
-          <aside id="nogaPlanner_plan_aside" className="fc">
-            <div id="nogaPlanner_plan_wrapper" className="fc">
-              <div id="nogaPlanner_plan_commsBoard" className="fc">
-                <div
-                  id="nogaPlanner_plan_telegramShell"
-                  data-suggestions-active={
-                    this.state.telegram_courseSuggestionsVisible
-                      ? "true"
-                      : "false"
-                  }
-                >
-                  <div id="nogaPlanner_plan_telegramControl" className="fc">
-                    <div className="nogaPlanner_plan_boardHeader fc">
-                      <p className="nogaPlanner_plan_boardEyebrow">
-                        {this.t("messageDesk")}
-                      </p>
-                      <div className="nogaPlanner_plan_boardTitleRow fr">
-                        <p className="nogaPlanner_plan_boardTitle">
-                          {this.t("telegram")}
-                        </p>
-                        <span className="nogaPlanner_plan_boardBadge">
-                          {this.t("archiveAndSearch")}
-                        </span>
-                      </div>
-                      <p className="nogaPlanner_plan_boardCopy">
-                        {this.t("telegramDeskCopy")}
-                      </p>
-                    </div>
-                    <div
-                      id="nogaPlanner_plan_telegramControlHeader"
-                      className="fc"
-                    >
-                      <div className="nogaPlanner_plan_telegramControlTitleRow fr">
-                        <p id="nogaPlanner_plan_telegramControlTitle">
-                          {this.t("telegramControl")}
-                        </p>
-                        <span className="nogaPlanner_plan_telegramControlBadge">
-                          {this.t("save")}
-                        </span>
-                      </div>
-                      <p className="nogaPlanner_plan_telegramControlCopy">
-                        {this.t("telegramHint")}
-                      </p>
-                    </div>
-                    <div
-                      id="nogaPlanner_plan_telegramConfigGrid"
-                      className="fr"
-                    >
-                      <div
-                        id="nogaPlanner_plan_telegramConfigForm"
-                        className="fc"
-                      >
-                        <label
-                          htmlFor="nogaPlanner_plan_telegramInput"
-                          className="nogaPlanner_plan_telegramControlLabel"
-                        >
-                          {this.t("groupReference")}
-                        </label>
-                        <div
-                          id="nogaPlanner_plan_telegramConfigRow"
-                          className="fr"
-                        >
-                          <select
-                            id="nogaPlanner_plan_telegramInput"
-                            value={this.state.telegram_groupInput}
-                            onChange={this.updateTelegramGroupInput}
-                            onFocus={this.fetchTelegramGroups}
-                          >
-                            {this.renderTelegramGroupOptions(
-                              this.t("groupReferencePlaceholder"),
-                            )}
-                          </select>
-                          <div
-                            id="nogaPlanner_plan_telegramHistoryField"
-                            className="fc"
-                          >
-                            <label
-                              htmlFor="nogaPlanner_plan_telegramHistoryStart"
-                              className="nogaPlanner_plan_telegramControlLabel"
-                            >
-                              {this.t("historyStartDate")}
-                            </label>
-                            <input
-                              id="nogaPlanner_plan_telegramHistoryStart"
-                              name="telegram_historyStartDate"
-                              type="date"
-                              value={this.state.telegram_historyStartDate}
-                              onChange={this.updateTelegramSearchField}
-                            />
-                          </div>
-                        </div>
-                        <button
-                          id="nogaPlanner_plan_telegramSave"
-                          type="button"
-                          onClick={this.saveTelegramConfig}
-                          disabled={this.state.telegram_isSaving}
-                        >
-                          {this.state.telegram_isSaving
-                            ? this.t("saving")
-                            : this.t("save")}
-                        </button>
-                      </div>
-                      <div
-                        id="nogaPlanner_plan_telegramStoredGroups"
-                        className="fc"
-                      >
-                        <p className="nogaPlanner_plan_telegramControlLabel">
-                          Stored conversations
-                        </p>
-                        <div
-                          id="nogaPlanner_plan_telegramStoredGroupsList"
-                          className="fc"
-                        >
-                          {this.state.telegram_storedGroupOptions.length ===
-                          0 ? (
-                            <p className="nogaPlanner_plan_telegramStoredGroupEmpty">
-                              {this.t("noStoredMessagesYet")}
-                            </p>
-                          ) : (
-                            this.state.telegram_storedGroupOptions.map(
-                              (group) => {
-                                const groupReference = String(
-                                  group?.groupReference || "",
-                                ).trim();
-
-                                return (
-                                  <div
-                                    key={
-                                      groupReference ||
-                                      String(group?.title || "")
-                                    }
-                                    className="nogaPlanner_plan_telegramStoredGroupRow fr"
-                                  >
-                                    <span className="nogaPlanner_plan_telegramStoredGroupName">
-                                      {String(
-                                        group?.title ||
-                                          group?.username ||
-                                          groupReference ||
-                                          "Telegram Group",
-                                      )}
-                                    </span>
-                                    <span className="nogaPlanner_plan_telegramStoredGroupCount">
-                                      {Number(group?.storedCount || 0)}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_plan_telegramStoredGroupDelete"
-                                      onClick={() =>
-                                        this.deleteStoredTelegramGroup(
-                                          groupReference,
-                                        )
-                                      }
-                                      disabled={
-                                        this.state
-                                          .telegram_deletingGroupReference ===
-                                        groupReference
-                                      }
-                                      aria-label="Delete stored conversation"
-                                      title="Delete stored conversation"
-                                    >
-                                      <i className="fi fi-rr-trash"></i>
-                                    </button>
-                                  </div>
-                                );
-                              },
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="nogaPlanner_plan_telegramControlHint">
-                      {this.t("telegramHint")}
-                    </p>
-                    <div
-                      id="nogaPlanner_plan_telegramArchiveStatus"
-                      className="fc"
-                    >
-                      <p className="nogaPlanner_plan_telegramArchiveLine">
-                        {this.t("storedMessages")}:{" "}
-                        {this.state.telegram_storedCount}
-                      </p>
-                      <p className="nogaPlanner_plan_telegramArchiveLine">
-                        {this.t("lastSync")}:{" "}
-                        {this.state.telegram_lastSyncedAt
-                          ? this.formatTelegramDateTime(
-                              this.state.telegram_lastSyncedAt,
-                            )
-                          : this.t("notSyncedYet")}
-                      </p>
-                      <p className="nogaPlanner_plan_telegramArchiveLine">
-                        {this.isArabic()
-                          ? "نتيجة آخر مزامنة"
-                          : "Last sync result"}
-                        :{" "}
-                        {this.state.telegram_lastSyncMessage ||
-                          (this.state.telegram_lastSyncError
-                            ? `History sync failed: ${this.state.telegram_lastSyncError}`
-                            : this.t("notSyncedYet"))}
-                      </p>
-                      <p className="nogaPlanner_plan_telegramArchiveLine">
-                        {this.t("lastStoredMessage")}:{" "}
-                        {this.state.telegram_lastStoredMessageDate
-                          ? this.formatTelegramDateTime(
-                              this.state.telegram_lastStoredMessageDate,
-                            )
-                          : this.t("noStoredMessagesYet")}
-                      </p>
-                      <p className="nogaPlanner_plan_telegramArchiveLine">
-                        {this.isArabic()
-                          ? "الرسائل المفحوصة"
-                          : "Scanned messages"}
-                        : {this.state.telegram_lastSyncScannedCount}
-                      </p>
-                    </div>
-                    {this.state.telegram_feedback ? (
-                      <p className="nogaPlanner_plan_telegramControlFeedback">
-                        {this.state.telegram_feedback}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div id="nogaPlanner_plan_telegramPanel" className="fc">
-                    <div id="nogaPlanner_plan_telegramHeader" className="fr">
-                      <select
-                        id="nogaPlanner_plan_telegramGroupSelect"
-                        value={this.state.telegram_panelGroupReference}
-                        onChange={this.updateTelegramPanelGroup}
-                        onFocus={this.fetchStoredTelegramGroups}
-                      >
-                        {this.renderTelegramGroupOptions(
-                          this.t("noStoredMessagesYet"),
-                          this.getStoredTelegramGroupOptions(),
-                        )}
-                      </select>
-                      <div id="nogaPlanner_plan_telegramButtons" className="fr">
-                        <button
-                          id="nogaPlanner_plan_telegramSuggestCourses"
-                          type="button"
-                          onClick={this.openTelegramCourseSuggestions}
-                          disabled={
-                            this.state.telegram_courseSuggestionsLoading ||
-                            this.state.telegram_courseSuggestionsPanelLoading ||
-                            !String(
-                              this.state.telegram_panelGroupReference || "",
-                            ).trim()
-                          }
-                        >
-                          {this.state.telegram_courseSuggestionsLoading
-                            ? this.isArabic()
-                              ? "جاري التحليل..."
-                              : "Analyzing..."
-                            : this.isArabic()
-                              ? "توقعات أسماء"
-                              : "Name Predictions"}
-                        </button>
-                        <button
-                          id="nogaPlanner_plan_telegramRefresh"
-                          type="button"
-                          onClick={this.fetchTelegramGroupMessages}
-                          title={this.t("telegram")}
-                          aria-label={this.t("telegram")}
-                        >
-                          <i className="fi fi-rr-rotate-right"></i>
-                        </button>
-                      </div>
-                    </div>
-                    {!this.state.telegram_courseSuggestionsVisible ? (
-                      <>
-                        <input
-                          id="nogaPlanner_plan_telegramSearchInput"
-                          name="telegram_searchQuery"
-                          type="text"
-                          value={this.state.telegram_searchQuery}
-                          onChange={this.updateTelegramSearchField}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              this.submitTelegramSearch();
-                            }
-                          }}
-                          placeholder={this.t("telegramSearchPlaceholder")}
-                        />
-                        <div
-                          id="nogaPlanner_plan_telegramViewToggle"
-                          className="fr"
-                        >
-                          <button
-                            type="button"
-                            className="nogaPlanner_plan_telegramViewButton"
-                            data-active={
-                              this.state.telegram_viewMode === "messages"
-                                ? "true"
-                                : "false"
-                            }
-                            onClick={() =>
-                              this.updateTelegramViewMode("messages")
-                            }
-                          >
-                            {this.t("telegramMessagesTab")}
-                          </button>
-                          <button
-                            type="button"
-                            className="nogaPlanner_plan_telegramViewButton"
-                            data-active={
-                              this.state.telegram_viewMode === "pdfs"
-                                ? "true"
-                                : "false"
-                            }
-                            onClick={() => this.updateTelegramViewMode("pdfs")}
-                          >
-                            {this.t("telegramPdfsTab")}
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                    <div id="nogaPlanner_plan_telegramContent" className="fr">
-                      {this.state.telegram_courseSuggestionsVisible ? (
-                        <div
-                          id="nogaPlanner_plan_telegramSuggestions"
-                          className="fc"
-                        >
-                          <div className="fc nogaPlanner_plan_telegramSuggestionsHeader">
-                            <p className="nogaPlanner_plan_telegramSuggestionsTitle">
-                              {this.isArabic()
-                                ? "توقعات أسماء المقررات"
-                                : this.state.telegram_courseSuggestionsView ===
-                                    "rejected"
-                                  ? "Rejected Course Suggestions"
-                                  : "Course Name Predictions"}
-                            </p>
-                            <p className="nogaPlanner_plan_telegramSuggestionsSubtitle">
-                              {this.isArabic()
-                                ? "استخرج الاسم فقط أولاً، ثم اعتمد البطاقة المعلقة قبل طلب بقية التفاصيل لنفس المقرر."
-                                : "Extract the course name first, approve the pending card, then request the remaining details for that same course."}
-                            </p>
-                            <p className="nogaPlanner_plan_telegramSuggestionsSelectedPdf">
-                              {this.state.telegram_selectedSuggestionPdfTitle
-                                ? `Selected PDF: ${this.state.telegram_selectedSuggestionPdfTitle}`
-                                : "Select one PDF from the PDFs tab to generate name predictions."}
-                            </p>
-                            <label className="nogaPlanner_plan_telegramControlLabel">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(
-                                  this.state.telegram_searchSelectedPdfs,
-                                )}
-                                onChange={(event) =>
-                                  this.setState({
-                                    telegram_searchSelectedPdfs:
-                                      event.target.checked,
-                                  })
-                                }
-                              />{" "}
-                              {this.isArabic()
-                                ? "Ø§Ù„Ø¨Ø­Ø« ÙÙŠ PDF Ø§Ù„Ù…Ø­Ø¯Ø¯"
-                                : "Search in selected PDFs"}
-                            </label>
-                            <div className="fr nogaPlanner_plan_telegramSuggestionsActions">
-                              <button
-                                type="button"
-                                className="nogaPlanner_plan_telegramSuggestCoursesInline"
-                                onClick={() =>
-                                  this.fetchTelegramCourseSuggestions("ai")
-                                }
-                                disabled={
-                                  this.state
-                                    .telegram_courseSuggestionsLoading ||
-                                  !String(
-                                    this.state.telegram_panelGroupReference ||
-                                      "",
-                                  ).trim()
-                                }
-                              >
-                                {this.state.telegram_courseSuggestionsLoading &&
-                                this.state
-                                  .telegram_courseSuggestionsLoadingMode ===
-                                  "ai"
-                                  ? "Analyzing stored..."
-                                  : this.isArabic()
-                                    ? "توقعات بالذكاء"
-                                    : "Stored AI Suggestions"}
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_plan_telegramSuggestCoursesInline"
-                                onClick={this.openTelegramCourseSuggestions}
-                                disabled={
-                                  this.state
-                                    .telegram_courseSuggestionsPanelLoading ||
-                                  !String(
-                                    this.state.telegram_panelGroupReference ||
-                                      "",
-                                  ).trim()
-                                }
-                              >
-                                {this.isArabic()
-                                  ? "ØªØµÙØ­ Ø§Ù„Ù…Ø­ÙÙˆØ¸"
-                                  : "Browse Stored"}
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_plan_telegramSuggestCoursesInline"
-                                onClick={() =>
-                                  this.fetchTelegramCourseSuggestions("more")
-                                }
-                                disabled={
-                                  this.state
-                                    .telegram_courseSuggestionsLoading ||
-                                  this.state.telegram_courseSuggestionsView ===
-                                    "rejected" ||
-                                  !String(
-                                    this.state.telegram_panelGroupReference ||
-                                      "",
-                                  ).trim() ||
-                                  !Array.isArray(
-                                    this.state.telegram_courseSuggestions,
-                                  ) ||
-                                  this.state.telegram_courseSuggestions
-                                    .length === 0
-                                }
-                              >
-                                {this.state.telegram_courseSuggestionsLoading &&
-                                this.state
-                                  .telegram_courseSuggestionsLoadingMode ===
-                                  "more"
-                                  ? "Loading more..."
-                                  : this.isArabic()
-                                    ? "Ø§Ù‚ØªØ±Ø§Ø­Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©"
-                                    : "More Stored Suggestions"}
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_plan_telegramSuggestCoursesInline nogaPlanner_plan_telegramSuggestCoursesLocal"
-                                onClick={
-                                  this.openRejectedTelegramCourseSuggestions
-                                }
-                                disabled={
-                                  this.state
-                                    .telegram_courseSuggestionsPanelLoading ||
-                                  !String(
-                                    this.state.telegram_panelGroupReference ||
-                                      "",
-                                  ).trim()
-                                }
-                              >
-                                {this.isArabic()
-                                  ? "ØªØµÙØ­ Ø§Ù„Ù…Ø±ÙÙˆØ¶"
-                                  : "Browse Rejected"}
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_plan_telegramSuggestCoursesInline nogaPlanner_plan_telegramSuggestCoursesClear"
-                                onClick={
-                                  this.clearSavedTelegramCourseSuggestions
-                                }
-                                disabled={
-                                  !Array.isArray(
-                                    this.state.telegram_courseSuggestions,
-                                  ) ||
-                                  this.state.telegram_courseSuggestions
-                                    .length === 0
-                                }
-                              >
-                                {this.isArabic() ? "مسح" : "Clear"}
-                              </button>
-                            </div>
-                          </div>
-                          {this.state.telegram_courseSuggestionsPanelLoading ? (
-                            <p className="nogaPlanner_plan_telegramSuggestionStatus">
-                              {this.isArabic()
-                                ? "جارٍ تحميل توقعات الأسماء المحفوظة..."
-                                : "Loading saved name predictions..."}
-                            </p>
-                          ) : null}
-                          {this.state.telegram_courseSuggestionsError ? (
-                            <p className="nogaPlanner_plan_telegramSuggestionStatus">
-                              {this.state.telegram_courseSuggestionsError}
-                            </p>
-                          ) : null}
-                          {this.state.telegram_courseSuggestionsFeedback ? (
-                            <p className="nogaPlanner_plan_telegramSuggestionStatus">
-                              {this.state.telegram_courseSuggestionsFeedback}
-                            </p>
-                          ) : null}
-                          {this.state.telegram_courseSuggestionsLiveStatus ? (
-                            <p className="nogaPlanner_plan_telegramSuggestionLiveLine">
-                              {this.state.telegram_courseSuggestionsLiveStatus}
-                            </p>
-                          ) : null}
-                          {this.state.telegram_courseSuggestions.length > 0 ? (
-                            <div className="nogaPlanner_plan_telegramSuggestionGrid">
-                              {this.state.telegram_courseSuggestions.map(
-                                (suggestion) => {
-                                  const coursePayload =
-                                    suggestion.coursePayload || {};
-                                  const courseArabic =
-                                    suggestion.courseArabic || {};
-                                  const courseEnglish =
-                                    suggestion.courseEnglish || {};
-                                  const duplicateKey =
-                                    buildCourseDuplicateKey(coursePayload);
-                                  const openingSuggestion =
-                                    this.state
-                                      .telegram_approvingSuggestionKey ===
-                                    suggestion.suggestionKey;
-                                  const rawCourseName = String(
-                                    coursePayload.course_name || "",
-                                  ).trim();
-                                  const arabicTitle =
-                                    String(
-                                      courseArabic.course_name || "",
-                                    ).trim() ||
-                                    (/[ء-ي]/.test(rawCourseName)
-                                      ? rawCourseName
-                                      : "");
-                                  const englishTitle =
-                                    String(
-                                      courseEnglish.course_name || "",
-                                    ).trim() ||
-                                    (/[A-Za-z]/.test(rawCourseName)
-                                      ? rawCourseName
-                                      : "");
-                                  const displayMatchedKeys = Array.isArray(
-                                    suggestion.matchedKeys,
-                                  )
-                                    ? [
-                                        ...new Set(
-                                          suggestion.matchedKeys
-                                            .map((key) =>
-                                              String(key || "").trim(),
-                                            )
-                                            .filter(Boolean),
-                                        ),
-                                      ]
-                                    : [];
-
-                                  return (
-                                    <div
-                                      key={
-                                        suggestion.suggestionKey || duplicateKey
-                                      }
-                                      className="nogaPlanner_plan_telegramSuggestionCard fc"
-                                    >
-                                      <div className="fr nogaPlanner_plan_telegramSuggestionHeader">
-                                        <div className="fc nogaPlanner_plan_telegramSuggestionTitleWrap">
-                                          <p className="nogaPlanner_plan_telegramSuggestionTitle">
-                                            {arabicTitle || this.t("noText")}
-                                          </p>
-                                          <p className="nogaPlanner_plan_telegramSuggestionMetaLine">
-                                            {englishTitle || this.t("noText")}
-                                          </p>
-                                        </div>
-                                        <span className="nogaPlanner_plan_telegramSuggestionConfidence">
-                                          {Number(suggestion.confidence || 0)}%
-                                        </span>
-                                      </div>
-                                      <div className="fc nogaPlanner_plan_telegramSuggestionBody">
-                                        <p className="nogaPlanner_plan_telegramSuggestionRow">
-                                          <strong>
-                                            {this.isArabic()
-                                              ? "المفاتيح المطابقة"
-                                              : "Matched keys"}
-                                            :
-                                          </strong>{" "}
-                                          {displayMatchedKeys.length > 0
-                                            ? displayMatchedKeys.join(", ")
-                                            : "-"}
-                                        </p>
-                                        {Array.isArray(suggestion.reasons) &&
-                                        suggestion.reasons.length > 0 ? (
-                                          <div className="fc nogaPlanner_plan_telegramSuggestionReasons">
-                                            {suggestion.reasons.map(
-                                              (reason, reasonIndex) => (
-                                                <p
-                                                  key={`${suggestion.suggestionKey}-reason-${reasonIndex}`}
-                                                  className="nogaPlanner_plan_telegramSuggestionReason"
-                                                >
-                                                  {reason}
-                                                </p>
-                                              ),
-                                            )}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                      {this.state
-                                        .telegram_courseSuggestionsView !==
-                                      "rejected" ? (
-                                        <div className="fr nogaPlanner_plan_telegramSuggestionActions">
-                                          <button
-                                            type="button"
-                                            className="nogaPlanner_plan_telegramSuggestApprove"
-                                            onClick={() =>
-                                              this.approveTelegramCourseSuggestion(
-                                                suggestion.suggestionKey,
-                                              )
-                                            }
-                                            disabled={openingSuggestion}
-                                          >
-                                            {openingSuggestion
-                                              ? this.isArabic()
-                                                ? "جاري الإضافة..."
-                                                : "Adding..."
-                                              : this.isArabic()
-                                                ? "اعتماد بطاقة معلقة"
-                                                : "Approve Pending Card"}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="nogaPlanner_plan_telegramSuggestDismiss"
-                                            onClick={() =>
-                                              this.dismissTelegramCourseSuggestion(
-                                                suggestion.suggestionKey,
-                                              )
-                                            }
-                                          >
-                                            {this.isArabic() ? "رفض" : "Reject"}
-                                          </button>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  );
-                                },
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {!this.state.telegram_courseSuggestionsVisible ? (
-                        <div id="nogaPlanner_plan_telegramBody" className="fc">
-                          {this.state.telegram_isLoading ? (
-                            <p className="nogaPlanner_plan_telegramStatus">
-                              {this.t("loadingTelegramMessages")}
-                            </p>
-                          ) : this.state.telegram_error ? (
-                            <p className="nogaPlanner_plan_telegramStatus">
-                              {this.state.telegram_error}
-                            </p>
-                          ) : this.state.telegram_viewMode === "pdfs" &&
-                            this.getSortedTelegramPdfs().length === 0 ? (
-                            <p className="nogaPlanner_plan_telegramStatus">
-                              {this.t("noTelegramPdfsYet")}
-                            </p>
-                          ) : this.state.telegram_viewMode === "pdfs" ? (
-                            <>
-                              {this.getSortedTelegramPdfs().map((message) => (
-                                <div
-                                  key={
-                                    message.id ||
-                                    message.attachmentFileName ||
-                                    `${message.sender}-${message.date}`
-                                  }
-                                  className="nogaPlanner_plan_telegramPdfCard fc"
-                                >
-                                  <div className="fr nogaPlanner_plan_telegramPdfHeader">
-                                    <span className="nogaPlanner_plan_telegramPdfBadge">
-                                      PDF
-                                    </span>
-                                    <span className="nogaPlanner_plan_telegramPdfTime">
-                                      {this.formatTelegramDateTime(
-                                        message.date,
-                                      )}
-                                    </span>
-                                  </div>
-                                  <p className="nogaPlanner_plan_telegramPdfTitle">
-                                    {message.attachmentFileName ||
-                                      message.text ||
-                                      this.t("noText")}
-                                  </p>
-                                  {message.text &&
-                                  message.text !==
-                                    message.attachmentFileName ? (
-                                    <p className="nogaPlanner_plan_telegramPdfCaption">
-                                      {message.text}
-                                    </p>
-                                  ) : null}
-                                  {message.attachmentTextExtracted ? (
-                                    <p className="nogaPlanner_plan_telegramPdfExtract">
-                                      {message.attachmentTextExtracted.slice(
-                                        0,
-                                        280,
-                                      )}
-                                      {message.attachmentTextExtracted.length >
-                                      280
-                                        ? "..."
-                                        : ""}
-                                    </p>
-                                  ) : null}
-                                  <div className="fr nogaPlanner_plan_telegramMeta">
-                                    <span>
-                                      {message.sender || this.t("unknown")}
-                                    </span>
-                                    <span>
-                                      {this.formatTelegramAttachmentSize(
-                                        message.attachmentSizeBytes,
-                                      ) ||
-                                        String(
-                                          message.attachmentMimeType ||
-                                            "application/pdf",
-                                        )}
-                                    </span>
-                                  </div>
-                                  <div className="fr nogaPlanner_plan_telegramPdfActions">
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_plan_telegramPdfOpen nogaPlanner_plan_telegramPdfSuggest"
-                                      onClick={() =>
-                                        this.selectTelegramPdfForSuggestions(
-                                          message,
-                                        )
-                                      }
-                                    >
-                                      {Number(
-                                        this.state
-                                          .telegram_selectedSuggestionPdfId ||
-                                          0,
-                                      ) === Number(message?.id || 0)
-                                        ? "Selected for Suggestions"
-                                        : "Use for Suggestions"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_plan_telegramPdfOpen"
-                                      onClick={() =>
-                                        this.openStoredTelegramPdf(message)
-                                      }
-                                      disabled={
-                                        this.state.telegram_openingPdfKey ===
-                                        `${String(
-                                          this.state
-                                            .telegram_panelGroupReference || "",
-                                        ).trim()}:${Number(message?.id || 0)}`
-                                      }
-                                    >
-                                      {this.state.telegram_openingPdfKey ===
-                                      `${String(
-                                        this.state
-                                          .telegram_panelGroupReference || "",
-                                      ).trim()}:${Number(message?.id || 0)}`
-                                        ? "Opening..."
-                                        : this.isArabic()
-                                          ? "افتح"
-                                          : "Open"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_plan_telegramPdfOpen nogaPlanner_plan_telegramPdfOpenAlt"
-                                      onClick={() =>
-                                        this.downloadStoredTelegramPdf(message)
-                                      }
-                                    >
-                                      {this.isArabic() ? "تنزيل" : "Download"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_plan_telegramPdfOpen nogaPlanner_plan_telegramPdfOpenAlt"
-                                      onClick={() =>
-                                        this.openStoredTelegramPdfInNewTab(
-                                          message,
-                                        )
-                                      }
-                                    >
-                                      {this.isArabic()
-                                        ? "علامة تبويب"
-                                        : "Open Tab"}
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </>
-                          ) : this.state.telegram_messages.length === 0 ? (
-                            <p className="nogaPlanner_plan_telegramStatus">
-                              {this.t("noTelegramMessagesYet")}
-                            </p>
-                          ) : (
-                            <>
-                              {this.groupTelegramMessagesByDay(
-                                this.state.telegram_messages,
-                              ).flatMap((messageGroup) => [
-                                <div
-                                  key={`${messageGroup.dayLabel}-separator`}
-                                  className="nogaPlanner_plan_telegramDaySeparator"
-                                >
-                                  <span className="nogaPlanner_plan_telegramDaySeparatorText">
-                                    {messageGroup.dayLabel}
-                                  </span>
-                                </div>,
-                                ...messageGroup.items.map((message) => (
-                                  <div
-                                    key={
-                                      message.id ||
-                                      `${message.sender}-${message.date}`
-                                    }
-                                    className="nogaPlanner_plan_telegramMessageRow fc"
-                                  >
-                                    <div
-                                      className="nogaPlanner_plan_telegramMessage fc"
-                                      dir="auto"
-                                    >
-                                      <p>{message.text || this.t("noText")}</p>
-                                      <div className="fr nogaPlanner_plan_telegramMeta">
-                                        <span>
-                                          {message.sender || this.t("unknown")}
-                                        </span>
-                                        <span>
-                                          {this.formatTelegramTimeOnly(
-                                            message.date,
-                                          )}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )),
-                              ])}
-                            </>
-                          )}
-                          <p id="nogaPlanner_plan_telegramSearchSummary">
-                            {this.t("showingResults", {
-                              count: this.state.telegram_messages.length,
-                              rawCount: this.state.telegram_rawCount,
-                            })}
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-          </aside>
-          {this.renderScheduleSwipePage()}
-          <button
-            id="nogaPlanner_navStrip_left"
-            type="button"
-            className="nogaPlanner_navStrip nogaPlanner_navStrip--left"
-            data-active={
-              this.state.planner_swipeView === "telegram" ? "true" : "false"
-            }
-            onClick={this.toggleTelegramSwipeView}
-            aria-label={
-              this.state.planner_swipeView === "telegram"
-                ? this.isArabic()
-                  ? "العودة إلى المخطط"
-                  : "Return to planner"
-                : this.isArabic()
-                  ? "افتح صفحة تيليجرام"
-                  : "Open Telegram page"
-            }
-            title={
-              this.state.planner_swipeView === "telegram"
-                ? this.isArabic()
-                  ? "العودة إلى المخطط"
-                  : "Return to planner"
-                : this.isArabic()
-                  ? "افتح صفحة تيليجرام"
-                  : "Open Telegram page"
-            }
-          >
-            <span className="nogaPlanner_navStrip_label">
-              {this.t("telegram")}
-            </span>
-            <i
-              className={
-                this.state.planner_swipeView === "telegram"
-                  ? "fi fi-rr-angle-small-right"
-                  : "fi fi-rr-angle-small-left"
-              }
-            ></i>
-          </button>
-          <button
-            id="nogaPlanner_navStrip_bottom"
-            type="button"
-            className="nogaPlanner_navStrip nogaPlanner_navStrip--bottom"
-            data-active={
-              this.state.planner_swipeView === "schedule" ? "true" : "false"
-            }
-            onClick={this.toggleScheduleSwipeView}
-            aria-label={
-              this.state.planner_swipeView === "schedule"
-                ? this.isArabic()
-                  ? "العودة إلى المخطط"
-                  : "Return to planner"
-                : this.isArabic()
-                  ? "افتح صفحة الجدول"
-                  : "Open schedule page"
-            }
-            title={
-              this.state.planner_swipeView === "schedule"
-                ? this.isArabic()
-                  ? "العودة إلى المخطط"
-                  : "Return to planner"
-                : this.isArabic()
-                  ? "افتح صفحة الجدول"
-                  : "Open schedule page"
-            }
-          >
-            <span className="nogaPlanner_navStrip_label">
-              {this.t("planDays")}
-            </span>
-            <i
-              className={
-                this.state.planner_swipeView === "schedule"
-                  ? "fi fi-rr-angle-small-down"
-                  : "fi fi-rr-angle-small-up"
-              }
-            ></i>
-          </button>
+          </div>{" "}
+          {/* Close nogaPlanner_coursesLectures_wrapper */}
           <div id="nogaPlanner_addLecture_div" className="fc">
             <label onClick={this.closeAddLectureForm}>{this.t("close")}</label>
             <form id="nogaPlanner_addLecture_form" className="fc">
@@ -9570,13 +8529,19 @@ export default class NogaPlanner extends Component {
                 />
               </div>
               <div className="nogaPlanner_addLecture_row nogaPlanner_addLecture_rowSplit">
-                <select id="nogaPlanner_addLecture_course_input">
-                  <option selected disabled>
+                <select
+                  id="nogaPlanner_addLecture_course_input"
+                  defaultValue=""
+                >
+                  <option value="" disabled>
                     {this.t("lectureCoursePlaceholder")}
                   </option>
                 </select>
-                <select id="nogaPlanner_addLecture_instructorName_input">
-                  <option selected disabled>
+                <select
+                  id="nogaPlanner_addLecture_instructorName_input"
+                  defaultValue=""
+                >
+                  <option value="" disabled>
                     {this.t("lectureInstructorPlaceholder")}
                   </option>
                 </select>
@@ -9723,56 +8688,17 @@ export default class NogaPlanner extends Component {
                 }
               }}
             >
-              Add
+              {this.t("add")}
             </label>
           </div>
         </article>
-        <PdfReaderModal
-          isOpen={this.state.telegram_pdfViewerOpen}
-          fileUrl={this.state.telegram_pdfViewerUrl}
-          title={
-            activeTelegramPdfMessage?.attachmentFileName ||
-            activeTelegramPdfMessage?.text ||
-            "Telegram PDF"
-          }
-          metadata={{
-            sender: activeTelegramPdfMessage?.sender || "",
-            sizeBytes: activeTelegramPdfMessage?.attachmentSizeBytes,
-          }}
-          initialPage={activeTelegramPdfReaderState.page}
-          initialZoom={activeTelegramPdfReaderState.zoom}
-          isLoading={this.state.telegram_pdfViewerLoading}
-          error={this.state.telegram_pdfViewerError}
-          onClose={this.closeTelegramPdfViewer}
-          onOpenInNewTab={() => {
-            if (this.state.telegram_pdfViewerUrl) {
-              window.open(
-                this.state.telegram_pdfViewerUrl,
-                "_blank",
-                "noopener,noreferrer",
-              );
-              return;
-            }
-
-            if (activeTelegramPdfMessage) {
-              this.openStoredTelegramPdfInNewTab(activeTelegramPdfMessage);
-            }
-          }}
-          onDownload={() => {
-            if (activeTelegramPdfMessage) {
-              this.downloadStoredTelegramPdf(activeTelegramPdfMessage);
-            }
-          }}
-          onReaderStateChange={(nextState) => {
-            if (activeTelegramPdfMessage) {
-              this.persistTelegramPdfReaderState(
-                activeTelegramPdfMessage,
-                nextState,
-              );
-            }
-          }}
-        />
       </React.Fragment>
     );
   }
 }
+
+// Music was removed. Named exports kept as no-ops for backward compatibility.
+export const getPlannerMusicSnapshot = () => ({});
+export const playNextSharedPlannerMusicTrack = () => {};
+export const playPreviousSharedPlannerMusicTrack = () => {};
+export const toggleSharedPlannerMusic = () => {};

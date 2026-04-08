@@ -19,7 +19,7 @@ const DEPENDENCY_OPTIONS = [
   { key: "university", label: "University" },
   { key: "study_year", label: "Study year" },
   { key: "term", label: "Term" },
-  { key: "important_messages", label: "Important messages", locked: true },
+  { key: "important_messages", label: "Pins" },
 ];
 
 const DEPENDENCY_LABELS = {
@@ -29,7 +29,7 @@ const DEPENDENCY_LABELS = {
     university: "University",
     study_year: "Study year",
     term: "Term",
-    important_messages: "Important messages",
+    important_messages: "Pins",
   },
   ar: {
     username: "اسم المستخدم",
@@ -37,7 +37,7 @@ const DEPENDENCY_LABELS = {
     university: "الجامعة",
     study_year: "السنة الدراسية",
     term: "الفصل",
-    important_messages: "الرسائل المهمة",
+    important_messages: "المثبّتات",
   },
 };
 
@@ -56,14 +56,27 @@ const STORAGE_COPY = {
     add: "Add",
     predictCourses: "Predict course names by AI",
     predictLectures: "Predict lecture names by AI",
-    importantMessagesAi: "Important messages AI",
+    predictInstructors: "Predict instructor names by AI",
+    predictionsSettingsTab: "Settings",
+    predictionsCoursesTab: "Courses",
+    predictionsLecturesTab: "Lectures",
+    predictionsInstructorsTab: "Instructors",
+    predictionsPinsTab: "Pins",
     predict: "Predict",
     predicting: "Predicting...",
     conceptualize: "Conceptualize",
     thinking: "Thinking...",
     noSavedCourses: "No saved courses yet",
+    noCoursePredictions: "No course predictions yet",
+    noLecturePredictions: "No lecture predictions yet",
+    noInstructorPredictions: "No instructor predictions yet",
+    predictedBucket: "Predicted",
+    deletePredicted: "Delete predicted",
+    acceptedBucket: "Accepted",
+    clearAccepted: "Clear accepted",
     noImportantMessages: "No important messages pinned yet",
-    loadStoredPrompt: "Search storage to open the stored Telegram message monitor.",
+    loadStoredPrompt:
+      "Search storage to open the stored Telegram message monitor.",
     loadingStored: "Loading stored Telegram messages...",
     pin: "Pin",
     pinned: "Pinned",
@@ -73,6 +86,8 @@ const STORAGE_COPY = {
       `Built ${count} course prediction(s) from Telegram storage.`,
     builtLectures: (count, courseName) =>
       `Built ${count} lecture prediction(s) for ${courseName}.`,
+    builtInstructors: (count) =>
+      `Built ${count} instructor prediction(s) from Telegram storage.`,
     conceptualized: "Important message conceptualized.",
     chooseCourse: "Choose one of your saved courses first.",
     chooseImportant: "Choose an important message first.",
@@ -91,12 +106,24 @@ const STORAGE_COPY = {
     add: "إضافة",
     predictCourses: "توقّع أسماء المواد بالذكاء الاصطناعي",
     predictLectures: "توقّع أسماء المحاضرات بالذكاء الاصطناعي",
-    importantMessagesAi: "الرسائل المهمة بالذكاء الاصطناعي",
+    predictInstructors: "توقّع أسماء الأساتذة بالذكاء الاصطناعي",
+    predictionsSettingsTab: "الإعدادات",
+    predictionsCoursesTab: "المواد",
+    predictionsLecturesTab: "المحاضرات",
+    predictionsInstructorsTab: "الأساتذة",
+    predictionsPinsTab: "المثبّتات",
     predict: "توقّع",
     predicting: "جارٍ التوقّع...",
     conceptualize: "بلورة الفكرة",
     thinking: "جارٍ التفكير...",
     noSavedCourses: "لا توجد مواد محفوظة بعد",
+    noCoursePredictions: "لا توجد اقتراحات مواد بعد",
+    noLecturePredictions: "لا توجد اقتراحات محاضرات بعد",
+    noInstructorPredictions: "لا توجد اقتراحات أساتذة بعد",
+    predictedBucket: "التوقعات",
+    deletePredicted: "حذف التوقعات",
+    acceptedBucket: "المقبول",
+    clearAccepted: "مسح المقبول",
     noImportantMessages: "لا توجد رسائل مهمة مثبّتة بعد",
     loadStoredPrompt: "ابحث في التخزين لفتح مراقب الرسائل المخزنة من تيليجرام.",
     loadingStored: "جارٍ تحميل رسائل تيليجرام المخزنة...",
@@ -108,6 +135,8 @@ const STORAGE_COPY = {
       `تم إنشاء ${count} اقتراح/اقتراحات لمواد من تخزين تيليجرام.`,
     builtLectures: (count, courseName) =>
       `تم إنشاء ${count} اقتراح/اقتراحات لمحاضرات خاصة بـ ${courseName}.`,
+    builtInstructors: (count) =>
+      `تم إنشاء ${count} اقتراح/اقتراحات لأسماء الأساتذة من تخزين تيليجرام.`,
     conceptualized: "تمت بلورة الرسالة المهمة.",
     chooseCourse: "اختر مادة محفوظة أولًا.",
     chooseImportant: "اختر رسالة مهمة أولًا.",
@@ -203,10 +232,14 @@ const formatTelegramGroupOptionLabel = (
   return fallbackLabel;
 };
 
-const getTelegramGroupOptionGroups = (options = [], configuredReference = "") => {
+const getTelegramGroupOptionGroups = (
+  options = [],
+  configuredReference = "",
+) => {
   const trimmedReference = String(configuredReference || "").trim();
   const hasConfiguredReference =
-    trimmedReference.length > 0 && !isNumericTelegramReference(trimmedReference);
+    trimmedReference.length > 0 &&
+    !isNumericTelegramReference(trimmedReference);
   const mergedOptions = hasConfiguredReference
     ? [
         ...options,
@@ -228,7 +261,9 @@ const getTelegramGroupOptionGroups = (options = [], configuredReference = "") =>
 
   return mergedOptions.reduce(
     (accumulator, group) => {
-      const nextType = String(group?.type || "").trim().toLowerCase();
+      const nextType = String(group?.type || "")
+        .trim()
+        .toLowerCase();
       if (nextType === "channel") {
         accumulator.channels.push(group);
       } else if (nextType === "supergroup") {
@@ -259,6 +294,60 @@ const parseStoredConceptSummary = (value) => {
 const buildImportantMessageValue = (message) =>
   `${String(message?.groupReference || "").trim()}::${Number(message?.id || 0)}`;
 
+const getCourseSuggestionIdentity = (suggestion) =>
+  String(
+    suggestion?.suggestionKey ||
+      suggestion?.duplicateKey ||
+      suggestion?.coursePayload?.course_name ||
+      "",
+  ).trim();
+
+const getLectureSuggestionIdentity = (suggestion) =>
+  String(
+    suggestion?.suggestionKey ||
+      suggestion?.duplicateKey ||
+      suggestion?.lectureName ||
+      "",
+  ).trim();
+
+const getInstructorSuggestionIdentity = (suggestion) =>
+  String(
+    suggestion?.suggestionKey ||
+      suggestion?.duplicateKey ||
+      suggestion?.name ||
+      "",
+  ).trim();
+
+const removeSuggestionFromList = (
+  currentList = [],
+  suggestion,
+  getIdentity = () => "",
+) => {
+  const suggestionIdentity = getIdentity(suggestion);
+
+  if (!suggestionIdentity) {
+    return currentList.filter((entry) => entry !== suggestion);
+  }
+
+  return currentList.filter(
+    (entry) => getIdentity(entry) !== suggestionIdentity,
+  );
+};
+
+const prependSuggestionToList = (
+  currentList = [],
+  suggestion,
+  getIdentity = () => "",
+) => {
+  const filteredList = removeSuggestionFromList(
+    currentList,
+    suggestion,
+    getIdentity,
+  );
+
+  return [suggestion, ...filteredList];
+};
+
 const TelegramControlPage = ({
   state,
   logOut,
@@ -284,7 +373,7 @@ const TelegramControlPage = ({
   const [storedGroupOptions, setStoredGroupOptions] = React.useState([]);
   const [courses, setCourses] = React.useState([]);
   const [importantMessages, setImportantMessages] = React.useState([]);
-  const [streamTitle, setStreamTitle] = React.useState("Stored Telegram messages");
+  const [streamTitle, setStreamTitle] = React.useState("Telegram messages");
   const [storageSearchQuery, setStorageSearchQuery] = React.useState("");
   const [searchWithinSelectedGroup, setSearchWithinSelectedGroup] =
     React.useState(false);
@@ -303,14 +392,40 @@ const TelegramControlPage = ({
   const [manualDependencies, setManualDependencies] = React.useState([]);
   const [isCoursePredicting, setIsCoursePredicting] = React.useState(false);
   const [courseSuggestions, setCourseSuggestions] = React.useState([]);
+  const [storedCourseSuggestions, setStoredCourseSuggestions] = React.useState(
+    [],
+  );
+  const [rejectedCourseSuggestions, setRejectedCourseSuggestions] =
+    React.useState([]);
+  const [acceptedCourseSuggestions, setAcceptedCourseSuggestions] =
+    React.useState([]);
   const [isLecturePredicting, setIsLecturePredicting] = React.useState(false);
   const [selectedCourseName, setSelectedCourseName] = React.useState("");
   const [lectureSuggestions, setLectureSuggestions] = React.useState([]);
+  const [storedLectureSuggestions, setStoredLectureSuggestions] =
+    React.useState([]);
+  const [rejectedLectureSuggestions, setRejectedLectureSuggestions] =
+    React.useState([]);
+  const [acceptedLectureSuggestions, setAcceptedLectureSuggestions] =
+    React.useState([]);
+  const [isInstructorPredicting, setIsInstructorPredicting] =
+    React.useState(false);
+  const [instructorSuggestions, setInstructorSuggestions] = React.useState([]);
+  const [storedInstructorSuggestions, setStoredInstructorSuggestions] =
+    React.useState([]);
+  const [rejectedInstructorSuggestions, setRejectedInstructorSuggestions] =
+    React.useState([]);
+  const [acceptedInstructorSuggestions, setAcceptedInstructorSuggestions] =
+    React.useState([]);
   const [selectedImportantMessage, setSelectedImportantMessage] =
     React.useState("");
   const [isConceptualizing, setIsConceptualizing] = React.useState(false);
   const [importantMessageConcept, setImportantMessageConcept] =
     React.useState(null);
+  const [activeLeftPanel, setActiveLeftPanel] = React.useState("migration");
+  const [activePredictionTab, setActivePredictionTab] =
+    React.useState("settings");
+  const storedGroupOptionsRef = React.useRef([]);
 
   const token = String(state?.token || "").trim();
   const storageCopy = STORAGE_COPY[storageLanguage] || STORAGE_COPY.en;
@@ -318,6 +433,18 @@ const TelegramControlPage = ({
     () => getHomeSubApps(state?.username),
     [state?.username],
   );
+
+  React.useEffect(() => {
+    storedGroupOptionsRef.current = Array.isArray(storedGroupOptions)
+      ? storedGroupOptions
+      : [];
+  }, [storedGroupOptions]);
+
+  React.useEffect(() => {
+    if (activeLeftPanel === "storage") {
+      setActiveLeftPanel("migration");
+    }
+  }, [activeLeftPanel]);
 
   const fetchTelegramGroups = React.useCallback(async () => {
     if (!token) {
@@ -343,9 +470,7 @@ const TelegramControlPage = ({
       }
 
       const nextOptions = Array.isArray(payload?.groups) ? payload.groups : [];
-      const fallbackStoredOptions = Array.isArray(storedGroupOptions)
-        ? storedGroupOptions
-        : [];
+      const fallbackStoredOptions = storedGroupOptionsRef.current;
       const resolvedOptions =
         nextOptions.length > 0 ? nextOptions : fallbackStoredOptions;
 
@@ -363,13 +488,13 @@ const TelegramControlPage = ({
           : currentValue;
       });
     } catch (nextError) {
-      if (storedGroupOptions.length > 0) {
-        setGroupOptions(storedGroupOptions);
+      if (storedGroupOptionsRef.current.length > 0) {
+        setGroupOptions(storedGroupOptionsRef.current);
       } else {
         setError(nextError?.message || "Unable to load Telegram groups.");
       }
     }
-  }, [storedGroupOptions, token]);
+  }, [token]);
 
   const fetchStorageContext = React.useCallback(async () => {
     if (!token) {
@@ -391,7 +516,9 @@ const TelegramControlPage = ({
       }
 
       const nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
-      const nextCourses = Array.isArray(payload?.courses) ? payload.courses : [];
+      const nextCourses = Array.isArray(payload?.courses)
+        ? payload.courses
+        : [];
       const nextImportantMessages = Array.isArray(payload?.importantMessages)
         ? payload.importantMessages
         : [];
@@ -511,7 +638,9 @@ const TelegramControlPage = ({
 
       try {
         const response = await fetch(
-          apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+          apiUrl(
+            `/api/telegram/stored-group-messages?${searchParams.toString()}`,
+          ),
           {
             method: "GET",
             mode: "cors",
@@ -533,12 +662,8 @@ const TelegramControlPage = ({
           : [];
 
         setMessages(nextMessages);
-        setStreamTitle(
-          String(payload?.group?.title || "Stored Telegram messages"),
-        );
-        setHasMore(
-          nextMessages.length >= nextLimit && Number(nextLimit) < 100,
-        );
+        setStreamTitle(String(payload?.group?.title || "Telegram messages"));
+        setHasMore(nextMessages.length >= nextLimit && Number(nextLimit) < 100);
         setActiveStorageScope(nextScope);
       } catch (nextError) {
         setError(
@@ -597,7 +722,9 @@ const TelegramControlPage = ({
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload?.message || "Unable to save Telegram settings.");
+        throw new Error(
+          payload?.message || "Unable to save Telegram settings.",
+        );
       }
 
       const nextReference = String(payload?.groupReference || "");
@@ -658,18 +785,10 @@ const TelegramControlPage = ({
   };
 
   const handleToggleDependency = (dependencyKey) => {
-    if (dependencyKey === "important_messages") {
-      return;
-    }
-
     setSelectedDependencyKeys((currentValue) => {
-      const nextValue = currentValue.includes(dependencyKey)
+      return currentValue.includes(dependencyKey)
         ? currentValue.filter((value) => value !== dependencyKey)
         : [...currentValue, dependencyKey];
-
-      return nextValue.includes("important_messages")
-        ? nextValue
-        : [...nextValue, "important_messages"];
     });
   };
 
@@ -730,22 +849,25 @@ const TelegramControlPage = ({
     setStorageFeedback("");
 
     try {
-      const response = await fetch(apiUrl("/api/telegram/ai/course-suggestions"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/course-suggestions"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            allGroups: !searchWithinSelectedGroup,
+            groupReference: searchWithinSelectedGroup
+              ? selectedStoredGroupReference
+              : "",
+            selectedDependencyKeys,
+            extraDependencies: manualDependencies,
+            language: storageLanguage,
+          }),
         },
-        body: JSON.stringify({
-          allGroups: !searchWithinSelectedGroup,
-          groupReference: searchWithinSelectedGroup
-            ? selectedStoredGroupReference
-            : "",
-          selectedDependencyKeys,
-          extraDependencies: manualDependencies,
-          language: storageLanguage,
-        }),
-      });
+      );
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -754,9 +876,11 @@ const TelegramControlPage = ({
         );
       }
 
-      const nextSuggestions = Array.isArray(payload?.suggestions)
-        ? payload.suggestions
-        : [];
+      const nextSuggestions = Array.isArray(payload?.newSuggestions)
+        ? payload.newSuggestions
+        : Array.isArray(payload?.suggestions)
+          ? payload.suggestions
+          : [];
 
       setCourseSuggestions(nextSuggestions);
       if (nextSuggestions.length > 0) {
@@ -764,9 +888,7 @@ const TelegramControlPage = ({
           String(nextSuggestions[0]?.coursePayload?.course_name || ""),
         );
       }
-      setStorageFeedback(
-        storageCopy.builtCourses(nextSuggestions.length),
-      );
+      setStorageFeedback(storageCopy.builtCourses(nextSuggestions.length));
     } catch (nextError) {
       setStorageFeedback(
         nextError?.message || "Unable to generate course predictions.",
@@ -788,22 +910,25 @@ const TelegramControlPage = ({
     setStorageFeedback("");
 
     try {
-      const response = await fetch(apiUrl("/api/telegram/ai/lecture-suggestions"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/lecture-suggestions"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            courseName: nextCourseName,
+            groupReferences: searchWithinSelectedGroup
+              ? [selectedStoredGroupReference]
+              : [],
+            selectedDependencyKeys,
+            extraDependencies: manualDependencies,
+            language: storageLanguage,
+          }),
         },
-        body: JSON.stringify({
-          courseName: nextCourseName,
-          groupReferences: searchWithinSelectedGroup
-            ? [selectedStoredGroupReference]
-            : [],
-          selectedDependencyKeys,
-          extraDependencies: manualDependencies,
-          language: storageLanguage,
-        }),
-      });
+      );
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -835,8 +960,9 @@ const TelegramControlPage = ({
       return;
     }
 
-    const [selectedGroupReference, selectedMessageId] =
-      String(selectedImportantMessage || "").split("::");
+    const [selectedGroupReference, selectedMessageId] = String(
+      selectedImportantMessage || "",
+    ).split("::");
 
     setIsConceptualizing(true);
     setStorageFeedback("");
@@ -883,6 +1009,755 @@ const TelegramControlPage = ({
     }
   };
 
+  const handlePredictInstructors = async () => {
+    if (!token) {
+      return;
+    }
+
+    setIsInstructorPredicting(true);
+    setStorageFeedback("");
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/instructor-suggestions"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            groupReferences: searchWithinSelectedGroup
+              ? [selectedStoredGroupReference]
+              : [],
+            selectedDependencyKeys,
+            extraDependencies: manualDependencies,
+            language: storageLanguage,
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to generate instructor predictions.",
+        );
+      }
+
+      const nextInstructors = Array.isArray(payload?.instructors)
+        ? payload.instructors
+        : [];
+
+      setInstructorSuggestions(nextInstructors);
+      setStorageFeedback(storageCopy.builtInstructors(nextInstructors.length));
+    } catch (nextError) {
+      setStorageFeedback(
+        nextError?.message || "Unable to generate instructor predictions.",
+      );
+    } finally {
+      setIsInstructorPredicting(false);
+    }
+  };
+
+  const predictionScope = React.useMemo(
+    () => ({
+      allGroups: !searchWithinSelectedGroup,
+      groupReference: searchWithinSelectedGroup
+        ? String(selectedStoredGroupReference || "").trim()
+        : "",
+      groupTitle: searchWithinSelectedGroup
+        ? formatTelegramGroupOptionLabel(
+            storedGroupOptions.find(
+              (group) =>
+                String(group?.groupReference || "").trim() ===
+                String(selectedStoredGroupReference || "").trim(),
+            ) || {
+              groupReference: selectedStoredGroupReference,
+              title: selectedStoredGroupReference,
+            },
+          )
+        : "Telegram messages",
+    }),
+    [
+      searchWithinSelectedGroup,
+      selectedStoredGroupReference,
+      storedGroupOptions,
+    ],
+  );
+
+  const buildPredictionScopeBody = () => ({
+    allGroups: predictionScope.allGroups,
+    groupReference: predictionScope.groupReference,
+    groupTitle: predictionScope.groupTitle,
+  });
+
+  const buildPredictionScopeParams = () => {
+    const params = new URLSearchParams();
+    if (predictionScope.allGroups) {
+      params.set("allGroups", "true");
+    } else if (predictionScope.groupReference) {
+      params.set("groupReference", predictionScope.groupReference);
+    }
+    return params;
+  };
+
+  const handleDeleteStoredCoursePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(`/api/telegram/ai/course-suggestions?${params.toString()}`),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setStoredCourseSuggestions([]);
+    }
+  };
+
+  const handleClearRejectedCoursePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/course-suggestions/rejected?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setRejectedCourseSuggestions([]);
+    }
+  };
+
+  const handleClearAcceptedCoursePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/course-suggestions/accepted?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setAcceptedCourseSuggestions([]);
+    }
+  };
+
+  const handleRejectCoursePrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/course-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "rejected",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setStoredCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setAcceptedCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setRejectedCourseSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      fetchCoursePredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to reject course prediction.",
+      );
+    }
+  };
+
+  const handleAcceptCoursePrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/course-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "accepted",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setStoredCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setRejectedCourseSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      setAcceptedCourseSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getCourseSuggestionIdentity,
+        ),
+      );
+      fetchCoursePredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to accept course prediction.",
+      );
+    }
+  };
+
+  const handleDeleteStoredLecturePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(`/api/telegram/ai/lecture-suggestions?${params.toString()}`),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setStoredLectureSuggestions([]);
+    }
+  };
+
+  const handleClearRejectedLecturePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/lecture-suggestions/rejected?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setRejectedLectureSuggestions([]);
+    }
+  };
+
+  const handleClearAcceptedLecturePredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/lecture-suggestions/accepted?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setAcceptedLectureSuggestions([]);
+    }
+  };
+
+  const handleRejectLecturePrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/lecture-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "rejected",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setStoredLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setAcceptedLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setRejectedLectureSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      fetchLecturePredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to reject lecture prediction.",
+      );
+    }
+  };
+
+  const handleAcceptLecturePrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/lecture-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "accepted",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setStoredLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setRejectedLectureSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      setAcceptedLectureSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getLectureSuggestionIdentity,
+        ),
+      );
+      fetchLecturePredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to accept lecture prediction.",
+      );
+    }
+  };
+
+  const handleDeleteStoredInstructorPredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(`/api/telegram/ai/instructor-suggestions?${params.toString()}`),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setStoredInstructorSuggestions([]);
+    }
+  };
+
+  const handleClearRejectedInstructorPredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/instructor-suggestions/rejected?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setRejectedInstructorSuggestions([]);
+    }
+  };
+
+  const handleClearAcceptedInstructorPredictions = async () => {
+    if (!token) return;
+    const params = buildPredictionScopeParams();
+    const response = await fetch(
+      apiUrl(
+        `/api/telegram/ai/instructor-suggestions/accepted?${params.toString()}`,
+      ),
+      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (response.ok) {
+      setAcceptedInstructorSuggestions([]);
+    }
+  };
+
+  const handleRejectInstructorPrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/instructor-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "rejected",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setStoredInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setAcceptedInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setRejectedInstructorSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      fetchInstructorPredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to reject instructor prediction.",
+      );
+    }
+  };
+
+  const handleAcceptInstructorPrediction = async (suggestion) => {
+    if (!token) return;
+    const response = await fetch(
+      apiUrl("/api/telegram/ai/instructor-suggestions/feedback"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...buildPredictionScopeBody(),
+          decision: "accepted",
+          suggestion,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setStoredInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setRejectedInstructorSuggestions((currentValue) =>
+        removeSuggestionFromList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      setAcceptedInstructorSuggestions((currentValue) =>
+        prependSuggestionToList(
+          currentValue,
+          suggestion,
+          getInstructorSuggestionIdentity,
+        ),
+      );
+      fetchInstructorPredictionBuckets();
+    } else {
+      setStorageFeedback(
+        payload?.message || "Unable to accept instructor prediction.",
+      );
+    }
+  };
+
+  const fetchCoursePredictionBuckets = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (predictionScope.allGroups) {
+      params.set("allGroups", "true");
+    } else if (predictionScope.groupReference) {
+      params.set("groupReference", predictionScope.groupReference);
+    } else {
+      return;
+    }
+
+    try {
+      const [savedResponse, rejectedResponse, acceptedResponse] =
+        await Promise.all([
+          fetch(
+            apiUrl(`/api/telegram/ai/course-suggestions?${params.toString()}`),
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/course-suggestions/rejected?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/course-suggestions/accepted?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ]);
+      const savedPayload = await savedResponse.json().catch(() => ({}));
+      const rejectedPayload = await rejectedResponse.json().catch(() => ({}));
+      const acceptedPayload = await acceptedResponse.json().catch(() => ({}));
+      if (savedResponse.ok) {
+        setStoredCourseSuggestions(
+          Array.isArray(savedPayload?.suggestions)
+            ? savedPayload.suggestions
+            : [],
+        );
+      }
+      if (rejectedResponse.ok) {
+        setRejectedCourseSuggestions(
+          Array.isArray(rejectedPayload?.suggestions)
+            ? rejectedPayload.suggestions
+            : [],
+        );
+      } else if (rejectedResponse.status === 404) {
+        setRejectedCourseSuggestions([]);
+      }
+      if (acceptedResponse.ok) {
+        setAcceptedCourseSuggestions(
+          Array.isArray(acceptedPayload?.suggestions)
+            ? acceptedPayload.suggestions
+            : [],
+        );
+      } else if (acceptedResponse.status === 404) {
+        setAcceptedCourseSuggestions([]);
+      }
+    } catch {}
+  }, [predictionScope, token]);
+
+  const fetchLecturePredictionBuckets = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    const params = new URLSearchParams();
+    if (predictionScope.allGroups) {
+      params.set("allGroups", "true");
+    } else if (predictionScope.groupReference) {
+      params.set("groupReference", predictionScope.groupReference);
+    } else {
+      return;
+    }
+    try {
+      const [savedResponse, rejectedResponse, acceptedResponse] =
+        await Promise.all([
+          fetch(
+            apiUrl(`/api/telegram/ai/lecture-suggestions?${params.toString()}`),
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/lecture-suggestions/rejected?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/lecture-suggestions/accepted?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ]);
+      const savedPayload = await savedResponse.json().catch(() => ({}));
+      const rejectedPayload = await rejectedResponse.json().catch(() => ({}));
+      const acceptedPayload = await acceptedResponse.json().catch(() => ({}));
+      if (savedResponse.ok) {
+        setStoredLectureSuggestions(
+          Array.isArray(savedPayload?.lectures) ? savedPayload.lectures : [],
+        );
+      }
+      if (rejectedResponse.ok) {
+        setRejectedLectureSuggestions(
+          Array.isArray(rejectedPayload?.lectures)
+            ? rejectedPayload.lectures
+            : [],
+        );
+      } else if (rejectedResponse.status === 404) {
+        setRejectedLectureSuggestions([]);
+      }
+      if (acceptedResponse.ok) {
+        setAcceptedLectureSuggestions(
+          Array.isArray(acceptedPayload?.lectures)
+            ? acceptedPayload.lectures
+            : [],
+        );
+      } else if (acceptedResponse.status === 404) {
+        setAcceptedLectureSuggestions([]);
+      }
+    } catch {}
+  }, [predictionScope, token]);
+
+  const fetchInstructorPredictionBuckets = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    const params = new URLSearchParams();
+    if (predictionScope.allGroups) {
+      params.set("allGroups", "true");
+    } else if (predictionScope.groupReference) {
+      params.set("groupReference", predictionScope.groupReference);
+    } else {
+      return;
+    }
+    try {
+      const [savedResponse, rejectedResponse, acceptedResponse] =
+        await Promise.all([
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/instructor-suggestions?${params.toString()}`,
+            ),
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/instructor-suggestions/rejected?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+          fetch(
+            apiUrl(
+              `/api/telegram/ai/instructor-suggestions/accepted?${params.toString()}`,
+            ),
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ]);
+      const savedPayload = await savedResponse.json().catch(() => ({}));
+      const rejectedPayload = await rejectedResponse.json().catch(() => ({}));
+      const acceptedPayload = await acceptedResponse.json().catch(() => ({}));
+      if (savedResponse.ok) {
+        setStoredInstructorSuggestions(
+          Array.isArray(savedPayload?.instructors)
+            ? savedPayload.instructors
+            : [],
+        );
+      }
+      if (rejectedResponse.ok) {
+        setRejectedInstructorSuggestions(
+          Array.isArray(rejectedPayload?.instructors)
+            ? rejectedPayload.instructors
+            : [],
+        );
+      } else if (rejectedResponse.status === 404) {
+        setRejectedInstructorSuggestions([]);
+      }
+      if (acceptedResponse.ok) {
+        setAcceptedInstructorSuggestions(
+          Array.isArray(acceptedPayload?.instructors)
+            ? acceptedPayload.instructors
+            : [],
+        );
+      } else if (acceptedResponse.status === 404) {
+        setAcceptedInstructorSuggestions([]);
+      }
+    } catch {}
+  }, [predictionScope, token]);
+
+  React.useEffect(() => {
+    fetchCoursePredictionBuckets();
+    fetchLecturePredictionBuckets();
+    fetchInstructorPredictionBuckets();
+  }, [
+    fetchCoursePredictionBuckets,
+    fetchLecturePredictionBuckets,
+    fetchInstructorPredictionBuckets,
+  ]);
+
   const groupedMessages = React.useMemo(
     () => groupTelegramMessagesByDay(messages),
     [messages],
@@ -902,7 +1777,8 @@ const TelegramControlPage = ({
 
               return (
                 !isStored ||
-                nextReference === String(groupInput || groupReference || "").trim()
+                nextReference ===
+                  String(groupInput || groupReference || "").trim()
               );
             })
           : [],
@@ -914,13 +1790,17 @@ const TelegramControlPage = ({
   const selectedImportantMessageRecord = React.useMemo(
     () =>
       importantMessages.find(
-        (message) => buildImportantMessageValue(message) === selectedImportantMessage,
+        (message) =>
+          buildImportantMessageValue(message) === selectedImportantMessage,
       ) || null,
     [importantMessages, selectedImportantMessage],
   );
 
   const savedConcept = React.useMemo(
-    () => parseStoredConceptSummary(selectedImportantMessageRecord?.aiConceptSummary),
+    () =>
+      parseStoredConceptSummary(
+        selectedImportantMessageRecord?.aiConceptSummary,
+      ),
     [selectedImportantMessageRecord],
   );
 
@@ -928,15 +1808,115 @@ const TelegramControlPage = ({
     const storedCourseNames = (Array.isArray(courses) ? courses : [])
       .map((course) => String(course?.course_name || "").trim())
       .filter(Boolean);
-    const predictedCourseNames = (Array.isArray(courseSuggestions)
-      ? courseSuggestions
-      : []
+    const predictedCourseNames = (
+      Array.isArray(courseSuggestions) ? courseSuggestions : []
     )
-      .map((suggestion) => String(suggestion?.coursePayload?.course_name || "").trim())
+      .map((suggestion) =>
+        String(suggestion?.coursePayload?.course_name || "").trim(),
+      )
       .filter(Boolean);
 
     return [...new Set([...storedCourseNames, ...predictedCourseNames])];
   }, [courseSuggestions, courses]);
+
+  const visibleStoredCourseSuggestions = React.useMemo(() => {
+    const predictedKeys = new Set(
+      (Array.isArray(courseSuggestions) ? courseSuggestions : [])
+        .map((suggestion) =>
+          String(
+            suggestion?.suggestionKey ||
+              suggestion?.duplicateKey ||
+              suggestion?.coursePayload?.course_name ||
+              "",
+          ).trim(),
+        )
+        .filter(Boolean),
+    );
+
+    return (
+      Array.isArray(storedCourseSuggestions) ? storedCourseSuggestions : []
+    ).filter((suggestion) => {
+      const suggestionKey = String(
+        suggestion?.suggestionKey ||
+          suggestion?.duplicateKey ||
+          suggestion?.coursePayload?.course_name ||
+          "",
+      ).trim();
+      return !suggestionKey || !predictedKeys.has(suggestionKey);
+    });
+  }, [courseSuggestions, storedCourseSuggestions]);
+
+  const visibleStoredLectureSuggestions = React.useMemo(() => {
+    const predictedKeys = new Set(
+      (Array.isArray(lectureSuggestions) ? lectureSuggestions : [])
+        .map((lecture) =>
+          String(
+            lecture?.suggestionKey ||
+              lecture?.duplicateKey ||
+              lecture?.lectureName ||
+              "",
+          ).trim(),
+        )
+        .filter(Boolean),
+    );
+
+    return (
+      Array.isArray(storedLectureSuggestions) ? storedLectureSuggestions : []
+    ).filter((lecture) => {
+      const suggestionKey = String(
+        lecture?.suggestionKey ||
+          lecture?.duplicateKey ||
+          lecture?.lectureName ||
+          "",
+      ).trim();
+      return !suggestionKey || !predictedKeys.has(suggestionKey);
+    });
+  }, [lectureSuggestions, storedLectureSuggestions]);
+
+  const visibleStoredInstructorSuggestions = React.useMemo(() => {
+    const predictedKeys = new Set(
+      (Array.isArray(instructorSuggestions) ? instructorSuggestions : [])
+        .map((instructor) =>
+          String(
+            instructor?.suggestionKey ||
+              instructor?.duplicateKey ||
+              instructor?.name ||
+              "",
+          ).trim(),
+        )
+        .filter(Boolean),
+    );
+
+    return (
+      Array.isArray(storedInstructorSuggestions)
+        ? storedInstructorSuggestions
+        : []
+    ).filter((instructor) => {
+      const suggestionKey = String(
+        instructor?.suggestionKey ||
+          instructor?.duplicateKey ||
+          instructor?.name ||
+          "",
+      ).trim();
+      return !suggestionKey || !predictedKeys.has(suggestionKey);
+    });
+  }, [instructorSuggestions, storedInstructorSuggestions]);
+
+  const selectedOptionalDependencies = React.useMemo(
+    () =>
+      DEPENDENCY_OPTIONS.filter((dependency) =>
+        selectedDependencyKeys.includes(dependency.key),
+      ),
+    [selectedDependencyKeys],
+  );
+
+  const availableDependencyOptions = React.useMemo(
+    () =>
+      DEPENDENCY_OPTIONS.filter(
+        (dependency) => !selectedDependencyKeys.includes(dependency.key),
+      ),
+    [selectedDependencyKeys],
+  );
 
   return (
     <section id="telegramControlPage" className="telegramControlPage">
@@ -949,7 +1929,6 @@ const TelegramControlPage = ({
           subApps={subApps}
         />
       </div>
-
       <div className="telegramControlPage_shell">
         <header className="telegramControlPage_header">
           <div className="telegramControlPage_eyebrow">Telegram</div>
@@ -959,592 +1938,1387 @@ const TelegramControlPage = ({
             one compact standalone page.
           </p>
         </header>
-
         <section className="telegramControlPage_grid">
           <div className="telegramControlPage_leftColumn">
-            <aside className="telegramControlPage_card telegramControlPage_card--control">
-              <div className="telegramControlPage_cardHeader">
-                <h2>Migration</h2>
-                <span>{token ? "Signed in" : "No token"}</span>
-              </div>
-
-              <label
-                className="telegramControlPage_label"
-                htmlFor="telegramControlPage_groupInput"
-              >
-                Source group
-              </label>
-              <select
-                id="telegramControlPage_groupInput"
-                value={groupInput}
-                onChange={(event) => {
-                  setGroupInput(String(event.target.value || ""));
-                  setFeedback("");
-                }}
-                onFocus={fetchTelegramGroups}
-                className="telegramControlPage_input"
-              >
-                {migrationOptionGroups.groups.length === 0 &&
-                migrationOptionGroups.supergroups.length === 0 &&
-                migrationOptionGroups.channels.length === 0 ? (
-                  <option value="">
-                    No new Telegram groups available for migration
-                  </option>
-                ) : (
-                  <>
-                    {migrationOptionGroups.groups.length > 0 ? (
-                      <optgroup label="Groups">
-                        {migrationOptionGroups.groups.map((group) => (
-                          <option
-                            key={String(group?.groupReference || group?.title || "")}
-                            value={String(group?.groupReference || "")}
-                          >
-                            {formatTelegramGroupOptionLabel(group)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                    {migrationOptionGroups.supergroups.length > 0 ? (
-                      <optgroup label="Supergroups">
-                        {migrationOptionGroups.supergroups.map((group) => (
-                          <option
-                            key={String(group?.groupReference || group?.title || "")}
-                            value={String(group?.groupReference || "")}
-                          >
-                            {formatTelegramGroupOptionLabel(group)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                    {migrationOptionGroups.channels.length > 0 ? (
-                      <optgroup label="Channels">
-                        {migrationOptionGroups.channels.map((group) => (
-                          <option
-                            key={String(group?.groupReference || group?.title || "")}
-                            value={String(group?.groupReference || "")}
-                          >
-                            {formatTelegramGroupOptionLabel(group)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                  </>
-                )}
-              </select>
-
-              <div className="telegramControlPage_modeBlock">
-                <span className="telegramControlPage_label">Migration mode</span>
-                <div className="telegramControlPage_toggleRow">
-                  <button
-                    type="button"
-                    className={`telegramControlPage_toggleButton${syncMode === "one-time" ? " is-active" : ""}`}
-                    onClick={() => {
-                      setSyncMode("one-time");
-                      setFeedback("");
-                    }}
-                  >
-                    One-time migration
-                  </button>
-                  <button
-                    type="button"
-                    className={`telegramControlPage_toggleButton${syncMode === "live" ? " is-active" : ""}`}
-                    onClick={() => {
-                      setSyncMode("live");
-                      setFeedback("");
-                    }}
-                  >
-                    Live migration
-                  </button>
+            {/* Removed telegramControlPage_mountBar */}
+            {activeLeftPanel === "migration" ? (
+              <aside className="telegramControlPage_card telegramControlPage_card--control">
+                <div className="telegramControlPage_cardHeader">
+                  <h2>Migration</h2>
+                  <span>{token ? "Signed in" : "No token"}</span>
                 </div>
-              </div>
-
-              {syncMode === "one-time" ? (
-                <div className="telegramControlPage_dateGrid">
-                  <label className="telegramControlPage_dateField">
-                    <span className="telegramControlPage_label">From date</span>
-                    <input
-                      type="date"
-                      value={migrationFromDate}
-                      onChange={(event) => setMigrationFromDate(event.target.value)}
+                <div className="telegramControlPage_leftPool" id="left-pool">
+                  <div className="telegramControlPage_controlCardBody">
+                    <label
+                      className="telegramControlPage_label"
+                      htmlFor="telegramControlPage_groupInput"
+                    >
+                      Source group
+                    </label>
+                    <select
+                      id="telegramControlPage_groupInput"
+                      value={groupInput}
+                      onChange={(event) => {
+                        setGroupInput(String(event.target.value || ""));
+                        setFeedback("");
+                      }}
+                      onFocus={fetchTelegramGroups}
                       className="telegramControlPage_input"
-                    />
-                  </label>
-                  <label className="telegramControlPage_dateField">
-                    <span className="telegramControlPage_label">To date</span>
-                    <input
-                      type="date"
-                      value={migrationToDate}
-                      onChange={(event) => setMigrationToDate(event.target.value)}
-                      className="telegramControlPage_input"
-                    />
-                  </label>
-                </div>
-              ) : (
-                <p className="telegramControlPage_hint">
-                  Live migration starts from the moment you save and imports only
-                  new messages going forward.
-                </p>
-              )}
+                    >
+                      {migrationOptionGroups.groups.length === 0 &&
+                      migrationOptionGroups.supergroups.length === 0 &&
+                      migrationOptionGroups.channels.length === 0 ? (
+                        <option value="">
+                          No new Telegram groups available for migration
+                        </option>
+                      ) : (
+                        <>
+                          {migrationOptionGroups.groups.length > 0 ? (
+                            <optgroup label="Groups">
+                              {migrationOptionGroups.groups.map((group) => (
+                                <option
+                                  key={String(
+                                    group?.groupReference || group?.title || "",
+                                  )}
+                                  value={String(group?.groupReference || "")}
+                                >
+                                  {formatTelegramGroupOptionLabel(group)}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null}
+                          {migrationOptionGroups.supergroups.length > 0 ? (
+                            <optgroup label="Supergroups">
+                              {migrationOptionGroups.supergroups.map(
+                                (group) => (
+                                  <option
+                                    key={String(
+                                      group?.groupReference ||
+                                        group?.title ||
+                                        "",
+                                    )}
+                                    value={String(group?.groupReference || "")}
+                                  >
+                                    {formatTelegramGroupOptionLabel(group)}
+                                  </option>
+                                ),
+                              )}
+                            </optgroup>
+                          ) : null}
+                          {migrationOptionGroups.channels.length > 0 ? (
+                            <optgroup label="Channels">
+                              {migrationOptionGroups.channels.map((group) => (
+                                <option
+                                  key={String(
+                                    group?.groupReference || group?.title || "",
+                                  )}
+                                  value={String(group?.groupReference || "")}
+                                >
+                                  {formatTelegramGroupOptionLabel(group)}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null}
+                        </>
+                      )}
+                    </select>
 
-              <div className="telegramControlPage_actions">
-                <button
-                  type="button"
-                  className="telegramControlPage_button telegramControlPage_button--primary"
-                  onClick={handleSaveTelegramConfig}
-                  disabled={isSaving || !token}
+                    <div className="telegramControlPage_modeBlock">
+                      <span className="telegramControlPage_label">
+                        Migration mode
+                      </span>
+                      <div className="telegramControlPage_toggleRow">
+                        <button
+                          type="button"
+                          className={`telegramControlPage_toggleButton${syncMode === "one-time" ? " is-active" : ""}`}
+                          onClick={() => {
+                            setSyncMode("one-time");
+                            setFeedback("");
+                          }}
+                        >
+                          One-time migration
+                        </button>
+                        <button
+                          type="button"
+                          className={`telegramControlPage_toggleButton${syncMode === "live" ? " is-active" : ""}`}
+                          onClick={() => {
+                            setSyncMode("live");
+                            setFeedback("");
+                          }}
+                        >
+                          Live migration
+                        </button>
+                      </div>
+                    </div>
+
+                    {syncMode === "one-time" ? (
+                      <div className="telegramControlPage_dateGrid">
+                        <label className="telegramControlPage_dateField">
+                          <span className="telegramControlPage_label">
+                            From date
+                          </span>
+                          <input
+                            type="date"
+                            value={migrationFromDate}
+                            onChange={(event) =>
+                              setMigrationFromDate(event.target.value)
+                            }
+                            className="telegramControlPage_input"
+                          />
+                        </label>
+                        <label className="telegramControlPage_dateField">
+                          <span className="telegramControlPage_label">
+                            To date
+                          </span>
+                          <input
+                            type="date"
+                            value={migrationToDate}
+                            onChange={(event) =>
+                              setMigrationToDate(event.target.value)
+                            }
+                            className="telegramControlPage_input"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="telegramControlPage_hint">
+                        Live migration starts from the moment you save and
+                        imports only new messages going forward.
+                      </p>
+                    )}
+
+                    <div className="telegramControlPage_actions">
+                      <button
+                        type="button"
+                        className="telegramControlPage_button telegramControlPage_button--primary"
+                        onClick={handleSaveTelegramConfig}
+                        disabled={isSaving || !token}
+                      >
+                        {isSaving ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+
+                    <p className="telegramControlPage_hint">
+                      One-time migration imports only messages inside the chosen
+                      date range. Live migration keeps importing only future
+                      messages.
+                    </p>
+                    {feedback ? (
+                      <p className="telegramControlPage_feedback">{feedback}</p>
+                    ) : null}
+                    <dl className="telegramControlPage_meta">
+                      <div>
+                        <dt>Saved reference</dt>
+                        <dd>{groupReference || "Not set"}</dd>
+                      </div>
+                      <div>
+                        <dt>Mode</dt>
+                        <dd>
+                          {syncMode === "one-time"
+                            ? "One-time migration"
+                            : "Live migration"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Target title</dt>
+                        <dd>{migrationGroupTitle || "Telegram Migration"}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </aside>
+            ) : null}
+          </div>
+          <aside className="telegramControlPage_card telegramControlPage_card--predictions">
+            <div className="telegramControlPage_cardHeader">
+              <h2>Predictions</h2>
+              <span>AI tools</span>
+            </div>
+            <div className="telegramControlPage_centerPool" id="center-pool">
+              <div className="telegramControlPage_aiBlock">
+                <div
+                  className="telegramControlPage_predictionTabs"
+                  role="tablist"
+                  aria-label="Prediction categories"
                 >
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
-              </div>
-
-              <p className="telegramControlPage_hint">
-                One-time migration imports only messages inside the chosen date
-                range. Live migration keeps importing only future messages.
-              </p>
-              {feedback ? (
-                <p className="telegramControlPage_feedback">{feedback}</p>
-              ) : null}
-              <dl className="telegramControlPage_meta">
-                <div>
-                  <dt>Saved reference</dt>
-                  <dd>{groupReference || "Not set"}</dd>
-                </div>
-                <div>
-                  <dt>Mode</dt>
-                  <dd>
-                    {syncMode === "one-time" ? "One-time migration" : "Live migration"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Target title</dt>
-                  <dd>{migrationGroupTitle || "Telegram Migration"}</dd>
-                </div>
-              </dl>
-            </aside>
-
-            <aside className="telegramControlPage_card telegramControlPage_card--control">
-              <div className="telegramControlPage_cardHeader">
-                <h2>{storageCopy.storage}</h2>
-                <span>{storedGroupOptions.length} stored groups</span>
-              </div>
-              <div className="telegramControlPage_languageRow">
-                <span className="telegramControlPage_label">
-                  {storageCopy.language}
-                </span>
-                <div className="telegramControlPage_languageToggle">
                   <button
                     type="button"
-                    className={`telegramControlPage_languageButton${
-                      storageLanguage === "ar" ? " is-active" : ""
-                    }`}
-                    onClick={() => setStorageLanguage("ar")}
+                    role="tab"
+                    aria-selected={activePredictionTab === "settings"}
+                    className={`telegramControlPage_predictionTab${activePredictionTab === "settings" ? " is-active" : ""}`}
+                    onClick={() => setActivePredictionTab("settings")}
                   >
-                    AR
+                    {storageCopy.predictionsSettingsTab}
                   </button>
                   <button
                     type="button"
-                    className={`telegramControlPage_languageButton${
-                      storageLanguage === "en" ? " is-active" : ""
-                    }`}
-                    onClick={() => setStorageLanguage("en")}
+                    role="tab"
+                    aria-selected={activePredictionTab === "courses"}
+                    className={`telegramControlPage_predictionTab${activePredictionTab === "courses" ? " is-active" : ""}`}
+                    onClick={() => setActivePredictionTab("courses")}
                   >
-                    EN
+                    {storageCopy.predictionsCoursesTab}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activePredictionTab === "lectures"}
+                    className={`telegramControlPage_predictionTab${activePredictionTab === "lectures" ? " is-active" : ""}`}
+                    onClick={() => setActivePredictionTab("lectures")}
+                  >
+                    {storageCopy.predictionsLecturesTab}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activePredictionTab === "instructors"}
+                    className={`telegramControlPage_predictionTab${activePredictionTab === "instructors" ? " is-active" : ""}`}
+                    onClick={() => setActivePredictionTab("instructors")}
+                  >
+                    {storageCopy.predictionsInstructorsTab}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activePredictionTab === "pins"}
+                    className={`telegramControlPage_predictionTab${activePredictionTab === "pins" ? " is-active" : ""}`}
+                    onClick={() => setActivePredictionTab("pins")}
+                  >
+                    {storageCopy.predictionsPinsTab}
                   </button>
                 </div>
-              </div>
-              <label
-                htmlFor="telegramControlPage_storageSearchInput"
-                className="telegramControlPage_label"
-              >
-                {storageCopy.searchStoredMessages}
-              </label>
-              <input
-                id="telegramControlPage_storageSearchInput"
-                type="search"
-                value={storageSearchQuery}
-                onChange={(event) => setStorageSearchQuery(event.target.value)}
-                placeholder={storageCopy.searchPlaceholder}
-                className="telegramControlPage_input"
-              />
 
-              <label className="telegramControlPage_checkboxRow">
-                <input
-                  type="checkbox"
-                  checked={searchWithinSelectedGroup}
-                  onChange={(event) =>
-                    setSearchWithinSelectedGroup(event.target.checked)
-                  }
-                />
-                <span>{storageCopy.selectedOnly}</span>
-              </label>
+                {activePredictionTab === "settings" ? (
+                  <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_languageRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.language}
+                      </span>
+                      <div className="telegramControlPage_languageToggle">
+                        <button
+                          type="button"
+                          className={`telegramControlPage_languageButton${
+                            storageLanguage === "ar" ? " is-active" : ""
+                          }`}
+                          onClick={() => setStorageLanguage("ar")}
+                        >
+                          AR
+                        </button>
+                        <button
+                          type="button"
+                          className={`telegramControlPage_languageButton${
+                            storageLanguage === "en" ? " is-active" : ""
+                          }`}
+                          onClick={() => setStorageLanguage("en")}
+                        >
+                          EN
+                        </button>
+                      </div>
+                    </div>
 
-              {searchWithinSelectedGroup ? (
-                <select
-                  value={selectedStoredGroupReference}
-                  onChange={(event) =>
-                    setSelectedStoredGroupReference(event.target.value)
-                  }
-                  className="telegramControlPage_input"
-                >
-                  {storedGroupOptions.length === 0 ? (
-                    <option value="">{storageCopy.noStoredGroups}</option>
-                  ) : (
-                    storedGroupOptions.map((group) => (
-                      <option
-                        key={String(group?.groupReference || "")}
-                        value={String(group?.groupReference || "")}
-                      >
-                        {formatTelegramGroupOptionLabel(group)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              ) : null}
+                    <div className="telegramControlPage_dependencyBlock">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.dependencies}
+                      </span>
+                      <div className="telegramControlPage_dependencyPicker">
+                        <div className="telegramControlPage_dependencySection">
+                          <span className="telegramControlPage_dependencySectionTitle">
+                            Active
+                          </span>
+                          <div className="telegramControlPage_dependencyChipRow">
+                            {selectedOptionalDependencies.length > 0
+                              ? selectedOptionalDependencies.map(
+                                  (dependency) => (
+                                    <label
+                                      key={dependency.key}
+                                      className="telegramControlPage_dependencyToken is-active"
+                                      title="Remove dependency"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="telegramControlPage_dependencyTokenInput"
+                                        checked={true}
+                                        onChange={() =>
+                                          handleToggleDependency(dependency.key)
+                                        }
+                                      />
+                                      <span>
+                                        {(DEPENDENCY_LABELS[storageLanguage] ||
+                                          DEPENDENCY_LABELS.en)[
+                                          dependency.key
+                                        ] || dependency.label}
+                                      </span>
+                                    </label>
+                                  ),
+                                )
+                              : null}
+                          </div>
+                        </div>
 
-              <div className="telegramControlPage_actions">
-                <button
-                  type="button"
-                  className="telegramControlPage_button telegramControlPage_button--primary"
-                  onClick={handleStorageSearch}
-                  disabled={isLoading || !token}
-                >
-                  {isLoading ? storageCopy.searching : storageCopy.searchStorage}
-                </button>
-              </div>
+                        <div className="telegramControlPage_dependencySection">
+                          <span className="telegramControlPage_dependencySectionTitle">
+                            Available
+                          </span>
+                          <div className="telegramControlPage_dependencyChipRow">
+                            {availableDependencyOptions.map((dependency) => (
+                              <label
+                                key={dependency.key}
+                                className="telegramControlPage_dependencyToken"
+                                title="Add dependency"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="telegramControlPage_dependencyTokenInput"
+                                  checked={false}
+                                  onChange={() =>
+                                    handleToggleDependency(dependency.key)
+                                  }
+                                />
+                                <span>
+                                  {(DEPENDENCY_LABELS[storageLanguage] ||
+                                    DEPENDENCY_LABELS.en)[dependency.key] ||
+                                    dependency.label}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
 
-              <div className="telegramControlPage_dependencyBlock">
-                <span className="telegramControlPage_label">
-                  {storageCopy.dependencies}
-                </span>
-                <div className="telegramControlPage_dependencyChecklist">
-                  {DEPENDENCY_OPTIONS.map((dependency) => {
-                    const isChecked = selectedDependencyKeys.includes(
-                      dependency.key,
-                    );
-
-                    return (
-                      <label
-                        key={dependency.key}
-                        className="telegramControlPage_dependencyItem"
-                      >
+                      <div className="telegramControlPage_dependencyAddRow">
                         <input
-                          type="checkbox"
-                          checked={isChecked}
-                          disabled={dependency.locked}
-                          onChange={() =>
-                            handleToggleDependency(dependency.key)
+                          type="text"
+                          value={manualDependencyInput}
+                          onChange={(event) =>
+                            setManualDependencyInput(event.target.value)
                           }
+                          placeholder={storageCopy.addDependencyPlaceholder}
+                          className="telegramControlPage_input"
                         />
-                        <span>
-                          {(DEPENDENCY_LABELS[storageLanguage] ||
-                            DEPENDENCY_LABELS.en)[dependency.key] ||
-                            dependency.label}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleAddDependency}
+                        >
+                          {storageCopy.add}
+                        </button>
+                      </div>
 
-                <div className="telegramControlPage_dependencyAddRow">
+                      {manualDependencies.length > 0 ? (
+                        <div className="telegramControlPage_chipRow">
+                          {manualDependencies.map((dependency) => (
+                            <button
+                              key={dependency}
+                              type="button"
+                              className="telegramControlPage_chip"
+                              onClick={() =>
+                                setManualDependencies((currentValue) =>
+                                  currentValue.filter(
+                                    (value) => value !== dependency,
+                                  ),
+                                )
+                              }
+                              title="Remove dependency"
+                            >
+                              {dependency}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activePredictionTab === "courses" ? (
+                  <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictCourses}
+                      </span>
+                      <div className="telegramControlPage_inlineActions">
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handlePredictCourses}
+                          disabled={isCoursePredicting || !token}
+                        >
+                          {isCoursePredicting
+                            ? storageCopy.predicting
+                            : storageCopy.predict}
+                        </button>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleDeleteStoredCoursePredictions}
+                          disabled={
+                            !token || storedCourseSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.deletePredicted}
+                        </button>
+                      </div>
+                    </div>
+
+                    {courseSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {courseSuggestions.map((suggestion, index) => (
+                          <article
+                            key={`${String(
+                              suggestion?.coursePayload?.course_name || "",
+                            )}-${index}`}
+                            className="telegramControlPage_predictionCard"
+                          >
+                            <div className="telegramControlPage_predictionCardTopRow">
+                              <div className="telegramControlPage_predictionCardInfo">
+                                <strong>
+                                  {String(
+                                    suggestion?.coursePayload?.course_name ||
+                                      "Unnamed course",
+                                  )}
+                                </strong>
+                                <span>
+                                  Confidence:{" "}
+                                  {Number(suggestion?.confidence || 0)}%
+                                </span>
+                              </div>
+                              <div
+                                className="telegramControlPage_decisionToggle"
+                                role="group"
+                                aria-label="Course prediction decision"
+                              >
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                  onClick={() =>
+                                    handleAcceptCoursePrediction(suggestion)
+                                  }
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                  onClick={() =>
+                                    handleRejectCoursePrediction(suggestion)
+                                  }
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                            <div className="telegramControlPage_predictionMeta">
+                              {Object.entries(suggestion?.coursePayload || {})
+                                .filter(([, value]) =>
+                                  Array.isArray(value)
+                                    ? value.length > 0
+                                    : String(value ?? "").trim() !== "",
+                                )
+                                .map(([key, value]) => (
+                                  <div
+                                    key={key}
+                                    className="telegramControlPage_predictionMetaRow"
+                                  >
+                                    <strong>{key}</strong>
+                                    <span>
+                                      {Array.isArray(value)
+                                        ? value
+                                            .map((item) =>
+                                              typeof item === "object"
+                                                ? JSON.stringify(item)
+                                                : String(item),
+                                            )
+                                            .join(" | ")
+                                        : String(value)}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="telegramControlPage_hint">
+                        {storageCopy.noCoursePredictions}
+                      </p>
+                    )}
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictedBucket}
+                      </span>
+                    </div>
+                    {visibleStoredCourseSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {visibleStoredCourseSuggestions.map(
+                          (suggestion, index) => (
+                            <article
+                              key={`stored-course-${String(
+                                suggestion?.suggestionKey ||
+                                  suggestion?.coursePayload?.course_name ||
+                                  index,
+                              )}`}
+                              className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                            >
+                              <div className="telegramControlPage_predictionCardTopRow">
+                                <div className="telegramControlPage_predictionCardInfo">
+                                  <strong>
+                                    {String(
+                                      suggestion?.coursePayload?.course_name ||
+                                        "Unnamed course",
+                                    )}
+                                  </strong>
+                                </div>
+                                <div
+                                  className="telegramControlPage_decisionToggle"
+                                  role="group"
+                                  aria-label="Stored course prediction decision"
+                                >
+                                  <button
+                                    type="button"
+                                    className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                    onClick={() =>
+                                      handleAcceptCoursePrediction(suggestion)
+                                    }
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                    onClick={() =>
+                                      handleRejectCoursePrediction(suggestion)
+                                    }
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          {storageCopy.acceptedBucket}
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearAcceptedCoursePredictions}
+                          disabled={
+                            !token || acceptedCourseSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.clearAccepted}
+                        </button>
+                      </div>
+                      {acceptedCourseSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {acceptedCourseSuggestions.map(
+                            (suggestion, index) => (
+                              <article
+                                key={`accepted-course-${String(
+                                  suggestion?.suggestionKey ||
+                                    suggestion?.coursePayload?.course_name ||
+                                    index,
+                                )}`}
+                                className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                              >
+                                <strong>
+                                  {String(
+                                    suggestion?.coursePayload?.course_name ||
+                                      "Unnamed course",
+                                  )}
+                                </strong>
+                              </article>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          Rejected
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearRejectedCoursePredictions}
+                          disabled={
+                            !token || rejectedCourseSuggestions.length === 0
+                          }
+                        >
+                          Clear rejected
+                        </button>
+                      </div>
+                      {rejectedCourseSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {rejectedCourseSuggestions.map(
+                            (suggestion, index) => (
+                              <article
+                                key={`rejected-course-${String(
+                                  suggestion?.suggestionKey ||
+                                    suggestion?.coursePayload?.course_name ||
+                                    index,
+                                )}`}
+                                className="telegramControlPage_predictionCard telegramControlPage_predictionCard--rejected"
+                              >
+                                <strong>
+                                  {String(
+                                    suggestion?.coursePayload?.course_name ||
+                                      "Unnamed course",
+                                  )}
+                                </strong>
+                              </article>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activePredictionTab === "lectures" ? (
+                  <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictLectures}
+                      </span>
+                      <div className="telegramControlPage_inlineActions">
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handlePredictLectures}
+                          disabled={isLecturePredicting || !token}
+                        >
+                          {isLecturePredicting
+                            ? storageCopy.predicting
+                            : storageCopy.predict}
+                        </button>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleDeleteStoredLecturePredictions}
+                          disabled={
+                            !token || storedLectureSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.deletePredicted}
+                        </button>
+                      </div>
+                    </div>
+
+                    <select
+                      value={selectedCourseName}
+                      onChange={(event) =>
+                        setSelectedCourseName(event.target.value)
+                      }
+                      className="telegramControlPage_input"
+                    >
+                      {courseSelectOptions.length === 0 ? (
+                        <option value="">{storageCopy.noSavedCourses}</option>
+                      ) : (
+                        courseSelectOptions.map((courseName) => (
+                          <option key={courseName} value={courseName}>
+                            {courseName}
+                          </option>
+                        ))
+                      )}
+                    </select>
+
+                    {lectureSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {lectureSuggestions.map((lecture, index) => (
+                          <article
+                            key={`${String(lecture?.lectureName || "")}-${index}`}
+                            className="telegramControlPage_predictionCard"
+                          >
+                            <div className="telegramControlPage_predictionCardTopRow">
+                              <div className="telegramControlPage_predictionCardInfo">
+                                <strong>
+                                  {String(
+                                    lecture?.lectureName || "Unnamed lecture",
+                                  )}
+                                </strong>
+                                <span>
+                                  Confidence: {Number(lecture?.confidence || 0)}
+                                  %
+                                </span>
+                              </div>
+                              <div
+                                className="telegramControlPage_decisionToggle"
+                                role="group"
+                                aria-label="Lecture prediction decision"
+                              >
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                  onClick={() =>
+                                    handleAcceptLecturePrediction(lecture)
+                                  }
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                  onClick={() =>
+                                    handleRejectLecturePrediction(lecture)
+                                  }
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                            <div className="telegramControlPage_predictionMeta">
+                              {Object.entries(lecture?.lecturePayload || {})
+                                .filter(
+                                  ([, value]) =>
+                                    String(value ?? "").trim() !== "",
+                                )
+                                .map(([key, value]) => (
+                                  <div
+                                    key={key}
+                                    className="telegramControlPage_predictionMetaRow"
+                                  >
+                                    <strong>{key}</strong>
+                                    <span>{String(value)}</span>
+                                  </div>
+                                ))}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="telegramControlPage_hint">
+                        {storageCopy.noLecturePredictions}
+                      </p>
+                    )}
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictedBucket}
+                      </span>
+                    </div>
+                    {visibleStoredLectureSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {visibleStoredLectureSuggestions.map(
+                          (lecture, index) => (
+                            <article
+                              key={`stored-lecture-${String(
+                                lecture?.suggestionKey ||
+                                  lecture?.lectureName ||
+                                  index,
+                              )}`}
+                              className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                            >
+                              <div className="telegramControlPage_predictionCardTopRow">
+                                <div className="telegramControlPage_predictionCardInfo">
+                                  <strong>
+                                    {String(
+                                      lecture?.lectureName || "Unnamed lecture",
+                                    )}
+                                  </strong>
+                                </div>
+                                <div
+                                  className="telegramControlPage_decisionToggle"
+                                  role="group"
+                                  aria-label="Stored lecture prediction decision"
+                                >
+                                  <button
+                                    type="button"
+                                    className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                    onClick={() =>
+                                      handleAcceptLecturePrediction(lecture)
+                                    }
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                    onClick={() =>
+                                      handleRejectLecturePrediction(lecture)
+                                    }
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          {storageCopy.acceptedBucket}
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearAcceptedLecturePredictions}
+                          disabled={
+                            !token || acceptedLectureSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.clearAccepted}
+                        </button>
+                      </div>
+                      {acceptedLectureSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {acceptedLectureSuggestions.map((lecture, index) => (
+                            <article
+                              key={`accepted-lecture-${String(
+                                lecture?.suggestionKey ||
+                                  lecture?.lectureName ||
+                                  index,
+                              )}`}
+                              className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                            >
+                              <strong>
+                                {String(
+                                  lecture?.lectureName || "Unnamed lecture",
+                                )}
+                              </strong>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          Rejected
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearRejectedLecturePredictions}
+                          disabled={
+                            !token || rejectedLectureSuggestions.length === 0
+                          }
+                        >
+                          Clear rejected
+                        </button>
+                      </div>
+                      {rejectedLectureSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {rejectedLectureSuggestions.map((lecture, index) => (
+                            <article
+                              key={`rejected-lecture-${String(
+                                lecture?.suggestionKey ||
+                                  lecture?.lectureName ||
+                                  index,
+                              )}`}
+                              className="telegramControlPage_predictionCard telegramControlPage_predictionCard--rejected"
+                            >
+                              <strong>
+                                {String(
+                                  lecture?.lectureName || "Unnamed lecture",
+                                )}
+                              </strong>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activePredictionTab === "instructors" ? (
+                  <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictInstructors}
+                      </span>
+                      <div className="telegramControlPage_inlineActions">
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handlePredictInstructors}
+                          disabled={isInstructorPredicting || !token}
+                        >
+                          {isInstructorPredicting
+                            ? storageCopy.predicting
+                            : storageCopy.predict}
+                        </button>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleDeleteStoredInstructorPredictions}
+                          disabled={
+                            !token || storedInstructorSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.deletePredicted}
+                        </button>
+                      </div>
+                    </div>
+
+                    {instructorSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {instructorSuggestions.map((instructor, index) => (
+                          <article
+                            key={`${String(instructor?.name || "")}-${index}`}
+                            className="telegramControlPage_predictionCard"
+                          >
+                            <div className="telegramControlPage_predictionCardTopRow">
+                              <div className="telegramControlPage_predictionCardInfo">
+                                <strong>
+                                  {String(
+                                    instructor?.name || "Unnamed instructor",
+                                  )}
+                                </strong>
+                                <span>
+                                  {String(instructor?.role || "Instructor")} |
+                                  Confidence:{" "}
+                                  {Number(instructor?.confidence || 0)}%
+                                </span>
+                              </div>
+                              <div
+                                className="telegramControlPage_decisionToggle"
+                                role="group"
+                                aria-label="Instructor prediction decision"
+                              >
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                  onClick={() =>
+                                    handleAcceptInstructorPrediction(instructor)
+                                  }
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                  onClick={() =>
+                                    handleRejectInstructorPrediction(instructor)
+                                  }
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                            <div className="telegramControlPage_predictionMeta">
+                              <div className="telegramControlPage_predictionMetaRow">
+                                <strong>courses</strong>
+                                <span>
+                                  {(Array.isArray(instructor?.courses)
+                                    ? instructor.courses
+                                    : []
+                                  ).join(" | ") || "-"}
+                                </span>
+                              </div>
+                              <div className="telegramControlPage_predictionMetaRow">
+                                <strong>personality</strong>
+                                <span>
+                                  {String(instructor?.personality || "-")}
+                                </span>
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="telegramControlPage_hint">
+                        {storageCopy.noInstructorPredictions}
+                      </p>
+                    )}
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictedBucket}
+                      </span>
+                    </div>
+                    {visibleStoredInstructorSuggestions.length > 0 ? (
+                      <div className="telegramControlPage_predictionList">
+                        {visibleStoredInstructorSuggestions.map(
+                          (instructor, index) => (
+                            <article
+                              key={`stored-instructor-${String(
+                                instructor?.suggestionKey ||
+                                  instructor?.name ||
+                                  index,
+                              )}`}
+                              className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                            >
+                              <strong>
+                                {String(
+                                  instructor?.name || "Unnamed instructor",
+                                )}
+                              </strong>
+                            </article>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          {storageCopy.acceptedBucket}
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearAcceptedInstructorPredictions}
+                          disabled={
+                            !token || acceptedInstructorSuggestions.length === 0
+                          }
+                        >
+                          {storageCopy.clearAccepted}
+                        </button>
+                      </div>
+                      {acceptedInstructorSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {acceptedInstructorSuggestions.map(
+                            (instructor, index) => (
+                              <article
+                                key={`accepted-instructor-${String(
+                                  instructor?.suggestionKey ||
+                                    instructor?.name ||
+                                    index,
+                                )}`}
+                                className="telegramControlPage_predictionCard telegramControlPage_predictionCard--stored"
+                              >
+                                <div className="telegramControlPage_predictionCardTopRow">
+                                  <div className="telegramControlPage_predictionCardInfo">
+                                    <strong>
+                                      {String(
+                                        instructor?.name ||
+                                          "Unnamed instructor",
+                                      )}
+                                    </strong>
+                                  </div>
+                                  <div
+                                    className="telegramControlPage_decisionToggle"
+                                    role="group"
+                                    aria-label="Stored instructor prediction decision"
+                                  >
+                                    <button
+                                      type="button"
+                                      className="telegramControlPage_decisionButton telegramControlPage_decisionButton--accept"
+                                      onClick={() =>
+                                        handleAcceptInstructorPrediction(
+                                          instructor,
+                                        )
+                                      }
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="telegramControlPage_decisionButton telegramControlPage_decisionButton--reject"
+                                      onClick={() =>
+                                        handleRejectInstructorPrediction(
+                                          instructor,
+                                        )
+                                      }
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </div>
+                              </article>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="telegramControlPage_rejectedBlock">
+                      <div className="telegramControlPage_sectionTitleRow">
+                        <span className="telegramControlPage_label">
+                          Rejected
+                        </span>
+                        <button
+                          type="button"
+                          className="telegramControlPage_button"
+                          onClick={handleClearRejectedInstructorPredictions}
+                          disabled={
+                            !token || rejectedInstructorSuggestions.length === 0
+                          }
+                        >
+                          Clear rejected
+                        </button>
+                      </div>
+                      {rejectedInstructorSuggestions.length > 0 ? (
+                        <div className="telegramControlPage_predictionList">
+                          {rejectedInstructorSuggestions.map(
+                            (instructor, index) => (
+                              <article
+                                key={`rejected-instructor-${String(
+                                  instructor?.suggestionKey ||
+                                    instructor?.name ||
+                                    index,
+                                )}`}
+                                className="telegramControlPage_predictionCard telegramControlPage_predictionCard--rejected"
+                              >
+                                <strong>
+                                  {String(
+                                    instructor?.name || "Unnamed instructor",
+                                  )}
+                                </strong>
+                              </article>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activePredictionTab === "pins" ? (
+                  <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_sectionTitleRow">
+                      <span className="telegramControlPage_label">
+                        {storageCopy.predictionsPinsTab}
+                      </span>
+                      <button
+                        type="button"
+                        className="telegramControlPage_button"
+                        onClick={handleConceptualizeImportantMessage}
+                        disabled={isConceptualizing || !token}
+                      >
+                        {isConceptualizing
+                          ? storageCopy.thinking
+                          : storageCopy.conceptualize}
+                      </button>
+                    </div>
+
+                    <select
+                      value={selectedImportantMessage}
+                      onChange={(event) =>
+                        setSelectedImportantMessage(event.target.value)
+                      }
+                      className="telegramControlPage_input"
+                    >
+                      {importantMessages.length === 0 ? (
+                        <option value="">
+                          {storageCopy.noImportantMessages}
+                        </option>
+                      ) : (
+                        importantMessages.map((message) => (
+                          <option
+                            key={buildImportantMessageValue(message)}
+                            value={buildImportantMessageValue(message)}
+                          >
+                            {`${String(
+                              message?.groupTitle ||
+                                message?.groupReference ||
+                                "Stored group",
+                            )} • ${String(message?.sender || "Unknown")}`}
+                          </option>
+                        ))
+                      )}
+                    </select>
+
+                    {selectedImportantMessageRecord ? (
+                      <p className="telegramControlPage_hint">
+                        {String(
+                          selectedImportantMessageRecord?.text || "[No text]",
+                        ).slice(0, 180)}
+                      </p>
+                    ) : null}
+
+                    {importantMessageConcept ? (
+                      <div className="telegramControlPage_conceptCard">
+                        <strong>
+                          {importantMessageConcept.summary || "Summary"}
+                        </strong>
+                        {importantMessageConcept.keyIdeas?.length ? (
+                          <ul>
+                            {importantMessageConcept.keyIdeas.map((idea) => (
+                              <li key={idea}>{idea}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {importantMessageConcept.academicRelevance ? (
+                          <p>{importantMessageConcept.academicRelevance}</p>
+                        ) : null}
+                        {importantMessageConcept.nextAction ? (
+                          <p>{importantMessageConcept.nextAction}</p>
+                        ) : null}
+                      </div>
+                    ) : savedConcept ? (
+                      <div className="telegramControlPage_conceptCard">
+                        <strong>
+                          {savedConcept.summary || "Saved concept"}
+                        </strong>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {storageFeedback ? (
+              <p className="telegramControlPage_feedback">{storageFeedback}</p>
+            ) : null}
+          </aside>
+          <section className="telegramControlPage_card telegramControlPage_card--stream">
+            <div className="telegramControlPage_cardHeader">
+              <h2>Telegram messages</h2>
+              <span>{`${messages.length} ${storageCopy.shown}`}</span>
+            </div>
+            <div className="telegramControlPage_rightPool" id="right-pool">
+              <div className="telegramControlPage_streamControls">
+                <label
+                  htmlFor="telegramControlPage_storageSearchInput"
+                  className="telegramControlPage_label"
+                >
+                  {storageCopy.searchStoredMessages}
+                </label>
+                <div className="telegramControlPage_streamControlsRow">
                   <input
-                    type="text"
-                    value={manualDependencyInput}
+                    id="telegramControlPage_storageSearchInput"
+                    type="search"
+                    value={storageSearchQuery}
                     onChange={(event) =>
-                      setManualDependencyInput(event.target.value)
+                      setStorageSearchQuery(event.target.value)
                     }
-                    placeholder={storageCopy.addDependencyPlaceholder}
+                    placeholder={storageCopy.searchPlaceholder}
                     className="telegramControlPage_input"
                   />
                   <button
                     type="button"
-                    className="telegramControlPage_button"
-                    onClick={handleAddDependency}
+                    className="telegramControlPage_button telegramControlPage_button--primary"
+                    onClick={handleStorageSearch}
+                    disabled={isLoading || !token}
                   >
-                    {storageCopy.add}
+                    {isLoading
+                      ? storageCopy.searching
+                      : storageCopy.searchStorage}
                   </button>
                 </div>
 
-                {manualDependencies.length > 0 ? (
-                  <div className="telegramControlPage_chipRow">
-                    {manualDependencies.map((dependency) => (
-                      <button
-                        key={dependency}
-                        type="button"
-                        className="telegramControlPage_chip"
-                        onClick={() =>
-                          setManualDependencies((currentValue) =>
-                            currentValue.filter((value) => value !== dependency),
-                          )
-                        }
-                        title="Remove dependency"
-                      >
-                        {dependency}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="telegramControlPage_aiBlock">
-                <div className="telegramControlPage_aiSection">
-                  <div className="telegramControlPage_sectionTitleRow">
-                    <span className="telegramControlPage_label">
-                      {storageCopy.predictCourses}
-                    </span>
-                    <button
-                      type="button"
-                      className="telegramControlPage_button"
-                      onClick={handlePredictCourses}
-                      disabled={isCoursePredicting || !token}
-                    >
-                      {isCoursePredicting
-                        ? storageCopy.predicting
-                        : storageCopy.predict}
-                    </button>
-                  </div>
-
-                  {courseSuggestions.length > 0 ? (
-                    <div className="telegramControlPage_predictionList">
-                      {courseSuggestions.map((suggestion, index) => (
-                        <article
-                          key={`${String(
-                            suggestion?.coursePayload?.course_name || "",
-                          )}-${index}`}
-                          className="telegramControlPage_predictionCard"
-                        >
-                          <strong>
-                            {String(
-                              suggestion?.coursePayload?.course_name ||
-                                "Unnamed course",
-                            )}
-                          </strong>
-                          <span>
-                            Confidence: {Number(suggestion?.confidence || 0)}%
-                          </span>
-                        </article>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="telegramControlPage_aiSection">
-                  <div className="telegramControlPage_sectionTitleRow">
-                    <span className="telegramControlPage_label">
-                      {storageCopy.predictLectures}
-                    </span>
-                    <button
-                      type="button"
-                      className="telegramControlPage_button"
-                      onClick={handlePredictLectures}
-                      disabled={isLecturePredicting || !token}
-                    >
-                      {isLecturePredicting
-                        ? storageCopy.predicting
-                        : storageCopy.predict}
-                    </button>
-                  </div>
-
-                  <select
-                    value={selectedCourseName}
-                    onChange={(event) => setSelectedCourseName(event.target.value)}
-                    className="telegramControlPage_input"
-                  >
-                    {courseSelectOptions.length === 0 ? (
-                      <option value="">{storageCopy.noSavedCourses}</option>
-                    ) : (
-                      courseSelectOptions.map((courseName) => (
-                        <option key={courseName} value={courseName}>
-                          {courseName}
-                        </option>
-                      ))
-                    )}
-                  </select>
-
-                  {lectureSuggestions.length > 0 ? (
-                    <div className="telegramControlPage_predictionList">
-                      {lectureSuggestions.map((lecture, index) => (
-                        <article
-                          key={`${String(lecture?.lectureName || "")}-${index}`}
-                          className="telegramControlPage_predictionCard"
-                        >
-                          <strong>
-                            {String(lecture?.lectureName || "Unnamed lecture")}
-                          </strong>
-                          <span>
-                            Confidence: {Number(lecture?.confidence || 0)}%
-                          </span>
-                        </article>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="telegramControlPage_aiSection">
-                  <div className="telegramControlPage_sectionTitleRow">
-                    <span className="telegramControlPage_label">
-                      {storageCopy.importantMessagesAi}
-                    </span>
-                    <button
-                      type="button"
-                      className="telegramControlPage_button"
-                      onClick={handleConceptualizeImportantMessage}
-                      disabled={isConceptualizing || !token}
-                    >
-                      {isConceptualizing
-                        ? storageCopy.thinking
-                        : storageCopy.conceptualize}
-                    </button>
-                  </div>
-
-                  <select
-                    value={selectedImportantMessage}
+                <label className="telegramControlPage_checkboxRow">
+                  <input
+                    type="checkbox"
+                    checked={searchWithinSelectedGroup}
                     onChange={(event) =>
-                      setSelectedImportantMessage(event.target.value)
+                      setSearchWithinSelectedGroup(event.target.checked)
+                    }
+                  />
+                  <span>{storageCopy.selectedOnly}</span>
+                </label>
+
+                {searchWithinSelectedGroup ? (
+                  <select
+                    value={selectedStoredGroupReference}
+                    onChange={(event) =>
+                      setSelectedStoredGroupReference(event.target.value)
                     }
                     className="telegramControlPage_input"
                   >
-                    {importantMessages.length === 0 ? (
-                      <option value="">{storageCopy.noImportantMessages}</option>
+                    {storedGroupOptions.length === 0 ? (
+                      <option value="">{storageCopy.noStoredGroups}</option>
                     ) : (
-                      importantMessages.map((message) => (
+                      storedGroupOptions.map((group) => (
                         <option
-                          key={buildImportantMessageValue(message)}
-                          value={buildImportantMessageValue(message)}
+                          key={String(group?.groupReference || "")}
+                          value={String(group?.groupReference || "")}
                         >
-                          {`${String(
-                            message?.groupTitle ||
-                              message?.groupReference ||
-                              "Stored group",
-                          )} • ${String(message?.sender || "Unknown")}`}
+                          {formatTelegramGroupOptionLabel(group)}
                         </option>
                       ))
                     )}
                   </select>
+                ) : null}
 
-                  {selectedImportantMessageRecord ? (
-                    <p className="telegramControlPage_hint">
-                      {String(selectedImportantMessageRecord?.text || "[No text]").slice(
-                        0,
-                        180,
-                      )}
-                    </p>
-                  ) : null}
-
-                  {importantMessageConcept ? (
-                    <div className="telegramControlPage_conceptCard">
-                      <strong>{importantMessageConcept.summary || "Summary"}</strong>
-                      {importantMessageConcept.keyIdeas?.length ? (
-                        <ul>
-                          {importantMessageConcept.keyIdeas.map((idea) => (
-                            <li key={idea}>{idea}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {importantMessageConcept.academicRelevance ? (
-                        <p>{importantMessageConcept.academicRelevance}</p>
-                      ) : null}
-                      {importantMessageConcept.nextAction ? (
-                        <p>{importantMessageConcept.nextAction}</p>
-                      ) : null}
-                    </div>
-                  ) : savedConcept ? (
-                    <div className="telegramControlPage_conceptCard">
-                      <strong>{savedConcept.summary || "Saved concept"}</strong>
-                    </div>
-                  ) : null}
-                </div>
+                {storageFeedback ? (
+                  <p className="telegramControlPage_feedback">
+                    {storageFeedback}
+                  </p>
+                ) : null}
               </div>
 
-              {storageFeedback ? (
-                <p className="telegramControlPage_feedback">
-                  {storageFeedback}
-                </p>
-              ) : null}
-            </aside>
-          </div>
-
-          <section className="telegramControlPage_card telegramControlPage_card--stream">
-            <div className="telegramControlPage_cardHeader">
-              <h2>{streamTitle}</h2>
-              <span>{`${messages.length} ${storageCopy.shown}`}</span>
-            </div>
-
-            <div className="telegramControlPage_stream">
-              {isLoading ? (
-                <p className="telegramControlPage_status">
-                  {storageCopy.loadingStored}
-                </p>
-              ) : error ? (
-                <p className="telegramControlPage_status">{error}</p>
-              ) : groupedMessages.length === 0 ? (
-                <p className="telegramControlPage_status">
-                  {storageCopy.loadStoredPrompt}
-                </p>
-              ) : (
-                groupedMessages.map((messageGroup) => (
-                  <div
-                    key={messageGroup.dayLabel}
-                    className="telegramControlPage_dayGroup"
-                  >
-                    <p className="telegramControlPage_dayLabel">
-                      {messageGroup.dayLabel}
-                    </p>
-                    <div className="telegramControlPage_messageStack">
-                      {messageGroup.items.map((message) => (
-                        <article
-                          key={`${String(message?.groupReference || "")}-${message.id || `${message.sender || "unknown"}-${message.date || ""}`}`}
-                          className={`telegramControlPage_message${
-                            message?.isPinned ? " is-pinned" : ""
-                          }`}
-                        >
-                          <div className="telegramControlPage_messageMeta">
-                            <span>
-                              {message.groupTitle ||
-                                message.groupReference ||
-                                storageCopy.storedGroup}
-                            </span>
-                            <span>{formatTelegramDateTime(message.date)}</span>
-                          </div>
-                          <div className="telegramControlPage_messageMeta">
-                            <span>{message.sender || "Unknown"}</span>
-                            <button
-                              type="button"
-                              className={`telegramControlPage_pinButton${
-                                message?.isPinned ? " is-active" : ""
-                              }`}
-                              onClick={() => handleToggleImportantMessage(message)}
-                            >
-                              {message?.isPinned
-                                ? storageCopy.pinned
-                                : storageCopy.pin}
-                            </button>
-                          </div>
-                          <p>{message.text || "[No text]"}</p>
-                          {message.attachmentFileName ? (
-                            <span className="telegramControlPage_attachmentLabel">
-                              {message.attachmentFileName}
-                            </span>
-                          ) : null}
-                        </article>
-                      ))}
+              <div className="telegramControlPage_stream">
+                {isLoading ? (
+                  <p className="telegramControlPage_status">
+                    {storageCopy.loadingStored}
+                  </p>
+                ) : error ? (
+                  <p className="telegramControlPage_status">{error}</p>
+                ) : groupedMessages.length === 0 ? (
+                  <p className="telegramControlPage_status">
+                    {storageCopy.loadStoredPrompt}
+                  </p>
+                ) : (
+                  groupedMessages.map((messageGroup) => (
+                    <div
+                      key={messageGroup.dayLabel}
+                      className="telegramControlPage_dayGroup"
+                    >
+                      <p className="telegramControlPage_dayLabel">
+                        {messageGroup.dayLabel}
+                      </p>
+                      <div className="telegramControlPage_messageStack">
+                        {messageGroup.items.map((message) => (
+                          <article
+                            key={`${String(message?.groupReference || "")}-${message.id || `${message.sender || "unknown"}-${message.date || ""}`}`}
+                            className={`telegramControlPage_message${
+                              message?.isPinned ? " is-pinned" : ""
+                            }`}
+                          >
+                            <div className="telegramControlPage_messageMeta">
+                              <span>
+                                {message.groupTitle ||
+                                  message.groupReference ||
+                                  storageCopy.storedGroup}
+                              </span>
+                              <span>
+                                {formatTelegramDateTime(message.date)}
+                              </span>
+                            </div>
+                            <div className="telegramControlPage_messageMeta">
+                              <span>{message.sender || "Unknown"}</span>
+                              <button
+                                type="button"
+                                className={`telegramControlPage_pinButton${
+                                  message?.isPinned ? " is-active" : ""
+                                }`}
+                                onClick={() =>
+                                  handleToggleImportantMessage(message)
+                                }
+                              >
+                                {message?.isPinned
+                                  ? storageCopy.pinned
+                                  : storageCopy.pin}
+                              </button>
+                            </div>
+                            <p>{message.text || "[No text]"}</p>
+                            {message.attachmentFileName ? (
+                              <span className="telegramControlPage_attachmentLabel">
+                                {message.attachmentFileName}
+                              </span>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
 
-            {hasMore && !isLoading && !error ? (
-              <button
-                type="button"
-                className="telegramControlPage_button telegramControlPage_button--loadMore"
-                onClick={handleLoadMore}
-              >
-                Load more
-              </button>
-            ) : null}
-          </section>
-        </section>
-      </div>
+              {hasMore && !isLoading && !error ? (
+                <button
+                  type="button"
+                  className="telegramControlPage_button telegramControlPage_button--loadMore"
+                  onClick={handleLoadMore}
+                >
+                  Load more
+                </button>
+              ) : null}
+            </div>{" "}
+            {/* close telegramControlPage_rightPool */}
+          </section>{" "}
+          {/* close telegramControlPage_card--stream */}
+        </section>{" "}
+        {/* close telegramControlPage_grid */}
+      </div>{" "}
+      {/* close telegramControlPage_shell */}
     </section>
   );
 };

@@ -1,21 +1,27 @@
-﻿import { Link, useHistory } from "react-router-dom";
-import Nav from "./Nav/Nav";
+import { Link, useHistory } from "react-router-dom";
+import "./home.css";
+import Nav from "../Nav/Nav";
 import React, { useState } from "react";
-import { apiUrl } from "./config/api";
-import { compressVideo } from "./utils/video-compress";
+import { apiUrl } from "../config/api";
+import { compressVideo } from "../utils/video-compress";
 import {
   drawHomeLedRopePath,
   drawHomeSketchPath,
   HOME_DRAWING_PALETTES,
   mergeNearbyHomeDrawingPaths,
   smoothHomeDrawingPoints,
-} from "./utils/homeDrawingRope";
-import { getHomeSubApps } from "./utils/homeSubApps";
-import FriendChat from "./HomeChat/FriendChat";
+} from "../utils/homeDrawingRope";
+import { getHomeSubApps } from "../utils/homeSubApps";
+import FriendChat from "../HomeChat/FriendChat";
+import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
 const NAGHAM_COURSE_LIST_STORAGE_KEY = "schoolPlanner_nagham_course_list";
-const SCHOOLPLANNER_MUSIC_STORAGE_KEY = "schoolPlanner_music_archive_items";
+const SCHOOLPLANNER_MUSIC_STORAGE_KEY = "schoolPlanner_music_library_items";
+const LEGACY_SCHOOLPLANNER_MUSIC_STORAGE_KEYS = [
+  "schoolPlanner_music_archive_items",
+  "phenomed.globalMusic.archiveItems",
+];
 const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY = "schoolPlanner_reduce_motion";
 const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
@@ -91,19 +97,206 @@ const isVideoGalleryItem = (item) => {
 
 // ...existing code...
 
-const buildInternetArchiveSearchUrl = (queryText) => {
-  const normalizedQuery = String(queryText || "").trim();
-  const searchQuery = `mediatype:audio AND collection:opensource_audio AND (${[
-    `identifier:"${normalizedQuery}"`,
-    `title:"${normalizedQuery}"`,
-    `subject:"${normalizedQuery}"`,
-    `creator:"${normalizedQuery}"`,
-  ].join(" OR ")})`;
+const buildMusicSearchTerms = (searchFields) => ({
+  song: String(searchFields?.song || "").trim(),
+  artist: String(searchFields?.artist || "").trim(),
+});
+
+const buildInternetArchiveSearchUrl = (searchFields) => {
+  const { song, artist } = buildMusicSearchTerms(searchFields);
+  const queryClauses = ['mediatype:audio', 'collection:opensource_audio'];
+  const fieldClauses = [];
+
+  if (song) {
+    fieldClauses.push(
+      `identifier:"${song}"`,
+      `title:"${song}"`,
+      `subject:"${song}"`,
+    );
+  }
+
+  if (artist) {
+    fieldClauses.push(`creator:"${artist}"`);
+  }
+
+  if (fieldClauses.length > 0) {
+    queryClauses.push(`(${fieldClauses.join(" OR ")})`);
+  }
 
   return `https://archive.org/advancedsearch.php?q=${encodeURIComponent(
-    searchQuery,
+    queryClauses.join(" AND "),
   )}&fl[]=identifier,title,creator&sort[]=downloads desc&rows=8&page=1&output=json`;
 };
+
+const buildITunesSearchUrl = (searchFields) =>
+  `https://itunes.apple.com/search?term=${encodeURIComponent(
+    [searchFields?.song, searchFields?.artist]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" "),
+  )}&entity=song&limit=8`;
+
+const buildMusicBrainzSearchUrl = (searchFields) =>
+  `https://musicbrainz.org/ws/2/recording?fmt=json&limit=8&query=${encodeURIComponent(
+    [
+      searchFields?.song ? `recording:${String(searchFields.song).trim()}` : "",
+      searchFields?.artist
+        ? `artist:${String(searchFields.artist).trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" AND "),
+  )}`;
+
+const buildMusicLibraryLineLabel = (title, artist, fallbackValue = "") => {
+  const parts = [String(title || "").trim(), String(artist || "").trim()].filter(
+    Boolean,
+  );
+
+  if (parts.length > 0) {
+    return parts.join(" - ");
+  }
+
+  return String(fallbackValue || "").trim();
+};
+
+const normalizeStoredMusicLibraryItem = (rawItem) => {
+  if (typeof rawItem === "string") {
+    const normalizedIdentifier = String(rawItem || "").trim();
+
+    if (!normalizedIdentifier) {
+      return null;
+    }
+
+    return {
+      provider: "internetArchive",
+      identifier: normalizedIdentifier,
+      query: normalizedIdentifier,
+      title: normalizedIdentifier.replace(/[-_]+/g, " "),
+      artist: "Internet Archive",
+    };
+  }
+
+  const provider = String(rawItem?.provider || "internetArchive").trim();
+  const identifier = String(rawItem?.identifier || "").trim();
+  const title = String(
+    rawItem?.title || rawItem?.fallbackTitle || rawItem?.trackTitle || "",
+  ).trim();
+  const artist = String(
+    rawItem?.artist || rawItem?.fallbackCreator || rawItem?.trackArtist || "",
+  ).trim();
+  const query = String(
+    rawItem?.query || buildMusicLibraryLineLabel(title, artist, identifier),
+  ).trim();
+
+  if (!provider) {
+    return null;
+  }
+
+  if (provider === "internetArchive" && !identifier && !query) {
+    return null;
+  }
+
+  if (provider !== "internetArchive" && !query) {
+    return null;
+  }
+
+  return {
+    provider,
+    identifier,
+    query,
+    title,
+    artist,
+  };
+};
+
+const readStoredMusicLibraryItems = () => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const candidateKeys = [
+    SCHOOLPLANNER_MUSIC_STORAGE_KEY,
+    ...LEGACY_SCHOOLPLANNER_MUSIC_STORAGE_KEYS,
+  ];
+
+  for (const storageKey of candidateKeys) {
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        continue;
+      }
+
+      const parsedValue = JSON.parse(rawValue);
+      if (!Array.isArray(parsedValue)) {
+        continue;
+      }
+
+      const normalizedItems = parsedValue
+        .map((item) => normalizeStoredMusicLibraryItem(item))
+        .filter(Boolean);
+
+      if (normalizedItems.length > 0) {
+        return normalizedItems;
+      }
+    } catch {}
+  }
+
+  return [];
+};
+
+const formatStoredMusicLibraryItemsForProvider = (
+  provider,
+  defaultLines = [],
+) => {
+  const storedItems = readStoredMusicLibraryItems();
+  const providerItems = storedItems.filter((item) => item.provider === provider);
+
+  if (providerItems.length > 0) {
+    return providerItems
+      .map((item) => {
+        if (provider === "internetArchive") {
+          return String(item.identifier || item.query || "").trim();
+        }
+
+        return (
+          buildMusicLibraryLineLabel(
+            item.title,
+            item.artist,
+            item.query || item.identifier,
+          ) || ""
+        );
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return defaultLines.join("\n");
+};
+
+const parsePlaylistLines = (inputValue) =>
+  Array.from(
+    new Set(
+      String(inputValue || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  );
+
+const buildMusicLibraryItemsFromLines = (provider, inputValue) =>
+  parsePlaylistLines(inputValue).map((line) => ({
+    provider,
+    identifier: provider === "internetArchive" ? line : "",
+    query: line,
+    title: provider === "internetArchive" ? line.replace(/[-_]+/g, " ") : "",
+    artist:
+      provider === "internetArchive"
+        ? "Internet Archive"
+        : provider === "itunes"
+          ? "iTunes Search API"
+          : "MusicBrainz",
+  }));
 
 const normalizeProfilePictureViewport = (nextViewport) => {
   const rawScale = Number(nextViewport?.scale);
@@ -417,7 +610,7 @@ const ImageViewerModal = ({
                   color: "rgba(242, 249, 250, 0.98)",
                 }}
               >
-                ‹
+                Ã¢â‚¬Â¹
               </button>
               <button
                 type="button"
@@ -438,7 +631,7 @@ const ImageViewerModal = ({
                   color: "rgba(242, 249, 250, 0.98)",
                 }}
               >
-                ›
+                Ã¢â‚¬Âº
               </button>
             </>
           ) : null}
@@ -449,9 +642,7 @@ const ImageViewerModal = ({
 };
 
 function Home(props) {
-  // Determine if the current user is naghamtrkmani
-  const isNaghamtrkmani =
-    String(props.state?.username || "").toLowerCase() === "naghamtrkmani";
+  const isNaghamtrkmani = false;
   const homeThemeClassName = isNaghamtrkmani
     ? "Home_themeNoga"
     : "Home_themeGreen";
@@ -466,7 +657,7 @@ function Home(props) {
   const homeBackgroundStyle = undefined;
   // State to track which friend's chat is open
   const [openChatFriendId, setOpenChatFriendId] = useState(null);
-  const [homeMusicSignal, setHomeMusicSignal] = useState(
+  const homeMusicSignalRef = React.useRef(
     props.state?.planner_music?.audioSignal || {
       energy: 0,
       bass: 0,
@@ -588,35 +779,30 @@ function Home(props) {
   const [naghamCourseLetterFeedback, setNaghamCourseLetterFeedback] =
     useState("");
   const [musicArchivePlaylistInput, setMusicArchivePlaylistInput] = useState(
-    () => {
-      if (typeof window === "undefined") {
-        return DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS.join("\n");
-      }
-
-      try {
-        const storedItems = JSON.parse(
-          window.localStorage.getItem(SCHOOLPLANNER_MUSIC_STORAGE_KEY) || "[]",
-        );
-        const nextItems =
-          Array.isArray(storedItems) && storedItems.length > 0
-            ? storedItems
-            : DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS;
-
-        return nextItems.join("\n");
-      } catch (error) {
-        return DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS.join("\n");
-      }
-    },
+    () =>
+      formatStoredMusicLibraryItemsForProvider(
+        "internetArchive",
+        DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS,
+      ),
+  );
+  const [itunesPlaylistInput, setItunesPlaylistInput] = useState(() =>
+    formatStoredMusicLibraryItemsForProvider("itunes"),
+  );
+  const [musicBrainzPlaylistInput, setMusicBrainzPlaylistInput] = useState(() =>
+    formatStoredMusicLibraryItemsForProvider("musicBrainz"),
   );
   const [musicArchivePlaylistFeedback, setMusicArchivePlaylistFeedback] =
     useState("");
-  const [musicArchiveSearchQuery, setMusicArchiveSearchQuery] = useState("");
+  const [musicLibrarySongQuery, setMusicLibrarySongQuery] = useState("");
+  const [musicLibraryArtistQuery, setMusicLibraryArtistQuery] = useState("");
+  const [musicLibrarySearchFeedback, setMusicLibrarySearchFeedback] =
+    useState("");
+  const [isMusicLibrarySearching, setIsMusicLibrarySearching] = useState(false);
   const [musicArchiveSearchResults, setMusicArchiveSearchResults] = useState(
     [],
   );
-  const [musicArchiveSearchFeedback, setMusicArchiveSearchFeedback] =
-    useState("");
-  const [isMusicArchiveSearching, setIsMusicArchiveSearching] = useState(false);
+  const [itunesSearchResults, setItunesSearchResults] = useState([]);
+  const [musicBrainzSearchResults, setMusicBrainzSearchResults] = useState([]);
   const [schoolPlannerTelegramFeedback, setSchoolPlannerTelegramFeedback] =
     useState("");
   const [phenomedSocialChatBackground, setPhenomedSocialChatBackground] =
@@ -725,9 +911,6 @@ function Home(props) {
   };
 
   const introWrapRef = React.useRef(null);
-  const settingsPanelMountRef = React.useRef(null);
-  const settingsPanelHostRef = React.useRef(null);
-  const settingsPanelRef = React.useRef(null);
   const separatorDraggingRef = React.useRef(false);
   const separatorStartXRef = React.useRef(0);
   const separatorStartWidthRef = React.useRef(0);
@@ -1035,6 +1218,7 @@ function Home(props) {
       const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
       const nowSeconds =
         typeof performance !== "undefined" ? performance.now() / 1000 : Date.now() / 1000;
+      const homeMusicSignal = homeMusicSignalRef.current || {};
       const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
       const signalAgeMs =
         signalUpdatedAt > 0 ? Math.max(0, Date.now() - signalUpdatedAt) : Number.POSITIVE_INFINITY;
@@ -1162,7 +1346,6 @@ function Home(props) {
     getHomeDrawingMaskedRects,
     homeDrawing.appliedPaths,
     homeDrawing.draftPaths,
-    homeMusicSignal,
     isHomeDrawingModeEnabled,
     props.state?.planner_music?.isPlaying,
   ]);
@@ -1529,12 +1712,6 @@ function Home(props) {
   }, [applyHomeDrawingRope, endHomeDrawingStroke, isHomeDrawingModeEnabled]);
 
   React.useEffect(() => {
-    if (props.state?.planner_music?.audioSignal) {
-      setHomeMusicSignal(props.state.planner_music.audioSignal);
-    }
-  }, [props.state?.planner_music?.audioSignal]);
-
-  React.useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
@@ -1546,19 +1723,20 @@ function Home(props) {
         return;
       }
 
-      setHomeMusicSignal((currentSignal) => {
-        if (
-          currentSignal.updatedAt === nextAudioSignal.updatedAt &&
-          currentSignal.energy === nextAudioSignal.energy &&
-          currentSignal.pitch === nextAudioSignal.pitch &&
-          currentSignal.tempo === nextAudioSignal.tempo &&
-          currentSignal.pulse === nextAudioSignal.pulse
-        ) {
-          return currentSignal;
-        }
+      const currentSignal = homeMusicSignalRef.current || {};
 
-        return nextAudioSignal;
-      });
+      if (
+        currentSignal.updatedAt === nextAudioSignal.updatedAt &&
+        currentSignal.energy === nextAudioSignal.energy &&
+        currentSignal.pitch === nextAudioSignal.pitch &&
+        currentSignal.tempo === nextAudioSignal.tempo &&
+        currentSignal.pulse === nextAudioSignal.pulse
+      ) {
+        return;
+      }
+
+      homeMusicSignalRef.current = nextAudioSignal;
+      redrawHomeDrawingCanvas();
     };
 
     window.addEventListener(
@@ -1572,13 +1750,12 @@ function Home(props) {
         handlePlannerMusicSignalChange,
       );
     };
-  }, []);
+  }, [redrawHomeDrawingCanvas]);
 
   React.useEffect(() => {
     redrawHomeDrawingCanvas();
   }, [
     activeFriendsMiniTab,
-    homeMusicSignal,
     isReportsWrapperOpen,
     leftColumnWidthPercent,
     openChatFriendId,
@@ -1651,28 +1828,18 @@ function Home(props) {
   }, [redrawHomeDrawingCanvas]);
 
   React.useEffect(() => {
-    const settingsPanelNode = settingsPanelRef.current;
-    const targetMountNode = isReportsWrapperOpen
-      ? settingsPanelMountRef.current
-      : settingsPanelHostRef.current;
-
-    if (!settingsPanelNode || !targetMountNode) {
-      return;
-    }
-
-    if (settingsPanelNode.parentNode !== targetMountNode) {
-      targetMountNode.appendChild(settingsPanelNode);
-    }
-  }, [isReportsWrapperOpen]);
-
-  React.useEffect(() => {
     if (isReportsWrapperOpen || showGalleryInRightColumn) {
       if (openChatFriendId) {
         setOpenChatFriendId(null);
+        props.closeActiveChat?.();
       }
-      props.closeActiveChat?.();
     }
-  }, [isReportsWrapperOpen, openChatFriendId, props, showGalleryInRightColumn]);
+  }, [
+    isReportsWrapperOpen,
+    openChatFriendId,
+    props.closeActiveChat,
+    showGalleryInRightColumn,
+  ]);
 
   React.useEffect(() => {
     const globalActiveChatFriendId = String(
@@ -3517,79 +3684,238 @@ function Home(props) {
     setNaghamCourseLetterFeedback("Saved for the selected Nagham course.");
   };
 
-  const saveMusicArchivePlaylist = () => {
+  const saveMusicArchivePlaylist = async () => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const normalizedIdentifiers = Array.from(
-      new Set(
-        String(musicArchivePlaylistInput || "")
-          .split("\n")
-          .map((identifier) => identifier.trim())
-          .filter(Boolean),
-      ),
-    );
+    const nextArchiveLines = parsePlaylistLines(musicArchivePlaylistInput);
+    const nextItunesLines = parsePlaylistLines(itunesPlaylistInput);
+    const nextMusicBrainzLines = parsePlaylistLines(musicBrainzPlaylistInput);
 
-    const nextIdentifiers =
-      normalizedIdentifiers.length > 0
-        ? normalizedIdentifiers
-        : DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS;
+    const nextArchiveItems =
+      nextArchiveLines.length > 0
+        ? buildMusicLibraryItemsFromLines(
+            "internetArchive",
+            nextArchiveLines.join("\n"),
+          )
+        : buildMusicLibraryItemsFromLines(
+            "internetArchive",
+            DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS.join("\n"),
+          );
+    const nextLibraryItems = [
+      ...nextArchiveItems,
+      ...buildMusicLibraryItemsFromLines("itunes", nextItunesLines.join("\n")),
+      ...buildMusicLibraryItemsFromLines(
+        "musicBrainz",
+        nextMusicBrainzLines.join("\n"),
+      ),
+    ];
 
     window.localStorage.setItem(
       SCHOOLPLANNER_MUSIC_STORAGE_KEY,
-      JSON.stringify(nextIdentifiers),
+      JSON.stringify(nextLibraryItems),
     );
-    setMusicArchivePlaylistInput(nextIdentifiers.join("\n"));
-    setMusicArchivePlaylistFeedback("Saved Internet Archive playlist.");
+
+    setMusicArchivePlaylistInput(
+      nextArchiveItems
+        .map((item) => String(item.identifier || item.query || "").trim())
+        .filter(Boolean)
+        .join("\n"),
+    );
+    setItunesPlaylistInput(nextItunesLines.join("\n"));
+    setMusicBrainzPlaylistInput(nextMusicBrainzLines.join("\n"));
+
+    try {
+      await refreshSharedPlannerMusicLibrary();
+      setMusicArchivePlaylistFeedback("Saved planner music API settings.");
+    } catch (error) {
+      setMusicArchivePlaylistFeedback(
+        error?.message || "Saved settings, but could not refresh the player yet.",
+      );
+    }
   };
 
-  const searchMusicArchiveSongs = async () => {
-    const normalizedQuery = String(musicArchiveSearchQuery || "").trim();
+  const searchMusicArchiveSongs = async (searchOverride) => {
+    const searchFields = {
+      song:
+        searchOverride?.song !== undefined
+          ? searchOverride.song
+          : musicLibrarySongQuery,
+      artist:
+        searchOverride?.artist !== undefined
+          ? searchOverride.artist
+          : musicLibraryArtistQuery,
+    };
+    const { song, artist } = buildMusicSearchTerms(searchFields);
 
-    if (!normalizedQuery) {
+    if (!song && !artist) {
+      return [];
+    }
+
+    const response = await fetch(buildInternetArchiveSearchUrl({ song, artist }));
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error("Unable to search songs right now.");
+    }
+
+    return Array.isArray(payload?.response?.docs)
+      ? payload.response.docs
+          .map((item) => ({
+            identifier: String(item?.identifier || "").trim(),
+            title: String(item?.title || item?.identifier || "").trim(),
+            creator: Array.isArray(item?.creator)
+              ? item.creator.join(", ")
+              : String(item?.creator || "Internet Archive").trim(),
+          }))
+          .filter((item) => item.identifier)
+      : [];
+  };
+
+  const searchITunesSongs = async (searchOverride) => {
+    const searchFields = {
+      song:
+        searchOverride?.song !== undefined
+          ? searchOverride.song
+          : musicLibrarySongQuery,
+      artist:
+        searchOverride?.artist !== undefined
+          ? searchOverride.artist
+          : musicLibraryArtistQuery,
+    };
+    const { song, artist } = buildMusicSearchTerms(searchFields);
+
+    if (!song && !artist) {
+      return [];
+    }
+
+    const response = await fetch(buildITunesSearchUrl({ song, artist }));
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error("Unable to search iTunes right now.");
+    }
+
+    return Array.isArray(payload?.results)
+      ? payload.results
+          .map((item) => ({
+            identifier: String(item?.trackId || "").trim(),
+            title: String(item?.trackName || "").trim(),
+            creator: String(item?.artistName || "iTunes Search API").trim(),
+            queryLabel: buildMusicLibraryLineLabel(
+              item?.trackName,
+              item?.artistName,
+              item?.trackId,
+            ),
+          }))
+          .filter((item) => item.queryLabel)
+      : [];
+  };
+
+  const searchMusicBrainzSongs = async (searchOverride) => {
+    const searchFields = {
+      song:
+        searchOverride?.song !== undefined
+          ? searchOverride.song
+          : musicLibrarySongQuery,
+      artist:
+        searchOverride?.artist !== undefined
+          ? searchOverride.artist
+          : musicLibraryArtistQuery,
+    };
+    const { song, artist } = buildMusicSearchTerms(searchFields);
+
+    if (!song && !artist) {
+      return [];
+    }
+
+    const response = await fetch(buildMusicBrainzSearchUrl({ song, artist }));
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error("Unable to search MusicBrainz right now.");
+    }
+
+    return Array.isArray(payload?.recordings)
+      ? payload.recordings
+          .map((item) => {
+            const artistName = Array.isArray(item?.["artist-credit"])
+              ? item["artist-credit"]
+                  .map((credit) => String(credit?.name || "").trim())
+                  .filter(Boolean)
+                  .join(", ")
+              : "";
+
+            return {
+              identifier: String(item?.id || "").trim(),
+              title: String(item?.title || "").trim(),
+              creator: artistName || "MusicBrainz",
+              queryLabel: buildMusicLibraryLineLabel(
+                item?.title,
+                artistName,
+                item?.id,
+              ),
+            };
+          })
+          .filter((item) => item.queryLabel)
+      : [];
+  };
+
+  const searchAllMusicLibrarySources = async () => {
+    const searchFields = buildMusicSearchTerms({
+      song: musicLibrarySongQuery,
+      artist: musicLibraryArtistQuery,
+    });
+
+    if (!searchFields.song && !searchFields.artist) {
       setMusicArchiveSearchResults([]);
-      setMusicArchiveSearchFeedback("Type a song name first.");
+      setItunesSearchResults([]);
+      setMusicBrainzSearchResults([]);
+      setMusicLibrarySearchFeedback("Type a song title or artist first.");
       return;
     }
 
-    setIsMusicArchiveSearching(true);
-    setMusicArchiveSearchFeedback("");
+    setIsMusicLibrarySearching(true);
+    setMusicLibrarySearchFeedback("");
 
-    try {
-      const response = await fetch(
-        buildInternetArchiveSearchUrl(normalizedQuery),
+    const settledResults = await Promise.allSettled([
+      searchMusicArchiveSongs(searchFields),
+      searchITunesSongs(searchFields),
+      searchMusicBrainzSongs(searchFields),
+    ]);
+
+    const nextArchiveResults =
+      settledResults[0].status === "fulfilled" ? settledResults[0].value : [];
+    const nextItunesResults =
+      settledResults[1].status === "fulfilled" ? settledResults[1].value : [];
+    const nextMusicBrainzResults =
+      settledResults[2].status === "fulfilled" ? settledResults[2].value : [];
+
+    setMusicArchiveSearchResults(nextArchiveResults);
+    setItunesSearchResults(nextItunesResults);
+    setMusicBrainzSearchResults(nextMusicBrainzResults);
+
+    const totalResults =
+      nextArchiveResults.length +
+      nextItunesResults.length +
+      nextMusicBrainzResults.length;
+
+    if (totalResults > 0) {
+      setMusicLibrarySearchFeedback("");
+    } else {
+      const firstRejected = settledResults.find(
+        (result) => result.status === "rejected",
       );
-      const payload = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        throw new Error("Unable to search songs right now.");
-      }
-
-      const nextResults = Array.isArray(payload?.response?.docs)
-        ? payload.response.docs
-            .map((item) => ({
-              identifier: String(item?.identifier || "").trim(),
-              title: String(item?.title || item?.identifier || "").trim(),
-              creator: Array.isArray(item?.creator)
-                ? item.creator.join(", ")
-                : String(item?.creator || "Internet Archive").trim(),
-            }))
-            .filter((item) => item.identifier)
-        : [];
-
-      setMusicArchiveSearchResults(nextResults);
-      setMusicArchiveSearchFeedback(
-        nextResults.length > 0 ? "" : "No matching songs found.",
+      setMusicLibrarySearchFeedback(
+        firstRejected?.status === "rejected"
+          ? firstRejected.reason?.message || "Unable to search music right now."
+          : "No matching songs found.",
       );
-    } catch (error) {
-      setMusicArchiveSearchResults([]);
-      setMusicArchiveSearchFeedback(
-        error?.message || "Unable to search songs right now.",
-      );
-    } finally {
-      setIsMusicArchiveSearching(false);
     }
+
+    setIsMusicLibrarySearching(false);
   };
 
   const addMusicArchiveSong = (identifier) => {
@@ -3615,6 +3941,42 @@ function Home(props) {
 
     const nextIdentifiers = [...existingIdentifiers, normalizedIdentifier];
     setMusicArchivePlaylistInput(nextIdentifiers.join("\n"));
+    setMusicArchivePlaylistFeedback("Song added to the playlist.");
+  };
+
+  const addITunesSong = (queryLabel) => {
+    const normalizedLabel = String(queryLabel || "").trim();
+
+    if (!normalizedLabel) {
+      return;
+    }
+
+    const existingLabels = parsePlaylistLines(itunesPlaylistInput);
+
+    if (existingLabels.includes(normalizedLabel)) {
+      setMusicArchivePlaylistFeedback("Song is already in the playlist.");
+      return;
+    }
+
+    setItunesPlaylistInput([...existingLabels, normalizedLabel].join("\n"));
+    setMusicArchivePlaylistFeedback("Song added to the playlist.");
+  };
+
+  const addMusicBrainzSong = (queryLabel) => {
+    const normalizedLabel = String(queryLabel || "").trim();
+
+    if (!normalizedLabel) {
+      return;
+    }
+
+    const existingLabels = parsePlaylistLines(musicBrainzPlaylistInput);
+
+    if (existingLabels.includes(normalizedLabel)) {
+      setMusicArchivePlaylistFeedback("Song is already in the playlist.");
+      return;
+    }
+
+    setMusicBrainzPlaylistInput([...existingLabels, normalizedLabel].join("\n"));
     setMusicArchivePlaylistFeedback("Song added to the playlist.");
   };
 
@@ -4069,7 +4431,6 @@ function Home(props) {
       <article
         id="Home_studysessions_article"
         className={[
-          "Home_themeDark",
           homeThemeClassName,
           !isNaghamtrkmani ? "Home_root--bg" : "",
         ]
@@ -4419,12 +4780,7 @@ function Home(props) {
                       ></div>
                     </div>
                   )}
-                  {isReportsWrapperOpen ? (
-                    <div
-                      ref={settingsPanelMountRef}
-                      className="Home_settingsPanelMount"
-                    ></div>
-                  ) : showGalleryInRightColumn ? (
+                  {isReportsWrapperOpen ? null : showGalleryInRightColumn ? (
                     <div className="Home_socialFriendsList Home_socialFriendsList--gallery">
                       <button
                         id="Home_uploadMediaButton"
@@ -4584,7 +4940,7 @@ function Home(props) {
                         )
                       ) : socialFriends.length === 0 ? (
                         <li className="Home_socialFriendsEmptyState">
-                          No friends yet—share Phenomed Social with a colleague.
+                          No friends yetÃ¢â‚¬â€share Phenomed Social with a colleague.
                         </li>
                       ) : (
                         socialFriends.map(renderFriendListItem)
@@ -4596,12 +4952,22 @@ function Home(props) {
             </div>
             {/* /Home_preStart_leftPanel */}
           </div>
-          <div ref={settingsPanelHostRef} className="Home_settingsPanelHost">
-            <div
-              id="Home_preStart_reportsWrapper"
-              ref={settingsPanelRef}
-              className={`fc Home_preStart_reports${isReportsWrapperOpen ? "" : " Home_preStart_reportsWrapper--closed"}`}
-            >
+          <div
+            id="Home_preStart_reportsWrapper"
+            className={`fc Home_preStart_reports${isReportsWrapperOpen ? "" : " Home_preStart_reportsWrapper--closed"}`}
+          >
+              <div className="Home_settingsBackRow fr">
+                <button
+                  type="button"
+                  className="Home_settingsBackButton"
+                  onClick={() => setIsReportsWrapperOpen(false)}
+                  aria-label="Back from settings"
+                  title="Back"
+                >
+                  <i className="fas fa-arrow-left"></i>
+                  <span>Back</span>
+                </button>
+              </div>
               <div className="fc Home_preStart_reportCard Home_preStart_reportsCard">
                 <div className="Home_gallery_Header_wrapper fr">
                   <h3>Log Record: Date and Time</h3>
@@ -4953,79 +5319,209 @@ function Home(props) {
                   className={`Home_reportBody fc${isReportSectionOpen("musicPlaylist") ? " isOpen" : ""}`}
                 >
                   <div id="Home_musicArchivePlaylist_div" className="fc">
-                    <div id="Home_musicArchiveSearch_div" className="fc">
-                      <div className="Home_musicArchiveSearch_row fr">
-                        <input
-                          id="Home_musicArchiveSearch_input"
-                          type="search"
-                          value={musicArchiveSearchQuery}
-                          onChange={(event) => {
-                            setMusicArchiveSearchQuery(event.target.value);
-                            if (musicArchiveSearchFeedback) {
-                              setMusicArchiveSearchFeedback("");
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              searchMusicArchiveSongs();
-                            }
-                          }}
-                          placeholder="Search songs from Internet Archive"
-                        />
-                        <button
-                          type="button"
-                          className="Home_changePasswordSubmit"
-                          onClick={searchMusicArchiveSongs}
-                          disabled={isMusicArchiveSearching}
-                        >
-                          {isMusicArchiveSearching ? "Searching..." : "Search"}
-                        </button>
+                    <div className="Home_musicLibraryCompact fc">
+                      <div className="Home_musicApiHeader fr">
+                        <strong>Music library</strong>
+                        <span>One compact place for all music sources</span>
                       </div>
-                      {musicArchiveSearchFeedback ? (
-                        <p className="Home_passwordFeedback Home_passwordFeedback--success">
-                          {musicArchiveSearchFeedback}
-                        </p>
-                      ) : null}
-                      {musicArchiveSearchResults.length > 0 ? (
-                        <div
-                          id="Home_musicArchiveSearch_results"
-                          className="fc"
-                        >
-                          {musicArchiveSearchResults.map((result) => (
+
+                      <div className="Home_musicLibraryMainRow fr">
+                        <div className="Home_musicLibraryUnifiedSearch fc">
+                          <div className="Home_musicArchiveSearch_row fr">
+                            <input
+                              id="Home_musicLibrarySongSearch_input"
+                              type="search"
+                              value={musicLibrarySongQuery}
+                              onChange={(event) => {
+                                setMusicLibrarySongQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by song"
+                            />
+                            <input
+                              id="Home_musicLibraryArtistSearch_input"
+                              type="search"
+                              value={musicLibraryArtistQuery}
+                              onChange={(event) => {
+                                setMusicLibraryArtistQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by artist"
+                            />
                             <button
-                              key={result.identifier}
                               type="button"
-                              className="Home_musicArchiveSearch_result"
-                              onClick={() =>
-                                addMusicArchiveSong(result.identifier)
-                              }
-                              title={result.identifier}
+                              className="Home_changePasswordSubmit"
+                              onClick={searchAllMusicLibrarySources}
+                              disabled={isMusicLibrarySearching}
                             >
-                              <strong>{result.title}</strong>
-                              <span>{result.creator}</span>
+                              {isMusicLibrarySearching ? "Searching..." : "Search"}
                             </button>
-                          ))}
+                          </div>
+                          {musicLibrarySearchFeedback ? (
+                            <p className="Home_passwordFeedback Home_passwordFeedback--success">
+                              {musicLibrarySearchFeedback}
+                            </p>
+                          ) : null}
                         </div>
-                      ) : null}
+
+                        <div className="Home_musicLibraryCompactSections fc">
+                          <section className="Home_musicLibrarySource fc">
+                          <div className="Home_musicLibrarySourceHeader fr">
+                            <strong>Internet Archive</strong>
+                            <span>Direct archive identifiers and search</span>
+                          </div>
+                          <div id="Home_musicArchiveSearch_div" className="fc">
+                            {musicArchiveSearchResults.length > 0 ? (
+                              <ul
+                                id="Home_musicArchiveSearch_results"
+                                className="fc"
+                              >
+                                {musicArchiveSearchResults.map((result) => (
+                                  <li
+                                    key={result.identifier}
+                                    className="Home_musicArchiveSearch_result"
+                                    onClick={() =>
+                                      addMusicArchiveSong(result.identifier)
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                      ) {
+                                        event.preventDefault();
+                                        addMusicArchiveSong(result.identifier);
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    title={result.identifier}
+                                  >
+                                    <strong>{result.title}</strong>
+                                    <div className="Home_musicArchiveSearch_meta fr">
+                                      <span>{result.creator}</span>
+                                      <em className="Home_musicArchiveSearch_sourceTag">
+                                        Internet Archive
+                                      </em>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                          </section>
+
+                          <section className="Home_musicLibrarySource fc">
+                          <div className="Home_musicLibrarySourceHeader fr">
+                            <strong>iTunes Search API</strong>
+                            <span>Preview-based search results</span>
+                          </div>
+                          <div className="Home_musicArchiveSearch_div fc">
+                            {itunesSearchResults.length > 0 ? (
+                              <ul
+                                id="Home_itunesSearch_results"
+                                className="fc"
+                              >
+                                {itunesSearchResults.map((result) => (
+                                  <li
+                                    key={result.identifier || result.queryLabel}
+                                    className="Home_musicArchiveSearch_result"
+                                    onClick={() => addITunesSong(result.queryLabel)}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                      ) {
+                                        event.preventDefault();
+                                        addITunesSong(result.queryLabel);
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    title={result.queryLabel}
+                                  >
+                                    <strong>{result.title}</strong>
+                                    <div className="Home_musicArchiveSearch_meta fr">
+                                      <span>{result.creator}</span>
+                                      <em className="Home_musicArchiveSearch_sourceTag">
+                                        iTunes
+                                      </em>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                          </section>
+
+                          <section className="Home_musicLibrarySource fc">
+                          <div className="Home_musicLibrarySourceHeader fr">
+                            <strong>MusicBrainz</strong>
+                            <span>Metadata search that resolves to playable matches</span>
+                          </div>
+                          <div className="Home_musicArchiveSearch_div fc">
+                            {musicBrainzSearchResults.length > 0 ? (
+                              <ul
+                                id="Home_musicBrainzSearch_results"
+                                className="fc"
+                              >
+                                {musicBrainzSearchResults.map((result) => (
+                                  <li
+                                    key={result.identifier || result.queryLabel}
+                                    className="Home_musicArchiveSearch_result"
+                                    onClick={() =>
+                                      addMusicBrainzSong(result.queryLabel)
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                      ) {
+                                        event.preventDefault();
+                                        addMusicBrainzSong(result.queryLabel);
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    title={result.queryLabel}
+                                  >
+                                    <strong>{result.title}</strong>
+                                    <div className="Home_musicArchiveSearch_meta fr">
+                                      <span>{result.creator}</span>
+                                      <em className="Home_musicArchiveSearch_sourceTag">
+                                        MusicBrainz
+                                      </em>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                          </section>
+                        </div>
+                      </div>
                     </div>
-                    <textarea
-                      id="Home_musicArchivePlaylist_textarea"
-                      value={musicArchivePlaylistInput}
-                      onChange={(event) => {
-                        setMusicArchivePlaylistInput(event.target.value);
-                        if (musicArchivePlaylistFeedback) {
-                          setMusicArchivePlaylistFeedback("");
-                        }
-                      }}
-                      placeholder="One Internet Archive identifier or song name per line"
-                    />
                     <button
                       type="button"
                       className="Home_changePasswordSubmit"
                       onClick={saveMusicArchivePlaylist}
                     >
-                      Save playlist
+                      Save music API settings
                     </button>
                     {musicArchivePlaylistFeedback ? (
                       <p className="Home_passwordFeedback Home_passwordFeedback--success">
@@ -5409,8 +5905,7 @@ function Home(props) {
                     </form>
                   ) : null}
                 </div>
-              </div>
-            </div>
+                </div>
           </div>
         </section>
         <ImageViewerModal

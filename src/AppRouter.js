@@ -13,9 +13,17 @@ const getStoredAuth = () => {
   return readStoredSession();
 };
 
+const getHomeRouteForUser = (authState) => {
+  const normalizedUsername = String(authState?.username || "").toLowerCase();
+  return normalizedUsername === "naghamtrkmani"
+    ? "/phenomed/home/noga"
+    : "/phenomed/home";
+};
+
 const AppRouter = () => {
   const [authState, setAuthState] = useState(getStoredAuth);
   const isAuthenticated = authState?.isConnected === true;
+  const authenticatedHomeRoute = getHomeRouteForUser(authState);
 
   const handleLogin = useCallback((nextAuthState) => {
     setAuthState(nextAuthState);
@@ -32,9 +40,31 @@ const AppRouter = () => {
         <Switch>
           <Route exact path="/">
             {isAuthenticated ? (
-              <App key="app-home" path="/" onLogout={handleLogout} />
+              <Redirect to={authenticatedHomeRoute} />
             ) : (
               <Login onLogin={handleLogin} onForceLogout={handleLogout} />
+            )}
+          </Route>
+          <Route exact path="/phenomed/home">
+            {isAuthenticated ? (
+              <App
+                key="app-home"
+                path="/phenomed/home"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
+            )}
+          </Route>
+          <Route exact path="/phenomed/home/noga">
+            {isAuthenticated ? (
+              <App
+                key="app-home-noga"
+                path="/phenomed/home/noga"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to="/" />
             )}
           </Route>
           <Route exact path="/pdf-reader">
@@ -127,7 +157,7 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
-          <Redirect to="/" />
+          <Redirect to={isAuthenticated ? authenticatedHomeRoute : "/"} />
         </Switch>
       </Router>
     </div>

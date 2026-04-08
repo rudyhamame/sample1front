@@ -6,7 +6,7 @@ import {
   playNextSharedPlannerMusicTrack as playNextNogaPlannerMusicTrack,
   playPreviousSharedPlannerMusicTrack as playPreviousNogaPlannerMusicTrack,
   toggleSharedPlannerMusic as toggleNogaPlannerMusic,
-} from "../../../NogaPlan/NogaPlanner";
+} from "../../../NogaPlan/NogaPlanner.jsx";
 
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 
@@ -38,7 +38,9 @@ const buildPlannerMusicSnapshotFromInstance = (instance) => {
   const nextState = instance?.state || {};
   const hasPlaylist =
     Array.isArray(instance?.musicPlaylist) && instance.musicPlaylist.length > 0;
-  const trackTitle = String(nextState.music_trackTitle || "Planner Music").trim();
+  const trackTitle = String(
+    nextState.music_trackTitle || "Planner Music",
+  ).trim();
   const trackArtist = String(
     nextState.music_trackArtist || "Internet Archive",
   ).trim();
@@ -110,7 +112,8 @@ export const playPreviousSharedPlannerMusicTrack = (autoplay = true) =>
   playPreviousNogaPlannerMusicTrack(autoplay);
 
 const StudyPlanner = (props) => {
-  const PlannerComponent = props.locale === "ar" ? SchoolPlannerAr : SchoolPlannerEn;
+  const PlannerComponent =
+    props.locale === "ar" ? SchoolPlannerAr : SchoolPlannerEn;
   const plannerRef = React.useRef(null);
 
   React.useEffect(() => {

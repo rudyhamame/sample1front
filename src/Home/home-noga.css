@@ -1,0 +1,4805 @@
+/* naghamtrkmani mode */
+
+/* Day mode */
+#Home_Noga_studysessions_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) {
+  --home-page-bg-accent-a: rgba(227, 150, 136, 0.14);
+  --home-page-bg-accent-b: rgba(244, 174, 164, 0.12);
+  --home-page-bg-base-start: #fff7f3;
+  --home-page-bg-base-mid: #fdeae5;
+  --home-page-bg-base-end: #f8dfd9;
+  --home-page-pattern-bg: linear-gradient(
+    180deg,
+    rgba(255, 250, 244, 0.18) 0%,
+    rgba(255, 246, 238, 0.1) 100%
+  );
+  --home-main-wrapper-dominant: #e09080;
+  --home-main-wrapper-soft: #f6ded9;
+  --home-main-wrapper-accent: #eecbc2;
+  --home-main-wrapper-text: #ffffff;
+  --home-bio-start: rgba(251, 233, 225, 0.96);
+  --home-bio-end: rgba(238, 198, 183, 0.92);
+  --home-reports-toggle-bg-current: rgba(245, 198, 180, 0.95);
+  --home-reports-toggle-bg-hover-current: rgba(238, 171, 150, 0.98);
+  --home-intro-bg-start-base-current: rgba(241, 174, 154, 0.72);
+  --home-intro-bg-end-base-current: rgba(224, 126, 106, 0.66);
+  --home-intro-border-current: rgba(180, 90, 73, 0.42);
+  --home-intro-shadow-current: rgba(139, 85, 75, 0.24);
+  --home-rope-fill-start-current: rgba(255, 251, 240, 0.94);
+  --home-rope-fill-end-current: rgba(232, 207, 177, 0.82);
+  --home-rope-edge-current: rgba(186, 126, 107, 0.32);
+  --home-rope-shadow-current: rgba(118, 64, 53, 0.16);
+  --home-rope-aurora-a-current: rgba(255, 244, 197, 0.9);
+  --home-rope-aurora-b-current: rgba(194, 255, 221, 0.86);
+  --home-rope-aurora-c-current: rgba(175, 239, 255, 0.84);
+  --home-main-wrapper-overlay-start: rgba(246, 222, 217, 0.84);
+  --home-main-wrapper-overlay-end: rgba(255, 255, 255, 0.74);
+  --home-main-wrapper-image: url("/img/Gemini_Generated_Image_2r2ldz2r2ldz2r2l.png");
+  --home-reports-wrapper-border-current: rgba(186, 99, 82, 0.42);
+  --home-reports-wrapper-spot-current: rgba(255, 246, 240, 0.32);
+  --home-reports-wrapper-stripe-current: rgba(194, 104, 86, 0.11);
+  --home-reports-wrapper-start-current: rgba(247, 210, 194, 0.46);
+  --home-reports-wrapper-end-current: rgba(235, 164, 145, 0.38);
+  --home-reports-wrapper-shadow-current:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 16px 34px rgba(118, 64, 53, 0.22);
+}
+
+/* Dark mode */
+#Home_Noga_studysessions_article.Home_Noga_themeNoga.Home_Noga_themeDark {
+  --home-page-bg-accent-a: rgba(20, 78, 88, 0.22);
+  --home-page-bg-accent-b: rgba(10, 116, 105, 0.18);
+  --home-page-bg-base-start: #09161b;
+  --home-page-bg-base-mid: #0d2026;
+  --home-page-bg-base-end: #122930;
+  --home-page-pattern-bg: linear-gradient(
+    180deg,
+    rgba(9, 22, 27, 0.22) 0%,
+    rgba(9, 22, 27, 0.08) 100%
+  );
+  --home-main-wrapper-text: #eef9fb;
+  --home-bio-start: rgba(16, 43, 51, 0.98);
+  --home-bio-end: rgba(10, 28, 34, 0.96);
+  --home-dark-bio-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.08),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.3),
+    0 14px 24px rgba(0, 0, 0, 0.34),
+    0 6px 10px rgba(0, 0, 0, 0.28);
+  --home-dark-bio-stripe-a: rgba(173, 217, 226, 0.18);
+  --home-dark-bio-stripe-b: rgba(41, 100, 112, 0.22);
+  --home-dark-bio-glow-a: rgba(200, 231, 236, 0.14);
+  --home-dark-bio-glow-b: rgba(200, 231, 236, 0.04);
+  --home-dark-bio-glow-c: rgba(200, 231, 236, 0);
+  --home-dark-border: rgba(110, 168, 180, 0.22);
+  --home-dark-border-strong: rgba(132, 193, 203, 0.62);
+  --home-dark-panel-start: rgba(14, 36, 44, 0.5);
+  --home-dark-panel-end: rgba(11, 28, 35, 0.42);
+  --home-dark-panel-solid-start: rgba(17, 46, 54, 0.96);
+  --home-dark-panel-solid-end: rgba(11, 33, 40, 0.94);
+  --home-dark-panel-fill: rgba(9, 24, 31, 0.32);
+  --home-dark-profile-bg: rgba(15, 25, 30, 0.7);
+  --home-dark-heading: #eef9fb;
+  --home-dark-subtle-text: rgba(185, 219, 226, 0.62);
+  --home-dark-subtle-text-strong: rgba(187, 220, 226, 0.64);
+  --home-dark-body-text: rgba(236, 245, 247, 0.9);
+  --home-reports-toggle-bg-current: rgba(11, 28, 35, 0.94);
+  --home-reports-toggle-bg-hover-current: rgba(14, 36, 44, 0.98);
+  --home-intro-bg-start-base-current: rgba(12, 30, 36, 0.82);
+  --home-intro-bg-end-base-current: rgba(16, 40, 47, 0.74);
+  --home-intro-border-current: rgba(110, 168, 180, 0.18);
+  --home-intro-shadow-current: rgba(0, 0, 0, 0.24);
+  --home-rope-fill-start-current: rgba(214, 238, 242, 0.9);
+  --home-rope-fill-end-current: rgba(126, 184, 194, 0.72);
+  --home-rope-edge-current: rgba(110, 168, 180, 0.24);
+  --home-rope-shadow-current: rgba(0, 0, 0, 0.22);
+  --home-rope-aurora-a-current: rgba(154, 255, 226, 0.82);
+  --home-rope-aurora-b-current: rgba(116, 221, 255, 0.78);
+  --home-rope-aurora-c-current: rgba(193, 179, 255, 0.76);
+  --home-main-wrapper-overlay-start: rgba(9, 26, 33, 0.54);
+  --home-main-wrapper-overlay-end: rgba(11, 31, 39, 0.5);
+  --home-main-wrapper-image: none;
+  --home-reports-wrapper-border-current: rgba(110, 168, 180, 0.26);
+  --home-reports-wrapper-spot-current: rgba(171, 219, 227, 0.08);
+  --home-reports-wrapper-stripe-current: rgba(86, 137, 146, 0.12);
+  --home-reports-wrapper-start-current: rgba(9, 26, 33, 0.5);
+  --home-reports-wrapper-end-current: rgba(11, 31, 39, 0.44);
+  --home-reports-wrapper-shadow-current:
+    inset 0 1px 0 rgba(196, 230, 236, 0.08),
+    0 18px 34px rgba(0, 0, 0, 0.34);
+}
+
+
+
+
+
+/* Drawing button and vertical sub-apps menu */
+.Home_Noga_mainDrawingButton {
+  background: var(--main-color, #f5f5f5);
+  color: var(--main-text, #222);
+  border: none;
+  outline: none;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  cursor: pointer;
+}
+.Home_Noga_mainDrawingButton:hover {
+  background: var(--main-color-dark, #e0e0e0);
+}
+.dark .Home_Noga_mainDrawingButton {
+  background: #222;
+  color: #fff;
+}
+.Home_Noga_verticalSubAppsMenu {
+  background: var(--main-color, #fff);
+  color: var(--main-text, #222);
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 180px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1000;
+}
+.dark .Home_Noga_verticalSubAppsMenu {
+  background: #222;
+  color: #fff;
+  border-color: #444;
+}
+.Home_Noga_verticalSubAppsMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.Home_Noga_verticalSubAppsMenu button:hover {
+  background: var(--main-color-dark, #f0f0f0);
+}
+.dark .Home_Noga_verticalSubAppsMenu button:hover {
+  background: #333;
+}
+body.dark #Main_article,
+.dark #Main_article {
+  background: #10181c !important;
+  color: #e6e6e6;
+}
+.Home_Noga_profileCake3D {
+  position: absolute;
+  top: -18px;
+  left: -18px;
+  width: 48px;
+  height: 48px;
+  z-index: 3;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18));
+  transform: rotate(-12deg) perspective(80px) translateZ(8px) scale(0.82);
+  pointer-events: none;
+}
+/* Noga Colors (naghamtrkmani) */
+:root {
+  --noga-1: #e68886;
+  --noga-2: #e2979a;
+  --noga-3: #eaafb3;
+  --noga-4: #eb796e;
+  --noga-5: #cd6b6a;
+  --noga-6: #e16354;
+  --noga-7: #f3d2d6;
+  --noga-8: #e1bcc3;
+  --noga-9: #fbe8e8;
+}
+
+/* Home Noga palettes live in this file. */
+
+.Home_Noga_galleryToggleButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 8px;
+  font-size: 1.2em;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+/* Home.jsx inline styles moved to CSS */
+.Home_Noga_root--bg {
+  /* background moved to #Home_Noga_root */
+}
+
+#Home_Noga_studysessions_article {
+  --home-main-wrapper-dominant: #e09080;
+  --home-main-wrapper-soft: #f6ded9;
+  --home-main-wrapper-accent: #eecbc2;
+  --home-main-wrapper-text: #ffffff;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  height: auto;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(
+      circle at top left,
+      var(--home-page-bg-accent-a, rgba(34, 207, 187, 0.12)),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 85% 18%,
+      var(--home-page-bg-accent-b, rgba(15, 162, 147, 0.12)),
+      transparent 24%
+    ),
+    linear-gradient(
+      180deg,
+      var(--home-page-bg-base-start, #f7fbfc) 0%,
+      var(--home-page-bg-base-mid, #edf6f6) 48%,
+      var(--home-page-bg-base-end, #e7f0f1) 100%
+    );
+}
+
+.Home_Noga_bioWrapper {
+  --home-profile-size: clamp(96px, 10vw, 132px);
+  display: flex;
+  height: var(--home-top-strip-height);
+  min-height: var(--home-top-strip-height);
+  max-height: var(--home-top-strip-height);
+  margin-bottom: 0;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      var(--home-bio-start, rgba(251, 233, 225, 0.96)) 0%,
+      var(--home-bio-end, rgba(238, 198, 183, 0.92)) 100%
+    );
+  overflow: hidden;
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+}
+
+/* .Home_Noga_bioWrapper::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -20px;
+  height: 24px;
+  pointer-events: none;
+  border-radius: 0 0 20px 20px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.96) 0 10px,
+    rgba(244, 170, 186, 0.94) 10px 20px
+  );
+  border: 1px solid rgba(221, 146, 162, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 6px 10px rgba(108, 56, 47, 0.24);
+  transform-origin: 50% 0%;
+  transform: perspective(520px) rotateX(-3deg);
+  animation: Home_bioWrapperStripBillow 5.8s ease-in-out infinite;
+  will-change: transform, filter, background-position;
+  z-index: 0;
+} */
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_bioWrapper {
+  box-shadow: var(
+    --home-dark-bio-shadow,
+    inset 0 1px 0 rgba(208, 235, 240, 0.08),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.3),
+    0 14px 24px rgba(0, 0, 0, 0.34),
+    0 6px 10px rgba(0, 0, 0, 0.28)
+  );
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_bioWrapper::before {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--home-dark-bio-stripe-a, rgba(173, 217, 226, 0.18)) 0 26px,
+      var(--home-dark-bio-stripe-b, rgba(41, 100, 112, 0.22)) 26px 52px
+    ),
+    linear-gradient(
+      180deg,
+      var(--home-dark-bio-glow-a, rgba(200, 231, 236, 0.14)) 0%,
+      var(--home-dark-bio-glow-b, rgba(200, 231, 236, 0.04)) 34%,
+      var(--home-dark-bio-glow-c, rgba(200, 231, 236, 0)) 62%
+    );
+}
+
+.Home_Noga_bioWrapper > * {
+  position: relative;
+  z-index: 1;
+}
+
+#Home_Noga_preStart_profileWrapper {
+  margin-bottom: 0;
+}
+
+#Home_Noga_preStart_profilePic {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+#Home_Noga_preStart_bio_name {
+  font-weight: 600;
+  font-size: 1.2em;
+}
+
+#Home_Noga_preStart_bio_username {
+  color: #888;
+  font-size: 1em;
+}
+
+#Home_Noga_preStart_bio_study {
+  margin-top: 4px;
+}
+
+#Home_Noga_preStart_bio_yearTermRow {
+  margin-top: 4px;
+}
+
+#Home_Noga_preStart_bio_term {
+  margin-left: 12px;
+}
+
+.Home_Noga_socialFriendChatIcon {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.Home_Noga_bioToolColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+  width: 100%;
+}
+#Home_Noga_studysessions_article {
+  position: relative;
+  order: 2;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article:not(.Home_Noga_themeDark) {
+  background: var(
+    --home-page-pattern-bg,
+    linear-gradient(
+      180deg,
+      rgba(255, 250, 244, 0.18) 0%,
+      rgba(255, 246, 238, 0.1) 100%
+    )
+  );
+}
+
+#Home_Noga_topControls {
+  --home-top-controls-height: 0px;
+  z-index: 5;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  pointer-events: none;
+  overflow: visible;
+  position: relative;
+  flex: 0 0 var(--home-top-controls-height);
+  height: var(--home-top-controls-height);
+  min-height: var(--home-top-controls-height);
+  max-height: var(--home-top-controls-height);
+  padding: 0 !important;
+}
+
+#Home_Noga_topControls.only-handle {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+
+#Home_Noga_topControls::after,
+.Home_Noga_main_leftColumn_wrapper::before,
+.Home_Noga_socialFriendsPanel::before,
+#Home_Noga_preStart_reportsWrapper::before {
+  content: none;
+}
+
+#Home_Noga_userMenuCluster {
+  grid-column: 1;
+  justify-self: start;
+}
+
+#Home_Noga_userMenuCluster,
+#Home_Noga_navWrap {
+  pointer-events: auto;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+}
+
+/*Ensure the home wrapper spans the viewport so the child layout can fill edge-to-edge.*/
+#Home_Noga_visible_wrapper {
+  --home-drawing-blocked-z: 9;
+  --home-reports-toggle-bg: var(
+    --home-reports-toggle-bg-current,
+    rgba(245, 198, 180, 0.95)
+  );
+  --home-reports-toggle-bg-hover: var(
+    --home-reports-toggle-bg-hover-current,
+    rgba(238, 171, 150, 0.98)
+  );
+  --home-intro-bg-start-base: var(
+    --home-intro-bg-start-base-current,
+    rgba(241, 174, 154, 0.72)
+  );
+  --home-intro-bg-end-base: var(
+    --home-intro-bg-end-base-current,
+    rgba(224, 126, 106, 0.66)
+  );
+  --home-intro-border: var(
+    --home-intro-border-current,
+    rgba(180, 90, 73, 0.42)
+  );
+  --home-intro-shadow: var(
+    --home-intro-shadow-current,
+    rgba(139, 85, 75, 0.24)
+  );
+  --home-rope-fill-start: var(
+    --home-rope-fill-start-current,
+    rgba(255, 251, 240, 0.94)
+  );
+  --home-rope-fill-end: var(
+    --home-rope-fill-end-current,
+    rgba(232, 207, 177, 0.82)
+  );
+  --home-rope-edge: var(
+    --home-rope-edge-current,
+    rgba(186, 126, 107, 0.32)
+  );
+  --home-rope-shadow: var(
+    --home-rope-shadow-current,
+    rgba(118, 64, 53, 0.16)
+  );
+  --home-rope-aurora-a: var(
+    --home-rope-aurora-a-current,
+    rgba(255, 244, 197, 0.9)
+  );
+  --home-rope-aurora-b: var(
+    --home-rope-aurora-b-current,
+    rgba(194, 255, 221, 0.86)
+  );
+  --home-rope-aurora-c: var(
+    --home-rope-aurora-c-current,
+    rgba(175, 239, 255, 0.84)
+  );
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 100%;
+  height: auto;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow-x: hidden;
+  overflow-y: visible;
+  background-color: transparent;
+}
+
+@keyframes Home_ropeAuroraDrift {
+  0% {
+    background-position:
+      50% 0%,
+      0% 0%,
+      100% 0%,
+      50% 100%;
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    background-position:
+      50% 0%,
+      0% 100%,
+      100% 100%,
+      50% 0%;
+    filter: saturate(1.08) brightness(1.04);
+  }
+  100% {
+    background-position:
+      50% 0%,
+      0% 0%,
+      100% 0%,
+      50% 100%;
+    filter: saturate(1) brightness(1);
+  }
+}
+
+#Home_Noga_preStart_navColumn {
+  order: 1;
+  flex: 0.7 1 220px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#Home_Noga_main_wrapper {
+  order: 2;
+  flex: 2 1 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--home-main-wrapper-soft);
+  background-image:
+    linear-gradient(
+      145deg,
+      var(--home-main-wrapper-overlay-start, rgba(223, 39, 2, 0.899)),
+      var(--home-main-wrapper-overlay-end, rgb(192, 31, 31)) 70%
+    ),
+    var(
+      --home-main-wrapper-image,
+      url("/img/Gemini_Generated_Image_2r2ldz2r2ldz2r2l.png")
+    );
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: scroll, fixed;
+  color: var(--home-main-wrapper-text);
+  margin: 0;
+  align-self: stretch;
+  position: relative;
+  isolation: isolate;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.98),
+    rgba(12, 31, 39, 0.96)
+  );
+  color: rgba(217, 240, 244, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingButton:hover,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingButton.isActive {
+  color: #7ad5d8;
+  border-color: rgba(122, 213, 216, 0.26);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingButton.isActive {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(122, 213, 216, 0.16),
+    0 14px 28px rgba(0, 0, 0, 0.26);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingPalette {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.94),
+    rgba(12, 31, 39, 0.92)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingPaletteButton.isActive {
+  box-shadow: 0 0 0 1px rgba(122, 213, 216, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_mainDrawingPaletteButton span {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 12px var(--home-drawing-palette-glow);
+}
+
+#Home_Noga_main_wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.04)
+  );
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.Home_Noga_mainDrawingCanvasHost {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.Home_Noga_mainDrawingCanvasHost--display {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.Home_Noga_mainDrawingCanvasHost--active {
+  pointer-events: auto;
+  z-index: 7;
+}
+
+.Home_Noga_mainDrawingCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.Home_Noga_mainDrawingControls {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 8;
+  gap: 10px;
+  pointer-events: auto;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.Home_Noga_mainDrawingControls_panelItem {
+  opacity: 1;
+  transform: scale(1);
+  transform-origin: right center;
+  max-width: 240px;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    max-width 180ms ease,
+    margin 180ms ease;
+}
+
+.Home_Noga_mainDrawingControls--closed .Home_Noga_mainDrawingControls_panelItem {
+  opacity: 0;
+  transform: scale(0.86);
+  max-width: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.Home_Noga_mainDrawingControls--closed .Home_Noga_mainDrawingPalette {
+  padding-left: 0;
+  padding-right: 0;
+  border-width: 0;
+  box-shadow: none;
+}
+
+.Home_Noga_mainDrawingButton {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 151, 160, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 252, 252, 0.98),
+    rgba(235, 244, 245, 0.96)
+  );
+  color: rgba(18, 97, 95, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 12px 24px rgba(87, 118, 127, 0.12);
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.Home_Noga_mainDrawingButton i {
+  font-size: 0.86rem;
+}
+
+.Home_Noga_mainDrawingButton:hover,
+.Home_Noga_mainDrawingButton.isActive {
+  transform: translateY(-1px);
+  color: rgba(10, 119, 123, 0.98);
+  border-color: rgba(34, 207, 187, 0.28);
+}
+
+.Home_Noga_mainDrawingButton.isActive {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px rgba(111, 239, 255, 0.18),
+    0 12px 28px rgba(110, 226, 243, 0.18);
+}
+
+.Home_Noga_mainDrawingButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 8px 16px rgba(87, 118, 127, 0.08);
+}
+
+.Home_Noga_mainDrawingPalette {
+  padding: 5px 8px;
+  gap: 8px;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 252, 252, 0.92),
+    rgba(235, 244, 245, 0.88)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 22px rgba(87, 118, 127, 0.08);
+  overflow: hidden;
+}
+
+.Home_Noga_mainDrawingButton.isDisabled,
+.Home_Noga_mainDrawingButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.Home_Noga_mainDrawingPaletteButton {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.Home_Noga_mainDrawingPaletteButton span {
+  width: 12px;
+  height: 12px;
+  display: block;
+  border-radius: 999px;
+  background: var(--home-drawing-palette-stroke);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.56),
+    0 0 12px var(--home-drawing-palette-glow);
+}
+
+.Home_Noga_mainDrawingPaletteButton.isActive {
+  box-shadow: 0 0 0 1px rgba(17, 132, 139, 0.2);
+}
+
+.Home_Noga_mainDrawingPaletteButton.isActive span {
+  transform: scale(1.18);
+}
+
+.Home_Noga_preStart_reports {
+  order: 3;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-content: stretch;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#Home_Noga_preStart_introWrap > * {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+}
+#Home_Noga_preStart_introWrap > .Home_Noga_introSeparator {
+  flex: 0 0 auto !important;
+  min-width: 0;
+  min-height: 0;
+}
+
+#Home_Noga_preStart_reportsWrapper {
+  flex: 1 1 auto;
+}
+
+#Home_Noga_preStart_reportsWrapper.Home_Noga_preStart_reportsWrapper--closed {
+  display: none;
+}
+
+#Home_Noga_preStart_reportsWrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+  border: 1px solid
+    var(--home-reports-wrapper-border-current, rgba(186, 99, 82, 0.42));
+  background:
+    radial-gradient(
+      circle at 16% 14%,
+      var(--home-reports-wrapper-spot-current, rgba(255, 246, 240, 0.32)),
+      transparent 36%
+    ),
+    repeating-linear-gradient(
+      -35deg,
+      var(--home-reports-wrapper-stripe-current, rgba(194, 104, 86, 0.11)) 0
+        2px,
+      rgba(255, 255, 255, 0) 2px 9px
+    ),
+    linear-gradient(
+      180deg,
+      var(--home-reports-wrapper-start-current, rgba(247, 210, 194, 0.46)),
+      var(--home-reports-wrapper-end-current, rgba(235, 164, 145, 0.38))
+    );
+  box-shadow: var(
+    --home-reports-wrapper-shadow-current,
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    0 16px 34px rgba(118, 64, 53, 0.22)
+  );
+  overflow-y: auto;
+  overflow-x: hidden;
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+.Home_Noga_settingsBackRow {
+  justify-content: flex-start;
+  padding: 0 0 10px;
+}
+
+.Home_Noga_settingsBackButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  border-radius: 14px;
+  background: rgba(247, 251, 251, 0.88);
+  color: rgba(26, 59, 67, 0.9);
+  font-size: 0.58rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.Home_Noga_settingsBackButton span,
+.Home_Noga_settingsBackButton i {
+  pointer-events: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_settingsBackButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+}
+
+.Home_Noga_preStart_reports .Home_Noga_preStart_reportsCard {
+  width: 100%;
+  min-width: 0;
+  border-radius: 0;
+  background: linear-gradient(
+    180deg,
+    var(--home-main-wrapper-soft),
+    var(--home-main-wrapper-accent)
+  );
+  color: var(--home-main-wrapper-text);
+}
+
+.Home_Noga_preStart_reportCard {
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 30px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.7),
+    rgba(244, 250, 249, 0.65)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 22px 48px rgba(94, 124, 133, 0.955);
+}
+
+#Home_Noga_preStart_introWrap {
+  --home-top-strip-height: clamp(90px, 9vw, 148px);
+  --home-intro-separator-width: 20px;
+  --home-left-column-min-width: 520px;
+  --home-right-column-min-width: 300px;
+  --home-left-column-width: 66%;
+  --home-right-column-width: calc(34% - var(--home-intro-separator-width));
+  --home-intro-border: var(
+    --home-intro-border-current,
+    rgba(180, 90, 73, 0.42)
+  );
+  --home-intro-shadow: var(
+    --home-intro-shadow-current,
+    rgba(139, 85, 75, 0.24)
+  );
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+  gap: 20px;
+  color: var(--home-main-wrapper-text);
+  isolation: isolate;
+  overflow: visible;
+  z-index: 1;
+  padding: 20px 20px;
+  border-radius: 32px;
+}
+
+#Home_Noga_preStart_intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 220px);
+  min-height: min-content;
+  position: relative;
+  z-index: 4;
+  padding: 20px 20px 0px;
+  gap: 18px;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+#Home_Noga_preStart_intro > * {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+#Home_Noga_friendsCard,
+#Home_Noga_socialFriendsList{
+  background: transparent;
+  border-radius: inherit;
+}
+
+#Home_Noga_main_wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: hidden;
+  gap: 10px;
+}
+
+#Home_Noga_main_wrapper > #Home_Noga_preStart_intro,
+#Home_Noga_main_wrapper > .Home_Noga_preStart_toolCard {
+  box-shadow: none;
+}
+
+#Home_Noga_preStart_leftColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+#Home_Noga_preStart_leftColumnScroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+#Home_Noga_preStart_rightColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 minmax(190px, 220px);
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 0;
+}
+
+#Home_Noga_preStart_profileWrapper {
+  position: relative;
+  width: auto;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 16px 32px rgba(20, 48, 52, 0.007);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+#Home_Noga_preStart_profilePic {
+  z-index: 1;
+}
+
+#Home_Noga_preStart_profileWrapper i {
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  color: rgba(15, 80, 88, 0.38);
+}
+
+#Home_Noga_preStart_profilePic {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform-origin: center;
+  transform: translate(
+      var(--home-profile-offset-x, 0px),
+      var(--home-profile-offset-y, 0px)
+    )
+    scale(var(--home-profile-scale, 1));
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.Home_Noga_hiddenFileInput {
+  display: none;
+}
+
+.Home_Noga_galleryShowButton {
+  margin: 16px 0;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  border: 1.5px solid #e2979a;
+  background: var(--noga-7, #f3d2d6);
+  color: #a13a3a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#Home_Noga_preStart_profilePic.isDragging {
+  cursor: grabbing;
+}
+
+.Home_Noga_editPicButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 84px;
+  padding: 8px 12px;
+  border: 1px solid rgba(11, 95, 103, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(241, 249, 250, 0.92)
+  );
+  color: #0b5f67;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.Home_Noga_editPicButton:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.Home_Noga_editPicButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(10, 88, 95, 0.4);
+}
+
+.Home_Noga_editPicButton:active {
+  transform: translateY(0);
+}
+
+.Home_Noga_editPicButton i {
+  font-size: 0.84rem;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_editPicButton {
+  border-color: var(--home-dark-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-dark-panel-solid-start),
+    var(--home-dark-panel-solid-end)
+  );
+  color: var(--home-dark-body-text);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_editPicButton:hover {
+  border-color: var(--home-dark-border-strong);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_profileWrapper {
+  background: var(--home-dark-profile-bg);
+  border-color: var(--home-dark-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+#Home_Noga_preStart_eyebrow {
+  margin: 0;
+  max-width: 100%;
+  color: rgba(30, 82, 90, 0.62);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: clamp(0.66rem, 1.4cqi, 0.86rem);
+  font-weight: 700;
+  pointer-events: auto;
+}
+
+/* Removed duplicate overflow property for #Home_Noga_main_leftColumn_wrapper */
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_eyebrow {
+  color: var(--home-dark-subtle-text);
+}
+
+#Home_Noga_preStart h1 {
+  margin: 0;
+  max-width: 100%;
+  color: #0f5058;
+  font-family: "Raleway", sans-serif;
+  font-size: clamp(0.95rem, 10cqi, 2.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart h1 {
+  color: var(--home-dark-heading);
+}
+
+#Home_Noga_preStart_personalWrapper {
+  width: 100%;
+  container-type: inline-size;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 157, 165, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.44),
+    rgba(238, 247, 247, 0.34)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 18px rgba(94, 124, 133, 0.012);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_personalWrapper {
+  border-color: var(--home-dark-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-dark-panel-start),
+    var(--home-dark-panel-end)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 18px rgba(0, 0, 0, 0.2);
+}
+
+#Home_Noga_preStart_personalInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+#Home_Noga_preStart_personalInfoGrid p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_personalInfoGrid p {
+  border-color: var(--home-dark-border);
+  background: var(--home-dark-panel-fill);
+}
+
+#Home_Noga_preStart_personalInfoGrid span {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(30, 82, 90, 0.62);
+  font-weight: 700;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_preStart_personalInfoGrid
+  span {
+  color: var(--home-dark-subtle-text-strong);
+}
+
+#Home_Noga_preStart_personalInfoGrid strong {
+  font-size: 0.78rem;
+  color: rgba(18, 60, 67, 0.9);
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_preStart_personalInfoGrid
+  strong {
+  color: var(--home-dark-body-text);
+}
+
+/* Flex row for left/right columns inside personal bio */
+.Home_Noga_preStart_bioFlexRow {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  gap: 16px;
+}
+
+.Home_Noga_preStart_bioLeft,
+.Home_Noga_preStart_bioRight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 0;
+}
+
+/* Personal Bio main style */
+#Home_Noga_preStart_personalBio {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: hidden;
+  white-space: normal;
+  color: #6d3b2c;
+  font-family: "Jost", "Inter", "Nunito", Arial, sans-serif;
+  font-weight: 600;
+  font-size: clamp(0.8rem, 1.6cqi, 1.2rem);
+  letter-spacing: 0.025em;
+  text-shadow:
+    0 1.5px 8px rgba(205, 107, 106, 0.08),
+    0 0.5px 0px #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(251, 232, 232, 0.42);
+  box-shadow:
+    0 4px 18px 0 rgba(205, 107, 106, 0.1),
+    0 1.5px 6px 0 rgba(0, 0, 0, 0.06);
+  padding: 15px;
+  align-items: flex-start;
+  border-top-right-radius: 32px;
+}
+
+/* Add strip-like effect using ::after */
+/* #Home_Noga_preStart_personalBio::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 0 0 12px 12px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(244, 170, 186, 0.94) 0 20px,
+    rgba(255, 255, 255, 0.96) 20px 40px
+  );
+  box-shadow:
+    0 2px 8px rgba(205, 107, 106, 0.08),
+    0 1.5px 6px rgba(0, 0, 0, 0.06);
+} */
+
+/* Dark theme strip for personal bio */
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_personalBio::after {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(41, 100, 112, 0.22) 0 20px,
+    rgba(173, 217, 226, 0.18) 20px 40px
+  );
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 1.5px 6px rgba(0, 0, 0, 0.16);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_personalBio, 
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_gallery_Header_wrapper {
+  color: rgba(230, 242, 244, 0.9);
+  text-shadow: none;
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 31, 0.5),
+    rgba(13, 34, 41, 0.42)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsList {
+  color: rgba(230, 242, 244, 0.9);
+  text-shadow: none;
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 31, 0.5),
+    rgba(13, 34, 41, 0.42)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_preStart_bio_name {
+  font-size: clamp(1rem, 1.6cqi, 1.5rem);
+  font-weight: 400;
+  color: inherit;
+  font-family: "Jost", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_bio_name {
+  color: rgba(236, 245, 247, 0.92);
+}
+
+#Home_Noga_preStart_bio_username {
+  font-size: clamp(0.4rem, 1.6cqi, 0.5rem);
+  font-weight: 400;
+  color: rgba(30, 82, 90, 0.58);
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
+}
+
+#Home_Noga_preStart_bio_study {
+  font-size: clamp(0.6rem, 1.8cqi, 0.7rem);
+  color: rgba(18, 60, 67, 0.8);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+#Home_Noga_preStart_bio_year {
+  font-size: clamp(0.6rem, 1.8cqi, 0.7rem);
+  color: rgba(30, 82, 90, 0.62);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+#Home_Noga_preStart_bio_term {
+  font-size: clamp(0.64rem, 1.6cqi, 0.74rem);
+  color: rgba(30, 82, 90, 0.62);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+#Home_Noga_preStart_bio_yearTermRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_bio_username {
+  color: rgba(182, 214, 221, 0.56);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_bio_study {
+  color: rgba(200, 228, 234, 0.8);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_bio_year {
+  color: rgba(172, 208, 216, 0.64);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_bio_term {
+  color: rgba(172, 208, 216, 0.64);
+}
+
+#Home_Noga_preStart_subtitle {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0;
+  color: rgba(26, 59, 67, 0.76);
+  font-size: clamp(0.84rem, 2cqi, 1.02rem);
+  line-height: 1.6;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_subtitle {
+  color: rgba(216, 232, 237, 0.82);
+}
+
+.Home_Noga_preStart_reportsCard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 0;
+  min-width: 0;
+  min-height: min-content;
+  height: min-content;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 5;
+  border-radius: 24px;
+  border: 1px solid rgba(108, 156, 166, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.48),
+    rgba(239, 249, 250, 0.36)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 14px 28px rgba(74, 111, 118, 0.1);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_reportsCard {
+  border-color: rgba(122, 186, 198, 0.24);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 28, 35, 0.58),
+    rgba(12, 34, 42, 0.46)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 30px rgba(0, 0, 0, 0.28);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_reports
+  .Home_Noga_preStart_reportsCard {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.56),
+    rgba(12, 31, 39, 0.44)
+  );
+  color: rgba(236, 245, 247, 0.92);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_reportCard {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.56),
+    rgba(12, 31, 39, 0.44)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_reports {
+  border-color: rgba(110, 168, 180, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(7, 21, 27, 0.92),
+    rgba(10, 29, 36, 0.86)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 34px rgba(0, 0, 0, 0.28);
+}
+
+.Home_Noga_preStart_actionsTitle {
+  margin: 0;
+  color: rgba(30, 82, 90, 0.95);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_actionsTitle {
+  color: rgba(202, 228, 233, 0.72);
+}
+
+#Home_Noga_preStart_appList {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 8px;
+}
+
+#Home_Noga_preStart_appList li {
+  list-style: none;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#Home_Noga_preStart_appList a {
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: rgba(19, 65, 73, 0.95);
+  background: rgba(248, 251, 251, 0.95);
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.Home_Noga_preStart_linkButton {
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: rgba(19, 65, 73, 0.95);
+  background: rgba(248, 251, 251, 0.95);
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+  font: inherit;
+  text-align: left;
+}
+
+#Home_Noga_preStart_appList a:hover {
+  transform: translateY(-1px);
+  color: #0f6f69;
+  border-color: rgba(34, 207, 187, 0.22);
+  background: rgba(241, 250, 249, 0.96);
+}
+
+.Home_Noga_preStart_linkButton:hover {
+  transform: translateY(-1px);
+  color: #0f6f69;
+  border-color: rgba(34, 207, 187, 0.22);
+  background: rgba(241, 250, 249, 0.96);
+}
+
+#Home_Noga_preStart_appList a i {
+  font-size: 1rem;
+  gap: 3px;
+  border-radius: 10px;
+  box-shadow:
+    0 2px 6px 0 rgba(205, 107, 106, 0.06),
+    0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  padding: 8px 14px 8px 14px;
+  color: #0f8d84;
+  text-align: center;
+}
+
+#Home_Noga_preStart_appList a span {
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.Home_Noga_preStart_linkButton span {
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.Home_Noga_preStart_toggleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 6px;
+  color: rgba(19, 65, 73, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.Home_Noga_preStart_toggleRow input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #0f8d84;
+}
+
+#app_page.app_page--has-background-pattern #Home_Noga_preStart_appList a,
+#app_page.app_page--has-background-pattern .Home_Noga_preStart_linkButton,
+#app_page.app_page--has-background-pattern .Home_Noga_editPicButton,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordToggle,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit,
+#app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon,
+#app_page.app_page--has-background-pattern #Home_Noga_userMenu_button,
+#app_page.app_page--has-background-pattern .Home_Noga_reportDeleteButton,
+#app_page.app_page--has-background-pattern .Home_Noga_logRecordArrow,
+#app_page.app_page--has-background-pattern .Home_Noga_musicArchiveSearch_result {
+  color: var(--home-pattern-button-text);
+  border-color: var(--home-pattern-button-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-bg-start),
+    var(--home-pattern-button-bg-end)
+  );
+}
+
+#app_page.app_page--has-background-pattern #Home_Noga_preStart_appList a i,
+#app_page.app_page--has-background-pattern .Home_Noga_preStart_linkButton i,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordToggle i,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit i,
+#app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon i,
+#app_page.app_page--has-background-pattern #Home_Noga_userMenu_button i {
+  color: var(--home-pattern-button-icon);
+}
+
+#app_page.app_page--has-background-pattern #Home_Noga_preStart_appList a:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_preStart_linkButton:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_editPicButton:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordToggle:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon:hover,
+#app_page.app_page--has-background-pattern #Home_Noga_userMenu_button:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_reportDeleteButton:hover,
+#app_page.app_page--has-background-pattern .Home_Noga_logRecordArrow:hover,
+#app_page.app_page--has-background-pattern
+  .Home_Noga_musicArchiveSearch_result:hover {
+  color: var(--home-pattern-button-hover-text);
+  border-color: var(--home-pattern-button-hover-border);
+  background: var(--home-pattern-button-hover-bg);
+}
+
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit,
+#app_page.app_page--has-background-pattern #Home_Noga_userMenu_button {
+  color: var(--home-pattern-button-primary-text);
+  border-color: var(--home-pattern-button-primary-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-primary-start),
+    var(--home-pattern-button-primary-end)
+  );
+}
+
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit i,
+#app_page.app_page--has-background-pattern #Home_Noga_userMenu_button i {
+  color: rgba(255, 244, 236, 0.96);
+}
+
+.Home_Noga_graphicControlCard {
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.Home_Noga_main_leftColumn_wrapper {
+  flex: 0 1 var(--home-left-column-width);
+  width: var(--home-left-column-width);
+  max-width: var(--home-left-column-width);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: var(--home-left-column-min-width);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 238, 236, 0.293) 1%,
+    rgba(240, 206, 205, 0.38) 50%,
+    rgba(210, 164, 180, 0.34) 100%
+  );
+  border-radius: inherit;
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+  box-shadow:
+    0 12px 36px 0 rgba(205, 107, 106, 0.18),
+    0 2.5px 12px 0 rgba(0, 0, 0, 0.1),
+    0 1.5px 0 0 rgba(255, 255, 255, 0.18) inset;
+  border: 2px solid var(--noga-5, #cd6b6a);
+  transform: translateY(-3px);
+  gap: 10px;
+  overflow: hidden;
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_main_leftColumn_wrapper {
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 31, 0.56) 0%,
+    rgba(12, 31, 39, 0.5) 52%,
+    rgba(15, 38, 46, 0.46) 100%
+  );
+  border-color: rgba(110, 168, 180, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.26);
+}
+
+.Home_Noga_preStart_toolCard--flush {
+  margin: 0;
+}
+
+.Home_Noga_galleryCard {
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.Home_Noga_galleryTopRow {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  display: none;
+}
+
+.Home_Noga_galleryTopRow--visible {
+  display: flex;
+}
+
+.Home_Noga_galleryTopRow .Home_Noga_changePasswordSubmit {
+  width: auto;
+  min-width: 130px;
+  flex: 0 0 auto;
+}
+
+.Home_Noga_galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+
+.Home_Noga_galleryItem {
+  gap: 10px;
+  padding: 5px;
+  border-radius: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: rgba(252, 253, 253, 0.88);
+}
+
+.Home_Noga_galleryThumbButton {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: rgba(234, 241, 242, 0.74);
+  cursor: pointer;
+}
+
+.Home_Noga_galleryThumbWrap {
+  position: relative;
+}
+
+.Home_Noga_galleryThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.Home_Noga_galleryItemMeta {
+  gap: 3px;
+}
+
+.Home_Noga_galleryItemActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  gap: 8px;
+}
+
+.Home_Noga_galleryItemActions.Home_Noga_galleryItemActions--open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.Home_Noga_galleryItemActions .Home_Noga_editPicButton {
+  min-width: 96px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(6, 29, 31, 0.16);
+}
+
+.Home_Noga_galleryEmptyState {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(124, 157, 165, 0.24);
+  color: rgba(30, 82, 90, 0.68);
+  text-align: center;
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.Home_Noga_introSeparator {
+  width: var(--home-intro-separator-width);
+  min-width: var(--home-intro-separator-width);
+  max-width: var(--home-intro-separator-width);
+  height: auto;
+  flex: none;
+  cursor: ew-resize;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  position: relative;
+  z-index: 2;
+  touch-action: none;
+  user-select: none;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.08)
+  );
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 8px 18px rgba(133, 84, 69, 0.08);
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.Home_Noga_introSeparator::before,
+.Home_Noga_introSeparator::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  border-radius: 999px;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      var(--home-rope-fill-start),
+      var(--home-rope-fill-end)
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      var(--home-rope-aurora-a) 22%,
+      transparent 46%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 12%,
+      var(--home-rope-aurora-b) 52%,
+      transparent 82%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 4%,
+      var(--home-rope-aurora-c) 74%,
+      transparent 100%
+    );
+  background-size: 100% 100%, 100% 190%, 100% 180%, 100% 170%;
+  background-repeat: no-repeat;
+  box-shadow:
+    0 0 0 1px var(--home-rope-edge),
+    0 0 10px rgba(255, 255, 255, 0.26),
+    0 0 16px var(--home-rope-shadow);
+  transform-origin: center;
+  animation: Home_ropeAuroraDrift 6.8s ease-in-out infinite;
+}
+
+.Home_Noga_introSeparator::before {
+  left: calc(50% - 7px);
+  transform: rotate(-8deg);
+}
+
+.Home_Noga_introSeparator::after {
+  left: calc(50% + 6px);
+  transform: rotate(6deg);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_introSeparator {
+  background: linear-gradient(
+    180deg,
+    rgba(110, 168, 180, 0.06),
+    rgba(110, 168, 180, 0.16),
+    rgba(110, 168, 180, 0.06)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(173, 217, 226, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_introSeparator::before,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_introSeparator::after {
+  box-shadow:
+    0 0 0 1px rgba(173, 217, 226, 0.12),
+    0 0 10px rgba(102, 219, 224, 0.18),
+    0 0 16px rgba(0, 0, 0, 0.18);
+}
+
+.Home_Noga_socialFriendsPanel {
+  flex: 1 1 0%;
+  width: var(--home-right-column-width);
+  max-width: var(--home-right-column-width);
+  box-shadow:
+    0 4px 18px 0 rgba(205, 107, 106, 0.18),
+    0 1.5px 6px 0 rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--noga-5);
+  border-radius: 32px;
+  transform: translateY(-2px);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 238, 236, 0.5) 1%,
+    rgba(240, 206, 205, 0.38) 50%,
+    rgba(210, 164, 180, 0.34) 100%
+  );
+  color: var(--home-main-wrapper-text);
+  min-width: var(--home-right-column-min-width);
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  height: 100%;
+  gap: 14px;
+  padding: 0;
+  overflow: visible;
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+#Home_Noga_navWrap .Nav_actionButton,
+#Home_Noga_navWrap #SubApps_icon_container,
+#Home_Noga_navWrap #Notification_icons_container,
+#Home_Noga_navWrap #Dim_article,
+#Home_Noga_navWrap #Logout_article,
+#Home_Noga_navWrap #Refresh_article {
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsPanel {
+  border-color: rgba(110, 168, 180, 0.24);
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 31, 0.56) 0%,
+    rgba(12, 31, 39, 0.5) 52%,
+    rgba(15, 38, 46, 0.46) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.26);
+}
+.Home_Noga_gallery_Header_wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.Home_Noga_socialFriendsCard > .Home_Noga_gallery_Header_wrapper {
+  width: 100%;
+  height: var(--home-top-strip-height);
+  min-height: var(--home-top-strip-height);
+  max-height: var(--home-top-strip-height);
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+.Home_Noga_headerRibbon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(244, 170, 186, 0.94) 0 20px,
+    rgba(255, 255, 255, 0.96) 20px 40px
+  );
+  box-shadow:
+    0 2px 8px rgba(205, 107, 106, 0.08),
+    0 1.5px 6px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+  z-index: 2;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_headerRibbon {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(41, 100, 112, 0.22) 0 20px,
+    rgba(173, 217, 226, 0.18) 20px 40px
+  );
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 1.5px 6px rgba(0, 0, 0, 0.16);
+}
+
+.Home_Noga_socialFriendsHeaderCopy {
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.Home_Noga_socialFriendsHeaderTitleRow {
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.Home_Noga_socialFriendsTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--home-main-wrapper-text);
+}
+
+.Home_Noga_socialFriendsCard {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  border-radius: 20px;
+  flex: 1 1 0%;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+.Home_Noga_socialFriendsCard--chatMounted {
+  padding: 0;
+}
+
+.Home_Noga_socialFriendsMeta {
+  margin: 0;
+}
+
+.Home_Noga_socialFriendsCount {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--noga-6);
+  color: var(--home-main-wrapper-text);
+  font-size: 0.9rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.Home_Noga_socialFriendsMiniNav {
+  width: min(220px, 100%);
+  display: flex;
+  justify-content: center;
+}
+
+.Home_Noga_socialFriendsMiniNavRail {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 248, 243, 0.72);
+  border: 1px solid rgba(173, 114, 99, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 8px 16px rgba(173, 114, 99, 0.1);
+}
+
+.Home_Noga_socialFriendsMiniNavSelector {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--home-friends-tab-count, 3));
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.88),
+    rgba(255, 235, 226, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 8px 16px rgba(173, 114, 99, 0.16);
+  transform: translateX(
+    calc(100% * var(--home-friends-tab-index, 0))
+  );
+  transition: transform 220ms ease;
+  pointer-events: none;
+}
+
+.Home_Noga_socialFriendsMiniNavButton {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(115, 63, 55, 0.7);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.Home_Noga_socialFriendsMiniNavButton i {
+  font-size: 0.76rem;
+}
+
+.Home_Noga_socialFriendsMiniNavButton:hover,
+.Home_Noga_socialFriendsMiniNavButton.isActive {
+  color: rgba(112, 47, 39, 0.94);
+}
+
+.Home_Noga_socialFriendsMiniNavButton:hover i {
+  transform: translateY(-1px);
+}
+
+.Home_Noga_socialFriendsOpenButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(15, 127, 120, 0.16);
+  border-radius: 999px;
+  background: rgba(243, 250, 249, 0.56);
+  color: rgba(14, 94, 90, 0.92);
+  font-size: 0.58rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.Home_Noga_socialFriendsOpenButton:hover {
+  border-color: rgba(34, 207, 187, 0.24);
+  background: rgba(239, 249, 248, 0.62);
+  color: #0f6f69;
+}
+
+.Home_Noga_socialFriendsList {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  gap: 12px;
+  overflow-y: auto;
+  background: rgba(251, 232, 232, 0.42);
+  box-shadow:
+    0 4px 18px 0 rgba(205, 107, 106, 0.1),
+    0 1.5px 6px 0 rgba(0, 0, 0, 0.06);
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+.Home_Noga_socialRequestActions {
+  width: 100%;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.Home_Noga_socialRequestButton {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(246, 251, 251, 0.54);
+  color: rgba(22, 92, 90, 0.88);
+  cursor: pointer;
+}
+
+.Home_Noga_socialRequestButton--dismiss {
+  color: rgba(123, 82, 78, 0.9);
+}
+
+.Home_Noga_socialRequestButton:hover {
+  transform: translateY(-1px);
+}
+
+.Home_Noga_socialFriendsList--gallery {
+  max-height: none;
+  overflow: visible;
+  gap: 16px;
+}
+
+.Home_Noga_settingsPanelMount {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.Home_Noga_settingsPanelHost {
+  display: none;
+}
+
+.Home_Noga_galleryUploadButton {
+  align-self: flex-start;
+}
+
+.Home_Noga_socialFriendItem {
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: rgba(252, 253, 253, 0.88);
+  border-bottom: 2px solid rgba(205, 107, 106, 0.13);
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+
+.Home_Noga_socialFriendItem--activeView {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  margin-bottom: 0;
+}
+
+.Home_Noga_socialFriendSummary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.Home_Noga_socialFriendSummary:disabled {
+  cursor: default;
+}
+
+.Home_Noga_socialFriendIdentity {
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.Home_Noga_socialFriendAvatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(34, 207, 187, 0.94),
+    rgba(15, 162, 147, 0.98)
+  );
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+.Home_Noga_socialFriendAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.Home_Noga_socialFriendCopy {
+  min-width: 0;
+  gap: 3px;
+}
+
+.Home_Noga_socialFriendName {
+  color: rgba(24, 79, 88, 0.95);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Home_Noga_socialFriendName:hover {
+  text-decoration: underline;
+}
+
+.Home_Noga_socialFriendUsername {
+  color: rgba(30, 82, 90, 0.7);
+  font-size: 0.56rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Home_Noga_socialFriendPresence {
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-width: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.Home_Noga_socialFriendInlineCallActionsSlot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.Home_Noga_socialFriendUnreadBadge {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff6a78, #e14f63);
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow: 0 10px 22px rgba(225, 79, 99, 0.22);
+  color: #fff;
+  font-size: 0.64rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.Home_Noga_socialFriendIncomingCall {
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(68, 169, 194, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(235, 248, 250, 0.96),
+    rgba(223, 242, 246, 0.92)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 22px rgba(21, 86, 95, 0.08);
+}
+
+.Home_Noga_socialFriendIncomingCallCopy {
+  gap: 3px;
+}
+
+.Home_Noga_socialFriendIncomingCallCopy strong {
+  color: rgba(17, 72, 81, 0.94);
+  font-size: 0.82rem;
+}
+
+.Home_Noga_socialFriendIncomingCallCopy span {
+  color: rgba(24, 79, 88, 0.72);
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+  line-height: 1.45;
+}
+
+.Home_Noga_socialFriendIncomingCallActions {
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.Home_Noga_socialFriendCallButton {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(68, 169, 194, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(16, 63, 71, 0.92);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.Home_Noga_socialFriendCallButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(68, 169, 194, 0.34);
+  box-shadow: 0 10px 18px rgba(21, 86, 95, 0.12);
+}
+
+.Home_Noga_socialFriendCallButton--accept {
+  background: linear-gradient(135deg, #2dd4bf, #1697a7);
+  border-color: rgba(22, 151, 167, 0.36);
+  color: #ffffff;
+}
+
+.Home_Noga_socialFriendCallButton--decline {
+  background: linear-gradient(135deg, #ff8f8f, #e86474);
+  border-color: rgba(232, 100, 116, 0.34);
+  color: #ffffff;
+}
+
+.Home_Noga_inlineFriendChat {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+#Home_Noga_rightColumn_wrapper{
+  overflow: visible;
+  border-radius: inherit;
+}
+
+#Home_Noga_rightColumn_wrapper #FriendChat_article,
+#Home_Noga_rightColumn_wrapper #FriendChat_content_container,
+#Home_Noga_rightColumn_wrapper #Chat_article {
+  display: flex;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+
+#Home_Noga_rightColumn_wrapper #FriendChat_article {
+  border: 1px solid rgba(108, 156, 166, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.84),
+    rgba(239, 249, 250, 0.8)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 14px 28px rgba(74, 111, 118, 0.08);
+}
+
+#Home_Noga_rightColumn_wrapper #FriendChat_content_container,
+#Home_Noga_rightColumn_wrapper #Chat_article {
+  background: transparent;
+}
+
+#Home_Noga_rightColumn_wrapper #FriendChat_content_container {
+  padding: 0;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_title_container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_goback_icon {
+  display: none;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_title_text {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(24, 79, 88, 0.95);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_title_status {
+  margin: 0;
+  color: rgba(30, 82, 90, 0.64);
+  font-size: 0.58rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 105, 99, 0.16);
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.22), transparent 38%),
+    linear-gradient(135deg, rgba(29, 125, 117, 0.96), rgba(20, 105, 99, 0.9));
+  color: rgba(247, 251, 252, 0.98);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 14px rgba(20, 105, 99, 0.14);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    filter 160ms ease,
+    background 160ms ease,
+    opacity 160ms ease;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i {
+  font-size: 0.76rem;
+  color: rgba(247, 251, 252, 0.98);
+  text-shadow: 0 1px 2px rgba(5, 24, 28, 0.24);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.1) brightness(1.03);
+  border-color: rgba(20, 105, 99, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 12px 18px rgba(20, 105, 99, 0.18);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:active:not(:disabled) {
+  transform: translateY(0);
+  filter: saturate(0.98) brightness(0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 5px 10px rgba(20, 105, 99, 0.16);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled {
+  opacity: 0.5;
+  filter: grayscale(0.12) saturate(0.7);
+  cursor: not-allowed;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 10px rgba(94, 124, 133, 0.1);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled i {
+  color: rgba(233, 242, 243, 0.84);
+  text-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.08), transparent 36%),
+    linear-gradient(135deg, rgba(24, 92, 96, 0.98), rgba(18, 70, 74, 0.98));
+  color: rgba(241, 248, 249, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i {
+  color: rgba(241, 248, 249, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled) {
+  border-color: rgba(122, 213, 216, 0.26);
+  filter: saturate(1.1) brightness(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 18px rgba(0, 0, 0, 0.26);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:active:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled {
+  opacity: 0.46;
+  filter: saturate(0.65) brightness(0.84);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_messages {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  margin: 0;
+  list-style: none;
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72),
+    rgba(245, 250, 250, 0.84)
+  );
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_daySeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0;
+  list-style: none;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_daySeparatorText {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(30, 82, 90, 0.7);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesDIV,
+#Home_Noga_rightColumn_wrapper .receivedMessagesDIV {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  overflow: visible;
+  padding: 2px 0;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesDIV {
+  justify-content: flex-end;
+}
+
+#Home_Noga_rightColumn_wrapper .receivedMessagesDIV {
+  justify-content: flex-start;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI,
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI {
+  width: fit-content;
+  max-width: 78%;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI {
+  align-self: flex-end;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(239, 247, 247, 0.94)
+  );
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 10px 18px rgba(94, 124, 133, 0.08);
+}
+
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #e68886, #e16354);
+  border: 1px solid rgba(225, 99, 84, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 18px rgba(225, 99, 84, 0.14);
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI p,
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
+  margin: 0;
+  padding: 10px 12px 5px;
+  line-height: 1.55;
+  font-size: 1rem;
+  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI p {
+  color: #1a535c;
+}
+
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
+  color: rgba(255, 248, 248, 0.98);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_message--rtl {
+  text-align: right;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_message--rtl p {
+  font-family: "Noto Naskh Arabic", "Tajawal", "Cairo", sans-serif;
+  line-height: 1.7;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_message--ltr {
+  text-align: left;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  padding: 0 12px 8px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageTimestamp {
+  display: block;
+  margin-top: 0;
+  padding: 0;
+  font-size: 0.5rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  opacity: 0.82;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI .Chat_messageTimestamp {
+  color: rgba(30, 82, 90, 0.62);
+}
+
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI .Chat_messageTimestamp {
+  color: rgba(255, 240, 240, 0.78);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  font-size: 0.54rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--sent,
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--received {
+  color: rgba(92, 112, 118, 0.72);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--read {
+  color: #1fb96b;
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--read::after {
+  content: "✓✓";
+  font-size: 0.54rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--replying {
+  color: #2f7cff;
+}
+
+#Home_Noga_rightColumn_wrapper #FriendChat_empty_state {
+  padding: 18px 16px;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(252, 254, 254, 0.94);
+  border: 1px dashed rgba(124, 157, 165, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: #1a535c;
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_form {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  overflow: visible;
+  padding: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92),
+    rgba(241, 248, 249, 0.92)
+  );
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 10px 22px rgba(94, 124, 133, 0.08);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_textarea_input {
+  flex: 1 1 auto;
+  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: #184f58;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(246, 250, 250, 0.96)
+  );
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  outline: none;
+  resize: none;
+  font-size: 0.74rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -1px 0 rgba(225, 234, 236, 0.38);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_textarea_input::placeholder {
+  color: rgba(30, 82, 90, 0.54);
+  font-weight: 500;
+}
+
+
+#Home_Noga_rightColumn_wrapper #Chat_submit_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: 0 0 44px;
+  border: 1px solid rgba(20, 105, 99, 0.18);
+  padding: 0;
+  color: rgba(247, 251, 252, 0.96);
+  background: var(--noga-4);
+  cursor: pointer;
+  border-radius: 0px;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_submit_button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.05);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #FriendChat_article {
+  border-color: rgba(122, 186, 198, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 28, 35, 0.98),
+    rgba(12, 34, 42, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 30px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_title_container {
+  border-bottom-color: rgba(110, 168, 180, 0.16);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_title_text {
+  color: #eef9fb;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_title_status {
+  color: rgba(216, 232, 237, 0.72);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_messages {
+  border-color: rgba(110, 168, 180, 0.14);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 22, 28, 0.72),
+    rgba(12, 31, 38, 0.84)
+  );
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_daySeparatorText {
+  border-color: rgba(110, 168, 180, 0.14);
+  background: rgba(13, 34, 40, 0.94);
+  color: rgba(223, 238, 241, 0.76);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .sentMessagesLI {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 42, 49, 0.98),
+    rgba(12, 33, 39, 0.96)
+  );
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .receivedMessagesLI {
+  background: linear-gradient(135deg, #cd6b6a, #a95256);
+  border-color: rgba(205, 107, 106, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .sentMessagesLI
+  p {
+  color: rgba(230, 242, 244, 0.92);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .receivedMessagesLI
+  p {
+  color: rgba(255, 245, 245, 0.96);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .sentMessagesLI
+  .Chat_messageTimestamp {
+  color: rgba(216, 232, 237, 0.66);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .receivedMessagesLI
+  .Chat_messageTimestamp {
+  color: rgba(255, 233, 233, 0.74);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #FriendChat_empty_state {
+  background: rgba(9, 24, 31, 0.82);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(230, 242, 244, 0.88);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_form {
+  background: linear-gradient(
+    180deg,
+    rgba(13, 34, 41, 0.96),
+    rgba(10, 29, 36, 0.94)
+  );
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_textarea_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_emoji_button {
+  color: #eef9fb;
+  background: transparent;
+  border-color: rgba(110, 168, 180, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_textarea_input::placeholder {
+  color: rgba(216, 232, 237, 0.5);
+}
+
+
+.Home_Noga_socialFriendStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(239, 247, 247, 0.82);
+  color: var(--noga-5, #cd6b6a) !important;
+  font-size: 0.56rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.Home_Noga_socialFriendStatus--connected {
+  border: 1px solid #32cd32;
+  color: #32cd32 !important;
+}
+
+.Home_Noga_socialFriendStatus--online {
+  border: 1px solid #1b8b82;
+  color: #1b8b82 !important;
+  background: rgba(230, 246, 244, 0.92);
+}
+
+.Home_Noga_socialFriendStatus--typing {
+  border: 1px solid #a149f5;
+  color: #a149f5 !important;
+  background: rgba(244, 235, 255, 0.92);
+}
+
+.Home_Noga_socialFriendStatus--offline {
+  border: 1.5px solid #b0b8be;
+  color: #b0b8be !important;
+  background: rgba(230, 234, 236, 0.62);
+  opacity: 0.72;
+  filter: grayscale(0.3);
+}
+
+.Home_Noga_socialFriendStatus i {
+  font-size: 0.52rem;
+}
+
+.Home_Noga_socialFriendsEmptyState {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.Home_Noga_graphicControlField {
+  width: 100%;
+  gap: 6px;
+  color: rgba(19, 65, 73, 0.82);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.Home_Noga_graphicControlField input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 157, 165, 0.22);
+  background: rgba(250, 252, 252, 0.94);
+  color: rgba(26, 59, 67, 0.9);
+  font-size: 0.64rem;
+  font-family: "IBM Plex Mono", monospace;
+  outline: none;
+}
+
+.Home_Noga_graphicControlField input:focus {
+  border-color: rgba(15, 127, 120, 0.42);
+  box-shadow: 0 0 0 2px rgba(15, 127, 120, 0.12);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_graphicControlField {
+  color: rgba(220, 236, 239, 0.82);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_graphicControlField input {
+  border-color: rgba(110, 168, 180, 0.2);
+  background: rgba(14, 39, 46, 0.92);
+  color: rgba(236, 245, 247, 0.9);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_appList a {
+  color: rgba(233, 244, 246, 0.9);
+  background: rgba(13, 35, 41, 0.92);
+  border-color: rgba(110, 168, 180, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_linkButton {
+  color: rgba(233, 244, 246, 0.9);
+  background: rgba(13, 35, 41, 0.92);
+  border-color: rgba(110, 168, 180, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_appList a:hover {
+  color: #f5fcfc;
+  background: rgba(15, 44, 50, 0.96);
+  border-color: rgba(34, 207, 187, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_linkButton:hover {
+  color: #f5fcfc;
+  background: rgba(15, 44, 50, 0.96);
+  border-color: rgba(34, 207, 187, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_appList a i {
+  color: #6fdad5;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_linkButton i {
+  color: #6fdad5;
+}
+
+.Home_Noga_preStart_reportCard {
+  display: flex;
+  flex-direction: column;
+  min-height: min-content;
+  height: min-content;
+  padding: 18px 18px 16px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    var(--home-main-wrapper-soft),
+    var(--home-main-wrapper-accent)
+  );
+  color: var(--home-main-wrapper-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 18px 36px rgba(94, 124, 133, 0.08);
+}
+
+.Home_Noga_preStart_reportCard.Home_Noga_preStart_reportsCard {
+  padding: 12px;
+}
+
+.Home_Noga_preStart_reports > .Home_Noga_preStart_reportsCard {
+  padding: 12px;
+}
+
+.Home_Noga_preStart_reports
+  > .Home_Noga_preStart_reportsCard
+  .Home_Noga_gallery_Header_wrapper {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.Home_Noga_preStart_reports > .Home_Noga_preStart_reportsCard h3 {
+  margin: 0;
+  color: rgba(24, 79, 88, 0.95);
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.Home_Noga_preStart_toolCard {
+  min-height: min-content;
+  height: min-content;
+  padding: 18px 18px 16px;
+  gap: 10px;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background: linear-gradient(
+    180deg,
+    var(--home-main-wrapper-soft),
+    var(--home-main-wrapper-accent) 85%
+  );
+  color: var(--home-main-wrapper-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 18px 36px rgba(94, 124, 133, 0.08);
+}
+
+.Home_Noga_preStart_toolCard.Home_Noga_preStart_reportsCard {
+  padding: 8px 8px;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_main_wrapper
+  .Home_Noga_preStart_toolCard {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.96),
+    rgba(12, 31, 39, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 48px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_galleryItem {
+  border-color: rgba(110, 168, 180, 0.16);
+  background: rgba(13, 35, 41, 0.88);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_galleryThumbButton {
+  background: rgba(9, 24, 31, 0.74);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_galleryEmptyState {
+  color: rgba(216, 232, 237, 0.76);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_galleryEmptyState {
+  border-color: rgba(110, 168, 180, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsCount {
+  background: rgba(21, 76, 83, 0.58);
+  color: rgba(218, 240, 243, 0.84);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsMiniNavRail {
+  background: rgba(10, 31, 38, 0.74);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsMiniNavSelector {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 55, 63, 0.98),
+    rgba(13, 40, 47, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsMiniNavButton {
+  color: rgba(180, 214, 220, 0.68);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsMiniNavButton:hover,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsMiniNavButton.isActive {
+  color: rgba(232, 245, 247, 0.94);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsOpenButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(11, 31, 39, 0.52);
+  color: #eaf7f8;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsOpenButton:hover {
+  border-color: rgba(34, 207, 187, 0.24);
+  background: rgba(15, 44, 50, 0.62);
+  color: #f5fcfc;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendItem {
+  border-color: rgba(110, 168, 180, 0.16);
+  background: rgba(13, 35, 41, 0.42);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendAvatar {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 109, 114, 0.98),
+    rgba(12, 80, 88, 0.98)
+  );
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendName {
+  color: #eef9fb;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendUsername {
+  color: rgba(216, 232, 237, 0.72);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendStatus {
+  background: rgba(9, 24, 31, 0.34);
+  color: #fff;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendStatus--connected {
+  border-color: #45d37b;
+  color: #45d37b !important;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendStatus--online {
+  border-color: #38c8bd;
+  color: #38c8bd !important;
+  background: rgba(9, 32, 36, 0.38);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendStatus--typing {
+  border-color: #c58bff;
+  color: #c58bff !important;
+  background: rgba(33, 19, 48, 0.84);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendUnreadBadge {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 28px rgba(225, 79, 99, 0.18);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendIncomingCall {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(12, 37, 43, 0.94),
+    rgba(9, 28, 33, 0.92)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendIncomingCallCopy strong {
+  color: rgba(232, 246, 248, 0.96);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendIncomingCallCopy span {
+  color: rgba(198, 224, 229, 0.72);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendCallButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(13, 35, 41, 0.92);
+  color: rgba(212, 236, 240, 0.88);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestButton--dismiss {
+  color: rgba(227, 190, 186, 0.84);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_reports
+  .Home_Noga_preStart_reportsCard {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.96),
+    rgba(12, 31, 39, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 48px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_reports
+  > .Home_Noga_preStart_reportsCard
+  h3 {
+  color: #eef9fb;
+}
+
+.Home_Noga_preStart_toolCard h3 {
+  margin: 0;
+  color: rgba(24, 79, 88, 0.95);
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_toolCard h3 {
+  color: #eef9fb;
+}
+
+.Home_Noga_preStart_reportCard h3 {
+  margin: 0;
+  color: rgba(24, 79, 88, 0.95);
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_preStart_reportCard h3 {
+  color: #eef9fb;
+}
+
+.Home_Noga_gallery_Header {
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.Home_Noga_gallery_HeaderActions {
+  align-items: center;
+  gap: 8px;
+}
+
+.Home_Noga_reportToggleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  border-radius: 10px;
+  color: rgba(31, 107, 102, 0.95);
+  background: rgba(248, 251, 251, 0.9);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.Home_Noga_reportToggleButton:hover {
+  border-color: rgba(34, 207, 187, 0.24);
+  color: #0f6f69;
+  background: rgba(241, 250, 249, 0.96);
+}
+
+.Home_Noga_reportBody {
+  display: none;
+  padding-top: 10px;
+}
+
+.Home_Noga_reportBody.isOpen {
+  display: flex;
+}
+
+#Home_Noga_userMenu_panelCard .Home_Noga_reportBody.isOpen {
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(72vh, 680px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.Home_Noga_reportDeleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  border-radius: 10px;
+  color: rgba(31, 107, 102, 0.95);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.Home_Noga_reportDeleteButton i {
+  font-size: 10px;
+}
+
+.Home_Noga_reportDeleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_reportDeleteButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(226, 242, 244, 0.86);
+  background: rgba(14, 39, 46, 0.9);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_reportBody {
+  border-top-color: rgba(110, 168, 180, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_reportToggleButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(226, 242, 244, 0.86);
+  background: rgba(14, 39, 46, 0.9);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_reportToggleButton:hover {
+  border-color: rgba(31, 181, 156, 0.28);
+  color: #f5fcfc;
+  background: rgba(15, 44, 50, 0.96);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_reportDeleteButton:hover {
+  border-color: rgba(31, 181, 156, 0.28);
+  color: #f5fcfc;
+  background: rgba(15, 44, 50, 0.96);
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_button,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_userMenu_infoEditIcon,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_linkButton,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_editPicButton,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_reportDeleteButton,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_logRecordArrow {
+  color: rgba(226, 242, 244, 0.88);
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 39, 46, 0.96),
+    rgba(11, 31, 39, 0.94)
+  );
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_button:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_userMenu_infoEditIcon:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_linkButton:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_editPicButton:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_reportDeleteButton:hover,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_logRecordArrow:hover {
+  color: #f5fcfc;
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.96);
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_button i,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_linkButton i,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit i,
+#app_page.app_page--has-background-pattern
+  #Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_userMenu_infoEditIcon i {
+  color: #7ad5d8;
+}
+
+.Home_Noga_studySessions_area {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  width: 100%;
+  margin: 0;
+  color: rgba(26, 59, 67, 0.95);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_studySessions_area {
+  color: rgba(216, 232, 237, 0.86);
+  border-top-color: rgba(110, 168, 180, 0.16);
+}
+
+.Home_Noga_studySessions_area li {
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.Home_Noga_logRecordViewer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.13);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
+}
+
+.Home_Noga_logRecordArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  border-radius: 16px;
+  color: rgba(31, 107, 102, 0.86);
+  cursor: pointer;
+  box-shadow: none;
+  flex-shrink: 0;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.Home_Noga_logRecordArrow:hover:not(:disabled) {
+  transform: translateY(-1px);
+  color: #f5fcfc;
+  background: linear-gradient(135deg, #1eb39d, #13786f);
+  border-color: rgba(19, 120, 111, 0.22);
+}
+
+.Home_Noga_logRecordArrow:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.Home_Noga_studySessions_area > div {
+  padding: 12px 14px;
+  border-radius: 16px;
+  text-align: center;
+  border: 1px dashed rgba(124, 157, 165, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_studySessions_area > div {
+  border-color: rgba(110, 168, 180, 0.18);
+}
+
+.Home_Noga_logRecordCard {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  padding: 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  box-shadow: none;
+}
+
+.Home_Noga_logRecordCard--stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordViewer {
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordCard {
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordArrow {
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(226, 242, 244, 0.86);
+  box-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_logRecordArrow:hover:not(:disabled) {
+  color: #f5fcfc;
+  background: linear-gradient(135deg, #1fb59c, #0f6f69);
+  border-color: rgba(31, 181, 156, 0.28);
+}
+
+.Home_Noga_logRecordEntry {
+  min-width: 0;
+  margin: 0;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  text-align: left;
+  overflow: hidden;
+  container-type: inline-size;
+  box-shadow: none;
+}
+
+.Home_Noga_logRecordLabel {
+  color: rgba(30, 82, 90, 0.68);
+  font-size: clamp(0.48rem, 6.5cqi, 0.6rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordLabel {
+  color: rgba(182, 214, 221, 0.68);
+}
+
+.Home_Noga_logRecordValue {
+  display: block;
+  min-width: 0;
+  color: rgba(22, 52, 59, 0.88);
+  font-size: clamp(0.5rem, 6.4cqi, 0.62rem);
+  line-height: 1.45;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 400;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordValue {
+  color: rgba(236, 245, 247, 0.9);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_logRecordEntry {
+  border-color: rgba(110, 168, 180, 0.16);
+  box-shadow: none;
+}
+
+#Home_Noga_totalDuration_li {
+  list-style: none;
+  margin: 0;
+  text-align: center;
+  color: rgba(30, 82, 90, 0.72);
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+#Home_Noga_userMenu_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(124, 157, 165, 0.2);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 252, 252, 0.54),
+    rgba(235, 244, 245, 0.44)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 26px rgba(87, 118, 127, 0.12);
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_userMenu_button {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.5),
+    rgba(12, 31, 39, 0.42)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 26px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_userMenu_i {
+  font-size: 28px;
+  color: #0f7f78;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_userMenu_i {
+  color: #7ad5d8;
+}
+
+#Home_Noga_userMenu_div {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  width: min(92vw, 310px);
+}
+
+#Home_Noga_navWrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+  overflow: visible;
+}
+
+#Home_Noga_navWrap #Nav_article {
+  position: relative;
+  z-index: var(--home-drawing-blocked-z);
+  overflow: visible;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 251, 252, 0.52),
+    rgba(233, 241, 243, 0.42)
+  );
+  border: 1px solid rgba(118, 151, 160, 0.18);
+  box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+#Home_Noga_navWrap #Nav_article i {
+  color: #0f7f78;
+}
+
+#Home_Noga_navWrap #Nav_article i:hover {
+  color: #0b6a64;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_navWrap #Nav_article {
+  background: linear-gradient(
+    180deg,
+    rgba(16, 37, 44, 0.5),
+    rgba(12, 28, 34, 0.42)
+  );
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 30px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_navWrap #Nav_article i {
+  color: rgba(226, 242, 244, 0.88);
+  
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_navWrap #Nav_article i:hover {
+  color: #7ad5d8;
+}
+
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody {
+  border-radius: 18px;
+  height: min-content;
+}
+
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody {
+  width: 100%;
+  min-width: 0;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 31, 0.98),
+    rgba(12, 31, 39, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(109, 155, 167, 0.12),
+    0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+#Home_Noga_userMenu_personalInfo_content_div {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  padding-top: 10px;
+  gap: 8px;
+  min-height: 0;
+}
+
+#Home_Noga_userMenu_personalInfo_content_div.isOpen {
+  display: flex;
+}
+
+#Home_Noga_userMenu_personalInfo_content_div .Home_Noga_userMenu_contentDivs {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+#Home_Noga_userMenu_personalInfo_content_div .Home_Noga_userMenu_contentDivs > p,
+#Home_Noga_userMenu_personalInfo_content_div
+  .Home_Noga_userMenu_contentDivs
+  > .Home_Noga_userMenu_inlineInput {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#Home_Noga_userMenu_personalInfo_content_div
+  .Home_Noga_userMenu_contentDivs
+  > .Home_Noga_changePasswordToggle {
+  flex: 1 1 180px;
+  min-width: 0;
+  text-align: left;
+}
+
+#Home_Noga_userMenu_personalInfo_content_div
+  .Home_Noga_userMenu_contentDivs
+  > .Home_Noga_userMenu_infoEditIcon {
+  margin-inline-start: auto;
+}
+
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody label,
+.Home_Noga_userMenu_title_label {
+  color: rgba(30, 82, 90, 0.76);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  label,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_userMenu_title_label {
+  color: rgba(182, 214, 221, 0.76);
+}
+
+.Home_Noga_userMenu_title_label {
+  display: block;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Home_Noga_userMenu_div label,
+#Home_Noga_userMenu_div p,
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody label,
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody p {
+  margin: 0;
+  font-size: 0.64rem;
+  color: rgba(26, 59, 67, 0.82);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_userMenu_div label,
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_userMenu_div p,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  label,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  p {
+  color: black;
+}
+
+.Home_Noga_userMenu_contentDivs {
+  justify-content: flex-start;
+  align-items: center;
+  border-radius: 16px;
+  border: 1px solid rgba(129, 168, 176, 0.12);
+  background: rgba(248, 251, 251, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  padding: 5px;
+}
+
+.Home_Noga_userMenu_contentDivs label {
+  color: black;
+}
+
+#Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  label:not(.Home_Noga_userMenu_title_label) {
+  flex: 0 0 92px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+#Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody p {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: rgba(22, 52, 59, 0.9);
+  text-align: left;
+  flex: 1 1 auto;
+}
+
+.Home_Noga_userMenu_inlineInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 157, 165, 0.26);
+  background: rgba(255, 255, 255, 0.56);
+  color: rgba(18, 52, 59, 0.92);
+  font-size: 0.64rem;
+  font-family: "IBM Plex Mono", monospace;
+  outline: none;
+}
+
+.Home_Noga_userMenu_inlineInput:focus {
+  border-color: rgba(15, 127, 120, 0.55);
+  box-shadow: 0 0 0 2px rgba(15, 127, 120, 0.14);
+}
+
+.Home_Noga_userMenu_infoEditIcon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.2);
+  background: rgba(248, 251, 251, 0.5);
+  color: rgba(30, 82, 90, 0.68);
+  font-size: 0.58rem;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+
+.Home_Noga_userMenu_infoEditIcon:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  label:not(.Home_Noga_userMenu_title_label) {
+  color: rgba(182, 214, 221, 0.7);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_userMenu_panelCard
+  .Home_Noga_userMenu_panelBody
+  p {
+  color: rgba(236, 245, 247, 0.88);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_userMenu_inlineInput {
+  border-color: rgba(110, 168, 180, 0.28);
+  background: rgba(10, 33, 39, 0.48);
+  color: rgba(236, 245, 247, 0.9);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_userMenu_inlineInput:focus {
+  border-color: rgba(122, 213, 216, 0.58);
+  box-shadow: 0 0 0 2px rgba(122, 213, 216, 0.16);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_userMenu_infoEditIcon {
+  border-color: rgba(110, 168, 180, 0.2);
+  background: rgba(14, 39, 46, 0.46);
+  color: rgba(182, 214, 221, 0.72);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_userMenu_contentDivs {
+  border-color: rgba(110, 168, 180, 0.14);
+  background: rgba(14, 39, 46, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.Home_Noga_changePasswordToggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #0f7f78;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_changePasswordToggle {
+  color: #7ad5d8;
+}
+
+.Home_Noga_passwordFeedback {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.Home_Noga_passwordFeedback--success {
+  color: #11635f;
+  background: rgba(34, 207, 187, 0.12);
+  border: 1px solid rgba(34, 207, 187, 0.24);
+}
+
+.Home_Noga_passwordFeedback--error {
+  color: #8f2f48;
+  background: rgba(232, 102, 124, 0.1);
+  border: 1px solid rgba(232, 102, 124, 0.2);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_passwordFeedback--success {
+  color: #9ff0e0;
+  background: rgba(24, 105, 99, 0.24);
+  border-color: rgba(86, 197, 186, 0.22);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_passwordFeedback--error {
+  color: #ffc3d0;
+  background: rgba(123, 42, 63, 0.26);
+  border-color: rgba(221, 122, 145, 0.2);
+}
+
+#Home_Noga_changePassword_form {
+  margin-top: 12px;
+  gap: 10px;
+}
+
+#Home_Noga_naghamCourseLetter_div {
+  gap: 10px;
+}
+
+#Home_Noga_musicArchivePlaylist_div {
+  gap: 10px;
+}
+
+.Home_Noga_musicApiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.Home_Noga_musicApiCard {
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(186, 99, 82, 0.18);
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.Home_Noga_musicLibraryCompact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(186, 99, 82, 0.18);
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.Home_Noga_musicLibraryMainRow {
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.Home_Noga_musicLibraryUnifiedSearch {
+  flex: 0 0 320px;
+  min-width: 260px;
+}
+
+.Home_Noga_musicLibraryCompactSections {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 10px;
+}
+
+.Home_Noga_musicLibrarySource {
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(186, 99, 82, 0.12);
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.Home_Noga_musicLibrarySourceHeader {
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.Home_Noga_musicLibrarySourceHeader strong {
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.Home_Noga_musicLibrarySourceHeader span {
+  font-size: 0.54rem;
+  color: rgba(26, 59, 67, 0.72);
+  text-align: right;
+}
+
+.Home_Noga_musicApiHeader {
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.Home_Noga_musicApiHeader strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.Home_Noga_musicApiHeader span {
+  font-size: 0.58rem;
+  color: rgba(26, 59, 67, 0.72);
+  text-align: right;
+}
+
+#Home_Noga_musicArchiveSearch_div {
+  gap: 10px;
+  display: flex;
+  align-items: center; 
+
+}
+
+#Home_Noga_musicArchiveSearch_div button,
+.Home_Noga_musicArchiveSearch_div button {
+  width: min-content;
+}
+
+.Home_Noga_musicArchiveSearch_row {
+  gap: 5px;
+  align-items: stretch;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.Home_Noga_musicArchiveSearch_row > * {
+  pointer-events: auto;
+}
+
+#Home_Noga_naghamCourseLetter_select,
+#Home_Noga_naghamCourseLetter_textarea,
+#Home_Noga_schoolPlannerTelegram_apiId_input,
+#Home_Noga_schoolPlannerTelegram_apiHash_input,
+#Home_Noga_schoolPlannerTelegram_phone_input,
+#Home_Noga_schoolPlannerTelegram_code_input,
+#Home_Noga_schoolPlannerTelegram_password_input,
+#Home_Noga_musicLibrarySongSearch_input,
+#Home_Noga_musicLibraryArtistSearch_input {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 157, 165, 0.22);
+  border-radius: 16px;
+  background: rgba(250, 252, 252, 0.94);
+  color: rgba(26, 59, 67, 0.9);
+  font-size: 0.64rem;
+  line-height: 1.65;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
+  outline: none;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+#Home_Noga_naghamCourseLetter_textarea {
+  resize: vertical;
+  min-height: 118px;
+}
+
+#Home_Noga_naghamCourseLetter_select:focus,
+#Home_Noga_naghamCourseLetter_textarea:focus,
+#Home_Noga_schoolPlannerTelegram_apiId_input:focus,
+#Home_Noga_schoolPlannerTelegram_apiHash_input:focus,
+#Home_Noga_schoolPlannerTelegram_phone_input:focus,
+#Home_Noga_schoolPlannerTelegram_code_input:focus,
+#Home_Noga_schoolPlannerTelegram_password_input:focus,
+#Home_Noga_musicLibrarySongSearch_input:focus,
+#Home_Noga_musicLibraryArtistSearch_input:focus {
+  border-color: rgba(15, 127, 120, 0.44);
+  box-shadow: 0 0 0 3px rgba(34, 207, 187, 0.12);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_naghamCourseLetter_select,
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_naghamCourseLetter_textarea,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_apiId_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_apiHash_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_phone_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_code_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_password_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_musicLibrarySongSearch_input,
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_musicLibraryArtistSearch_input {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+}
+
+.Home_Noga_musicLibraryUnifiedSearch {
+  gap: 10px;
+}
+
+#Home_Noga_musicArchiveSearch_results,
+#Home_Noga_itunesSearch_results,
+#Home_Noga_musicBrainzSearch_results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#Home_Noga_musicArchiveSearch_results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.Home_Noga_musicArchiveSearch_result {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(247, 251, 251, 0.9);
+  color: rgba(26, 59, 67, 0.92);
+  text-align: left;
+  cursor: pointer;
+}
+
+.Home_Noga_musicArchiveSearch_result strong {
+  font-size: 0.62rem;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.Home_Noga_musicArchiveSearch_result:focus-visible {
+  outline: 2px solid rgba(56, 114, 126, 0.48);
+  outline-offset: 2px;
+}
+
+.Home_Noga_musicArchiveSearch_meta {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.Home_Noga_musicArchiveSearch_result span {
+  font-size: 0.58rem;
+  line-height: 1.5;
+  color: rgba(26, 59, 67, 0.72);
+}
+
+.Home_Noga_musicArchiveSearch_sourceTag {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.22);
+  background: rgba(238, 246, 247, 0.92);
+  color: rgba(30, 82, 90, 0.82);
+  font-size: 0.48rem;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#Home_Noga_musicLibraryPlaylist_ul {
+  gap: 8px;
+}
+
+.Home_Noga_musicLibraryPlaylist_item {
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(247, 251, 251, 0.84);
+}
+
+.Home_Noga_musicLibraryPlaylist_copy {
+  min-width: 0;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+.Home_Noga_musicLibraryPlaylist_copy strong {
+  font-size: 0.64rem;
+  line-height: 1.4;
+  color: rgba(26, 59, 67, 0.92);
+}
+
+.Home_Noga_musicLibraryPlaylist_delete {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 99, 82, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(145, 66, 57, 0.86);
+}
+
+.Home_Noga_musicLibraryPlaylist_delete:hover {
+  transform: translateY(-1px);
+}
+
+.Home_Noga_musicLibraryPlaylist_empty {
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px dashed rgba(124, 157, 165, 0.22);
+  color: rgba(26, 59, 67, 0.66);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicArchiveSearch_result {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_musicArchiveSearch_result
+  span {
+  color: rgba(236, 245, 247, 0.7);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_musicArchiveSearch_sourceTag {
+  border-color: rgba(110, 168, 180, 0.24);
+  background: rgba(22, 56, 64, 0.92);
+  color: rgba(236, 245, 247, 0.82);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibraryPlaylist_item {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.84);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibraryPlaylist_copy strong,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibraryPlaylist_empty {
+  color: rgba(236, 245, 247, 0.82);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibraryPlaylist_delete {
+  border-color: rgba(110, 168, 180, 0.24);
+  background: rgba(22, 56, 64, 0.92);
+  color: rgba(236, 245, 247, 0.82);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicApiCard {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibraryCompact,
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibrarySource {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicApiHeader span {
+  color: rgba(236, 245, 247, 0.7);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_musicLibrarySourceHeader span {
+  color: rgba(236, 245, 247, 0.7);
+}
+
+#Home_Noga_schoolPlannerTelegram_adminDiv {
+  padding-top: 12px;
+  gap: 10px;
+  border-top: 1px solid rgba(124, 157, 165, 0.18);
+}
+
+.Home_Noga_schoolPlannerTelegram_adminStatus {
+  margin: 0;
+  color: rgba(26, 59, 67, 0.76);
+  font-size: 0.62rem;
+  line-height: 1.5;
+}
+
+.Home_Noga_schoolPlannerTelegram_adminFlags {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.Home_Noga_schoolPlannerTelegram_adminFlags span {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(248, 251, 251, 0.88);
+  border: 1px solid rgba(124, 157, 165, 0.14);
+  color: rgba(30, 82, 90, 0.76);
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  #Home_Noga_schoolPlannerTelegram_adminDiv {
+  border-top-color: rgba(110, 168, 180, 0.18);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_schoolPlannerTelegram_adminStatus {
+  color: rgba(220, 236, 239, 0.78);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_schoolPlannerTelegram_adminFlags
+  span {
+  background: rgba(14, 39, 46, 0.92);
+  border-color: rgba(110, 168, 180, 0.16);
+  color: rgba(182, 214, 221, 0.78);
+}
+
+#Home_Noga_changePassword_form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgba(124, 157, 165, 0.22);
+  border-radius: 14px;
+  background: rgba(250, 252, 252, 0.94);
+  color: rgba(26, 59, 67, 0.9);
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
+  outline: none;
+}
+
+#Home_Noga_changePassword_form input:focus {
+  border-color: rgba(15, 127, 120, 0.44);
+  box-shadow: 0 0 0 3px rgba(34, 207, 187, 0.12);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_changePassword_form input {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+}
+
+.Home_Noga_changePasswordSubmit {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 127, 120, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(34, 207, 187, 0.98),
+    rgba(15, 162, 147, 0.98)
+  );
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.Home_Noga_changePasswordSubmit:disabled {
+  cursor: wait;
+  opacity: 0.76;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_changePasswordSubmit {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 109, 114, 0.98),
+    rgba(12, 80, 88, 0.98)
+  );
+}
+
+#timer_container {
+  order: 3;
+  font-size: 14pt;
+  padding: 10px;
+}
+
+#profile_pic input,
+#profile_pic button {
+  font-size: 10px;
+  padding: 5px;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.custom-file-upload {
+  display: inline-block;
+  padding: 6px 12px;
+  cursor: pointer;
+  height: min-content;
+  overflow: hidden;
+}
+
+.custom-file-upload_profilePic_div {
+  overflow: hidden;
+  width: 100px;
+  height: 100px;
+  place-items: center;
+  place-content: center;
+  background-color: var(--special_black2);
+  border-radius: 50%;
+}
+
+.custom-file-upload_profilePic {
+  width: 100px;
+}
+
+#profile_pic_button {
+  height: min-content;
+  background-color: var(--blue4);
+  color: var(--white);
+  font-size: 12px;
+}
+
+#profile_pic_i {
+  font-size: 20px;
+  color: var(--blue4);
+  position: absolute;
+  bottom: 40px;
+  right: 10px;
+}
+
+#profile_pic_section {
+  position: relative;
+}
