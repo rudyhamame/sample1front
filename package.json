@@ -51,9 +51,5 @@
                             "@types/socket.io-client":  "^1.4.35",
                             "@vitejs/plugin-react":  "^5.0.0",
                             "vite":  "^7.3.1"
-                        },
-    "engines":  {
-                    "node":  "22.x"
-                },
-    "packageManager":  "npm@11.3.0"
+                        }
 }
