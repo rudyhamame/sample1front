@@ -98,7 +98,9 @@ const buildExamDateValue = ({ day, month, year }) => {
 };
 
 const getPlannerTermRank = (value = "") => {
-  const normalizedValue = String(value || "").trim().toLowerCase();
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
   if (normalizedValue === "first") return 1;
   if (normalizedValue === "second") return 2;
   if (normalizedValue === "third") return 3;
@@ -1864,8 +1866,7 @@ export default class NogaPlanner extends Component {
 
   getSortedSavedCourses = (entries = []) => {
     const { savedCourseSortKey, savedCourseSortDirection } = this.state;
-    const directionMultiplier =
-      savedCourseSortDirection === "desc" ? -1 : 1;
+    const directionMultiplier = savedCourseSortDirection === "desc" ? -1 : 1;
     const normalizedEntries = Array.isArray(entries) ? [...entries] : [];
 
     normalizedEntries.sort((leftCourse, rightCourse) => {
@@ -1893,7 +1894,10 @@ export default class NogaPlanner extends Component {
           case "course_name":
             return formatSavedCourseTitle(course);
           case "course_class":
-            return formatSavedCourseComponent(course, this.isArabic() ? "ar" : "en");
+            return formatSavedCourseComponent(
+              course,
+              this.isArabic() ? "ar" : "en",
+            );
           case "course_schedule":
             return formatCourseScheduleDisplay(course?.course_dayAndTime);
           case "course_location":
@@ -1908,10 +1912,12 @@ export default class NogaPlanner extends Component {
       const leftValue = String(getComparableValue(leftCourse) || "").trim();
       const rightValue = String(getComparableValue(rightCourse) || "").trim();
 
-      return leftValue.localeCompare(rightValue, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }) * directionMultiplier;
+      return (
+        leftValue.localeCompare(rightValue, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }) * directionMultiplier
+      );
     });
 
     return normalizedEntries;
@@ -2357,7 +2363,7 @@ export default class NogaPlanner extends Component {
           id="nogaPlanner_lectures_section"
           className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
         >
-          <div className="nogaPlanner_monitorEmpty fc">
+          <div className="nogaPlanner_monitorEmpty">
             {this.isArabic()
               ? "اختر مقرراً أو محاضرة من القائمة لعرض التفاصيل."
               : "Select a course or lecture from the list to view details."}
@@ -2372,7 +2378,7 @@ export default class NogaPlanner extends Component {
           id="nogaPlanner_lectures_section"
           className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
         >
-          <div className="nogaPlanner_monitorDetails fc">
+          <div className="nogaPlanner_monitorDetails">
             <h2>{item.course_name}</h2>
             <p>
               {formatCourseComponentLabel(
@@ -2396,7 +2402,7 @@ export default class NogaPlanner extends Component {
           id="nogaPlanner_lectures_section"
           className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
         >
-          <div className="nogaPlanner_monitorDetails fc">
+          <div className="nogaPlanner_monitorDetails">
             <h2>{item.lecture_title}</h2>
             <p>{item.lecture_courseName}</p>
             <p>{item.lecture_instructorName}</p>
@@ -3044,7 +3050,10 @@ export default class NogaPlanner extends Component {
             type="text"
             value={savedCourseDraft.course_name}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_name", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_name",
+                event.target.value,
+              )
             }
             placeholder={this.isArabic() ? "اسم المقرر" : "Course name"}
           />
@@ -3053,7 +3062,10 @@ export default class NogaPlanner extends Component {
             type="text"
             value={savedCourseDraft.course_code}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_code", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_code",
+                event.target.value,
+              )
             }
             placeholder={this.isArabic() ? "رمز المقرر" : "Course code"}
           />
@@ -3063,7 +3075,10 @@ export default class NogaPlanner extends Component {
             className="nogaPlanner_savedCoursesDetailsInput"
             value={savedCourseDraft.course_class}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_class", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_class",
+                event.target.value,
+              )
             }
           >
             <option value="">
@@ -3081,7 +3096,10 @@ export default class NogaPlanner extends Component {
             className="nogaPlanner_savedCoursesDetailsInput"
             value={savedCourseDraft.course_year}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_year", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_year",
+                event.target.value,
+              )
             }
           >
             <option value="">
@@ -3097,7 +3115,10 @@ export default class NogaPlanner extends Component {
             className="nogaPlanner_savedCoursesDetailsInput"
             value={savedCourseDraft.course_term}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_term", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_term",
+                event.target.value,
+              )
             }
           >
             <option value="">{this.isArabic() ? "الفصل" : "Term"}</option>
@@ -3158,14 +3179,16 @@ export default class NogaPlanner extends Component {
               +
             </button>
           </div>
-          <div className="nogaPlanner_savedCoursesScheduleChips fr">
+          <div className="nogaPlanner_savedCoursesScheduleChips">
             {splitCourseTextList(savedCourseDraft.course_dayAndTime).map(
               (entry, entryIndex) => (
                 <button
                   key={`${rowKey}-schedule-${entryIndex}`}
                   type="button"
                   className="nogaPlanner_savedCoursesScheduleChip"
-                  onClick={() => this.removeSavedCourseScheduleEntry(entryIndex)}
+                  onClick={() =>
+                    this.removeSavedCourseScheduleEntry(entryIndex)
+                  }
                 >
                   {entry}
                 </button>
@@ -3205,7 +3228,10 @@ export default class NogaPlanner extends Component {
             type="text"
             value={savedCourseDraft.course_grade}
             onChange={(event) =>
-              this.handleSavedCourseDraftChange("course_grade", event.target.value)
+              this.handleSavedCourseDraftChange(
+                "course_grade",
+                event.target.value,
+              )
             }
             placeholder={this.isArabic() ? "الوزن" : "Weight"}
           />
@@ -3216,10 +3242,10 @@ export default class NogaPlanner extends Component {
     return (
       <section
         id="nogaPlanner_savedCoursesColumn"
-        className="nogaPlanner_homeSoulPanel fc"
+        className="nogaPlanner_homeSoulPanel"
       >
-        <div className="nogaPlanner_savedCoursesColumnHeader fc">
-          <div className="nogaPlanner_coursesTitleRow fr">
+        <div className="nogaPlanner_savedCoursesColumnHeader">
+          <div className="nogaPlanner_coursesTitleRow">
             <div className="fc">
               <p className="nogaPlanner_homeSoulEyebrow">
                 {this.isArabic() ? "المواد المحفوظة" : "Saved courses"}
@@ -3235,7 +3261,7 @@ export default class NogaPlanner extends Component {
                   : "Select a course component to render its lectures."}
               </p>
             </div>
-            <div className="nogaPlanner_coursesMiniBar fr">
+            <div className="nogaPlanner_coursesMiniBar">
               {shouldShowSelectedCourseLectures ? (
                 <>
                   <button
@@ -3295,7 +3321,7 @@ export default class NogaPlanner extends Component {
                 <>
                   {selectedDetailsCourse ? (
                     <>
-                      <div className="nogaPlanner_coursesMiniBarGroup fr">
+                      <div className="nogaPlanner_coursesMiniBarGroup">
                         <button
                           type="button"
                           className="nogaPlanner_coursesMiniBarBtn"
@@ -3309,15 +3335,13 @@ export default class NogaPlanner extends Component {
                           className="nogaPlanner_coursesMiniBarBtn"
                           onClick={this.closeSavedCourseComponentDetails}
                         >
-                          {this.isArabic()
-                            ? "إغلاق التفاصيل"
-                            : "Close Details"}
+                          {this.isArabic() ? "إغلاق التفاصيل" : "Close Details"}
                         </button>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="nogaPlanner_coursesMiniBarGroup fr">
+                      <div className="nogaPlanner_coursesMiniBarGroup">
                         <button
                           type="button"
                           className="nogaPlanner_coursesMiniBarBtn"
@@ -3333,7 +3357,7 @@ export default class NogaPlanner extends Component {
                               : "Select"}
                         </button>
                       </div>
-                      <div className="nogaPlanner_coursesMiniBarGroup nogaPlanner_coursesMiniBarGroup--editDelete fr">
+                      <div className="nogaPlanner_coursesMiniBarGroup nogaPlanner_coursesMiniBarGroup--editDelete">
                         <button
                           type="button"
                           className="nogaPlanner_coursesMiniBarBtn"
@@ -3385,7 +3409,9 @@ export default class NogaPlanner extends Component {
                       <button
                         type="button"
                         className="nogaPlanner_tabTableSortButton"
-                        onClick={() => this.handleSavedCourseSort("course_name")}
+                        onClick={() =>
+                          this.handleSavedCourseSort("course_name")
+                        }
                       >
                         {renderSavedCourseSortLabel(
                           "course_name",
@@ -3397,7 +3423,9 @@ export default class NogaPlanner extends Component {
                       <button
                         type="button"
                         className="nogaPlanner_tabTableSortButton"
-                        onClick={() => this.handleSavedCourseSort("course_class")}
+                        onClick={() =>
+                          this.handleSavedCourseSort("course_class")
+                        }
                       >
                         {renderSavedCourseSortLabel(
                           "course_class",
@@ -3425,7 +3453,9 @@ export default class NogaPlanner extends Component {
                       <button
                         type="button"
                         className="nogaPlanner_tabTableSortButton"
-                        onClick={() => this.handleSavedCourseSort("course_schedule")}
+                        onClick={() =>
+                          this.handleSavedCourseSort("course_schedule")
+                        }
                       >
                         {renderSavedCourseSortLabel(
                           "course_schedule",
@@ -3437,7 +3467,9 @@ export default class NogaPlanner extends Component {
                       <button
                         type="button"
                         className="nogaPlanner_tabTableSortButton"
-                        onClick={() => this.handleSavedCourseSort("course_location")}
+                        onClick={() =>
+                          this.handleSavedCourseSort("course_location")
+                        }
                       >
                         {renderSavedCourseSortLabel(
                           "course_location",
@@ -3449,7 +3481,9 @@ export default class NogaPlanner extends Component {
                       <button
                         type="button"
                         className="nogaPlanner_tabTableSortButton"
-                        onClick={() => this.handleSavedCourseSort("course_grade")}
+                        onClick={() =>
+                          this.handleSavedCourseSort("course_grade")
+                        }
                       >
                         {renderSavedCourseSortLabel(
                           "course_grade",
@@ -3463,7 +3497,8 @@ export default class NogaPlanner extends Component {
                   {shouldShowInlineCourseRow
                     ? renderSavedCourseEditorRow("saved-course-add-row")
                     : null}
-                  {sortedSavedCourses.length === 0 && !shouldShowInlineCourseRow ? (
+                  {sortedSavedCourses.length === 0 &&
+                  !shouldShowInlineCourseRow ? (
                     <tr>
                       <td
                         colSpan={6}
@@ -3536,10 +3571,14 @@ export default class NogaPlanner extends Component {
                         </td>
                         <td
                           style={getCellAlignmentStyle(
-                            formatCourseScheduleDisplay(course.course_dayAndTime),
+                            formatCourseScheduleDisplay(
+                              course.course_dayAndTime,
+                            ),
                           )}
                         >
-                          {formatCourseScheduleDisplay(course.course_dayAndTime)}
+                          {formatCourseScheduleDisplay(
+                            course.course_dayAndTime,
+                          )}
                         </td>
                         <td
                           style={getCellAlignmentStyle(
@@ -3548,7 +3587,11 @@ export default class NogaPlanner extends Component {
                         >
                           {formatCourseLocationDisplay(course.course_location)}
                         </td>
-                        <td style={getCellAlignmentStyle(course.course_grade || "-")}>
+                        <td
+                          style={getCellAlignmentStyle(
+                            course.course_grade || "-",
+                          )}
+                        >
                           {course.course_grade || "-"}
                         </td>
                       </tr>
@@ -3564,19 +3607,23 @@ export default class NogaPlanner extends Component {
   };
 
   renderSelectedCourseExamBoard = () => {
-    const courseEntries = Array.isArray(this.state?.courses) ? this.state.courses : [];
+    const courseEntries = Array.isArray(this.state?.courses)
+      ? this.state.courses
+      : [];
     const examRows = courseEntries.flatMap((course) =>
-      this.getRenderableCourseExamEntries(course).map((examEntry, examIndex) => ({
-        course,
-        examEntry,
-        examIndex,
-      })),
+      this.getRenderableCourseExamEntries(course).map(
+        (examEntry, examIndex) => ({
+          course,
+          examEntry,
+          examIndex,
+        }),
+      ),
     );
 
     return (
-      <section className="nogaPlanner_homeSoulPanel fc">
-        <div className="nogaPlanner_savedCoursesColumnHeader fc">
-          <div className="nogaPlanner_coursesTitleRow fr">
+      <section className="nogaPlanner_homeSoulPanel">
+        <div className="nogaPlanner_savedCoursesColumnHeader">
+          <div className="nogaPlanner_coursesTitleRow">
             <div className="fc">
               <p className="nogaPlanner_homeSoulEyebrow">
                 {this.isArabic() ? "الامتحانات" : "Exams"}
@@ -3617,24 +3664,45 @@ export default class NogaPlanner extends Component {
                       key={`${course?._id || course?.course_name || "course"}-${examIndex}`}
                       className="nogaPlanner_tabTableRow"
                       onClick={() =>
-                        this.setSelectedCourseWithExamFocus(course?._id, examIndex)
+                        this.setSelectedCourseWithExamFocus(
+                          course?._id,
+                          examIndex,
+                        )
                       }
                     >
-                      <td style={getCellAlignmentStyle(course?.course_name || "-")}>
+                      <td
+                        style={getCellAlignmentStyle(
+                          course?.course_name || "-",
+                        )}
+                      >
                         {course?.course_name || "-"}
                       </td>
-                      <td style={getCellAlignmentStyle(examEntry?.exam_type || "-")}>
+                      <td
+                        style={getCellAlignmentStyle(
+                          examEntry?.exam_type || "-",
+                        )}
+                      >
                         {examEntry?.exam_type || "-"}
                       </td>
-                      <td style={getCellAlignmentStyle(examEntry?.exam_date || "-")}>
+                      <td
+                        style={getCellAlignmentStyle(
+                          examEntry?.exam_date || "-",
+                        )}
+                      >
                         {examEntry?.exam_date || "-"}
                       </td>
-                      <td style={getCellAlignmentStyle(examEntry?.exam_time || "-")}>
+                      <td
+                        style={getCellAlignmentStyle(
+                          examEntry?.exam_time || "-",
+                        )}
+                      >
                         {examEntry?.exam_time || "-"}
                       </td>
                       <td
                         style={getCellAlignmentStyle(
-                          examEntry?.course_grade || course?.course_grade || "-",
+                          examEntry?.course_grade ||
+                            course?.course_grade ||
+                            "-",
                         )}
                       >
                         {examEntry?.course_grade || course?.course_grade || "-"}
@@ -3665,7 +3733,7 @@ export default class NogaPlanner extends Component {
           data-swipe-view={this.state.planner_swipeView}
         >
           <div className="fc" id="nogaPlanner_coursesLectures_wrapper">
-            <div className="nogaPlanner_wrapperTabs fr">
+            <div className="nogaPlanner_wrapperTabs">
               <button
                 type="button"
                 className={
@@ -3691,7 +3759,7 @@ export default class NogaPlanner extends Component {
                 {this.isArabic() ? "الامتحانات" : "Exams"}
               </button>
             </div>
-            <div className="nogaPlanner_wrapperTabPanel fc">
+            <div className="nogaPlanner_wrapperTabPanel">
               {wrapperTab === "courses"
                 ? this.renderSavedCoursesColumn()
                 : this.renderSelectedCourseExamBoard()}

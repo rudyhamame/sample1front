@@ -195,7 +195,10 @@ const normalizeFriendUserMode = (value) => {
 const getBlockedListGroupIdForMode = (value) => {
   const normalizedValue = normalizeFriendUserMode(value);
 
-  if (normalizedValue === "requestsent" || normalizedValue === "requestreceived") {
+  if (
+    normalizedValue === "requestsent" ||
+    normalizedValue === "requestreceived"
+  ) {
     return "pending";
   }
 
@@ -902,7 +905,10 @@ const getVideoViewerWindowRectForAspectRatio = (aspectRatio) => {
   };
 };
 
-const getVideoViewerWindowRectAtPositionForAspectRatio = (rect, aspectRatio) => {
+const getVideoViewerWindowRectAtPositionForAspectRatio = (
+  rect,
+  aspectRatio,
+) => {
   if (typeof window === "undefined") {
     return rect || getDefaultVideoViewerWindowRect();
   }
@@ -1110,25 +1116,21 @@ const saveVideoViewerWindowState = (videoKey = "", rect, aspectRatio) => {
             : null,
       }),
     );
-  } catch {
-  }
+  } catch {}
 };
 
 const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
   const videoKey = React.useMemo(
     () =>
       String(
-        video?.publicId ||
-          video?.url ||
-          video?.fileName ||
-          title ||
-          "",
+        video?.publicId || video?.url || video?.fileName || title || "",
       ).trim(),
     [title, video?.fileName, video?.publicId, video?.url],
   );
-  const [windowRect, setWindowRect] = React.useState(() =>
-    getSavedVideoViewerWindowState(videoKey)?.rect ||
-    getDefaultVideoViewerWindowRect(),
+  const [windowRect, setWindowRect] = React.useState(
+    () =>
+      getSavedVideoViewerWindowState(videoKey)?.rect ||
+      getDefaultVideoViewerWindowRect(),
   );
   const [videoAspectRatio, setVideoAspectRatio] = React.useState(
     () => getSavedVideoViewerWindowState(videoKey)?.aspectRatio || 16 / 9,
@@ -1188,84 +1190,93 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
     );
   }
 
-  const beginWindowMove = React.useCallback((event) => {
-    if (event.button !== 0) {
-      return;
-    }
-
-    if (!event.target?.closest(".Home_Noga_videoViewerWindowDragButton")) {
-      return;
-    }
-
-    dragStateRef.current = {
-      mode: "move",
-      startX: event.clientX,
-      startY: event.clientY,
-      startRect: windowRect,
-    };
-    hasUserPositionedWindowRef.current = true;
-    window.addEventListener("pointermove", handleWindowPointerMove);
-    window.addEventListener("pointerup", stopWindowInteraction);
-    window.addEventListener("pointercancel", stopWindowInteraction);
-    event.preventDefault();
-    event.stopPropagation();
-  }, [stopWindowInteraction, windowRect]);
-
-  const toggleWindowSize = React.useCallback((event) => {
-    event.stopPropagation();
-
-    if (isWindowMinimized) {
-      setIsWindowMinimized(false);
-      setWindowRect(getVideoViewerWindowRectForAspectRatio(videoAspectRatio));
-      setIsWindowMaximized(true);
-      return;
-    }
-
-    if (!isWindowMaximized) {
-      restoredWindowRectRef.current = windowRect;
-      setIsWindowMinimized(true);
-      setIsWindowMaximized(false);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("home-noga-video-window-minimized"),
-        );
+  const beginWindowMove = React.useCallback(
+    (event) => {
+      if (event.button !== 0) {
+        return;
       }
-      return;
-    }
 
-    if (isWindowMaximized) {
-      restoredWindowRectRef.current =
-        restoredWindowRectRef.current || windowRect;
-      setIsWindowMinimized(true);
-      setIsWindowMaximized(false);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("home-noga-video-window-minimized"),
-        );
+      if (!event.target?.closest(".Home_Noga_videoViewerWindowDragButton")) {
+        return;
       }
-      return;
-    }
-  }, [isWindowMaximized, isWindowMinimized, videoAspectRatio, windowRect]);
 
-  const beginWindowResize = React.useCallback((event, direction) => {
-    if (event.button !== 0) {
-      return;
-    }
+      dragStateRef.current = {
+        mode: "move",
+        startX: event.clientX,
+        startY: event.clientY,
+        startRect: windowRect,
+      };
+      hasUserPositionedWindowRef.current = true;
+      window.addEventListener("pointermove", handleWindowPointerMove);
+      window.addEventListener("pointerup", stopWindowInteraction);
+      window.addEventListener("pointercancel", stopWindowInteraction);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [stopWindowInteraction, windowRect],
+  );
 
-    dragStateRef.current = {
-      mode: "resize",
-      direction,
-      startX: event.clientX,
-      startY: event.clientY,
-      startRect: windowRect,
-    };
-    hasUserPositionedWindowRef.current = true;
-    window.addEventListener("pointermove", handleWindowPointerMove);
-    window.addEventListener("pointerup", stopWindowInteraction);
-    window.addEventListener("pointercancel", stopWindowInteraction);
-    event.preventDefault();
-    event.stopPropagation();
-  }, [stopWindowInteraction, windowRect]);
+  const toggleWindowSize = React.useCallback(
+    (event) => {
+      event.stopPropagation();
+
+      if (isWindowMinimized) {
+        setIsWindowMinimized(false);
+        setWindowRect(getVideoViewerWindowRectForAspectRatio(videoAspectRatio));
+        setIsWindowMaximized(true);
+        return;
+      }
+
+      if (!isWindowMaximized) {
+        restoredWindowRectRef.current = windowRect;
+        setIsWindowMinimized(true);
+        setIsWindowMaximized(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("home-noga-video-window-minimized"),
+          );
+        }
+        return;
+      }
+
+      if (isWindowMaximized) {
+        restoredWindowRectRef.current =
+          restoredWindowRectRef.current || windowRect;
+        setIsWindowMinimized(true);
+        setIsWindowMaximized(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("home-noga-video-window-minimized"),
+          );
+        }
+        return;
+      }
+    },
+    [isWindowMaximized, isWindowMinimized, videoAspectRatio, windowRect],
+  );
+
+  const beginWindowResize = React.useCallback(
+    (event, direction) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      dragStateRef.current = {
+        mode: "resize",
+        direction,
+        startX: event.clientX,
+        startY: event.clientY,
+        startRect: windowRect,
+      };
+      hasUserPositionedWindowRef.current = true;
+      window.addEventListener("pointermove", handleWindowPointerMove);
+      window.addEventListener("pointerup", stopWindowInteraction);
+      window.addEventListener("pointercancel", stopWindowInteraction);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [stopWindowInteraction, windowRect],
+  );
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -1302,9 +1313,7 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
     } else if (Number.isFinite(initialAspectRatio) && initialAspectRatio > 0) {
       hasAppliedVideoRatioRef.current = true;
       setVideoAspectRatio(initialAspectRatio);
-      setWindowRect(
-        getVideoViewerWindowRectForAspectRatio(initialAspectRatio),
-      );
+      setWindowRect(getVideoViewerWindowRectForAspectRatio(initialAspectRatio));
     } else {
       setVideoAspectRatio(16 / 9);
       setWindowRect(getDefaultVideoViewerWindowRect());
@@ -1410,7 +1419,7 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
         }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="Home_Noga_videoViewerWindowControls fr">
+        <div className="Home_Noga_videoViewerWindowControls">
           <button
             type="button"
             className="Home_Noga_videoViewerWindowButton Home_Noga_videoViewerWindowDragButton"
@@ -2049,7 +2058,9 @@ function HomeNoga(props) {
 
     const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
 
-    return Array.from(mainWrapperRef.current.querySelectorAll(activeZone.selector))
+    return Array.from(
+      mainWrapperRef.current.querySelectorAll(activeZone.selector),
+    )
       .filter((element) => {
         if (!(element instanceof HTMLElement)) {
           return false;
@@ -2329,7 +2340,12 @@ function HomeNoga(props) {
 
       context.moveTo(left + topLeft, top);
       context.lineTo(left + rectWidth - topRight, top);
-      context.quadraticCurveTo(left + rectWidth, top, left + rectWidth, top + topRight);
+      context.quadraticCurveTo(
+        left + rectWidth,
+        top,
+        left + rectWidth,
+        top + topRight,
+      );
       context.lineTo(left + rectWidth, top + rectHeight - bottomRight);
       context.quadraticCurveTo(
         left + rectWidth,
@@ -2338,7 +2354,12 @@ function HomeNoga(props) {
         top + rectHeight,
       );
       context.lineTo(left + bottomLeft, top + rectHeight);
-      context.quadraticCurveTo(left, top + rectHeight, left, top + rectHeight - bottomLeft);
+      context.quadraticCurveTo(
+        left,
+        top + rectHeight,
+        left,
+        top + rectHeight - bottomLeft,
+      );
       context.lineTo(left, top + topLeft);
       context.quadraticCurveTo(left, top, left + topLeft, top);
       context.closePath();
@@ -2378,7 +2399,9 @@ function HomeNoga(props) {
         bottom: elementRect.bottom - wrapperRect.top,
         radii: {
           topLeft: Number.parseFloat(computedStyle.borderTopLeftRadius || "0"),
-          topRight: Number.parseFloat(computedStyle.borderTopRightRadius || "0"),
+          topRight: Number.parseFloat(
+            computedStyle.borderTopRightRadius || "0",
+          ),
           bottomRight: Number.parseFloat(
             computedStyle.borderBottomRightRadius || "0",
           ),
@@ -2389,84 +2412,103 @@ function HomeNoga(props) {
       };
     };
 
-    const visibleWrapperRects = HOME_DRAWING_VISIBILITY_WRAPPERS.map((wrapper) => {
-      const wrapperElement = mainWrapperRef.current.querySelector(wrapper.selector);
-      const wrapperCanvas = drawingVisibilityCanvasRefs.current.get(wrapper.id);
-      const wrapperRect = getElementCanvasRect(wrapperElement);
+    const visibleWrapperRects = HOME_DRAWING_VISIBILITY_WRAPPERS.map(
+      (wrapper) => {
+        const wrapperElement = mainWrapperRef.current.querySelector(
+          wrapper.selector,
+        );
+        const wrapperCanvas = drawingVisibilityCanvasRefs.current.get(
+          wrapper.id,
+        );
+        const wrapperRect = getElementCanvasRect(wrapperElement);
 
-      if (!wrapperCanvas || !wrapperElement || !wrapperRect) {
-        return null;
-      }
+        if (!wrapperCanvas || !wrapperElement || !wrapperRect) {
+          return null;
+        }
 
-      const wrapperContext = wrapperCanvas.getContext("2d");
-      const wrapperWidth = Math.max(
-        1,
-        Math.round(wrapperRect.right - wrapperRect.left),
-      );
-      const wrapperHeight = Math.max(
-        1,
-        Math.round(wrapperRect.bottom - wrapperRect.top),
-      );
+        const wrapperContext = wrapperCanvas.getContext("2d");
+        const wrapperWidth = Math.max(
+          1,
+          Math.round(wrapperRect.right - wrapperRect.left),
+        );
+        const wrapperHeight = Math.max(
+          1,
+          Math.round(wrapperRect.bottom - wrapperRect.top),
+        );
 
-      if (!wrapperContext) {
+        if (!wrapperContext) {
+          return wrapperRect;
+        }
+
+        if (
+          wrapperCanvas.width !== Math.round(wrapperWidth * devicePixelRatio) ||
+          wrapperCanvas.height !== Math.round(wrapperHeight * devicePixelRatio)
+        ) {
+          wrapperCanvas.width = Math.round(wrapperWidth * devicePixelRatio);
+          wrapperCanvas.height = Math.round(wrapperHeight * devicePixelRatio);
+          wrapperCanvas.style.width = `${wrapperWidth}px`;
+          wrapperCanvas.style.height = `${wrapperHeight}px`;
+        }
+
+        wrapperContext.setTransform(
+          devicePixelRatio,
+          0,
+          0,
+          devicePixelRatio,
+          0,
+          0,
+        );
+        wrapperContext.clearRect(0, 0, wrapperWidth, wrapperHeight);
+
+        homeDrawing.appliedPaths.forEach((segment) => {
+          const rawPoints = Array.isArray(segment?.points)
+            ? segment.points
+            : [];
+
+          if (rawPoints.length < 2) {
+            return;
+          }
+
+          const shiftedPoints = smoothHomeDrawingPoints(rawPoints).map(
+            (point) => ({
+              x: point.x - wrapperRect.left,
+              y: point.y - wrapperRect.top,
+            }),
+          );
+
+          drawHomeLedRopePath(
+            wrapperContext,
+            shiftedPoints,
+            resolveHomeDrawingPalette(segment),
+            {
+              musicSignal: effectiveMusicSignal,
+              animateBulbs: Boolean(effectiveMusicSignal),
+            },
+          );
+        });
+
+        homeDrawing.draftPaths.forEach((segment) => {
+          const rawPoints = Array.isArray(segment?.points)
+            ? segment.points
+            : [];
+
+          if (rawPoints.length < 2) {
+            return;
+          }
+
+          drawHomeSketchPath(
+            wrapperContext,
+            rawPoints.map((point) => ({
+              x: point.x - wrapperRect.left,
+              y: point.y - wrapperRect.top,
+            })),
+            resolveHomeDrawingPalette(segment),
+          );
+        });
+
         return wrapperRect;
-      }
-
-      if (
-        wrapperCanvas.width !== Math.round(wrapperWidth * devicePixelRatio) ||
-        wrapperCanvas.height !== Math.round(wrapperHeight * devicePixelRatio)
-      ) {
-        wrapperCanvas.width = Math.round(wrapperWidth * devicePixelRatio);
-        wrapperCanvas.height = Math.round(wrapperHeight * devicePixelRatio);
-        wrapperCanvas.style.width = `${wrapperWidth}px`;
-        wrapperCanvas.style.height = `${wrapperHeight}px`;
-      }
-
-      wrapperContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      wrapperContext.clearRect(0, 0, wrapperWidth, wrapperHeight);
-
-      homeDrawing.appliedPaths.forEach((segment) => {
-        const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
-
-        if (rawPoints.length < 2) {
-          return;
-        }
-
-        const shiftedPoints = smoothHomeDrawingPoints(rawPoints).map((point) => ({
-          x: point.x - wrapperRect.left,
-          y: point.y - wrapperRect.top,
-        }));
-
-        drawHomeLedRopePath(
-          wrapperContext,
-          shiftedPoints,
-          resolveHomeDrawingPalette(segment),
-          {
-            musicSignal: effectiveMusicSignal,
-            animateBulbs: Boolean(effectiveMusicSignal),
-          },
-        );
-      });
-
-      homeDrawing.draftPaths.forEach((segment) => {
-        const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
-
-        if (rawPoints.length < 2) {
-          return;
-        }
-
-        drawHomeSketchPath(
-          wrapperContext,
-          rawPoints.map((point) => ({
-            x: point.x - wrapperRect.left,
-            y: point.y - wrapperRect.top,
-          })),
-          resolveHomeDrawingPalette(segment),
-        );
-      });
-
-      return wrapperRect;
-    }).filter(Boolean);
+      },
+    ).filter(Boolean);
 
     if (isHomeDrawingAllowListEnabled) {
       const allowListRects = getHomeDrawingAllowListRects();
@@ -2485,7 +2527,11 @@ function HomeNoga(props) {
 
       applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
     } else {
-      applyCanvasRectMask(draftContext, getHomeDrawingMaskedRects(), "destination-out");
+      applyCanvasRectMask(
+        draftContext,
+        getHomeDrawingMaskedRects(),
+        "destination-out",
+      );
       applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
     }
   }, [
@@ -2533,7 +2579,9 @@ function HomeNoga(props) {
   }, [homeDrawing.draftPaths]);
 
   React.useEffect(() => {
-    homeMusicIsPlayingRef.current = Boolean(props.state?.planner_music?.isPlaying);
+    homeMusicIsPlayingRef.current = Boolean(
+      props.state?.planner_music?.isPlaying,
+    );
   }, [props.state?.planner_music?.isPlaying]);
 
   React.useEffect(() => {
@@ -2646,7 +2694,10 @@ function HomeNoga(props) {
 
       event.preventDefault();
 
-      if (isPointInsideNavChildCard(point) || !isPointInsideAllowedZone(point)) {
+      if (
+        isPointInsideNavChildCard(point) ||
+        !isPointInsideAllowedZone(point)
+      ) {
         drawingCurrentPathRef.current = null;
         return;
       }
@@ -3804,7 +3855,7 @@ function HomeNoga(props) {
         >
           <button
             type="button"
-            className="Home_Noga_socialFriendSummary fr"
+            className="Home_Noga_socialFriendSummary"
             onClick={() => handleToggleInlineFriendChat(friend)}
             aria-expanded={isFriendChatOpen}
             aria-controls={
@@ -3814,7 +3865,7 @@ function HomeNoga(props) {
             }
             disabled={!friend.chatId}
           >
-            <div className="Home_Noga_socialFriendIdentity fr">
+            <div className="Home_Noga_socialFriendIdentity">
               <div className="Home_Noga_socialFriendAvatar">
                 {friend.avatarUrl ? (
                   <img
@@ -3826,7 +3877,7 @@ function HomeNoga(props) {
                   <span aria-hidden="true">{friend.initials}</span>
                 )}
               </div>
-              <div className="Home_Noga_socialFriendCopy fc">
+              <div className="Home_Noga_socialFriendCopy">
                 <span className="Home_Noga_socialFriendName">
                   {friend.displayName}
                 </span>
@@ -3856,14 +3907,14 @@ function HomeNoga(props) {
             </div>
           </button>
           {isIncomingCallForFriend ? (
-            <div className="Home_Noga_socialFriendIncomingCall fc">
-              <div className="Home_Noga_socialFriendIncomingCallCopy fc">
+            <div className="Home_Noga_socialFriendIncomingCall">
+              <div className="Home_Noga_socialFriendIncomingCallCopy">
                 <strong>Incoming {incomingCallMode} call</strong>
                 <span>
                   {friend.displayName || "Your friend"} is calling you.
                 </span>
               </div>
-              <div className="Home_Noga_socialFriendIncomingCallActions fr">
+              <div className="Home_Noga_socialFriendIncomingCallActions">
                 <button
                   type="button"
                   className="Home_Noga_socialFriendCallButton Home_Noga_socialFriendCallButton--accept"
@@ -3954,21 +4005,21 @@ function HomeNoga(props) {
       return (
         <li
           key={requestId || requesterId}
-          className="Home_Noga_socialFriendItem Home_Noga_socialFriendItem--request fc"
+          className="Home_Noga_socialFriendItem Home_Noga_socialFriendItem--request"
         >
-          <div className="Home_Noga_socialFriendSummary fr">
-            <div className="Home_Noga_socialFriendIdentity fr">
+          <div className="Home_Noga_socialFriendSummary">
+            <div className="Home_Noga_socialFriendIdentity">
               <div className="Home_Noga_socialFriendAvatar Home_Noga_socialFriendAvatar--request">
                 <i className="fas fa-user-clock" aria-hidden="true"></i>
               </div>
-              <div className="Home_Noga_socialFriendCopy fc">
+              <div className="Home_Noga_socialFriendCopy">
                 <span className="Home_Noga_socialFriendName">
                   {requestLabel}
                 </span>
               </div>
             </div>
           </div>
-          <div className="Home_Noga_socialRequestActions fr">
+          <div className="Home_Noga_socialRequestActions">
             <button
               type="button"
               className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
@@ -4073,13 +4124,12 @@ function HomeNoga(props) {
         .toLowerCase();
       const canSendRequest = candidateMode === "stranger";
       const canCancelRequest = candidateMode === "requestsent";
-      const canAcceptRequest =
-        candidateMode === "requestreceived";
+      const canAcceptRequest = candidateMode === "requestreceived";
       const canRemoveFriend = candidateMode === "friend";
       return (
-        <li key={candidate.id} className="Home_Noga_socialFriendItem fc">
-          <div className="Home_Noga_socialFriendSummary fr">
-            <div className="Home_Noga_socialFriendIdentity fr">
+        <li key={candidate.id} className="Home_Noga_socialFriendItem">
+          <div className="Home_Noga_socialFriendSummary">
+            <div className="Home_Noga_socialFriendIdentity">
               <div className="Home_Noga_socialFriendAvatar">
                 {candidate.avatarUrl ? (
                   <img
@@ -4091,7 +4141,7 @@ function HomeNoga(props) {
                   <span aria-hidden="true">{candidate.initials}</span>
                 )}
               </div>
-              <div className="Home_Noga_socialFriendCopy fc">
+              <div className="Home_Noga_socialFriendCopy">
                 <span className="Home_Noga_socialFriendName">
                   {candidate.displayName}
                 </span>
@@ -4108,7 +4158,7 @@ function HomeNoga(props) {
                 <span>{candidateUserModeMeta.label}</span>
               </span>
             </div>
-            <div className="Home_Noga_socialRequestActions fr">
+            <div className="Home_Noga_socialRequestActions">
               {canSendRequest ? (
                 <button
                   type="button"
@@ -4188,7 +4238,7 @@ function HomeNoga(props) {
   const renderConnectionSearchPanel = React.useCallback(
     ({ value, onChange, placeholder, ariaLabel }) => (
       <div className="Home_Noga_socialRequestSearchRow">
-        <div className="Home_Noga_socialRequestSearchWrap fr">
+        <div className="Home_Noga_socialRequestSearchWrap">
           <i className="fas fa-search" aria-hidden="true"></i>
           <input
             type="text"
@@ -4242,9 +4292,9 @@ function HomeNoga(props) {
   const renderBlockedUserListItem = React.useCallback((user) => {
     const userModeMeta = getFriendUserModeMeta(user?.userMode);
     return (
-      <li key={user.id} className="Home_Noga_socialFriendItem fc">
-        <div className="Home_Noga_socialFriendSummary fr">
-          <div className="Home_Noga_socialFriendIdentity fr">
+      <li key={user.id} className="Home_Noga_socialFriendItem">
+        <div className="Home_Noga_socialFriendSummary">
+          <div className="Home_Noga_socialFriendIdentity">
             <div className="Home_Noga_socialFriendAvatar">
               {user.avatarUrl ? (
                 <img
@@ -4256,7 +4306,7 @@ function HomeNoga(props) {
                 <span aria-hidden="true">{user.initials}</span>
               )}
             </div>
-            <div className="Home_Noga_socialFriendCopy fc">
+            <div className="Home_Noga_socialFriendCopy">
               <span className="Home_Noga_socialFriendName">
                 {user.displayName}
               </span>
@@ -4278,8 +4328,8 @@ function HomeNoga(props) {
 
   const renderBlockedListPanel = React.useCallback(
     () => (
-      <div className="Home_Noga_socialBlockedPanel fc">
-        <div className="Home_Noga_socialBlockedTabs fr">
+      <div className="Home_Noga_socialBlockedPanel">
+        <div className="Home_Noga_socialBlockedTabs">
           {blockedListGroups.map((group) => (
             <button
               key={group.id}
@@ -4294,7 +4344,7 @@ function HomeNoga(props) {
           ))}
         </div>
         {activeBlockedListGroupMeta.tabs.length > 1 ? (
-          <div className="Home_Noga_socialBlockedTabs fr">
+          <div className="Home_Noga_socialBlockedTabs">
             {activeBlockedListGroupMeta.tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -4567,7 +4617,11 @@ function HomeNoga(props) {
     props.state?.bioWrapperWallpaper || DEFAULT_HOME_BIO_WALLPAPER_URL,
   ).trim();
   const currentBioWallpaperSize = Math.min(
-    Math.max(Number(props.state?.bioWrapperWallpaperSize) || DEFAULT_HOME_BIO_WALLPAPER_SIZE, 180),
+    Math.max(
+      Number(props.state?.bioWrapperWallpaperSize) ||
+        DEFAULT_HOME_BIO_WALLPAPER_SIZE,
+      180,
+    ),
     1400,
   );
   const currentBioWallpaperRepeat =
@@ -4585,7 +4639,8 @@ function HomeNoga(props) {
           offsetY: 0,
         },
         homeDrawing:
-          props.state?.homeDrawing && typeof props.state.homeDrawing === "object"
+          props.state?.homeDrawing &&
+          typeof props.state.homeDrawing === "object"
             ? props.state.homeDrawing
             : { draftPaths: [], appliedPaths: [], textItems: [] },
         imageGallery: Array.isArray(props.state?.imageGallery)
@@ -6789,9 +6844,7 @@ function HomeNoga(props) {
       : "no-repeat",
   };
   const drawingControlsPanel = (
-    <div
-      className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open fr"
-    >
+    <div className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open">
       <button
         type="button"
         className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
@@ -7015,10 +7068,7 @@ function HomeNoga(props) {
               />
             </div>
             {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
-            <div
-              id="Home_Noga_preStart_introWrap"
-              className="fr"
-            >
+            <div id="Home_Noga_preStart_introWrap" className="fr">
               {/* Removed Home_Noga_preStart_profileWrapper and its contents */}
               <div
                 id="Home_Noga_main_leftColumn_wrapper"
@@ -7073,7 +7123,7 @@ function HomeNoga(props) {
                       className="Home_Noga_preStart_personalInfoGrid--compact"
                     >
                       <div className="Home_Noga_compactBioCard">
-                        <div className="Home_Noga_compactBioIdentity fc">
+                        <div className="Home_Noga_compactBioIdentity">
                           <h3 className="Home_Noga_compactBioName">
                             {compactDisplayName}
                           </h3>
@@ -7081,7 +7131,7 @@ function HomeNoga(props) {
                             {compactUsername}
                           </p>
                         </div>
-                        <div className="Home_Noga_compactBioSummary fc">
+                        <div className="Home_Noga_compactBioSummary">
                           <p className="Home_Noga_compactBioEyebrow">Bio</p>
                           <p className="Home_Noga_compactBioText">
                             {compactBio}
@@ -7111,8 +7161,8 @@ function HomeNoga(props) {
                               : "Wallpaper"}
                           </button>
                           {isBioWallpaperControlsOpen ? (
-                            <div className="Home_Noga_bioWallpaperControls fc">
-                              <label className="Home_Noga_bioWallpaperControlRow fc">
+                            <div className="Home_Noga_bioWallpaperControls">
+                              <label className="Home_Noga_bioWallpaperControlRow">
                                 <span>Pattern size</span>
                                 <input
                                   type="range"
@@ -7129,7 +7179,7 @@ function HomeNoga(props) {
                                   }
                                 />
                               </label>
-                              <label className="Home_Noga_bioWallpaperControlCheck fr">
+                              <label className="Home_Noga_bioWallpaperControlCheck">
                                 <input
                                   type="checkbox"
                                   checked={currentBioWallpaperRepeat}
@@ -7142,7 +7192,7 @@ function HomeNoga(props) {
                                 />
                                 <span>Repeat for denser motifs</span>
                               </label>
-                              <div className="Home_Noga_bioWallpaperControlActions fr">
+                              <div className="Home_Noga_bioWallpaperControlActions">
                                 <button
                                   type="button"
                                   className="Home_Noga_aboutButton Home_Noga_wallpaperAction"
@@ -7165,18 +7215,18 @@ function HomeNoga(props) {
                     </div>
                   </div>
                 </div>
-                <div className="Home_Noga_friendsEventsWrapper fr">
-                  <div className="Home_Noga_friendsEvents fc">
+                <div className="Home_Noga_friendsEventsWrapper">
+                  <div className="Home_Noga_friendsEvents">
                     {isAboutOpen ? (
                       <>
-                        <div className="Home_Noga_friendsEventsHeader fr">
+                        <div className="Home_Noga_friendsEventsHeader">
                           <h3>About Profile</h3>
                         </div>
-                        <div className="Home_Noga_aboutPanel fc">
+                        <div className="Home_Noga_aboutPanel">
                           {profileColumns.map((column) => (
                             <section
                               key={`about-${column.title}`}
-                              className="Home_Noga_profileInfoColumn fc"
+                              className="Home_Noga_profileInfoColumn"
                             >
                               <h4 className="Home_Noga_profileInfoColumnTitle">
                                 {column.title}
@@ -7193,7 +7243,7 @@ function HomeNoga(props) {
                       </>
                     ) : (
                       <>
-                        <div className="Home_Noga_friendsEventsHeader fr">
+                        <div className="Home_Noga_friendsEventsHeader">
                           <h3>Friends Events</h3>
                         </div>
                         <div className="Home_Noga_friendsEventsEmpty">
@@ -7202,9 +7252,9 @@ function HomeNoga(props) {
                       </>
                     )}
                   </div>
-                  <div className="Home_Noga_friendsGallery fc">
-                    <div className="Home_Noga_friendsGalleryHeader fc">
-                      <div className="Home_Noga_friendsGalleryHeaderTitleRow fr">
+                  <div className="Home_Noga_friendsGallery">
+                    <div className="Home_Noga_friendsGalleryHeader">
+                      <div className="Home_Noga_friendsGalleryHeaderTitleRow">
                         <h3>Gallery</h3>
                         <button
                           type="button"
@@ -7217,9 +7267,7 @@ function HomeNoga(props) {
                               : "Upload gallery item"
                           }
                           title={
-                            isImageGalleryUploading
-                              ? "Uploading..."
-                              : "Upload"
+                            isImageGalleryUploading ? "Uploading..." : "Upload"
                           }
                         >
                           <i
@@ -7228,8 +7276,8 @@ function HomeNoga(props) {
                           ></i>
                         </button>
                       </div>
-                        <div className="Home_Noga_friendsGalleryHeaderControls fr">
-                        <div className="Home_Noga_galleryTabs fr">
+                      <div className="Home_Noga_friendsGalleryHeaderControls">
+                        <div className="Home_Noga_galleryTabs">
                           <button
                             type="button"
                             className={`Home_Noga_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
@@ -7237,7 +7285,10 @@ function HomeNoga(props) {
                             aria-label="Images"
                             title="Images"
                           >
-                            <i className="fi fi-rr-copy-image" aria-hidden="true"></i>
+                            <i
+                              className="fi fi-rr-copy-image"
+                              aria-hidden="true"
+                            ></i>
                           </button>
                           <button
                             type="button"
@@ -7287,7 +7338,7 @@ function HomeNoga(props) {
                             return (
                               <article
                                 key={image.publicId}
-                                className="Home_Noga_galleryItem fc"
+                                className="Home_Noga_galleryItem"
                               >
                                 <div className="Home_Noga_galleryThumbWrap">
                                   <button
@@ -7409,7 +7460,9 @@ function HomeNoga(props) {
                                       type="button"
                                       className="Home_Noga_editPicButton"
                                       onClick={() =>
-                                        handleSetGalleryImageAsBioWallpaper(image)
+                                        handleSetGalleryImageAsBioWallpaper(
+                                          image,
+                                        )
                                       }
                                       disabled={isVideoItem}
                                       aria-label={
@@ -7468,7 +7521,7 @@ function HomeNoga(props) {
               </div>
               <section
                 id="Home_Noga_rightColumn_wrapper"
-                className="Home_Noga_socialFriendsPanel fc"
+                className="Home_Noga_socialFriendsPanel"
               >
                 {renderHomeDrawingVisibilityCanvas("rightColumn")}
                 <div
@@ -7476,9 +7529,9 @@ function HomeNoga(props) {
                   className={`Home_Noga_socialFriendsCard fc${activeFriendCard ? " Home_Noga_socialFriendsCard--chatMounted" : ""}`}
                 >
                   {activeFriendCard ? null : (
-                    <div className="Home_Noga_gallery_Header_wrapper fr">
-                      <div className="Home_Noga_socialFriendsHeaderCopy fc">
-                        <div className="Home_Noga_socialFriendsHeaderTitleRow fr">
+                    <div className="Home_Noga_gallery_Header_wrapper">
+                      <div className="Home_Noga_socialFriendsHeaderCopy">
+                        <div className="Home_Noga_socialFriendsHeaderTitleRow">
                           <h3 className="Home_Noga_socialFriendsTitle">
                             {isReportsWrapperOpen
                               ? "Settings"
@@ -7533,7 +7586,7 @@ function HomeNoga(props) {
                   {isReportsWrapperOpen ? null : (
                     <>
                       {activeFriendsMiniTab === "friends" ? (
-                        <div className="Home_Noga_socialFriendsSearchAndBlocked fc">
+                        <div className="Home_Noga_socialFriendsSearchAndBlocked">
                           {renderFriendSearchPanel()}
                           {renderBlockedListPanel()}
                         </div>
@@ -7567,7 +7620,7 @@ function HomeNoga(props) {
             className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reportsWrapper--closed"}`}
           >
             {renderHomeDrawingVisibilityCanvas("reports")}
-            <div className="Home_Noga_settingsBackRow fr">
+            <div className="Home_Noga_settingsBackRow">
               <button
                 type="button"
                 className="Home_Noga_settingsBackButton"
@@ -7580,9 +7633,9 @@ function HomeNoga(props) {
               </button>
             </div>
             <div className="fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard">
-              <div className="Home_Noga_gallery_Header_wrapper fr">
+              <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>Log Record: Date and Time</h3>
-                <div className="Home_Noga_gallery_Header_wrapperActions fr">
+                <div className="Home_Noga_gallery_Header_wrapperActions">
                   <button
                     type="button"
                     className="Home_Noga_reportDeleteButton"
@@ -7646,7 +7699,7 @@ function HomeNoga(props) {
                             <i className="fas fa-angle-up"></i>
                           </button>
                           <div className="Home_Noga_logRecordCard">
-                            <div className="Home_Noga_logRecordEntry fc">
+                            <div className="Home_Noga_logRecordEntry">
                               <span className="Home_Noga_logRecordLabel">
                                 Login:
                               </span>
@@ -7663,7 +7716,7 @@ function HomeNoga(props) {
                                 })}
                               </span>
                             </div>
-                            <div className="Home_Noga_logRecordEntry fc">
+                            <div className="Home_Noga_logRecordEntry">
                               <span className="Home_Noga_logRecordLabel">
                                 Logout:
                               </span>
@@ -7715,9 +7768,9 @@ function HomeNoga(props) {
 
             {isVisitLogOwner ? (
               <div className="fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard">
-                <div className="Home_Noga_gallery_Header_wrapper fr">
+                <div className="Home_Noga_gallery_Header_wrapper">
                   <h3>Visit Log: App Entries</h3>
-                  <div className="Home_Noga_gallery_Header_wrapperActions fr">
+                  <div className="Home_Noga_gallery_Header_wrapperActions">
                     <button
                       type="button"
                       className="Home_Noga_reportDeleteButton"
@@ -7778,7 +7831,7 @@ function HomeNoga(props) {
                               <i className="fas fa-angle-up"></i>
                             </button>
                             <div className="Home_Noga_logRecordCard Home_Noga_logRecordCard--stacked">
-                              <div className="Home_Noga_logRecordEntry fc">
+                              <div className="Home_Noga_logRecordEntry">
                                 <span className="Home_Noga_logRecordLabel">
                                   IP:
                                 </span>
@@ -7786,7 +7839,7 @@ function HomeNoga(props) {
                                   {`${activeVisitLogRecord.ip || "Unknown IP"} (${activeVisitLogRecord.country || "Unknown"})`}
                                 </span>
                               </div>
-                              <div className="Home_Noga_logRecordEntry fc">
+                              <div className="Home_Noga_logRecordEntry">
                                 <span className="Home_Noga_logRecordLabel">
                                   Visited:
                                 </span>
@@ -7834,7 +7887,7 @@ function HomeNoga(props) {
 
             {isVisitLogOwner ? (
               <div className="fc Home_Noga_preStart_reportsCard">
-                <div className="Home_Noga_gallery_Header_wrapper fr">
+                <div className="Home_Noga_gallery_Header_wrapper">
                   <h3>naghamtrkmani course letter</h3>
                   <button
                     type="button"
@@ -7907,7 +7960,7 @@ function HomeNoga(props) {
             ) : null}
 
             <div className="fc Home_Noga_preStart_reportsCard">
-              <div className="Home_Noga_gallery_Header_wrapper fr">
+              <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>planner music playlist</h3>
                 <button
                   type="button"
@@ -7926,16 +7979,16 @@ function HomeNoga(props) {
                 className={`Home_Noga_reportBody fc${isReportSectionOpen("musicPlaylist") ? " isOpen" : ""}`}
               >
                 <div id="Home_Noga_musicArchivePlaylist_div" className="fc">
-                  <div className="Home_Noga_musicLibraryCompact fc">
-                    <div className="Home_Noga_musicApiHeader fr">
+                  <div className="Home_Noga_musicLibraryCompact">
+                    <div className="Home_Noga_musicApiHeader">
                       <strong>Music library</strong>
                       <span>One compact place for all music sources</span>
                     </div>
 
-                    <div className="Home_Noga_musicLibraryMainRow fr">
-                      <div className="Home_Noga_musicLibraryUnifiedSearch fc">
-                        <div className="Home_Noga_musicLibraryUnifiedSearchContent fc">
-                          <div className="Home_Noga_musicArchiveSearch_row fr">
+                    <div className="Home_Noga_musicLibraryMainRow">
+                      <div className="Home_Noga_musicLibraryUnifiedSearch">
+                        <div className="Home_Noga_musicLibraryUnifiedSearchContent">
+                          <div className="Home_Noga_musicArchiveSearch_row">
                             <input
                               id="Home_Noga_musicLibrarySongSearch_input"
                               type="search"
@@ -7997,11 +8050,11 @@ function HomeNoga(props) {
                             musicLibraryPlaylistItems.map((item) => (
                               <li
                                 key={item.id}
-                                className="Home_Noga_musicLibraryPlaylist_item fr"
+                                className="Home_Noga_musicLibraryPlaylist_item"
                               >
-                                <div className="Home_Noga_musicLibraryPlaylist_copy fc">
+                                <div className="Home_Noga_musicLibraryPlaylist_copy">
                                   <strong>{item.label}</strong>
-                                  <div className="Home_Noga_musicArchiveSearch_meta fr">
+                                  <div className="Home_Noga_musicArchiveSearch_meta">
                                     <span>
                                       {item.meta || "Added to playlist"}
                                     </span>
@@ -8034,9 +8087,9 @@ function HomeNoga(props) {
                         </ul>
                       </div>
 
-                      <div className="Home_Noga_musicLibraryCompactSections fc">
-                        <section className="Home_Noga_musicLibrarySource fc">
-                          <div className="Home_Noga_musicLibrarySourceHeader fr">
+                      <div className="Home_Noga_musicLibraryCompactSections">
+                        <section className="Home_Noga_musicLibrarySource">
+                          <div className="Home_Noga_musicLibrarySourceHeader">
                             <strong>Search results</strong>
                             <span>Song name | Artist name | Source</span>
                           </div>
@@ -8115,7 +8168,7 @@ function HomeNoga(props) {
             </div>
 
             <div className="fc Home_Noga_preStart_reportsCard">
-              <div className="Home_Noga_gallery_Header_wrapper fr">
+              <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>schoolplanner telegram</h3>
                 <button
                   type="button"
@@ -8151,7 +8204,7 @@ function HomeNoga(props) {
                         ? "Your Telegram connection is saved for this account."
                         : "Your Telegram connection is not complete yet."}
                     </p>
-                    <div className="Home_Noga_schoolPlannerTelegram_adminFlags fr">
+                    <div className="Home_Noga_schoolPlannerTelegram_adminFlags">
                       <span>
                         API ID:{" "}
                         {telegramConfigStatus.hasApiId ? "set" : "missing"}
@@ -8276,7 +8329,7 @@ function HomeNoga(props) {
               </div>
             </div>
             <div className="fc Home_Noga_preStart_reportsCard">
-              <div className="Home_Noga_gallery_Header_wrapper fr">
+              <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>Graphic Control</h3>
                 <button
                   type="button"
@@ -8331,7 +8384,7 @@ function HomeNoga(props) {
               className="fc Home_Noga_preStart_reportsCard"
               id="Home_Noga_userMenu_panelCard"
             >
-              <div className="Home_Noga_gallery_Header_wrapper fr">
+              <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>Control Panel</h3>
                 <button
                   type="button"

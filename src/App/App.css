@@ -216,16 +216,6 @@ i:hover {
   cursor: pointer;
 }
 
-.fc {
-  display: flex;
-  flex-direction: column;
-}
-
-.fr {
-  display: flex;
-  flex-direction: row;
-}
-
 li {
   list-style: none;
 }
