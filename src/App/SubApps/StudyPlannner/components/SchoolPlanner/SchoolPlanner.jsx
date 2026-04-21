@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import "./schoolPlanner.css";
 import { apiUrl } from "../../../../../config/api";
+import { normalizeMemoryPayload } from "../../../../../utils/backendUser";
 //.........VARIABLES................
 var courses = [];
 var lectures = [];
@@ -2089,7 +2090,8 @@ export default class SchoolPlanner extends Component {
         }
       })
       .then((jsonData) => {
-        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
+        const memory = normalizeMemoryPayload(jsonData);
+        var lecture_sorted = memory.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -2136,8 +2138,9 @@ export default class SchoolPlanner extends Component {
         }
       })
       .then((jsonData) => {
-        console.log(jsonData.schoolPlanner.lectures);
-        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
+        const memory = normalizeMemoryPayload(jsonData);
+        console.log(memory.lectures);
+        var lecture_sorted = memory.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -2153,7 +2156,7 @@ export default class SchoolPlanner extends Component {
         });
         return {
           lecture_courses: lecture_courses,
-          jsonData: jsonData,
+          memory,
         };
       })
       .then((object) => {
@@ -2162,7 +2165,7 @@ export default class SchoolPlanner extends Component {
         unique_lecture_courses.forEach((unique_lecture_course) => {
           let course_length = 0;
           let course_progress = 0;
-          object.jsonData.schoolPlanner.lectures.forEach((lecture) => {
+          object.memory.lectures.forEach((lecture) => {
             if (
               lecture.lecture_course === unique_lecture_course &&
               lecture.lecture_partOfPlan === true
@@ -2221,12 +2224,13 @@ export default class SchoolPlanner extends Component {
         }
       })
       .then((jsonData) => {
-        courses = jsonData.schoolPlanner.courses;
+        const memory = normalizeMemoryPayload(jsonData);
+        courses = memory.courses;
         if (
           String(this.props.state?.username || "").toLowerCase() ===
           "naghamtrkmani"
         ) {
-          const exportedCourses = jsonData.schoolPlanner.courses
+          const exportedCourses = memory.courses
             .filter((course) => course?._id && course?.course_name)
             .map((course) => ({
               id: course._id,
@@ -2238,7 +2242,7 @@ export default class SchoolPlanner extends Component {
             JSON.stringify(exportedCourses),
           );
         }
-        jsonData.schoolPlanner.courses.forEach((course) => {
+        memory.courses.forEach((course) => {
           if (course.course_name !== "-") courseNames.push(course.course_name);
           course.course_instructors.forEach((instructor) => {
             courseInstructorsNames.push(instructor);

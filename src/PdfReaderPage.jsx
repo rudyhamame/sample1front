@@ -7,7 +7,6 @@ const PdfReaderPage = ({
   state,
   logOut,
   acceptFriend,
-  makeNotificationsRead,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUrl, setFileUrl] = useState("");
@@ -57,7 +56,6 @@ const PdfReaderPage = ({
         state={state}
         logOut={logOut}
         acceptFriend={acceptFriend}
-        makeNotificationsRead={makeNotificationsRead}
         subApps={subApps}
       />
       <input

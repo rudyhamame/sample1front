@@ -13,7 +13,30 @@
 
 #Login_article,
 #Login_article * {
-  transition: none;
+  transition:
+    width 220ms ease,
+    min-width 220ms ease,
+    max-width 220ms ease,
+    height 220ms ease,
+    min-height 220ms ease,
+    max-height 220ms ease,
+    padding 220ms ease,
+    margin 220ms ease,
+    gap 220ms ease,
+    border-radius 220ms ease,
+    transform 220ms ease,
+    opacity 220ms ease,
+    flex-basis 220ms ease,
+    grid-template-columns 220ms ease;
+}
+
+#Login_article button,
+#Login_article button:hover,
+#Login_article button i,
+#Login_article button i:hover,
+#Login_article .fi,
+#Login_article .fi:hover {
+  transition: none !important;
 }
 
 /* Page Shell */
@@ -84,21 +107,82 @@
 
 /* Main Layout */
 #Login_main {
-  --login-main-gap: 5px;
-  display: flex;
-  flex-direction: row;
+  --login-main-gap: 50px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(420px, 420px);
+  grid-auto-rows: minmax(0, 1fr);
   gap: var(--login-main-gap);
-  align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
+  align-items: space-around;
   flex: 1 0 calc(100dvh - var(--login-footer-height));
   flex-shrink: 0;
-  height: auto;
-  align-self: stretch;
-  width: 100%;
+  height: 100%;
+  width: min(100%, 1440px);
+  margin: 0 auto;
   min-height: calc(100dvh - var(--login-footer-height));
   overflow: visible;
-  padding: 100px 20px 40px;
+  background:
+    radial-gradient(circle, rgba(1, 121, 111, 0.08) 1px, transparent 1.2px),
+    radial-gradient(circle, rgba(21, 185, 168, 0.05) 1px, transparent 1.2px);
+  background-size: 22px 22px, 22px 22px;
+  background-position: 0 0, 11px 11px;
+  padding: 42px;
   box-sizing: border-box;
+  position: relative;
+}
+
+#Login_main.Login_main--post-signup {
+  grid-template-columns: minmax(640px, 920px);
+  justify-content: center;
+}
+
+#Login_main.Login_main--post-signup #Login_brandPanel {
+  display: none;
+}
+
+#Login_main.Login_main--post-signup #Login_authPanel {
+  grid-column: 1;
+  justify-self: center;
+  align-self: stretch;
+  width: 100%;
+  max-width: 920px;
+}
+
+#Login_main.Login_main--post-signup #Login_authCard {
+  width: 100%;
+  max-width: 920px;
+}
+
+#Login_main.Login_main--post-signup #Login_authFields.is-scrollable {
+  max-height: min(58vh, 620px);
+}
+
+#Login_brandPanel,
+#Login_authPanel {
+  position: relative;
+  z-index: 1;
+}
+
+#Login_brandPanel::after {
+  content: "";
+  position: absolute;
+  top: 56px;
+  bottom: 56px;
+  right: calc(var(--login-main-gap) / -2);
+  width: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(1, 121, 111, 0),
+    rgba(1, 121, 111, 0.22) 14%,
+    rgba(21, 185, 168, 0.5) 50%,
+    rgba(1, 121, 111, 0.22) 86%,
+    rgba(1, 121, 111, 0)
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 24px rgba(21, 185, 168, 0.14);
+  pointer-events: none;
 }
 
 #Login_realityPanel {
@@ -137,59 +221,104 @@
     inset 0 -1px 0 rgba(126, 151, 158, 0.14),
     0 8px 16px rgba(87, 118, 127, 0.1);
 }
-#Login_loginLogo_container {
+#Login_brandPanel {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   gap: 0.08em;
-  height: min-content;
+  height: 100%;
+  min-height: 0;
   justify-content: center;
   align-items: center;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 0 12px 12px;
+  padding: 0 20px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   container-type: inline-size;
+  justify-self: stretch;
+  align-self: stretch;
+  position: relative;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+#Login_brandPanel::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: min(90%, 620px);
+  height: min(70%, 300px);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(21, 185, 168, 0.12), rgba(21, 185, 168, 0));
+  filter: blur(12px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+#Login_brandPanel.is-collapsed {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#Login_brandContentWrap {
+  width: min(100%, 420px);
+  min-height: var(--login-aligned-block-min-height, 0px);
+  justify-content: flex-start;
+  align-items: center;
 }
 
 /* Mode Navigation */
-#Login_modeNav {
+#Login_authModeSwitch {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   box-sizing: border-box;
 }
 
-#Login_modeNav h4 {
-  flex: 1 1 50%;
+.Login_authModeSwitchButton {
+  width: 100%;
   margin: 0;
-  padding: 10px 8px 12px;
+  padding: 10px 8px;
   text-align: center;
   font-size: var(--login-form-text-size);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: rgba(0, 0, 0, 0.46);
-  background-color: transparent;
-  transition: color 160ms ease, border-color 160ms ease, transform 160ms ease;
-  box-sizing: border-box;
+  background: none;
+  border: none;
+  box-shadow: none;
   cursor: pointer;
+  box-sizing: border-box;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(1, 121, 111, 0.28);
+  transition: color 160ms ease, text-decoration-color 160ms ease;
 }
 
-#Login_modeNav h4:hover,
-#Login_modeNav h4.is-active {
+.Login_authModeSwitchButton:hover {
   color: #01796f;
+  text-decoration-color: rgba(1, 121, 111, 0.72);
 }
 
-#Login_loginShow_text,
-#Login_signupShow_text {
-  font-size: inherit;
+.Login_authModeSwitchButton:active {
+  color: #015f57;
 }
 
 /* Brand */
-#Login_loginLogo_text {
+#Login_brandWordmark {
   font-family: "Arial Black", "Archivo Black", sans-serif;
   font-size: min(19cqi, 9rem);
   font-weight: 900;
@@ -198,7 +327,7 @@
   text-align: center;
   line-height: 0.92;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: clip;
   width: 100%;
   max-width: 100%;
@@ -207,11 +336,20 @@
   position: relative;
 }
 
-#Login_loginLogo_text .Login_loginLogo_mark {
+.Login_brandWordmarkFlex {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+
+#Login_brandWordmark .Login_brandMark {
   letter-spacing: 0.05em;
 }
 
-#Login_loginLogo_text .Login_loginLogo_divider {
+#Login_brandWordmark .Login_brandDivider {
   display: inline-block;
   font-weight: 600;
   font-size: 0.82em;
@@ -221,10 +359,10 @@
   transform: translateY(-0.01em) scaleY(0.8);
 }
 
-#Login_loginLogo_text .Login_loginLogo_name {
+#Login_brandWordmark .Login_brandName {
   letter-spacing: 0.08em;
 }
-#Login_loginLogo_cloneText {
+#Login_brandProduct {
   font-family: "Exo", sans-serif;
   font-size: min(7.4cqi, 3.5rem);
   font-weight: 600;
@@ -243,12 +381,12 @@
     0 0 18px rgba(21, 185, 168, 0.22),
     0 6px 18px rgba(8, 92, 102, 0.12);
 }
-#Login_subLoginLogo_text {
+#Login_brandTagline {
   font-family: "Playwrite DK Uloopet Guides", cursive;
   font-size: min(2.2cqi, 1.1rem);
   font-weight: 400;
   font-style: normal;
-  color: var(black);
+  color: var(--black);
   height: min-content;
   text-align: center;
   align-self: center;
@@ -261,22 +399,29 @@
 }
 
 /* Form Shell */
-#Login_loginForm_container {
+#Login_authPanel {
   display: flex;
-  flex: 3 1 0;
-  height: min-content;
+  grid-column: 2;
+  height: 100%;
+  max-height: 100%;
   justify-content: center;
   align-items: center;
-  width: auto;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  min-height: 0;
   overflow: visible;
-  padding: 12px;
-  padding-bottom: clamp(10px, 2vh, 24px);
+  padding: 0;
   box-sizing: border-box;
+  border-radius: 30px;
+  justify-self: stretch;
+  align-self: stretch;
+  opacity: 0.94;
+  filter: saturate(0.92);
+  transform: none;
 }
 
-#Login_loginForm_container.is-collapsed {
+#Login_authPanel.is-collapsed {
   flex: 0 0 0;
   width: 0;
   min-width: 0;
@@ -286,685 +431,373 @@
   overflow: hidden;
 }
 
-#Login_loginFrom_form {
+#Login_authCard {
   --login-form-text-size: 0.95rem;
   --login-form-strong-text-size: 0.98rem;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(8px, 1.2vh, 10px);
-  padding: 5px;
-  background-color: var(--brightestWhite);
-  border-radius: 16px;
-  text-align: center;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 14px;
   width: 100%;
-  max-width: 100%;
+  max-width: 420px;
   min-width: 0;
-  overflow: hidden;
+  min-height: 0;
+  height: auto;
+  max-height: 100%;
+  padding: 28px 28px 24px;
+  background:
+    radial-gradient(circle at 10% 18%, rgba(220, 170, 38, 0.32) 0 1.3px, transparent 1.3px 28px),
+    radial-gradient(circle at 78% 26%, rgba(190, 137, 18, 0.27) 0 1.2px, transparent 1.2px 24px),
+    radial-gradient(circle at 28% 74%, rgba(158, 111, 10, 0.23) 0 1px, transparent 1px 26px),
+    radial-gradient(circle at 66% 82%, rgba(232, 184, 54, 0.24) 0 1px, transparent 1px 22px),
+    repeating-radial-gradient(
+      circle at 14% 36%,
+      rgba(198, 146, 26, 0.26) 0 1.1px,
+      transparent 1.1px 12px,
+      rgba(198, 146, 26, 0.18) 12px 12.8px,
+      transparent 12.8px 23px
+    ),
+    repeating-radial-gradient(
+      circle at 82% 70%,
+      rgba(171, 121, 14, 0.22) 0 1px,
+      transparent 1px 10px,
+      rgba(171, 121, 14, 0.14) 10px 10.7px,
+      transparent 10.7px 20px
+    ),
+    linear-gradient(180deg, rgba(252, 254, 254, 0.82), rgba(239, 246, 246, 0.8));
+  border-radius: 34px;
+  text-align: center;
+  box-shadow:
+    0 26px 56px rgba(9, 69, 80, 0.16),
+    0 12px 26px rgba(9, 69, 80, 0.1),
+    0 2px 6px rgba(9, 69, 80, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -12px 20px rgba(120, 86, 8, 0.07);
+  overflow: visible;
   box-sizing: border-box;
-  border: 1px solid rgba(1, 121, 111, 0.08);
+  border: 1px solid rgba(146, 109, 18, 0.2);
 }
 
-@media screen and (min-width: 501px) {
-  #Login_loginLogo_container {
-    flex: 3 1 0;
-    padding: 0 12px 12px;
-  }
-
-  #Login_loginForm_container {
-    flex: 1 1 0;
-  }
+#Login_authSubmitButton,
+#Login_authModeSwitch,
+#Login_authFeedback {
+  width: 100%;
 }
 
-@media screen and (min-width: 1001px) {
-  #Login_main {
-    display: grid;
-    grid-template-columns: minmax(280px, 1.02fr) minmax(320px, 0.92fr);
-    grid-auto-rows: minmax(0, 1fr);
-    position: relative;
-    align-items: stretch;
-    justify-content: center;
-    gap: 22px;
-    width: min(100%, 1440px);
-    margin: 0 auto;
-    min-height: 0;
-    height: 100%;
-  }
-
-  #Login_loginLogo_container {
-    align-items: stretch;
-    justify-content: center;
-    padding: 0;
-  }
-
-  #Login_main:not(.Login_main--reality-open) {
-    align-items: center;
-  }
-
-  #Login_main:not(.Login_main--reality-open) #Login_loginLogo_container,
-  #Login_main:not(.Login_main--reality-open) #Login_loginForm_container {
-    align-self: center;
-    height: auto;
-  }
-
-  #Login_article.Login_article--reality-open #Login_main {
-    padding-top: 28px;
-    padding-bottom: 20px;
-  }
-
-  #Login_main.Login_main--reality-open {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  #Login_realityPanel {
-    display: flex;
-    align-self: stretch;
-    grid-column: 1;
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    height: 100%;
-    width: 0;
-    max-width: 0;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateX(18px);
-    overflow: hidden;
-    transition: opacity 220ms ease, transform 220ms ease;
-  }
-
-  #Login_realityPanel.is-open {
-    width: 100%;
-    max-width: none;
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
-  }
-
-  #Login_main:not(.Login_main--reality-open) #Login_realityPanel {
-    display: none;
-  }
-
-  #Login_realityPanel_inner {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    align-self: stretch;
-    height: 100%;
-    min-height: 0;
-    max-height: 100%;
-    min-width: 0;
-    max-width: 100%;
-    padding: 26px 24px;
-    border-radius: 26px;
-    border: 1px solid rgba(124, 157, 165, 0.18);
-    background: linear-gradient(
-      180deg,
-      rgba(247, 251, 252, 0.96),
-      rgba(238, 246, 247, 0.96)
-    );
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.86),
-      0 22px 44px rgba(94, 124, 133, 0.1);
-    justify-content: flex-start;
-    align-items: stretch;
-    gap: 12px;
-    overflow: hidden;
-  }
-
-  #Login_realityStickyHeader {
-    position: sticky;
-    top: -26px;
-    z-index: 1;
-    margin: -26px -24px 0;
-    background: rgba(247, 251, 252, 1);
-  }
-
-  #Login_realityBody {
-    display: grid;
-    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 3.1fr);
-    align-items: stretch;
-    gap: 14px;
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    padding-bottom: 10px;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-
-  #Login_summaryPanel {
-    display: flex;
-    align-self: stretch;
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-    max-width: 100%;
-    overflow: visible;
-  }
-
-  #Login_summaryPanel_inner {
-    display: flex;
-    flex-direction: column;
-    align-self: stretch;
-    width: 100%;
-    gap: 10px;
-    min-height: 0;
-    max-height: 100%;
-    max-width: 100%;
-    overflow: hidden;
-    position: sticky;
-    top: 92px;
-    padding: 14px;
-    box-sizing: border-box;
-    border-radius: 18px 18px 22px 22px;
-    border: 1px solid rgba(124, 157, 165, 0.2);
-    background: linear-gradient(
-      180deg,
-      rgba(252, 254, 254, 0.98),
-      rgba(240, 247, 248, 0.96)
-    );
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.9),
-      0 12px 24px rgba(94, 124, 133, 0.08);
-  }
-
-  #Login_summaryPanel_title {
-    margin: 0;
-    color: #0f5058;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: "IBM Plex Mono", monospace;
-  }
-
-  #Login_summaryInput {
-    width: 100%;
-    min-height: 150px;
-    resize: vertical;
-    box-sizing: border-box;
-    padding: 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(124, 157, 165, 0.22);
-    background: rgba(255, 255, 255, 0.96);
-    color: rgba(26, 59, 67, 0.86);
-    font-size: 0.74rem;
-    line-height: 1.45;
-    font-family: "IBM Plex Mono", monospace;
-    outline: none;
-  }
-
-  #Login_summaryInput:focus {
-    border-color: rgba(38, 111, 119, 0.34);
-    box-shadow: 0 0 0 3px rgba(21, 185, 168, 0.12);
-  }
-
-  #Login_summaryButton {
-    width: 100%;
-    min-height: 38px;
-    border-radius: 12px;
-    border: 1px solid rgba(74, 104, 110, 0.32);
-    background: linear-gradient(180deg, #22cfbb 0%, #14b8a7 52%, #0fa293 100%);
-    color: #fff;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-  }
-
-  #Login_summaryButton:disabled {
-    opacity: 0.58;
-    cursor: progress;
-  }
-
-  #Login_summaryOutput {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    padding: 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(124, 157, 165, 0.18);
-    background: rgba(253, 252, 247, 0.92);
-    overflow: auto;
-  }
-
-  #Login_summaryPlaceholder,
-  #Login_summaryError,
-  #Login_summaryReply {
-    margin: 0;
-    color: rgba(26, 59, 67, 0.76);
-    font-size: 0.72rem;
-    line-height: 1.5;
-    font-family: "IBM Plex Mono", monospace;
-    white-space: pre-wrap;
-  }
-
-  #Login_summaryError {
-    color: #8a3a2c;
-  }
-
-  #Login_realityEditorColumn {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-    max-width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 4px;
-    padding-bottom: 4px;
-    box-sizing: border-box;
-  }
-
-  #Login_realityPanel_eyebrowRow {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 26px 24px 14px;
-    border-bottom: 1px solid rgba(124, 157, 165, 0.22);
-    background: transparent;
-  }
-
-  #Login_realityPanelBackButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 30px;
-    height: 30px;
-    border: 1px solid rgba(124, 157, 165, 0.2);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    color: rgba(30, 82, 90, 0.78);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-    cursor: pointer;
-  }
-
-  #Login_realityPanelBackButton i {
-    font-size: 0.82rem;
-  }
-
-  #Login_realityPanel_eyebrow {
-    margin: 0;
-    padding: 0;
-    border-bottom: none;
-    color: rgba(30, 82, 90, 0.64);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.68rem;
-    font-weight: 700;
-    font-family: "IBM Plex Mono", monospace;
-    background: transparent;
-    flex: 1 1 auto;
-    text-align: center;
-  }
-
-  #Login_realityToolbarToggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 30px;
-    height: 30px;
-    border: 1px solid rgba(124, 157, 165, 0.2);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    color: rgba(30, 82, 90, 0.78);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-    cursor: pointer;
-  }
-
-  #Login_realityToolbarToggle i {
-    font-size: 0.82rem;
-  }
-
-  #Login_realityControls {
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    max-height: 0;
-    padding: 0 24px;
-    border-bottom: 0 solid rgba(124, 157, 165, 0.14);
-    background: transparent;
-    overflow-x: hidden;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    opacity: 0;
-    pointer-events: none;
-    transition:
-      max-height 180ms ease,
-      padding 180ms ease,
-      opacity 140ms ease,
-      border-bottom-width 180ms ease;
-  }
-
-  #Login_realityControls::-webkit-scrollbar {
-    display: none;
-  }
-
-  #Login_realityControls.is-open {
-    max-height: 54px;
-    padding: 8px 24px 10px;
-    border-bottom-width: 1px;
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .Login_realityControlButton,
-  .Login_realityControlField input[type="color"] {
-    border: 1px solid rgba(124, 157, 165, 0.22);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.94);
-    color: #1a3b43;
-    font-family: "IBM Plex Mono", monospace;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  }
-
-  .Login_realityControlButton {
-    min-width: 34px;
-    height: 34px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition:
-      background-color 160ms ease,
-      border-color 160ms ease,
-      color 160ms ease,
-      box-shadow 160ms ease,
-      transform 160ms ease;
-  }
-
-  .Login_realityControlButton:hover:not(:disabled) {
-    border-color: rgba(74, 104, 110, 0.34);
-    background: rgba(239, 247, 248, 0.98);
-  }
-
-  .Login_realityControlButton:disabled {
-    opacity: 0.42;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-
-  .Login_realityControlButton--pen {
-    min-width: 36px;
-    padding: 0 8px;
-  }
-
-  .Login_realityControlButton--align {
-    min-width: 34px;
-    padding: 0 8px;
-  }
-
-  .Login_realityControlButton--align i {
-    font-size: 0.92rem;
-  }
-
-  .Login_realityControlButton--erase {
-    min-width: 34px;
-    padding: 0 8px;
-  }
-
-  .Login_realityControlButton--erase i {
-    font-size: 0.86rem;
-  }
-
-  .Login_realityControlButton--pen i {
-    font-size: 1rem;
-  }
-
-  .Login_realityControlButton--pen.is-armed {
-    border-color: rgba(74, 104, 110, 0.34);
-    background: rgba(236, 245, 247, 0.98);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.86),
-      0 0 0 2px rgba(255, 241, 168, 0.38);
-  }
-
-  .Login_realityControlButton--erase.is-armed {
-    border-color: rgba(74, 104, 110, 0.34);
-    background: rgba(236, 245, 247, 0.98);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.86),
-      0 0 0 2px rgba(200, 215, 219, 0.42);
-  }
-
-  .Login_realityControlField {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: rgba(26, 59, 67, 0.76);
-    font-size: 0.66rem;
-    font-family: "IBM Plex Mono", monospace;
-    flex: 0 0 auto;
-  }
-
-  .Login_realityControlField span {
-    white-space: nowrap;
-  }
-
-  .Login_realityControlMonitor {
-    min-width: 46px;
-    height: 34px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(124, 157, 165, 0.18);
-    border-radius: 10px;
-    background: rgba(246, 250, 250, 0.86);
-    color: rgba(26, 59, 67, 0.54);
-    font-size: 0.68rem;
-    line-height: 1;
-    font-family: "IBM Plex Mono", monospace;
-  }
-
-  .Login_realityControlMonitor.is-active {
-    border-color: rgba(56, 94, 101, 0.28);
-    background: rgba(255, 255, 255, 0.96);
-    color: #0f5058;
-  }
-
-  .Login_realityControlField input[type="color"] {
-    width: 34px;
-    height: 34px;
-    padding: 3px;
-    cursor: pointer;
-  }
-
-  .Login_realityControlButton--size {
-    min-width: 38px;
-    padding: 0 8px;
-    font-size: 0.74rem;
-    letter-spacing: 0.02em;
-    font-weight: 800;
-  }
-
-  .Login_realityControlButton--size:not(:disabled) {
-    color: #0f5058;
-    border-color: rgba(56, 94, 101, 0.28);
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(237, 245, 246, 0.96)
-    );
-  }
-
-  .Login_realityControlButton--size:hover:not(:disabled) {
-    transform: translateY(-1px);
-  }
-
-  #Login_realityEditor {
-    flex: 1 0 auto;
-    --login-reality-line-height: 2em;
-    gap: 0;
-    min-height: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    outline: none;
-    color: rgba(26, 59, 67, 0.82);
-    font-size: 9pt;
-    line-height: var(--login-reality-line-height);
-    font-family: "IBM Plex Mono", monospace;
-    padding: 14px 14px 18px;
-    border-radius: 16px 16px 22px 22px;
-    background-color: rgba(253, 252, 247, 0.96);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.92),
-      inset 0 0 0 1px rgba(176, 196, 201, 0.18);
-  }
-
-  #Login_realityEditor,
-  #Login_realityEditor * {
-    font-family: "IBM Plex Mono", monospace;
-  }
-
-  #Login_realityEditor h3 {
-    margin: 0 0 calc(var(--login-reality-line-height) * 0.5);
-    color: #0f3f47;
-    font-family: "IBM Plex Mono", monospace;
-    font-size: clamp(1.02rem, 1.25vw, 1.34rem);
-    line-height: 1.3;
-  }
-
-  #Login_realityEditor p {
-    margin: 0;
-    padding: 0.08em 0 0.06em;
-    margin-bottom: calc(var(--login-reality-line-height) * 0.18);
-  }
-
-  #Login_realitySaveStatus {
-    position: sticky;
-    bottom: -26px;
-    z-index: 1;
-    margin: 0 -24px -26px;
-    padding: 10px 24px 26px;
-    border-top: 1px solid rgba(124, 157, 165, 0.14);
-    background: rgba(238, 246, 247, 1);
-    border-bottom-left-radius: 26px;
-    border-bottom-right-radius: 26px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-    color: rgba(30, 82, 90, 0.58);
-    font-size: 0.7rem;
-    line-height: 1.4;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: "IBM Plex Mono", monospace;
-  }
-
-  #Login_realityToggle {
-    display: inline-flex;
-    position: absolute;
-    top: 50%;
-    left: max(12px, calc((100% - min(100%, 1440px)) / 2 - 8px));
-    transform: translateY(-50%);
-    margin-left: 0;
-  }
-
-  #Login_loginLogo_container {
-    --login-logo-main-size: clamp(2.4rem, 16cqi, 5rem);
-    grid-column: 1;
-    justify-content: center;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
-    width: 100%;
-    max-width: min(100%, 34rem);
-    justify-self: center;
-    overflow: hidden;
-  }
-
-  #Login_main.Login_main--reality-open #Login_loginLogo_container,
-  #Login_loginLogo_container.is-collapsed {
-    display: none;
-  }
-
-  #Login_article.Login_article--reality-open #Login_realityToggle {
-    top: 28px;
-    left: 12px;
-    transform: none;
-  }
-
-  #Login_logoStack {
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  #Login_loginForm_container {
-    grid-column: 2;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  #Login_main.Login_main--reality-open #Login_loginForm_container {
-    display: none;
-  }
+#Login_authEditUsernameButton {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(1, 121, 111, 0.24);
+  background: linear-gradient(
+    180deg,
+    rgba(240, 251, 248, 0.94),
+    rgba(221, 241, 236, 0.9)
+  );
+  color: rgba(1, 110, 101, 0.92);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 10px;
 }
+
+#Login_authEditUsernameButton:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+#Login_authPendingSignupActionsRow {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#Login_authPendingSignupActionsRow #Login_authEditUsernameButton {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+}
+
+#Login_authContinueToPostSignupButton {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(1, 121, 111, 0.24);
+  background: linear-gradient(
+    180deg,
+    rgba(240, 251, 248, 0.94),
+    rgba(221, 241, 236, 0.9)
+  );
+  color: rgba(1, 110, 101, 0.92);
+  cursor: pointer;
+}
+
+#Login_authContinueToPostSignupButton i {
+  font-size: 0.9rem;
+}
+
+#Login_authFields {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 14px;
+  padding: 14px 12px 14px 14px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 252, 252, 0.98),
+    rgba(241, 248, 249, 0.98)
+  );
+  border-radius: 20px;
+  border: 1px solid rgba(124, 157, 165, 0.24);
+  box-shadow:
+    0 8px 16px rgba(76, 104, 112, 0.09),
+    0 2px 4px rgba(76, 104, 112, 0.08),
+    inset 0 2px 10px rgba(76, 104, 112, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+#Login_authFields.is-scrollable {
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#Login_authActions {
+  width: 100%;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+#Login_authCardHeader {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+#Login_authCardHeader #Login_authFeedback {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+#Login_authBackButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(1, 121, 111, 0.24);
+  background: linear-gradient(180deg, rgba(240, 251, 248, 0.94), rgba(218, 241, 236, 0.9));
+  color: rgba(1, 121, 111, 0.9);
+  font-size: 1rem;
+  cursor: pointer;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+#Login_authBackButton:hover {
+  background: linear-gradient(180deg, rgba(226, 247, 242, 0.96), rgba(196, 232, 224, 0.94));
+  border-color: rgba(1, 121, 111, 0.4);
+  color: rgba(1, 108, 99, 0.95);
+}
+
+#Login_authBackButton:active {
+  background: linear-gradient(180deg, rgba(205, 236, 228, 0.96), rgba(176, 220, 210, 0.95));
+}
+
+
 
 /* Form Controls */
-#Login_loginFrom_form input {
+.Login_authField {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.Login_authInlineRow {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.Login_authInlineRow > label[for="complete-profile-phoneCountry"] {
+  flex: 0 0 220px;
+  max-width: 42%;
+}
+
+.Login_authInlineRow > label[for="complete-profile-phone"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.Login_authInputWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.Login_authFieldLabel {
+  font-size: 0.72rem;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(1, 121, 111, 0.86);
+  padding-left: 2px;
+}
+
+#Login_authCard input,
+#Login_authCard select {
   font-size: var(--login-form-text-size);
   width: 100%;
   box-sizing: border-box;
-  min-height: 42px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  min-height: 52px;
+  padding: 12px 14px;
+  border-radius: 14px;
   border: 1px solid rgba(1, 121, 111, 0.2);
-  background: #fff;
+  background: rgba(247, 251, 250, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
-#Login_loginFrom_form button {
-  background: linear-gradient(180deg, #22cfbb 0%, #14b8a7 52%, #0fa293 100%);
-  border-radius: 10px;
-  border: 1.5px solid rgba(74, 104, 110, 0.34);
-  color: var(--brightestWhite);
+#Login_authCard .Login_authInput--password {
+  padding-right: 44px;
+}
+
+.Login_passwordToggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) !important;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(1, 121, 111, 0.78);
+  cursor: pointer;
+  padding: 0;
+}
+
+.Login_passwordToggle:hover {
+  transform: translateY(-50%) !important;
+  background: rgba(1, 121, 111, 0.1);
+  color: rgba(1, 103, 95, 0.94);
+}
+
+.Login_passwordToggle:active,
+.Login_passwordToggle:focus,
+.Login_passwordToggle:focus-visible {
+  transform: translateY(-50%) !important;
+}
+
+.Login_passwordToggle i {
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+#Login_authSubmitButton {
+  background: linear-gradient(135deg, #0a9e8e, #018579 58%, #006f65);
+  border-radius: 14px;
+  border: 1.5px solid rgba(1, 86, 79, 0.6);
+  color: rgba(247, 255, 253, 0.98);
   font-weight: bold;
   font-size: var(--login-form-strong-text-size);
   width: 100%;
-  min-height: 42px;
+  min-height: 52px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.32),
-    inset 0 -2px 0 rgba(10, 116, 105, 0.26),
-    0 1px 0 rgba(255, 255, 255, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 5px 14px rgba(1, 103, 94, 0.26);
 }
 
-#Login_loginFrom_form button:hover {
-  background: linear-gradient(180deg, #2ad7c2 0%, #18c1af 52%, #11ab9b 100%);
-  border-color: rgba(74, 104, 110, 0.4);
+#Login_authSubmitButton:hover {
+  background: linear-gradient(180deg, #27b9aa 0%, #0a9f90 52%, #028478 100%);
+  border-color: rgba(1, 86, 79, 0.74);
 }
 
-#Login_loginFrom_form button:active {
-  background: linear-gradient(180deg, #18bba8 0%, #10ab9a 52%, #0c9587 100%);
+#Login_authSubmitButton:active {
+  background: linear-gradient(180deg, #0e9688 0%, #047e73 52%, #026a61 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 2px 4px rgba(8, 84, 77, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 2px 4px rgba(1, 72, 66, 0.26);
 }
 
-#Login_loginFrom_form h4 {
+#Login_authSubmitButton:disabled {
+  background: linear-gradient(135deg, rgba(107, 173, 165, 0.48), rgba(87, 152, 145, 0.44));
+  border-color: rgba(1, 86, 79, 0.2);
+  color: rgba(235, 246, 244, 0.5);
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.Login_authSubmitRow {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+.Login_authSubmitRow #Login_authSubmitButton {
+  flex: 1 1 auto;
+}
+
+#Login_authClearButton {
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(1, 121, 111, 0.28);
+  background: linear-gradient(180deg, rgba(240, 251, 248, 0.9), rgba(220, 241, 236, 0.88));
+  color: rgba(1, 108, 99, 0.92);
   font-size: var(--login-form-text-size);
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
+
+#Login_authClearButton:hover {
+  background: linear-gradient(180deg, rgba(227, 247, 242, 0.96), rgba(198, 232, 224, 0.92));
+  border-color: rgba(1, 121, 111, 0.48);
+  color: rgba(1, 96, 88, 0.96);
+}
+
+#Login_authClearButton:active {
+  background: linear-gradient(180deg, rgba(205, 236, 228, 0.96), rgba(179, 220, 211, 0.93));
+}
+
 
 /* Feedback */
-#Login_feedback_text {
+#Login_authFeedback {
   width: 100%;
   margin: 6px 0 0;
   padding: 12px 14px;
   text-align: center;
-  color: #7a271a;
+  color: rgba(1, 121, 111, 0.92);
   line-height: 1.55;
   min-height: 48px;
   border-radius: 12px;
@@ -986,44 +819,94 @@
   --login-footer-scale: 1;
   --login-footer-width: 100%;
   background-color: #fff;
-  text-align: center;
   box-shadow: 0px 60px 100px rgba(18, 118, 175, 0.486);
   width: var(--login-footer-width);
-  height: var(--login-footer-height);
-  flex: 0 0 var(--login-footer-height);
+  height: min-content;
+  flex: 0 0 auto;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   padding: 10px 20px;
   box-sizing: border-box;
   transform: scale(var(--login-footer-scale));
   transform-origin: bottom center;
 }
 
+
+
+
 #Login_footer.is-hidden {
   display: none;
 }
 
 #Login_copyright_text {
-  font-weight: 300;
-  font-size: 9pt;
+  font-family: "Archivo Black", "Raleway", sans-serif;
+  font-weight: 400;
+  font-size: 10pt;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #0d695e;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
   margin: 0;
 }
 
 #Login_poweredBy_text {
-  margin: 8px auto 0;
-  max-width: 680px;
+  margin: 0;
   font-size: 8.5pt;
   line-height: 1.5;
   color: rgba(0, 0, 0, 0.68);
 }
 
 #Login_lastUpdated_text {
-  margin: 8px auto 0;
-  max-width: 680px;
+  margin: 3px 0 0;
   font-size: 7.4pt;
   line-height: 1.4;
   letter-spacing: 0.03em;
   color: rgba(0, 0, 0, 0.34);
   font-weight: 300;
+}
+
+#Login_footer_left {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-right: calc(24px / 2);
+}
+
+#Login_footer_left::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(1, 121, 111, 0),
+    rgba(1, 121, 111, 0.22) 14%,
+    rgba(21, 185, 168, 0.5) 50%,
+    rgba(1, 121, 111, 0.22) 86%,
+    rgba(1, 121, 111, 0)
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 0 8px rgba(21, 185, 168, 0.14);
+  pointer-events: none;
+}
+
+#Login_footer_right {
+  padding-left: calc(24px / 2);
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.profile-section{
+  gap:5px;
 }

@@ -98,16 +98,18 @@
 
 .pdfReader_uploadDropdown {
   position: absolute;
-  top: 110%;
+  top: calc(100% + 8px);
   left: 0;
-  min-width: 240px;
-  padding: 12px;
+  min-width: 280px;
+  max-width: min(420px, 72vw);
+  padding: 12px 12px 10px;
   border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(8, 21, 24, 0.92), rgba(23, 58, 66, 0.96)),
-    rgba(8, 21, 24, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, rgba(245, 251, 252, 0.98), rgba(224, 244, 248, 0.95));
+  border: 1px solid var(--pdf-reader-day-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 16px 34px rgba(8, 21, 24, 0.16);
+  backdrop-filter: blur(4px);
   z-index: 10;
 }
 
@@ -115,24 +117,39 @@
   width: 100%;
   text-align: left;
   padding: 10px 12px;
-  border: none;
+  border: 1px solid var(--pdf-reader-day-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(8, 21, 24, 0.12);
   color: var(--pdf-reader-day-text);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
   cursor: pointer;
   margin-bottom: 6px;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .pdfReader_uploadDropdown button:hover {
-  background: rgba(83, 206, 236, 0.24);
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 18px rgba(8, 21, 24, 0.1);
+  transform: translateY(-1px);
 }
 
 .pdfReader_uploadHint {
-  margin: 4px 0 0;
+  margin: 6px 0 2px;
   padding: 0 6px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--pdf-reader-day-text-muted);
 }
 
@@ -150,18 +167,19 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: 10px;
   border: 1px solid var(--pdf-reader-day-border);
-  background: rgba(8, 21, 24, 0.2);
+  background: rgba(8, 21, 24, 0.1);
   color: var(--pdf-reader-day-text);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   text-align: left;
 }
 
 .pdfReader_uploadListItem button small {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.01em;
   color: var(--pdf-reader-day-text-muted);
 }
 
@@ -1091,6 +1109,84 @@
   padding: 12px;
   color: var(--pdf-reader-day-text-muted);
   border: 1px solid var(--pdf-reader-day-border);
+}
+
+.pdfReader_ocrHeader,
+.pdfReader_ocrActionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pdfReader_ocrHeader {
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.pdfReader_ocrCopy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pdfReader_ocrStatus,
+.pdfReader_ocrMeta {
+  color: var(--pdf-reader-day-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.pdfReader_ocrStatus {
+  margin-bottom: 10px;
+}
+
+.pdfReader_ocrOutput {
+  width: 100%;
+  min-height: 150px;
+  border-radius: 12px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.24);
+  color: var(--pdf-reader-day-text);
+  padding: 12px 14px;
+  resize: vertical;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.pdfReader_ocrOutput--normalized {
+  background: rgba(20, 46, 52, 0.34);
+}
+
+.pdfReader_ocrAction {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(68, 169, 194, 0.22);
+  color: var(--pdf-reader-day-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.pdfReader_ocrAction:hover:not(:disabled) {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.3);
+}
+
+.pdfReader_ocrAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .pdfReader_sourcePickerOverlay {

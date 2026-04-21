@@ -13,16 +13,33 @@ const getStoredAuth = () => {
   return readStoredSession();
 };
 
+const getNormalizedUsername = (authState) => {
+  return String(
+    authState?.username ??
+      authState?.userName ??
+      authState?.identity?.atSignup?.username ??
+      authState?.identity?.personal?.username ??
+      authState?.auth?.username ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
+};
+
+const isNogaUser = (authState) =>
+  getNormalizedUsername(authState) === "naghamtrkmani";
+
 const getHomeRouteForUser = (authState) => {
-  const normalizedUsername = String(authState?.username || "").toLowerCase();
-  return normalizedUsername === "naghamtrkmani"
-    ? "/phenomed/home/noga"
-    : "/phenomed/home";
+  return isNogaUser(authState) ? "/phenomed/home/noga" : "/phenomed/home";
 };
 
 const AppRouter = () => {
   const [authState, setAuthState] = useState(getStoredAuth);
   const isAuthenticated = authState?.isConnected === true;
+  const profileIsAllowed = authState?.profileCompleted !== false;
+  const canAccessAuthenticatedRoutes = isAuthenticated && profileIsAllowed;
+  const isAuthenticatedNogaUser =
+    canAccessAuthenticatedRoutes && isNogaUser(authState);
   const authenticatedHomeRoute = getHomeRouteForUser(authState);
 
   const handleLogin = useCallback((nextAuthState) => {
@@ -39,30 +56,38 @@ const AppRouter = () => {
       <Router>
         <Switch>
           <Route exact path="/">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <Redirect to={authenticatedHomeRoute} />
             ) : (
               <Login onLogin={handleLogin} onForceLogout={handleLogout} />
             )}
           </Route>
           <Route exact path="/phenomed/home">
-            {isAuthenticated ? (
-              <App
-                key="app-home"
-                path="/phenomed/home"
-                onLogout={handleLogout}
-              />
+            {canAccessAuthenticatedRoutes ? (
+              isAuthenticatedNogaUser ? (
+                <Redirect to="/phenomed/home/noga" />
+              ) : (
+                <App
+                  key="app-home"
+                  path="/phenomed/home"
+                  onLogout={handleLogout}
+                />
+              )
             ) : (
               <Redirect to="/" />
             )}
           </Route>
           <Route exact path="/phenomed/home/noga">
-            {isAuthenticated ? (
-              <App
-                key="app-home-noga"
-                path="/phenomed/home/noga"
-                onLogout={handleLogout}
-              />
+            {canAccessAuthenticatedRoutes ? (
+              isAuthenticatedNogaUser ? (
+                <App
+                  key="app-home-noga"
+                  path="/phenomed/home/noga"
+                  onLogout={handleLogout}
+                />
+              ) : (
+                <Redirect to="/phenomed/home" />
+              )
             ) : (
               <Redirect to="/" />
             )}
@@ -71,7 +96,7 @@ const AppRouter = () => {
             <Redirect to="/phenomed/pdf-reader" />
           </Route>
           <Route path="/cooporation">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-cooporation"
                 path="/cooporation"
@@ -82,14 +107,14 @@ const AppRouter = () => {
             )}
           </Route>
           <Route path="/study">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App key="app-study" path="/study" onLogout={handleLogout} />
             ) : (
               <Redirect to="/" />
             )}
           </Route>
           <Route path="/phenomed/nogaplan">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-nogaplan"
                 path="/phenomed/nogaplan"
@@ -100,7 +125,7 @@ const AppRouter = () => {
             )}
           </Route>
           <Route exact path="/phenomed/schoolplanner/ar">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-studyplanner-ar"
                 path="/phenomed/schoolplanner/ar"
@@ -111,7 +136,7 @@ const AppRouter = () => {
             )}
           </Route>
           <Route path="/phenomed/schoolplanner">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-studyplanner"
                 path="/phenomed/schoolplanner"
@@ -122,14 +147,14 @@ const AppRouter = () => {
             )}
           </Route>
           <Route path="/ecg">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App key="app-ecg" path="/ecg" onLogout={handleLogout} />
             ) : (
               <Redirect to="/" />
             )}
           </Route>
           <Route exact path="/phenomed/pdf-reader">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-pdf-reader"
                 path="/phenomed/pdf-reader"
@@ -140,7 +165,7 @@ const AppRouter = () => {
             )}
           </Route>
           <Route exact path="/phenomed/telegram-control">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App
                 key="app-telegram-control"
                 path="/phenomed/telegram-control"
@@ -151,7 +176,7 @@ const AppRouter = () => {
             )}
           </Route>
           <Route path="/profile/:username">
-            {isAuthenticated ? (
+            {canAccessAuthenticatedRoutes ? (
               <App key="app-profile" path="/profile" onLogout={handleLogout} />
             ) : (
               <Redirect to="/" />

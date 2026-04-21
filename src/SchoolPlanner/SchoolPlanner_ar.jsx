@@ -3,10 +3,11 @@ import React, { Component } from "react";
 import "./SchoolPlanner_ar.css";
 import { apiUrl } from "../config/api";
 import PdfReaderModal from "../App/components/pdf-reader/PdfReaderModal";
+import { normalizeMemoryPayload } from "../utils/backendUser";
 import {
   getStoredPdfReaderState,
   setStoredPdfReaderState,
-} from "../utils/pdfReaderState";
+} from "../utils/PDF/pdfReaderState";
 import { readStoredSession } from "../utils/sessionCleanup";
 //.........VARIABLES................
 var courses = [];
@@ -26,8 +27,7 @@ var selectedLecture;
 var course_pages = [];
 var lectureInEdit = {};
 var lectureCorrections = [];
-const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY =
-  "schoolPlanner_reduce_motion";
+const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY = "schoolPlanner_reduce_motion";
 
 var timezone = new Date().getTimezoneOffset();
 var todayDate = Date.now() - timezone * 60000;
@@ -174,7 +174,9 @@ const hasMeaningfulCourseFieldValue = (value) => {
   }
 
   if (value && typeof value === "object") {
-    return Object.values(value).some((entry) => hasMeaningfulCourseFieldValue(entry));
+    return Object.values(value).some((entry) =>
+      hasMeaningfulCourseFieldValue(entry),
+    );
   }
 
   if (typeof value === "number") {
@@ -183,7 +185,11 @@ const hasMeaningfulCourseFieldValue = (value) => {
 
   const normalizedValue = String(value || "").trim();
 
-  return Boolean(normalizedValue) && normalizedValue !== "-" && !isPendingCourseValue(normalizedValue);
+  return (
+    Boolean(normalizedValue) &&
+    normalizedValue !== "-" &&
+    !isPendingCourseValue(normalizedValue)
+  );
 };
 
 const formatCourseScheduleDisplay = (value) => {
@@ -224,7 +230,10 @@ const formatCourseStringListDisplay = (value) => {
   return normalizedValue || "-";
 };
 
-const mergeCoursePayloadWithAiResult = (existingCourse = {}, nextCoursePayload = {}) => {
+const mergeCoursePayloadWithAiResult = (
+  existingCourse = {},
+  nextCoursePayload = {},
+) => {
   const mergedCourse = {
     ...existingCourse,
   };
@@ -272,14 +281,20 @@ const getEditableCourseDraft = (course = {}) => {
     course_term: String(course?.course_term || "-").trim() || "-",
     course_class: String(course?.course_class || "-").trim() || "-",
     course_status: String(course?.course_status || "-").trim() || "-",
-    course_instructors: formatCourseStringListDisplay(course?.course_instructors),
+    course_instructors: formatCourseStringListDisplay(
+      course?.course_instructors,
+    ),
     course_grade: String(course?.course_grade || "").trim(),
     course_fullGrade: String(course?.course_fullGrade || "").trim(),
     course_length: String(
-      Number.isFinite(Number(course?.course_length)) ? Number(course.course_length) : 0,
+      Number.isFinite(Number(course?.course_length))
+        ? Number(course.course_length)
+        : 0,
     ),
     course_progress: String(
-      Number.isFinite(Number(course?.course_progress)) ? Number(course.course_progress) : 0,
+      Number.isFinite(Number(course?.course_progress))
+        ? Number(course.course_progress)
+        : 0,
     ),
     course_exams: examEntries.map((examEntry) => ({
       exam_type: String(examEntry?.exam_type || "-").trim() || "-",
@@ -294,7 +309,9 @@ const getEditableCourseDraft = (course = {}) => {
 const buildCoursePayloadFromDraft = (draft = {}, existingCourse = {}) => {
   const parsedCourseLength = Number(draft?.course_length);
   const parsedCourseProgress = Number(draft?.course_progress);
-  const parsedExamEntries = (Array.isArray(draft?.course_exams) ? draft.course_exams : [])
+  const parsedExamEntries = (
+    Array.isArray(draft?.course_exams) ? draft.course_exams : []
+  )
     .map((examEntry) => ({
       exam_type: String(examEntry?.exam_type || "-").trim() || "-",
       exam_date: String(examEntry?.exam_date || "-").trim() || "-",
@@ -302,15 +319,14 @@ const buildCoursePayloadFromDraft = (draft = {}, existingCourse = {}) => {
       course_grade: String(examEntry?.course_grade || "").trim(),
       course_fullGrade: String(examEntry?.course_fullGrade || "").trim(),
     }))
-    .filter(
-      (examEntry) =>
-        Boolean(
-          String(examEntry.exam_type || "").trim() ||
-            String(examEntry.exam_date || "").trim() ||
-            String(examEntry.exam_time || "").trim() ||
-            String(examEntry.course_grade || "").trim() ||
-            String(examEntry.course_fullGrade || "").trim(),
-        ),
+    .filter((examEntry) =>
+      Boolean(
+        String(examEntry.exam_type || "").trim() ||
+        String(examEntry.exam_date || "").trim() ||
+        String(examEntry.exam_time || "").trim() ||
+        String(examEntry.course_grade || "").trim() ||
+        String(examEntry.course_fullGrade || "").trim(),
+      ),
     );
   const primaryExam = parsedExamEntries[0] || {};
 
@@ -329,7 +345,9 @@ const buildCoursePayloadFromDraft = (draft = {}, existingCourse = {}) => {
     course_grade: String(draft?.course_grade || "").trim(),
     course_fullGrade: String(draft?.course_fullGrade || "").trim(),
     course_length: Number.isFinite(parsedCourseLength) ? parsedCourseLength : 0,
-    course_progress: Number.isFinite(parsedCourseProgress) ? parsedCourseProgress : 0,
+    course_progress: Number.isFinite(parsedCourseProgress)
+      ? parsedCourseProgress
+      : 0,
     course_exams: parsedExamEntries,
     exam_type: String(primaryExam?.exam_type || "-").trim() || "-",
     exam_date: String(primaryExam?.exam_date || "-").trim() || "-",
@@ -411,7 +429,8 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     date: "Date",
     corrections: "Corrections",
     noCorrectionsYet: "No corrections yet.",
-    noCorrectionsForLectureYet: "No corrections were added for this lecture yet.",
+    noCorrectionsForLectureYet:
+      "No corrections were added for this lecture yet.",
     writerLabel: "Writer",
     page: "Page {page}",
     toggleFinishedPages: "Toggle finished pages",
@@ -638,8 +657,7 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     postingFailedPleaseAddCourseName: "فشل الإرسال. الرجاء إضافة اسم المقرر",
     music: "الموسيقى",
     telegramGroup: "مجموعة تيليجرام",
-    showingResults:
-      "عرض {count} نتيجة من أصل {rawCount} رسالة تم جلبها",
+    showingResults: "عرض {count} نتيجة من أصل {rawCount} رسالة تم جلبها",
     pagesFinishedSummary:
       "{progress} / {length} صفحة منجزة | {remaining} متبقية | {percent}%",
     finishedPages: "الصفحات المنجزة",
@@ -1026,8 +1044,7 @@ export default class SchoolPlanner extends Component {
   t = (key, replacements = {}) => {
     const localeKey = this.isArabic() ? "ar" : "en";
     const translatedValue = SCHOOLPLANNER_TRANSLATIONS[localeKey]?.[key];
-    const fallbackValue =
-      typeof key === "string" ? key : String(key || "");
+    const fallbackValue = typeof key === "string" ? key : String(key || "");
     const baseText = translatedValue || fallbackValue;
 
     return Object.entries(replacements).reduce(
@@ -1043,7 +1060,9 @@ export default class SchoolPlanner extends Component {
 
   componentDidMount() {
     this.isComponentMounted = true;
-    const addCoursePanel = document.getElementById("schoolPlanner_addCourse_div");
+    const addCoursePanel = document.getElementById(
+      "schoolPlanner_addCourse_div",
+    );
     if (addCoursePanel) {
       addCoursePanel.style.display = "none";
     }
@@ -1153,219 +1172,228 @@ export default class SchoolPlanner extends Component {
 
         if (resolvedFromIdentifier) {
           return resolvedFromIdentifier;
-    }
-  }
-
-  ensurePlannerMusicAnalyser = async () => {
-    const musicAudio = this.musicAudioRef.current;
-
-    if (!musicAudio || typeof window === "undefined") {
-      return false;
-    }
-
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext || null;
-
-    if (!AudioContextClass) {
-      return false;
-    }
-
-    try {
-      if (!this.musicAudioContext) {
-        this.musicAudioContext = new AudioContextClass();
+        }
       }
 
-      if (this.musicAudioContext.state === "suspended") {
-        await this.musicAudioContext.resume();
-      }
+      ensurePlannerMusicAnalyser = async () => {
+        const musicAudio = this.musicAudioRef.current;
 
-      if (!this.musicSourceNode) {
-        this.musicSourceNode =
-          this.musicAudioContext.createMediaElementSource(musicAudio);
-      }
-
-      if (!this.musicAnalyser) {
-        this.musicAnalyser = this.musicAudioContext.createAnalyser();
-        this.musicAnalyser.fftSize = 256;
-        this.musicAnalyser.smoothingTimeConstant = 0.84;
-        this.musicAnalyserData = new Uint8Array(
-          this.musicAnalyser.frequencyBinCount,
-        );
-        this.musicSourceNode.connect(this.musicAnalyser);
-        this.musicAnalyser.connect(this.musicAudioContext.destination);
-      }
-
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  applyPlannerMusicPalette = ({
-    energy = 0,
-    bass = 0,
-    treble = 0,
-    speed = 0.01,
-    fallbackTime = 0,
-  } = {}) => {
-    const articleNode = this.plannerArticleRef.current;
-
-    if (!articleNode) {
-      return;
-    }
-
-    const boundedEnergy = Math.max(0, Math.min(1, energy));
-    const boundedBass = Math.max(0, Math.min(1, bass));
-    const boundedTreble = Math.max(0, Math.min(1, treble));
-    const boundedSpeed = Math.max(0.004, Math.min(0.045, speed));
-
-    this.musicPaletteCursor =
-      (this.musicPaletteCursor + boundedSpeed + boundedTreble * 0.012) %
-      PLANNER_MUSIC_PALETTES.length;
-
-    const paletteIndex = Math.floor(this.musicPaletteCursor);
-    const nextPaletteIndex = (paletteIndex + 1) % PLANNER_MUSIC_PALETTES.length;
-    const mixAmount = this.musicPaletteCursor - paletteIndex;
-
-    const currentPalette = PLANNER_MUSIC_PALETTES[paletteIndex].map(hexToRgb);
-    const nextPalette = PLANNER_MUSIC_PALETTES[nextPaletteIndex].map(hexToRgb);
-    const mixedPalette = currentPalette.map((color, colorIndex) =>
-      interpolateRgb(color, nextPalette[colorIndex], mixAmount),
-    );
-    const glowStrength = 0.14 + boundedEnergy * 0.26 + boundedBass * 0.08;
-    const highlightStrength = 0.1 + boundedTreble * 0.18;
-    const grainShift = `${Math.round((fallbackTime * 22) % 260)}px ${Math.round(
-      (fallbackTime * 14) % 200,
-    )}px`;
-
-    articleNode.style.setProperty(
-      "--planner-audio-bg",
-      rgbToCss(mixedPalette[0], 1),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-wave-a",
-      rgbToCss(mixedPalette[1], 0.28 + boundedEnergy * 0.22),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-wave-b",
-      rgbToCss(mixedPalette[2], 0.18 + boundedTreble * 0.2),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-glow",
-      rgbToCss(mixedPalette[1], glowStrength),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-highlight",
-      rgbToCss(mixedPalette[2], highlightStrength),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-sheen",
-      rgbToCss(mixedPalette[0], 0.08 + boundedBass * 0.1),
-    );
-    articleNode.style.setProperty(
-      "--planner-audio-grain-offset",
-      grainShift,
-    );
-  };
-
-  stopPlannerMusicReactivePalette = () => {
-    if (this.musicPaletteFrame) {
-      window.cancelAnimationFrame(this.musicPaletteFrame);
-      this.musicPaletteFrame = null;
-    }
-
-    const articleNode = this.plannerArticleRef.current;
-    if (articleNode) {
-      articleNode.style.removeProperty("--planner-audio-bg");
-      articleNode.style.removeProperty("--planner-audio-wave-a");
-      articleNode.style.removeProperty("--planner-audio-wave-b");
-      articleNode.style.removeProperty("--planner-audio-glow");
-      articleNode.style.removeProperty("--planner-audio-highlight");
-      articleNode.style.removeProperty("--planner-audio-sheen");
-      articleNode.style.removeProperty("--planner-audio-grain-offset");
-    }
-  };
-
-  startPlannerMusicReactivePalette = async () => {
-    if (this.isReducedMotionEnabled()) {
-      this.stopPlannerMusicReactivePalette();
-      return;
-    }
-
-    const musicAudio = this.musicAudioRef.current;
-
-    if (!musicAudio) {
-      return;
-    }
-
-    await this.ensurePlannerMusicAnalyser();
-    this.stopPlannerMusicReactivePalette();
-
-    const step = () => {
-      if (!this.isComponentMounted || !this.musicAudioRef.current) {
-        this.stopPlannerMusicReactivePalette();
-        return;
-      }
-
-      const activeAudio = this.musicAudioRef.current;
-      let bass = 0;
-      let mid = 0;
-      let treble = 0;
-      let energy = 0;
-
-      if (this.musicAnalyser && this.musicAnalyserData) {
-        this.musicAnalyser.getByteFrequencyData(this.musicAnalyserData);
-        const bucketCount = this.musicAnalyserData.length;
-        const bassEnd = Math.max(1, Math.floor(bucketCount * 0.18));
-        const midEnd = Math.max(bassEnd + 1, Math.floor(bucketCount * 0.55));
-        let bassTotal = 0;
-        let midTotal = 0;
-        let trebleTotal = 0;
-
-        for (let index = 0; index < bucketCount; index += 1) {
-          const sample = this.musicAnalyserData[index] / 255;
-          energy += sample;
-
-          if (index < bassEnd) {
-            bassTotal += sample;
-          } else if (index < midEnd) {
-            midTotal += sample;
-          } else {
-            trebleTotal += sample;
-          }
+        if (!musicAudio || typeof window === "undefined") {
+          return false;
         }
 
-        energy /= bucketCount || 1;
-        bass = bassTotal / bassEnd;
-        mid = midTotal / Math.max(1, midEnd - bassEnd);
-        treble = trebleTotal / Math.max(1, bucketCount - midEnd);
-      } else {
-        const fallbackBeat = Math.abs(
-          Math.sin((activeAudio.currentTime || 0) * (1.2 + this.state.music_volume * 2)),
+        const AudioContextClass =
+          window.AudioContext || window.webkitAudioContext || null;
+
+        if (!AudioContextClass) {
+          return false;
+        }
+
+        try {
+          if (!this.musicAudioContext) {
+            this.musicAudioContext = new AudioContextClass();
+          }
+
+          if (this.musicAudioContext.state === "suspended") {
+            await this.musicAudioContext.resume();
+          }
+
+          if (!this.musicSourceNode) {
+            this.musicSourceNode =
+              this.musicAudioContext.createMediaElementSource(musicAudio);
+          }
+
+          if (!this.musicAnalyser) {
+            this.musicAnalyser = this.musicAudioContext.createAnalyser();
+            this.musicAnalyser.fftSize = 256;
+            this.musicAnalyser.smoothingTimeConstant = 0.84;
+            this.musicAnalyserData = new Uint8Array(
+              this.musicAnalyser.frequencyBinCount,
+            );
+            this.musicSourceNode.connect(this.musicAnalyser);
+            this.musicAnalyser.connect(this.musicAudioContext.destination);
+          }
+
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      applyPlannerMusicPalette = ({
+        energy = 0,
+        bass = 0,
+        treble = 0,
+        speed = 0.01,
+        fallbackTime = 0,
+      } = {}) => {
+        const articleNode = this.plannerArticleRef.current;
+
+        if (!articleNode) {
+          return;
+        }
+
+        const boundedEnergy = Math.max(0, Math.min(1, energy));
+        const boundedBass = Math.max(0, Math.min(1, bass));
+        const boundedTreble = Math.max(0, Math.min(1, treble));
+        const boundedSpeed = Math.max(0.004, Math.min(0.045, speed));
+
+        this.musicPaletteCursor =
+          (this.musicPaletteCursor + boundedSpeed + boundedTreble * 0.012) %
+          PLANNER_MUSIC_PALETTES.length;
+
+        const paletteIndex = Math.floor(this.musicPaletteCursor);
+        const nextPaletteIndex =
+          (paletteIndex + 1) % PLANNER_MUSIC_PALETTES.length;
+        const mixAmount = this.musicPaletteCursor - paletteIndex;
+
+        const currentPalette =
+          PLANNER_MUSIC_PALETTES[paletteIndex].map(hexToRgb);
+        const nextPalette =
+          PLANNER_MUSIC_PALETTES[nextPaletteIndex].map(hexToRgb);
+        const mixedPalette = currentPalette.map((color, colorIndex) =>
+          interpolateRgb(color, nextPalette[colorIndex], mixAmount),
         );
-        energy = 0.18 + fallbackBeat * 0.42;
-        bass = 0.22 + fallbackBeat * 0.34;
-        mid = 0.16 + fallbackBeat * 0.26;
-        treble = 0.12 + fallbackBeat * 0.22;
-      }
+        const glowStrength = 0.14 + boundedEnergy * 0.26 + boundedBass * 0.08;
+        const highlightStrength = 0.1 + boundedTreble * 0.18;
+        const grainShift = `${Math.round((fallbackTime * 22) % 260)}px ${Math.round(
+          (fallbackTime * 14) % 200,
+        )}px`;
 
-      this.applyPlannerMusicPalette({
-        energy,
-        bass,
-        treble,
-        speed: 0.006 + energy * 0.018 + mid * 0.01,
-        fallbackTime: activeAudio.currentTime || 0,
-      });
+        articleNode.style.setProperty(
+          "--planner-audio-bg",
+          rgbToCss(mixedPalette[0], 1),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-wave-a",
+          rgbToCss(mixedPalette[1], 0.28 + boundedEnergy * 0.22),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-wave-b",
+          rgbToCss(mixedPalette[2], 0.18 + boundedTreble * 0.2),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-glow",
+          rgbToCss(mixedPalette[1], glowStrength),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-highlight",
+          rgbToCss(mixedPalette[2], highlightStrength),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-sheen",
+          rgbToCss(mixedPalette[0], 0.08 + boundedBass * 0.1),
+        );
+        articleNode.style.setProperty(
+          "--planner-audio-grain-offset",
+          grainShift,
+        );
+      };
 
-      if (!activeAudio.paused && !activeAudio.ended) {
-        this.musicPaletteFrame = window.requestAnimationFrame(step);
-      } else {
+      stopPlannerMusicReactivePalette = () => {
+        if (this.musicPaletteFrame) {
+          window.cancelAnimationFrame(this.musicPaletteFrame);
+          this.musicPaletteFrame = null;
+        }
+
+        const articleNode = this.plannerArticleRef.current;
+        if (articleNode) {
+          articleNode.style.removeProperty("--planner-audio-bg");
+          articleNode.style.removeProperty("--planner-audio-wave-a");
+          articleNode.style.removeProperty("--planner-audio-wave-b");
+          articleNode.style.removeProperty("--planner-audio-glow");
+          articleNode.style.removeProperty("--planner-audio-highlight");
+          articleNode.style.removeProperty("--planner-audio-sheen");
+          articleNode.style.removeProperty("--planner-audio-grain-offset");
+        }
+      };
+
+      startPlannerMusicReactivePalette = async () => {
+        if (this.isReducedMotionEnabled()) {
+          this.stopPlannerMusicReactivePalette();
+          return;
+        }
+
+        const musicAudio = this.musicAudioRef.current;
+
+        if (!musicAudio) {
+          return;
+        }
+
+        await this.ensurePlannerMusicAnalyser();
         this.stopPlannerMusicReactivePalette();
-      }
-    };
 
-    this.musicPaletteFrame = window.requestAnimationFrame(step);
-  };
+        const step = () => {
+          if (!this.isComponentMounted || !this.musicAudioRef.current) {
+            this.stopPlannerMusicReactivePalette();
+            return;
+          }
+
+          const activeAudio = this.musicAudioRef.current;
+          let bass = 0;
+          let mid = 0;
+          let treble = 0;
+          let energy = 0;
+
+          if (this.musicAnalyser && this.musicAnalyserData) {
+            this.musicAnalyser.getByteFrequencyData(this.musicAnalyserData);
+            const bucketCount = this.musicAnalyserData.length;
+            const bassEnd = Math.max(1, Math.floor(bucketCount * 0.18));
+            const midEnd = Math.max(
+              bassEnd + 1,
+              Math.floor(bucketCount * 0.55),
+            );
+            let bassTotal = 0;
+            let midTotal = 0;
+            let trebleTotal = 0;
+
+            for (let index = 0; index < bucketCount; index += 1) {
+              const sample = this.musicAnalyserData[index] / 255;
+              energy += sample;
+
+              if (index < bassEnd) {
+                bassTotal += sample;
+              } else if (index < midEnd) {
+                midTotal += sample;
+              } else {
+                trebleTotal += sample;
+              }
+            }
+
+            energy /= bucketCount || 1;
+            bass = bassTotal / bassEnd;
+            mid = midTotal / Math.max(1, midEnd - bassEnd);
+            treble = trebleTotal / Math.max(1, bucketCount - midEnd);
+          } else {
+            const fallbackBeat = Math.abs(
+              Math.sin(
+                (activeAudio.currentTime || 0) *
+                  (1.2 + this.state.music_volume * 2),
+              ),
+            );
+            energy = 0.18 + fallbackBeat * 0.42;
+            bass = 0.22 + fallbackBeat * 0.34;
+            mid = 0.16 + fallbackBeat * 0.26;
+            treble = 0.12 + fallbackBeat * 0.22;
+          }
+
+          this.applyPlannerMusicPalette({
+            energy,
+            bass,
+            treble,
+            speed: 0.006 + energy * 0.018 + mid * 0.01,
+            fallbackTime: activeAudio.currentTime || 0,
+          });
+
+          if (!activeAudio.paused && !activeAudio.ended) {
+            this.musicPaletteFrame = window.requestAnimationFrame(step);
+          } else {
+            this.stopPlannerMusicReactivePalette();
+          }
+        };
+
+        this.musicPaletteFrame = window.requestAnimationFrame(step);
+      };
     } catch (error) {
       // Fall through to search mode.
     }
@@ -1482,9 +1510,12 @@ export default class SchoolPlanner extends Component {
     });
 
     if (autoplay) {
-      musicAudio.play().then(() => {
-        this.startPlannerMusicReactivePalette();
-      }).catch(() => {});
+      musicAudio
+        .play()
+        .then(() => {
+          this.startPlannerMusicReactivePalette();
+        })
+        .catch(() => {});
     }
   };
 
@@ -1529,9 +1560,12 @@ export default class SchoolPlanner extends Component {
         }
       }
       musicAudio.volume = this.state.music_volume;
-      musicAudio.play().then(() => {
-        this.startPlannerMusicReactivePalette();
-      }).catch(() => {});
+      musicAudio
+        .play()
+        .then(() => {
+          this.startPlannerMusicReactivePalette();
+        })
+        .catch(() => {});
     } else {
       musicAudio.pause();
       this.stopPlannerMusicReactivePalette();
@@ -1551,10 +1585,7 @@ export default class SchoolPlanner extends Component {
   };
 
   fetchTelegramConfig = async (options = {}) => {
-    const {
-      refreshMessages = true,
-      preserveFeedback = false,
-    } = options;
+    const { refreshMessages = true, preserveFeedback = false } = options;
 
     if (!this.props.state?.token) {
       return;
@@ -1587,7 +1618,8 @@ export default class SchoolPlanner extends Component {
               : "",
             telegram_historyImportedAt: payload?.historyImportedAt || "",
             telegram_lastSyncedAt: payload?.lastSyncedAt || "",
-            telegram_lastStoredMessageDate: payload?.lastStoredMessageDate || "",
+            telegram_lastStoredMessageDate:
+              payload?.lastStoredMessageDate || "",
             telegram_storedCount: Number(payload?.storedCount) || 0,
             telegram_lastSyncStatus: String(payload?.lastSyncStatus || ""),
             telegram_lastSyncReason: String(payload?.lastSyncReason || ""),
@@ -1608,10 +1640,9 @@ export default class SchoolPlanner extends Component {
             telegram_lastSyncReachedStartBoundary: Boolean(
               payload?.lastSyncReachedStartBoundary,
             ),
-            telegram_groupTitle:
-              payload?.groupReference
-                ? String(payload.groupReference)
-                : "Telegram Group",
+            telegram_groupTitle: payload?.groupReference
+              ? String(payload.groupReference)
+              : "Telegram Group",
             telegram_panelGroupTitle:
               currentState.telegram_panelGroupTitle &&
               currentState.telegram_panelGroupTitle !== "Telegram Group"
@@ -1689,19 +1720,30 @@ export default class SchoolPlanner extends Component {
       searchParams.set("group", panelGroupReference);
 
       if (String(this.state.telegram_searchQuery || "").trim()) {
-        searchParams.set("q", String(this.state.telegram_searchQuery || "").trim());
+        searchParams.set(
+          "q",
+          String(this.state.telegram_searchQuery || "").trim(),
+        );
       }
 
       if (String(this.state.telegram_searchStart || "").trim()) {
-        searchParams.set("start", String(this.state.telegram_searchStart || "").trim());
+        searchParams.set(
+          "start",
+          String(this.state.telegram_searchStart || "").trim(),
+        );
       }
 
       if (String(this.state.telegram_searchEnd || "").trim()) {
-        searchParams.set("end", String(this.state.telegram_searchEnd || "").trim());
+        searchParams.set(
+          "end",
+          String(this.state.telegram_searchEnd || "").trim(),
+        );
       }
 
       const response = await fetch(
-        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+        apiUrl(
+          `/api/telegram/stored-group-messages?${searchParams.toString()}`,
+        ),
         {
           method: "GET",
           mode: "cors",
@@ -1736,7 +1778,9 @@ export default class SchoolPlanner extends Component {
             payload?.sync?.lastStoredMessageDate || "",
           telegram_lastSyncStatus: String(payload?.sync?.lastSyncStatus || ""),
           telegram_lastSyncReason: String(payload?.sync?.lastSyncReason || ""),
-          telegram_lastSyncMessage: String(payload?.sync?.lastSyncMessage || ""),
+          telegram_lastSyncMessage: String(
+            payload?.sync?.lastSyncMessage || "",
+          ),
           telegram_lastSyncImportedCount:
             Number(payload?.sync?.lastSyncImportedCount) || 0,
           telegram_lastSyncError: String(payload?.sync?.lastSyncError || ""),
@@ -2066,9 +2110,7 @@ export default class SchoolPlanner extends Component {
   };
 
   getAuthToken = () =>
-    String(
-      this.props.state?.token || readStoredSession()?.token || "",
-    ).trim();
+    String(this.props.state?.token || readStoredSession()?.token || "").trim();
 
   uploadStoredTelegramPdfToCloud = async (message) => {
     const groupReference = String(
@@ -2236,7 +2278,8 @@ export default class SchoolPlanner extends Component {
         this.setState({
           telegram_openingPdfKey: "",
           telegram_pdfViewerLoading: false,
-          telegram_pdfViewerError: error?.message || "Unable to open stored PDF.",
+          telegram_pdfViewerError:
+            error?.message || "Unable to open stored PDF.",
           telegram_error: error?.message || "Unable to open stored PDF.",
         });
       }
@@ -2262,7 +2305,9 @@ export default class SchoolPlanner extends Component {
         },
         body: JSON.stringify({
           groupReference: String(this.state.telegram_groupInput || "").trim(),
-          historyStartDate: String(this.state.telegram_historyStartDate || "").trim(),
+          historyStartDate: String(
+            this.state.telegram_historyStartDate || "",
+          ).trim(),
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -2285,7 +2330,8 @@ export default class SchoolPlanner extends Component {
               : "",
             telegram_historyImportedAt: payload?.historyImportedAt || "",
             telegram_lastSyncedAt: payload?.lastSyncedAt || "",
-            telegram_lastStoredMessageDate: payload?.lastStoredMessageDate || "",
+            telegram_lastStoredMessageDate:
+              payload?.lastStoredMessageDate || "",
             telegram_storedCount: Number(payload?.storedCount) || 0,
             telegram_lastSyncStatus: String(payload?.lastSyncStatus || ""),
             telegram_lastSyncReason: String(payload?.lastSyncReason || ""),
@@ -2307,7 +2353,8 @@ export default class SchoolPlanner extends Component {
               payload?.lastSyncReachedStartBoundary,
             ),
             telegram_groupReference: String(payload?.groupReference || ""),
-            telegram_groupTitle: String(payload?.groupReference || "") || "Telegram Group",
+            telegram_groupTitle:
+              String(payload?.groupReference || "") || "Telegram Group",
           }),
           () => {
             if (
@@ -2405,7 +2452,9 @@ export default class SchoolPlanner extends Component {
     const baseLabel = String(
       group?.title || group?.username || group?.groupReference || fallbackLabel,
     ).trim();
-    const nextType = String(group?.type || "").trim().toLowerCase();
+    const nextType = String(group?.type || "")
+      .trim()
+      .toLowerCase();
 
     if (!baseLabel) {
       return fallbackLabel;
@@ -2446,7 +2495,9 @@ export default class SchoolPlanner extends Component {
         ? this.state.telegram_groupOptions
         : [];
     const configuredReference = String(
-      this.state.telegram_groupInput || this.state.telegram_groupReference || "",
+      this.state.telegram_groupInput ||
+        this.state.telegram_groupReference ||
+        "",
     ).trim();
     const hasConfiguredReference =
       configuredReference.length > 0 &&
@@ -2456,7 +2507,8 @@ export default class SchoolPlanner extends Component {
           ...nextOptions,
           ...(!nextOptions.some(
             (group) =>
-              String(group?.groupReference || "").trim() === configuredReference,
+              String(group?.groupReference || "").trim() ===
+              configuredReference,
           )
             ? [
                 {
@@ -2476,7 +2528,9 @@ export default class SchoolPlanner extends Component {
 
     const groupedOptions = mergedOptions.reduce(
       (accumulator, group) => {
-        const nextType = String(group?.type || "").trim().toLowerCase();
+        const nextType = String(group?.type || "")
+          .trim()
+          .toLowerCase();
 
         if (nextType === "channel") {
           accumulator.channels.push(group);
@@ -2493,10 +2547,7 @@ export default class SchoolPlanner extends Component {
 
     return [
       groupedOptions.groups.length > 0 ? (
-        <optgroup
-          key="telegram-groups"
-          label={this.t("telegramGroupsLabel")}
-        >
+        <optgroup key="telegram-groups" label={this.t("telegramGroupsLabel")}>
           {groupedOptions.groups.map((group) => (
             <option
               key={String(group?.groupReference || group?.title || "")}
@@ -2552,7 +2603,10 @@ export default class SchoolPlanner extends Component {
       this.state.telegram_panelGroupReference || "",
     ).trim();
 
-    if (!currentReference || Number(this.state.telegram_storedCount || 0) <= 0) {
+    if (
+      !currentReference ||
+      Number(this.state.telegram_storedCount || 0) <= 0
+    ) {
       return storedOptions;
     }
 
@@ -2565,7 +2619,9 @@ export default class SchoolPlanner extends Component {
       return storedOptions;
     }
 
-    const currentTitle = String(this.state.telegram_panelGroupTitle || "").trim();
+    const currentTitle = String(
+      this.state.telegram_panelGroupTitle || "",
+    ).trim();
     const hasVisibleCurrentLabel =
       Boolean(currentTitle) && currentTitle !== currentReference;
 
@@ -2596,7 +2652,8 @@ export default class SchoolPlanner extends Component {
       .filter((message) => Boolean(message?.attachmentIsPdf))
       .sort((firstMessage, secondMessage) => {
         const dateDifference =
-          (Number(secondMessage?.date) || 0) - (Number(firstMessage?.date) || 0);
+          (Number(secondMessage?.date) || 0) -
+          (Number(firstMessage?.date) || 0);
 
         if (dateDifference !== 0) {
           return dateDifference;
@@ -2759,7 +2816,9 @@ export default class SchoolPlanner extends Component {
 
     const relevantMessages = scoredMessages.slice(0, 3);
     const matchedKeywords = [
-      ...new Set(relevantMessages.flatMap((message) => message.matchedKeywords)),
+      ...new Set(
+        relevantMessages.flatMap((message) => message.matchedKeywords),
+      ),
     ].slice(0, 8);
 
     return {
@@ -3198,7 +3257,9 @@ export default class SchoolPlanner extends Component {
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          throw new Error(payload?.message || "Unable to load Telegram config.");
+          throw new Error(
+            payload?.message || "Unable to load Telegram config.",
+          );
         }
 
         if (this.isComponentMounted) {
@@ -3233,7 +3294,8 @@ export default class SchoolPlanner extends Component {
               : "",
             telegram_historyImportedAt: historyImportedAt,
             telegram_lastSyncedAt: lastSyncedAt,
-            telegram_lastStoredMessageDate: payload?.lastStoredMessageDate || "",
+            telegram_lastStoredMessageDate:
+              payload?.lastStoredMessageDate || "",
             telegram_storedCount: storedCount,
             telegram_lastSyncStatus: lastSyncStatus,
             telegram_lastSyncReason: lastSyncReason,
@@ -3241,8 +3303,10 @@ export default class SchoolPlanner extends Component {
             telegram_lastSyncImportedCount: lastSyncImportedCount,
             telegram_lastSyncError: lastSyncError,
             telegram_lastSyncScannedCount: lastSyncScannedCount,
-            telegram_lastSyncNewestMessageDateSeen: lastSyncNewestMessageDateSeen,
-            telegram_lastSyncOldestMessageDateSeen: lastSyncOldestMessageDateSeen,
+            telegram_lastSyncNewestMessageDateSeen:
+              lastSyncNewestMessageDateSeen,
+            telegram_lastSyncOldestMessageDateSeen:
+              lastSyncOldestMessageDateSeen,
             telegram_lastSyncOldestImportedMessageDate:
               lastSyncOldestImportedMessageDate,
             telegram_lastSyncFirstSkippedBeforeStartDate:
@@ -3316,7 +3380,9 @@ export default class SchoolPlanner extends Component {
       return;
     }
 
-    const actionSlider = event.target?.closest?.("#schoolPlanner_courses_actions");
+    const actionSlider = event.target?.closest?.(
+      "#schoolPlanner_courses_actions",
+    );
     if (actionSlider) {
       this.plannerSwipeStart = null;
       return;
@@ -3471,7 +3537,10 @@ export default class SchoolPlanner extends Component {
                     {lecture.lecture_writer}
                   </p>
                 </div>
-                <div id="schoolPlanner_lectureDetailsHeaderActions" className="fr">
+                <div
+                  id="schoolPlanner_lectureDetailsHeaderActions"
+                  className="fr"
+                >
                   <button
                     type="button"
                     className="schoolPlanner_telegramSendButton"
@@ -3499,7 +3568,10 @@ export default class SchoolPlanner extends Component {
                   </button>
                 </div>
               </div>
-              <div id="schoolPlanner_lectureDetailsProgressBlock" className="fc">
+              <div
+                id="schoolPlanner_lectureDetailsProgressBlock"
+                className="fc"
+              >
                 <div className="fr schoolPlanner_lectureDetailsSectionHeader">
                   <p id="schoolPlanner_lectureDetailsProgressText">
                     {this.t("pagesFinishedSummary", {
@@ -3578,43 +3650,51 @@ export default class SchoolPlanner extends Component {
                     {this.t("noCorrectionsForLectureYet")}
                   </p>
                 ) : (
-                  <div id="schoolPlanner_lectureDetailsCorrectionsList" className="fc">
-                    {lectureCorrectionsList.map((correction, correctionIndex) => (
-                      <div
-                        key={`${correction.page}-${correctionIndex}`}
-                        className="schoolPlanner_lectureDetailsCorrectionItem fc"
-                      >
-                        <div className="fr schoolPlanner_lectureDetailsCorrectionHeader">
-                          <p className="schoolPlanner_lectureDetailsCorrectionPage">
-                            {this.t("page", { page: correction.page })}
+                  <div
+                    id="schoolPlanner_lectureDetailsCorrectionsList"
+                    className="fc"
+                  >
+                    {lectureCorrectionsList.map(
+                      (correction, correctionIndex) => (
+                        <div
+                          key={`${correction.page}-${correctionIndex}`}
+                          className="schoolPlanner_lectureDetailsCorrectionItem fc"
+                        >
+                          <div className="fr schoolPlanner_lectureDetailsCorrectionHeader">
+                            <p className="schoolPlanner_lectureDetailsCorrectionPage">
+                              {this.t("page", { page: correction.page })}
+                            </p>
+                            <button
+                              type="button"
+                              className="schoolPlanner_telegramSendButton"
+                              onClick={() =>
+                                this.sendPlannerInfoToTelegram(
+                                  [
+                                    this.t("corrections"),
+                                    `${this.t("title")}: ${lecture.lecture_name || "-"}`,
+                                    `${this.t("writerLabel")}: ${lecture.lecture_writer || "-"}`,
+                                    `${this.t("page", { page: correction.page })}: ${correction.text}`,
+                                  ].join("\n"),
+                                )
+                              }
+                            >
+                              {this.t("send")}
+                            </button>
+                          </div>
+                          <p className="schoolPlanner_lectureDetailsCorrectionText">
+                            {correction.text}
                           </p>
-                          <button
-                            type="button"
-                            className="schoolPlanner_telegramSendButton"
-                            onClick={() =>
-                              this.sendPlannerInfoToTelegram(
-                                [
-                                  this.t("corrections"),
-                                  `${this.t("title")}: ${lecture.lecture_name || "-"}`,
-                                  `${this.t("writerLabel")}: ${lecture.lecture_writer || "-"}`,
-                                  `${this.t("page", { page: correction.page })}: ${correction.text}`,
-                                ].join("\n"),
-                              )
-                            }
-                          >
-                            {this.t("send")}
-                          </button>
                         </div>
-                        <p className="schoolPlanner_lectureDetailsCorrectionText">
-                          {correction.text}
-                        </p>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 )}
               </div>
               <div id="schoolPlanner_lectureDetailsPages" className="fc">
-                <div id="schoolPlanner_lectureDetailsPagesHeader" className="fr">
+                <div
+                  id="schoolPlanner_lectureDetailsPagesHeader"
+                  className="fr"
+                >
                   <p id="schoolPlanner_lectureDetailsPagesLabel">
                     {this.t("toggleFinishedPages")}
                   </p>
@@ -3625,9 +3705,9 @@ export default class SchoolPlanner extends Component {
                       onClick={() =>
                         this.sendPlannerInfoToTelegram(
                           [
-                          this.t("toggleFinishedPages"),
-                          `${this.t("title")}: ${lecture.lecture_name || "-"}`,
-                          `${this.t("finishedPages")}: ${
+                            this.t("toggleFinishedPages"),
+                            `${this.t("title")}: ${lecture.lecture_name || "-"}`,
+                            `${this.t("finishedPages")}: ${
                               finishedPages.length > 0
                                 ? finishedPages.join(", ")
                                 : this.t("none")
@@ -3669,36 +3749,36 @@ export default class SchoolPlanner extends Component {
                   }
                 >
                   <div id="schoolPlanner_lectureDetailsPagesGrid">
-                  {Array.from(
-                    { length: Number(lecture.lecture_length) || 0 },
-                    (_, pageIndex) => {
-                      const pageNumber = pageIndex + 1;
-                      const isFinished =
-                        finishedPages.indexOf(pageNumber) !== -1;
+                    {Array.from(
+                      { length: Number(lecture.lecture_length) || 0 },
+                      (_, pageIndex) => {
+                        const pageNumber = pageIndex + 1;
+                        const isFinished =
+                          finishedPages.indexOf(pageNumber) !== -1;
 
-                      return (
-                        <button
-                          type="button"
-                          key={pageNumber}
-                          className={`schoolPlanner_lecturePageButton ${
-                            isFinished
-                              ? "schoolPlanner_lecturePageButton--finished"
-                              : ""
-                          }`}
-                          disabled={this.state.lecture_isLoading === true}
-                          onClick={() =>
-                            this.setPageFinishLecture(
-                              lecture,
-                              pageNumber,
-                              !isFinished,
-                            )
-                          }
-                        >
-                          {pageNumber}
-                        </button>
-                      );
-                    },
-                  )}
+                        return (
+                          <button
+                            type="button"
+                            key={pageNumber}
+                            className={`schoolPlanner_lecturePageButton ${
+                              isFinished
+                                ? "schoolPlanner_lecturePageButton--finished"
+                                : ""
+                            }`}
+                            disabled={this.state.lecture_isLoading === true}
+                            onClick={() =>
+                              this.setPageFinishLecture(
+                                lecture,
+                                pageNumber,
+                                !isFinished,
+                              )
+                            }
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
               </div>
@@ -3717,7 +3797,9 @@ export default class SchoolPlanner extends Component {
                           `${this.t("title")}: ${lecture.lecture_name || "-"}`,
                           `${this.t("matchedTerms")}: ${
                             lectureTelegramSummary.matchedKeywords.length > 0
-                              ? lectureTelegramSummary.matchedKeywords.join(", ")
+                              ? lectureTelegramSummary.matchedKeywords.join(
+                                  ", ",
+                                )
                               : this.t("none")
                           }`,
                           ...(lectureTelegramSummary.relevantMessages.length > 0
@@ -3752,36 +3834,45 @@ export default class SchoolPlanner extends Component {
                         ) || this.t("unknownTime")}
                       </p>
                     ) : null}
-                    <div id="schoolPlanner_lectureDetailsTelegramList" className="fc">
-                      {lectureTelegramSummary.relevantMessages.map((message) => (
-                        <div
-                          key={message.id || `${message.sender}-${message.date}`}
-                          className="schoolPlanner_lectureDetailsTelegramMessage fc"
-                        >
-                          <div className="fr schoolPlanner_lectureDetailsTelegramMessageMeta">
-                            <span>{message.sender || this.t("unknown")}</span>
-                            <span>{this.formatTelegramDateTime(message.date)}</span>
-                            <button
-                              type="button"
-                              className="schoolPlanner_telegramSendButton"
-                              onClick={() =>
-                                this.sendPlannerInfoToTelegram(
-                                  [
-                                    this.t("telegramSummary"),
-                                    `${this.t("title")}: ${lecture.lecture_name || "-"}`,
-                                    `Sender: ${message.sender || this.t("unknown")}`,
-                                    `Time: ${this.formatTelegramDateTime(message.date) || "-"}`,
-                                    `${message.text || this.t("noText")}`,
-                                  ].join("\n"),
-                                )
-                              }
-                            >
-                              {this.t("send")}
-                            </button>
+                    <div
+                      id="schoolPlanner_lectureDetailsTelegramList"
+                      className="fc"
+                    >
+                      {lectureTelegramSummary.relevantMessages.map(
+                        (message) => (
+                          <div
+                            key={
+                              message.id || `${message.sender}-${message.date}`
+                            }
+                            className="schoolPlanner_lectureDetailsTelegramMessage fc"
+                          >
+                            <div className="fr schoolPlanner_lectureDetailsTelegramMessageMeta">
+                              <span>{message.sender || this.t("unknown")}</span>
+                              <span>
+                                {this.formatTelegramDateTime(message.date)}
+                              </span>
+                              <button
+                                type="button"
+                                className="schoolPlanner_telegramSendButton"
+                                onClick={() =>
+                                  this.sendPlannerInfoToTelegram(
+                                    [
+                                      this.t("telegramSummary"),
+                                      `${this.t("title")}: ${lecture.lecture_name || "-"}`,
+                                      `Sender: ${message.sender || this.t("unknown")}`,
+                                      `Time: ${this.formatTelegramDateTime(message.date) || "-"}`,
+                                      `${message.text || this.t("noText")}`,
+                                    ].join("\n"),
+                                  )
+                                }
+                              >
+                                {this.t("send")}
+                              </button>
+                            </div>
+                            <p>{message.text || this.t("noText")}</p>
                           </div>
-                          <p>{message.text || this.t("noText")}</p>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </React.Fragment>
                 )}
@@ -3817,14 +3908,17 @@ export default class SchoolPlanner extends Component {
         "Lecture date";
       document.getElementById("schoolPlanner_addLecture_length_input").value =
         "";
-      document.getElementById("schoolPlanner_addLecture_correctionPage_input").value =
-        "";
-      document.getElementById("schoolPlanner_addLecture_correctionText_input").value =
-        "";
+      document.getElementById(
+        "schoolPlanner_addLecture_correctionPage_input",
+      ).value = "";
+      document.getElementById(
+        "schoolPlanner_addLecture_correctionText_input",
+      ).value = "";
       document.getElementById("schoolPlanner_addLecture_outlines_input").value =
         "";
-      document.getElementById("schoolPlanner_addLecture_corrections_ul").innerHTML =
-        "";
+      document.getElementById(
+        "schoolPlanner_addLecture_corrections_ul",
+      ).innerHTML = "";
     }
     if (object.buttonName === "Edit") {
       selectedLecture = object._id;
@@ -3846,10 +3940,12 @@ export default class SchoolPlanner extends Component {
         object.lecture_date;
       document.getElementById("schoolPlanner_addLecture_length_input").value =
         object.lecture_length;
-      document.getElementById("schoolPlanner_addLecture_correctionPage_input").value =
-        "";
-      document.getElementById("schoolPlanner_addLecture_correctionText_input").value =
-        "";
+      document.getElementById(
+        "schoolPlanner_addLecture_correctionPage_input",
+      ).value = "";
+      document.getElementById(
+        "schoolPlanner_addLecture_correctionText_input",
+      ).value = "";
       document.getElementById("schoolPlanner_addLecture_outlines_input").value =
         "";
 
@@ -3871,13 +3967,16 @@ export default class SchoolPlanner extends Component {
         courseDayAndTime = [];
         courseInstructorsNames = [];
         courseExams = [];
-        document.getElementById("schoolPlanner_addCourse_name_input").value = "";
-        document.getElementById("schoolPlanner_addCourse_component_input").value =
-          "Course component";
+        document.getElementById("schoolPlanner_addCourse_name_input").value =
+          "";
+        document.getElementById(
+          "schoolPlanner_addCourse_component_input",
+        ).value = "Course component";
         document.getElementById("schoolPlanner_addCourse_day_input").value =
           "Course day";
-        document.getElementById("schoolPlanner_addCourse_time_hour_input").value =
-          "";
+        document.getElementById(
+          "schoolPlanner_addCourse_time_hour_input",
+        ).value = "";
         document.getElementById(
           "schoolPlanner_addCourse_time_minute_input",
         ).value = "";
@@ -3889,11 +3988,14 @@ export default class SchoolPlanner extends Component {
           "Course classification";
         document.getElementById("schoolPlanner_addCourse_status_input").value =
           "Course status";
-        document.getElementById("schoolPlanner_addCourse_grade_input").value = "";
-        document.getElementById("schoolPlanner_addCourse_fullGrade_input").value =
+        document.getElementById("schoolPlanner_addCourse_grade_input").value =
           "";
-        document.getElementById("schoolPlanner_addCourse_examType_input").value =
-          "Exam type";
+        document.getElementById(
+          "schoolPlanner_addCourse_fullGrade_input",
+        ).value = "";
+        document.getElementById(
+          "schoolPlanner_addCourse_examType_input",
+        ).value = "Exam type";
         document.getElementById(
           "schoolPlanner_addCourse_examDate_day_input",
         ).value = "";
@@ -3944,12 +4046,14 @@ export default class SchoolPlanner extends Component {
               : [];
         document.getElementById("schoolPlanner_addCourse_name_input").value =
           object.course.course_name.split(" (")[0];
-        document.getElementById("schoolPlanner_addCourse_component_input").value =
-          object.course.course_component;
+        document.getElementById(
+          "schoolPlanner_addCourse_component_input",
+        ).value = object.course.course_component;
         document.getElementById("schoolPlanner_addCourse_day_input").value =
           "Course day";
-        document.getElementById("schoolPlanner_addCourse_time_hour_input").value =
-          "";
+        document.getElementById(
+          "schoolPlanner_addCourse_time_hour_input",
+        ).value = "";
         document.getElementById(
           "schoolPlanner_addCourse_time_minute_input",
         ).value = "";
@@ -3972,10 +4076,12 @@ export default class SchoolPlanner extends Component {
         ).innerHTML = "";
         document.getElementById("schoolPlanner_addCourse_grade_input").value =
           object.course.course_grade;
-        document.getElementById("schoolPlanner_addCourse_fullGrade_input").value =
-          object.course.course_fullGrade;
-        document.getElementById("schoolPlanner_addCourse_examType_input").value =
-          object.course.exam_type || "Exam type";
+        document.getElementById(
+          "schoolPlanner_addCourse_fullGrade_input",
+        ).value = object.course.course_fullGrade;
+        document.getElementById(
+          "schoolPlanner_addCourse_examType_input",
+        ).value = object.course.exam_type || "Exam type";
         const examDateParts = formatExamDateParts(object.course.exam_date);
         document.getElementById(
           "schoolPlanner_addCourse_examDate_day_input",
@@ -4046,10 +4152,12 @@ export default class SchoolPlanner extends Component {
     }
 
     lectureCorrections.push(nextCorrection);
-    document.getElementById("schoolPlanner_addLecture_correctionPage_input").value =
-      "";
-    document.getElementById("schoolPlanner_addLecture_correctionText_input").value =
-      "";
+    document.getElementById(
+      "schoolPlanner_addLecture_correctionPage_input",
+    ).value = "";
+    document.getElementById(
+      "schoolPlanner_addLecture_correctionText_input",
+    ).value = "";
     this.retrieveLectureCorrections();
   };
 
@@ -4287,11 +4395,18 @@ export default class SchoolPlanner extends Component {
   buildCourseInformationNote = (course, courseRows = []) => {
     return [
       this.t("courseInformation"),
-      ...courseRows.map(([labelText, valueText]) => `${labelText}: ${valueText}`),
+      ...courseRows.map(
+        ([labelText, valueText]) => `${labelText}: ${valueText}`,
+      ),
     ].join("\n");
   };
 
-  renderCourseActionDock = (actionsMount, course, courseRows = [], isIdle = false) => {
+  renderCourseActionDock = (
+    actionsMount,
+    course,
+    courseRows = [],
+    isIdle = false,
+  ) => {
     if (!actionsMount) return;
 
     actionsMount.innerHTML = "";
@@ -4402,7 +4517,10 @@ export default class SchoolPlanner extends Component {
       `fc${isIdle ? " schoolPlanner_courses_actions--idle" : ""}`,
     );
 
-    actionsOverlay.setAttribute("class", "schoolPlanner_courses_actionsOverlay");
+    actionsOverlay.setAttribute(
+      "class",
+      "schoolPlanner_courses_actionsOverlay",
+    );
     overlayWindow.setAttribute("class", "schoolPlanner_courses_actionsWindow");
     actionsOverlay.appendChild(overlayWindow);
 
@@ -4415,8 +4533,7 @@ export default class SchoolPlanner extends Component {
 
       actionButton.type = "button";
       actionButton.draggable = !isIdle;
-      actionButton.tabIndex =
-        isIdle && !actionConfig.allowWhenIdle ? -1 : 0;
+      actionButton.tabIndex = isIdle && !actionConfig.allowWhenIdle ? -1 : 0;
       actionButton.setAttribute(
         "aria-disabled",
         isIdle && !actionConfig.allowWhenIdle ? "true" : "false",
@@ -4426,10 +4543,14 @@ export default class SchoolPlanner extends Component {
       actionButton.addEventListener("dragstart", (event) => {
         if (isIdle) return;
         event.dataTransfer.setData("text/plain", actionConfig.key);
-        actionButton.classList.add("schoolPlanner_courses_actionChip--dragging");
+        actionButton.classList.add(
+          "schoolPlanner_courses_actionChip--dragging",
+        );
       });
       actionButton.addEventListener("dragend", () => {
-        actionButton.classList.remove("schoolPlanner_courses_actionChip--dragging");
+        actionButton.classList.remove(
+          "schoolPlanner_courses_actionChip--dragging",
+        );
       });
       actionButton.addEventListener("click", () => {
         triggerAction(actionConfig);
@@ -4565,19 +4686,22 @@ export default class SchoolPlanner extends Component {
       {
         label: this.t("fullGrade"),
         field: "course_fullGrade",
-        value: draftPayload?.course_fullGrade ?? (course.course_fullGrade || ""),
+        value:
+          draftPayload?.course_fullGrade ?? (course.course_fullGrade || ""),
       },
       {
         label: this.t("courseLength"),
         field: "course_length",
         value:
-          draftPayload?.course_length ?? String(Number(course.course_length || 0)),
+          draftPayload?.course_length ??
+          String(Number(course.course_length || 0)),
       },
       {
         label: this.t("courseProgress"),
         field: "course_progress",
         value:
-          draftPayload?.course_progress ?? String(Number(course.course_progress || 0)),
+          draftPayload?.course_progress ??
+          String(Number(course.course_progress || 0)),
       },
     ];
     const courseRows = [
@@ -4618,23 +4742,21 @@ export default class SchoolPlanner extends Component {
     const examEntries =
       isAiDraftActive && Array.isArray(draftPayload?.course_exams)
         ? draftPayload.course_exams
-      : course.course_exams && course.course_exams.length > 0
-        ? course.course_exams
-        : course.exam_date || course.exam_time || course.exam_type
-          ? [
-              {
-                exam_type: course.exam_type || "-",
-                exam_date: course.exam_date || "-",
-                exam_time: course.exam_time || "-",
-                course_grade: course.course_grade || "-",
-                course_fullGrade: course.course_fullGrade || "-",
-              },
-            ]
-          : [];
+        : course.course_exams && course.course_exams.length > 0
+          ? course.course_exams
+          : course.exam_date || course.exam_time || course.exam_type
+            ? [
+                {
+                  exam_type: course.exam_type || "-",
+                  exam_date: course.exam_date || "-",
+                  exam_time: course.exam_time || "-",
+                  course_grade: course.course_grade || "-",
+                  course_fullGrade: course.course_fullGrade || "-",
+                },
+              ]
+            : [];
 
     this.renderCourseActionDock(actionsMount, course, courseRows);
-
-
 
     let courseSectionTitle = document.createElement("h3");
     courseSectionTitle.setAttribute(
@@ -4656,7 +4778,8 @@ export default class SchoolPlanner extends Component {
     detailsDiv.appendChild(sendButton);
 
     if (
-      this.state.telegram_courseAiStatusCourseId === String(course?._id || "") &&
+      this.state.telegram_courseAiStatusCourseId ===
+        String(course?._id || "") &&
       this.state.telegram_courseAiStatusMessage
     ) {
       let aiStatusMessage = document.createElement("p");
@@ -4669,7 +4792,8 @@ export default class SchoolPlanner extends Component {
     }
 
     if (
-      this.state.telegram_courseAiStatusCourseId === String(course?._id || "") &&
+      this.state.telegram_courseAiStatusCourseId ===
+        String(course?._id || "") &&
       this.state.telegram_courseAiStatusError
     ) {
       let aiStatusError = document.createElement("p");
@@ -4683,7 +4807,10 @@ export default class SchoolPlanner extends Component {
 
     if (isAiDraftActive) {
       let aiDraftActions = document.createElement("div");
-      aiDraftActions.setAttribute("class", "fr schoolPlanner_courseAiDraftActions");
+      aiDraftActions.setAttribute(
+        "class",
+        "fr schoolPlanner_courseAiDraftActions",
+      );
 
       let saveDraftButton = document.createElement("button");
       saveDraftButton.type = "button";
@@ -4691,7 +4818,9 @@ export default class SchoolPlanner extends Component {
         "class",
         "schoolPlanner_telegramSendButton schoolPlanner_courseAiDraftButton",
       );
-      saveDraftButton.disabled = Boolean(this.state.telegram_courseAiDraftSaving);
+      saveDraftButton.disabled = Boolean(
+        this.state.telegram_courseAiDraftSaving,
+      );
       saveDraftButton.textContent = this.state.telegram_courseAiDraftSaving
         ? this.t("saving")
         : this.t("save");
@@ -4705,7 +4834,9 @@ export default class SchoolPlanner extends Component {
         "class",
         "schoolPlanner_telegramSendButton schoolPlanner_courseAiDraftButton schoolPlanner_courseAiDraftButton--secondary",
       );
-      cancelDraftButton.disabled = Boolean(this.state.telegram_courseAiDraftSaving);
+      cancelDraftButton.disabled = Boolean(
+        this.state.telegram_courseAiDraftSaving,
+      );
       cancelDraftButton.textContent = this.t("close");
       cancelDraftButton.addEventListener("click", () => {
         this.clearCourseAiDraft(String(course?._id || ""));
@@ -4714,7 +4845,6 @@ export default class SchoolPlanner extends Component {
       aiDraftActions.append(saveDraftButton, cancelDraftButton);
       detailsDiv.appendChild(aiDraftActions);
     }
-
 
     courseInformationRows.forEach((rowConfig) => {
       let row = document.createElement("div");
@@ -4766,59 +4896,55 @@ export default class SchoolPlanner extends Component {
       let examList = document.createElement("ul");
       examList.setAttribute("id", "schoolPlanner_courses_exam_ul");
 
-        examEntries.forEach((examEntry, examIndex) => {
-          let examItem = document.createElement("li");
-          examItem.setAttribute("class", "schoolPlanner_courses_exam_li");
+      examEntries.forEach((examEntry, examIndex) => {
+        let examItem = document.createElement("li");
+        examItem.setAttribute("class", "schoolPlanner_courses_exam_li");
 
-          const examRows = [
-            [this.t("examType"), examEntry.exam_type || "-", "exam_type"],
-            [this.t("examDate"), examEntry.exam_date || "-", "exam_date"],
-            [this.t("examTime"), examEntry.exam_time || "-", "exam_time"],
-            [
-              this.t("grades"),
-              examEntry.course_grade || "",
-              "course_grade",
-            ],
-            [
-              this.t("fullGrade"),
-              examEntry.course_fullGrade || "",
-              "course_fullGrade",
-            ],
-          ];
+        const examRows = [
+          [this.t("examType"), examEntry.exam_type || "-", "exam_type"],
+          [this.t("examDate"), examEntry.exam_date || "-", "exam_date"],
+          [this.t("examTime"), examEntry.exam_time || "-", "exam_time"],
+          [this.t("grades"), examEntry.course_grade || "", "course_grade"],
+          [
+            this.t("fullGrade"),
+            examEntry.course_fullGrade || "",
+            "course_fullGrade",
+          ],
+        ];
 
-          examRows.forEach(([labelText, valueText, fieldName]) => {
-            let row = document.createElement("div");
-            row.setAttribute(
-              "class",
+        examRows.forEach(([labelText, valueText, fieldName]) => {
+          let row = document.createElement("div");
+          row.setAttribute(
+            "class",
             "schoolPlanner_courseDetail_row schoolPlanner_courseDetail_row_exam",
           );
 
-            let label = document.createElement("p");
-            label.textContent = labelText;
+          let label = document.createElement("p");
+          label.textContent = labelText;
 
-            let value = isAiDraftActive
-              ? document.createElement("input")
-              : document.createElement("p");
+          let value = isAiDraftActive
+            ? document.createElement("input")
+            : document.createElement("p");
 
-            if (isAiDraftActive) {
-              value.type = "text";
-              value.value = String(valueText || "");
-              value.setAttribute("class", "schoolPlanner_courseDetail_input");
-              value.addEventListener("input", (event) => {
-                this.updateCourseAiDraftExamField(
-                  String(course?._id || ""),
-                  examIndex,
-                  fieldName,
-                  event.target.value,
-                );
-              });
-            } else {
-              value.textContent = valueText;
-            }
+          if (isAiDraftActive) {
+            value.type = "text";
+            value.value = String(valueText || "");
+            value.setAttribute("class", "schoolPlanner_courseDetail_input");
+            value.addEventListener("input", (event) => {
+              this.updateCourseAiDraftExamField(
+                String(course?._id || ""),
+                examIndex,
+                fieldName,
+                event.target.value,
+              );
+            });
+          } else {
+            value.textContent = valueText;
+          }
 
-            row.append(label, value);
-            examItem.appendChild(row);
-          });
+          row.append(label, value);
+          examItem.appendChild(row);
+        });
 
         examList.appendChild(examItem);
       });
@@ -4858,7 +4984,9 @@ export default class SchoolPlanner extends Component {
               {this.t("plannerControl")}
             </p>
             <div className="schoolPlanner_plan_boardTitleRow fr">
-              <p className="schoolPlanner_plan_boardTitle">{this.t("planDays")}</p>
+              <p className="schoolPlanner_plan_boardTitle">
+                {this.t("planDays")}
+              </p>
               <span className="schoolPlanner_plan_boardBadge">
                 {this.t("dailyLoad")}
               </span>
@@ -4897,7 +5025,9 @@ export default class SchoolPlanner extends Component {
       }
 
       if (this.isComponentMounted) {
-        const nextOptions = Array.isArray(payload?.groups) ? payload.groups : [];
+        const nextOptions = Array.isArray(payload?.groups)
+          ? payload.groups
+          : [];
         this.setState((currentState) => {
           const fallbackStoredOptions = Array.isArray(
             currentState.telegram_storedGroupOptions,
@@ -4911,12 +5041,11 @@ export default class SchoolPlanner extends Component {
           ).trim();
           const matchingInputOption = resolvedOptions.find(
             (group) =>
-              String(group?.groupReference || "").trim() === currentInputReference,
+              String(group?.groupReference || "").trim() ===
+              currentInputReference,
           );
           const inputFallbackOption =
-            matchingInputOption ||
-            resolvedOptions[0] ||
-            null;
+            matchingInputOption || resolvedOptions[0] || null;
 
           return {
             telegram_groupOptions: resolvedOptions,
@@ -4942,7 +5071,8 @@ export default class SchoolPlanner extends Component {
           ).trim();
           const matchingInputOption = fallbackStoredOptions.find(
             (group) =>
-              String(group?.groupReference || "").trim() === currentInputReference,
+              String(group?.groupReference || "").trim() ===
+              currentInputReference,
           );
           const inputFallbackOption =
             matchingInputOption || fallbackStoredOptions[0] || null;
@@ -5124,7 +5254,9 @@ export default class SchoolPlanner extends Component {
       this.lectureActionsSnapTimeout = null;
     }
 
-    actionsWindow.classList.add("schoolPlanner_lectures_actionsWindow--dragging");
+    actionsWindow.classList.add(
+      "schoolPlanner_lectures_actionsWindow--dragging",
+    );
     if (actionsWindow.setPointerCapture) {
       actionsWindow.setPointerCapture(event.pointerId);
     }
@@ -5217,7 +5349,9 @@ export default class SchoolPlanner extends Component {
       } catch {}
     }
 
-    actionsWindow.classList.remove("schoolPlanner_lectures_actionsWindow--dragging");
+    actionsWindow.classList.remove(
+      "schoolPlanner_lectures_actionsWindow--dragging",
+    );
     this.lectureActionsPointerState = null;
     this.queueLectureActionsSnap();
   };
@@ -5333,7 +5467,10 @@ export default class SchoolPlanner extends Component {
     });
 
     try {
-      const nextCoursePayload = buildCoursePayloadFromDraft(draftPayload, course);
+      const nextCoursePayload = buildCoursePayloadFromDraft(
+        draftPayload,
+        course,
+      );
       const response = await fetch(
         `${apiUrl("/api/user/editCourse/")}${this.props.state.my_id}/${courseId}`,
         {
@@ -5447,18 +5584,22 @@ export default class SchoolPlanner extends Component {
         course,
         payload?.coursePayload || {},
       );
-      this.setState({
-        telegram_courseAiLoadingCourseId: "",
-        telegram_courseAiStatusCourseId: courseId,
-        telegram_courseAiDraftCourseId: courseId,
-        telegram_courseAiDraftPayload: getEditableCourseDraft(mergedCoursePayload),
-        telegram_courseAiStatusMessage: this.isArabic()
-          ? "تم تجهيز نتائج الذكاء داخل حقول قابلة للتعديل. راجعها ثم احفظها."
-          : "AI results are ready in editable inputs. Review them, then save.",
-        telegram_courseAiStatusError: "",
-      }, () => {
-        this.renderCourseDetailsCard(course);
-      });
+      this.setState(
+        {
+          telegram_courseAiLoadingCourseId: "",
+          telegram_courseAiStatusCourseId: courseId,
+          telegram_courseAiDraftCourseId: courseId,
+          telegram_courseAiDraftPayload:
+            getEditableCourseDraft(mergedCoursePayload),
+          telegram_courseAiStatusMessage: this.isArabic()
+            ? "تم تجهيز نتائج الذكاء داخل حقول قابلة للتعديل. راجعها ثم احفظها."
+            : "AI results are ready in editable inputs. Review them, then save.",
+          telegram_courseAiStatusError: "",
+        },
+        () => {
+          this.renderCourseDetailsCard(course);
+        },
+      );
     } catch (error) {
       this.setState({
         telegram_courseAiLoadingCourseId: "",
@@ -5499,7 +5640,10 @@ export default class SchoolPlanner extends Component {
     this.stopTelegramCourseSuggestionStatusPolling();
 
     const runPoll = async () => {
-      if (!this.isComponentMounted || !this.state.telegram_courseSuggestionsLoading) {
+      if (
+        !this.isComponentMounted ||
+        !this.state.telegram_courseSuggestionsLoading
+      ) {
         this.stopTelegramCourseSuggestionStatusPolling();
         return;
       }
@@ -5533,7 +5677,10 @@ export default class SchoolPlanner extends Component {
         }
       } catch {}
 
-      if (this.isComponentMounted && this.state.telegram_courseSuggestionsLoading) {
+      if (
+        this.isComponentMounted &&
+        this.state.telegram_courseSuggestionsLoading
+      ) {
         this.telegramCourseSuggestionStatusTimeout = setTimeout(runPoll, 900);
       }
     };
@@ -5545,9 +5692,7 @@ export default class SchoolPlanner extends Component {
     const groupReference = String(
       this.state.telegram_panelGroupReference || "",
     ).trim();
-    const groupTitle = String(
-      this.state.telegram_panelGroupTitle || "",
-    ).trim();
+    const groupTitle = String(this.state.telegram_panelGroupTitle || "").trim();
     const selectedSourceMessageId = Number(
       this.state.telegram_selectedSuggestionPdfId || 0,
     );
@@ -5575,37 +5720,39 @@ export default class SchoolPlanner extends Component {
       telegram_courseSuggestionsLoadingMode: appendSuggestions ? "more" : "ai",
       telegram_courseSuggestionsView: "saved",
       telegram_courseSuggestionsError: "",
-      telegram_courseSuggestionsFeedback:
-        appendSuggestions
-          ? "Requesting more AI course name predictions..."
-          : "Generating AI course name predictions...",
+      telegram_courseSuggestionsFeedback: appendSuggestions
+        ? "Requesting more AI course name predictions..."
+        : "Generating AI course name predictions...",
       telegram_courseSuggestionsProgressSteps: [],
       telegram_courseSuggestionsLiveStatus: "",
     });
     this.pollTelegramCourseSuggestionStatus();
 
     try {
-      const response = await fetch(apiUrl("/api/telegram/ai/course-suggestions"), {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          Authorization: `Bearer ${this.props.state.token}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        apiUrl("/api/telegram/ai/course-suggestions"),
+        {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${this.props.state.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            groupReference,
+            groupTitle,
+            appendSuggestions,
+            searchSelectedPdfs,
+            allGroups,
+            ...(searchSelectedPdfs && sourceMessageId
+              ? {
+                  sourceMessageId,
+                  sourceAttachmentFileName,
+                }
+              : {}),
+          }),
         },
-        body: JSON.stringify({
-          groupReference,
-          groupTitle,
-          appendSuggestions,
-          searchSelectedPdfs,
-          allGroups,
-          ...(searchSelectedPdfs && sourceMessageId
-            ? {
-                sourceMessageId,
-                sourceAttachmentFileName,
-              }
-            : {}),
-        }),
-      });
+      );
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -5620,7 +5767,9 @@ export default class SchoolPlanner extends Component {
       this.telegramCourseSuggestionsRequestInFlight = false;
 
       if (this.isComponentMounted) {
-        const analyzedMessagesCount = Number(payload?.analyzedMessagesCount || 0);
+        const analyzedMessagesCount = Number(
+          payload?.analyzedMessagesCount || 0,
+        );
         const searchedKeys = Array.isArray(payload?.searchedKeys)
           ? payload.searchedKeys
           : [];
@@ -5628,7 +5777,9 @@ export default class SchoolPlanner extends Component {
         const newSuggestionsCount = Number(payload?.newSuggestionsCount || 0);
         const totalSuggestionsCount = Number(
           payload?.totalSuggestionsCount ||
-            (Array.isArray(payload?.suggestions) ? payload.suggestions.length : 0),
+            (Array.isArray(payload?.suggestions)
+              ? payload.suggestions.length
+              : 0),
         );
         const appendCompletionLine = appendSuggestions
           ? newSuggestionsCount > 0
@@ -5649,9 +5800,10 @@ export default class SchoolPlanner extends Component {
               ? "اكتمل التحليل ولم يتم العثور على أسماء جديدة."
               : "Analysis complete. No new course names were found.";
         this.setState({
-          telegram_courseSuggestions: this.sortTelegramCourseSuggestionsByConfidence(
-            payload?.suggestions,
-          ),
+          telegram_courseSuggestions:
+            this.sortTelegramCourseSuggestionsByConfidence(
+              payload?.suggestions,
+            ),
           telegram_courseSuggestionsPanelLoading: false,
           telegram_courseSuggestionsLoading: false,
           telegram_courseSuggestionsLoadingMode: "",
@@ -5687,12 +5839,12 @@ export default class SchoolPlanner extends Component {
           telegram_courseSuggestionsLiveStatus: appendSuggestions
             ? appendCompletionLine
             : completionLine,
-          telegram_courseSuggestionsFeedback:
-            appendSuggestions
-              ? appendFeedbackMessage
-              : Array.isArray(payload?.suggestions) && payload.suggestions.length > 0
-                ? "AI course name predictions are ready for review."
-                : "No new course name predictions were found.",
+          telegram_courseSuggestionsFeedback: appendSuggestions
+            ? appendFeedbackMessage
+            : Array.isArray(payload?.suggestions) &&
+                payload.suggestions.length > 0
+              ? "AI course name predictions are ready for review."
+              : "No new course name predictions were found.",
         });
       }
     } catch (error) {
@@ -5773,9 +5925,10 @@ export default class SchoolPlanner extends Component {
           ? payload.suggestions.length
           : 0;
         this.setState({
-          telegram_courseSuggestions: this.sortTelegramCourseSuggestionsByConfidence(
-            payload?.suggestions,
-          ),
+          telegram_courseSuggestions:
+            this.sortTelegramCourseSuggestionsByConfidence(
+              payload?.suggestions,
+            ),
           telegram_courseSuggestionsPanelLoading: false,
           telegram_courseSuggestionsError: "",
           telegram_courseSuggestionsFeedback: savedCount
@@ -5807,9 +5960,7 @@ export default class SchoolPlanner extends Component {
     const groupReference = String(
       this.state.telegram_panelGroupReference || "",
     ).trim();
-    const groupTitle = String(
-      this.state.telegram_panelGroupTitle || "",
-    ).trim();
+    const groupTitle = String(this.state.telegram_panelGroupTitle || "").trim();
     const selectedSourceMessageId = Number(
       this.state.telegram_selectedSuggestionPdfId || 0,
     );
@@ -5855,9 +6006,10 @@ export default class SchoolPlanner extends Component {
   };
 
   dismissTelegramCourseSuggestion = (suggestionKey) => {
-    const dismissedSuggestion = (Array.isArray(this.state.telegram_courseSuggestions)
-      ? this.state.telegram_courseSuggestions
-      : []
+    const dismissedSuggestion = (
+      Array.isArray(this.state.telegram_courseSuggestions)
+        ? this.state.telegram_courseSuggestions
+        : []
     ).find((suggestion) => suggestion.suggestionKey === suggestionKey);
 
     if (dismissedSuggestion) {
@@ -5868,9 +6020,10 @@ export default class SchoolPlanner extends Component {
     }
 
     this.setState((currentState) => ({
-      telegram_courseSuggestions: currentState.telegram_courseSuggestions.filter(
-        (suggestion) => suggestion.suggestionKey !== suggestionKey,
-      ),
+      telegram_courseSuggestions:
+        currentState.telegram_courseSuggestions.filter(
+          (suggestion) => suggestion.suggestionKey !== suggestionKey,
+        ),
     }));
   };
 
@@ -5954,21 +6107,20 @@ export default class SchoolPlanner extends Component {
   };
 
   approveTelegramCourseSuggestion = async (suggestionKey) => {
-    const nextSuggestion = (Array.isArray(this.state.telegram_courseSuggestions)
-      ? this.state.telegram_courseSuggestions
-      : []
+    const nextSuggestion = (
+      Array.isArray(this.state.telegram_courseSuggestions)
+        ? this.state.telegram_courseSuggestions
+        : []
     ).find((suggestion) => suggestion.suggestionKey === suggestionKey);
-    const approvedCoursePayload = this.getSuggestionCoursePayloadForApproval(
-      nextSuggestion,
-    );
+    const approvedCoursePayload =
+      this.getSuggestionCoursePayloadForApproval(nextSuggestion);
 
     if (!approvedCoursePayload?.course_name || !this.props.state?.my_id) {
       return;
     }
 
-    const existingDuplicate = (Array.isArray(this.state.courses)
-      ? this.state.courses
-      : []
+    const existingDuplicate = (
+      Array.isArray(this.state.courses) ? this.state.courses : []
     ).some(
       (course) =>
         buildCourseDuplicateKey(course) ===
@@ -5977,9 +6129,10 @@ export default class SchoolPlanner extends Component {
 
     if (existingDuplicate) {
       this.setState({
-        telegram_courseSuggestions: this.state.telegram_courseSuggestions.filter(
-          (suggestion) => suggestion.suggestionKey !== suggestionKey,
-        ),
+        telegram_courseSuggestions:
+          this.state.telegram_courseSuggestions.filter(
+            (suggestion) => suggestion.suggestionKey !== suggestionKey,
+          ),
         telegram_courseSuggestionsFeedback: this.isArabic()
           ? "تم تخطي اقتراح مكرر لأنه موجود بالفعل."
           : "Skipped a duplicate suggestion because the course already exists.",
@@ -6012,21 +6165,27 @@ export default class SchoolPlanner extends Component {
         throw new Error("Unable to add the approved course.");
       }
 
-      await this.submitTelegramCourseSuggestionFeedback(nextSuggestion, "accepted");
+      await this.submitTelegramCourseSuggestionFeedback(
+        nextSuggestion,
+        "accepted",
+      );
 
       if (this.isComponentMounted) {
         this.setState((currentState) => ({
           telegram_approvingSuggestionKey: "",
-          telegram_courseSuggestions: currentState.telegram_courseSuggestions.filter(
-            (suggestion) => suggestion.suggestionKey !== suggestionKey,
-          ),
+          telegram_courseSuggestions:
+            currentState.telegram_courseSuggestions.filter(
+              (suggestion) => suggestion.suggestionKey !== suggestionKey,
+            ),
           telegram_courseSuggestionsFeedback: this.isArabic()
             ? "تمت إضافة المقرر الموافق عليه."
             : "Approved course added.",
         }));
       }
 
-      this.retrieveCourses(String(payload?.course?._id || "").trim() || undefined);
+      this.retrieveCourses(
+        String(payload?.course?._id || "").trim() || undefined,
+      );
     } catch (error) {
       if (this.isComponentMounted) {
         this.setState({
@@ -6249,8 +6408,9 @@ export default class SchoolPlanner extends Component {
         if (!this.isComponentMounted || !ul) {
           return;
         }
+        const memory = normalizeMemoryPayload(jsonData);
         const selectedLectureId = this.state.lecture_details?._id;
-        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
+        var lecture_sorted = memory.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -6275,7 +6435,7 @@ export default class SchoolPlanner extends Component {
           (lecture) => lecture._id === selectedLectureId,
         );
         this.setState({
-          lectures: jsonData.schoolPlanner.lectures,
+          lectures: memory.lectures,
           lecture_details: matchedLecture || null,
         });
       })
@@ -6315,9 +6475,10 @@ export default class SchoolPlanner extends Component {
         if (!this.isComponentMounted || !ul) {
           return null;
         }
-        console.log(jsonData.schoolPlanner.lectures);
+        const memory = normalizeMemoryPayload(jsonData);
+        console.log(memory.lectures);
         const selectedLectureId = this.state.lecture_details?._id;
-        var lecture_sorted = jsonData.schoolPlanner.lectures.sort((a, b) =>
+        var lecture_sorted = memory.lectures.sort((a, b) =>
           a.lecture_course > b.lecture_course ? -1 : 1,
         );
         var lecture_courses = [];
@@ -6333,15 +6494,16 @@ export default class SchoolPlanner extends Component {
         });
         const matchedLecture = lecture_sorted.find(
           (lecture) =>
-            lecture._id === selectedLectureId && lecture.lecture_hidden === false,
+            lecture._id === selectedLectureId &&
+            lecture.lecture_hidden === false,
         );
         this.setState({
-          lectures: jsonData.schoolPlanner.lectures,
+          lectures: memory.lectures,
           lecture_details: matchedLecture || null,
         });
         return {
           lecture_courses: lecture_courses,
-          jsonData: jsonData,
+          memory,
         };
       })
       .then((object) => {
@@ -6353,7 +6515,7 @@ export default class SchoolPlanner extends Component {
         unique_lecture_courses.forEach((unique_lecture_course) => {
           let course_length = 0;
           let course_progress = 0;
-          object.jsonData.schoolPlanner.lectures.forEach((lecture) => {
+          object.memory.lectures.forEach((lecture) => {
             if (
               lecture.lecture_course === unique_lecture_course &&
               lecture.lecture_partOfPlan === true
@@ -6415,12 +6577,13 @@ export default class SchoolPlanner extends Component {
         if (!this.isComponentMounted) {
           return null;
         }
-        courses = jsonData.schoolPlanner.courses;
+        const memory = normalizeMemoryPayload(jsonData);
+        courses = memory.courses;
         if (
           String(this.props.state?.username || "").toLowerCase() ===
           "naghamtrkmani"
         ) {
-          const exportedCourses = jsonData.schoolPlanner.courses
+          const exportedCourses = memory.courses
             .filter((course) => course?._id && course?.course_name)
             .map((course) => ({
               id: course._id,
@@ -6432,7 +6595,7 @@ export default class SchoolPlanner extends Component {
             JSON.stringify(exportedCourses),
           );
         }
-        jsonData.schoolPlanner.courses.forEach((course) => {
+        memory.courses.forEach((course) => {
           if (course.course_name !== "-") courseNames.push(course.course_name);
           course.course_instructors.forEach((instructor) => {
             courseInstructorsNames.push(instructor);
@@ -6675,9 +6838,10 @@ export default class SchoolPlanner extends Component {
           ? payload.suggestions.length
           : 0;
         this.setState({
-          telegram_courseSuggestions: this.sortTelegramCourseSuggestionsByConfidence(
-            payload?.suggestions,
-          ),
+          telegram_courseSuggestions:
+            this.sortTelegramCourseSuggestionsByConfidence(
+              payload?.suggestions,
+            ),
           telegram_courseSuggestionsPanelLoading: false,
           telegram_courseSuggestionsError: "",
           telegram_courseSuggestionsFeedback: rejectedCount
@@ -6719,8 +6883,7 @@ export default class SchoolPlanner extends Component {
       return;
     }
 
-    const url =
-      apiUrl("/api/user/deleteAllCourses/") + this.props.state.my_id;
+    const url = apiUrl("/api/user/deleteAllCourses/") + this.props.state.my_id;
     const options = {
       method: "DELETE",
       mode: "cors",
@@ -7003,9 +7166,8 @@ export default class SchoolPlanner extends Component {
     const activeTelegramPdfKey = this.getTelegramPdfMessageKey(
       activeTelegramPdfMessage,
     );
-    const activeTelegramPdfReaderState = getStoredPdfReaderState(
-      activeTelegramPdfKey,
-    );
+    const activeTelegramPdfReaderState =
+      getStoredPdfReaderState(activeTelegramPdfKey);
 
     return (
       <React.Fragment>
@@ -7021,8 +7183,7 @@ export default class SchoolPlanner extends Component {
         >
           <div className="fr" id="schoolPlanner_coursesLectures_wrapper">
             <aside id="schoolPlanner_courses_aside" className="fc">
-              <div id="schoolPlanner_courses_headerBlock" className="fc">
-              </div>
+              <div id="schoolPlanner_courses_headerBlock" className="fc"></div>
               <div id="schoolPlanner_courses_panelWrapper" className="fc">
                 <div id="schoolPlanner_courses_select_shell">
                   <select id="schoolPlanner_courses_select"></select>
@@ -7276,27 +7437,26 @@ export default class SchoolPlanner extends Component {
           >
             {this.renderLectureDetailsPanel()}
           </div>
-          <aside
-            id="schoolPlanner_plan_aside"
-            className="fc"
-          >
+          <aside id="schoolPlanner_plan_aside" className="fc">
             <div id="schoolPlanner_plan_wrapper" className="fc">
               <div id="schoolPlanner_plan_commsBoard" className="fc">
-                  <div
-                    id="schoolPlanner_plan_telegramShell"
-                    data-suggestions-active={
-                      this.state.telegram_courseSuggestionsVisible
-                        ? "true"
-                        : "false"
-                    }
-                  >
+                <div
+                  id="schoolPlanner_plan_telegramShell"
+                  data-suggestions-active={
+                    this.state.telegram_courseSuggestionsVisible
+                      ? "true"
+                      : "false"
+                  }
+                >
                   <div id="schoolPlanner_plan_telegramControl" className="fc">
                     <div className="schoolPlanner_plan_boardHeader fc">
                       <p className="schoolPlanner_plan_boardEyebrow">
                         {this.t("messageDesk")}
                       </p>
                       <div className="schoolPlanner_plan_boardTitleRow fr">
-                        <p className="schoolPlanner_plan_boardTitle">{this.t("telegram")}</p>
+                        <p className="schoolPlanner_plan_boardTitle">
+                          {this.t("telegram")}
+                        </p>
                         <span className="schoolPlanner_plan_boardBadge">
                           {this.t("archiveAndSearch")}
                         </span>
@@ -7305,7 +7465,10 @@ export default class SchoolPlanner extends Component {
                         {this.t("telegramDeskCopy")}
                       </p>
                     </div>
-                    <div id="schoolPlanner_plan_telegramControlHeader" className="fc">
+                    <div
+                      id="schoolPlanner_plan_telegramControlHeader"
+                      className="fc"
+                    >
                       <div className="schoolPlanner_plan_telegramControlTitleRow fr">
                         <p id="schoolPlanner_plan_telegramControlTitle">
                           {this.t("telegramControl")}
@@ -7318,15 +7481,24 @@ export default class SchoolPlanner extends Component {
                         {this.t("telegramHint")}
                       </p>
                     </div>
-                    <div id="schoolPlanner_plan_telegramConfigGrid" className="fr">
-                      <div id="schoolPlanner_plan_telegramConfigForm" className="fc">
+                    <div
+                      id="schoolPlanner_plan_telegramConfigGrid"
+                      className="fr"
+                    >
+                      <div
+                        id="schoolPlanner_plan_telegramConfigForm"
+                        className="fc"
+                      >
                         <label
                           htmlFor="schoolPlanner_plan_telegramInput"
                           className="schoolPlanner_plan_telegramControlLabel"
                         >
                           {this.t("groupReference")}
                         </label>
-                        <div id="schoolPlanner_plan_telegramConfigRow" className="fr">
+                        <div
+                          id="schoolPlanner_plan_telegramConfigRow"
+                          className="fr"
+                        >
                           <select
                             id="schoolPlanner_plan_telegramInput"
                             value={this.state.telegram_groupInput}
@@ -7362,58 +7534,75 @@ export default class SchoolPlanner extends Component {
                           onClick={this.saveTelegramConfig}
                           disabled={this.state.telegram_isSaving}
                         >
-                          {this.state.telegram_isSaving ? this.t("saving") : this.t("save")}
+                          {this.state.telegram_isSaving
+                            ? this.t("saving")
+                            : this.t("save")}
                         </button>
                       </div>
-                      <div id="schoolPlanner_plan_telegramStoredGroups" className="fc">
+                      <div
+                        id="schoolPlanner_plan_telegramStoredGroups"
+                        className="fc"
+                      >
                         <p className="schoolPlanner_plan_telegramControlLabel">
                           Stored conversations
                         </p>
-                        <div id="schoolPlanner_plan_telegramStoredGroupsList" className="fc">
-                          {this.state.telegram_storedGroupOptions.length === 0 ? (
+                        <div
+                          id="schoolPlanner_plan_telegramStoredGroupsList"
+                          className="fc"
+                        >
+                          {this.state.telegram_storedGroupOptions.length ===
+                          0 ? (
                             <p className="schoolPlanner_plan_telegramStoredGroupEmpty">
                               {this.t("noStoredMessagesYet")}
                             </p>
                           ) : (
-                            this.state.telegram_storedGroupOptions.map((group) => {
-                              const groupReference = String(
-                                group?.groupReference || "",
-                              ).trim();
+                            this.state.telegram_storedGroupOptions.map(
+                              (group) => {
+                                const groupReference = String(
+                                  group?.groupReference || "",
+                                ).trim();
 
-                              return (
-                                <div
-                                  key={groupReference || String(group?.title || "")}
-                                  className="schoolPlanner_plan_telegramStoredGroupRow fr"
-                                >
-                                  <span className="schoolPlanner_plan_telegramStoredGroupName">
-                                    {String(
-                                      group?.title ||
-                                        group?.username ||
-                                        groupReference ||
-                                        "Telegram Group",
-                                    )}
-                                  </span>
-                                  <span className="schoolPlanner_plan_telegramStoredGroupCount">
-                                    {Number(group?.storedCount || 0)}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    className="schoolPlanner_plan_telegramStoredGroupDelete"
-                                    onClick={() =>
-                                      this.deleteStoredTelegramGroup(groupReference)
+                                return (
+                                  <div
+                                    key={
+                                      groupReference ||
+                                      String(group?.title || "")
                                     }
-                                    disabled={
-                                      this.state.telegram_deletingGroupReference ===
-                                      groupReference
-                                    }
-                                    aria-label="Delete stored conversation"
-                                    title="Delete stored conversation"
+                                    className="schoolPlanner_plan_telegramStoredGroupRow fr"
                                   >
-                                    <i className="fi fi-rr-trash"></i>
-                                  </button>
-                                </div>
-                              );
-                            })
+                                    <span className="schoolPlanner_plan_telegramStoredGroupName">
+                                      {String(
+                                        group?.title ||
+                                          group?.username ||
+                                          groupReference ||
+                                          "Telegram Group",
+                                      )}
+                                    </span>
+                                    <span className="schoolPlanner_plan_telegramStoredGroupCount">
+                                      {Number(group?.storedCount || 0)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="schoolPlanner_plan_telegramStoredGroupDelete"
+                                      onClick={() =>
+                                        this.deleteStoredTelegramGroup(
+                                          groupReference,
+                                        )
+                                      }
+                                      disabled={
+                                        this.state
+                                          .telegram_deletingGroupReference ===
+                                        groupReference
+                                      }
+                                      aria-label="Delete stored conversation"
+                                      title="Delete stored conversation"
+                                    >
+                                      <i className="fi fi-rr-trash"></i>
+                                    </button>
+                                  </div>
+                                );
+                              },
+                            )
                           )}
                         </div>
                       </div>
@@ -7421,9 +7610,13 @@ export default class SchoolPlanner extends Component {
                     <p className="schoolPlanner_plan_telegramControlHint">
                       {this.t("telegramHint")}
                     </p>
-                    <div id="schoolPlanner_plan_telegramArchiveStatus" className="fc">
+                    <div
+                      id="schoolPlanner_plan_telegramArchiveStatus"
+                      className="fc"
+                    >
                       <p className="schoolPlanner_plan_telegramArchiveLine">
-                        {this.t("storedMessages")}: {this.state.telegram_storedCount}
+                        {this.t("storedMessages")}:{" "}
+                        {this.state.telegram_storedCount}
                       </p>
                       <p className="schoolPlanner_plan_telegramArchiveLine">
                         {this.t("lastSync")}:{" "}
@@ -7452,7 +7645,9 @@ export default class SchoolPlanner extends Component {
                           : this.t("noStoredMessagesYet")}
                       </p>
                       <p className="schoolPlanner_plan_telegramArchiveLine">
-                        {this.isArabic() ? "الرسائل المفحوصة" : "Scanned messages"}
+                        {this.isArabic()
+                          ? "الرسائل المفحوصة"
+                          : "Scanned messages"}
                         : {this.state.telegram_lastSyncScannedCount}
                       </p>
                     </div>
@@ -7526,7 +7721,10 @@ export default class SchoolPlanner extends Component {
                           }}
                           placeholder={this.t("telegramSearchPlaceholder")}
                         />
-                        <div id="schoolPlanner_plan_telegramViewToggle" className="fr">
+                        <div
+                          id="schoolPlanner_plan_telegramViewToggle"
+                          className="fr"
+                        >
                           <button
                             type="button"
                             className="schoolPlanner_plan_telegramViewButton"
@@ -7535,7 +7733,9 @@ export default class SchoolPlanner extends Component {
                                 ? "true"
                                 : "false"
                             }
-                            onClick={() => this.updateTelegramViewMode("messages")}
+                            onClick={() =>
+                              this.updateTelegramViewMode("messages")
+                            }
                           >
                             {this.t("telegramMessagesTab")}
                           </button>
@@ -7555,456 +7755,556 @@ export default class SchoolPlanner extends Component {
                       </>
                     ) : null}
                     <div id="schoolPlanner_plan_telegramContent" className="fr">
-                    {this.state.telegram_courseSuggestionsVisible ? (
-                    <div id="schoolPlanner_plan_telegramSuggestions" className="fc">
-                      <div className="fc schoolPlanner_plan_telegramSuggestionsHeader">
-                        <p className="schoolPlanner_plan_telegramSuggestionsTitle">
-                          {this.isArabic()
-                            ? "توقعات أسماء المقررات"
-                            : this.state.telegram_courseSuggestionsView === "rejected"
-                              ? "Rejected Course Suggestions"
-                              : "AI Planner"}
-                        </p>
-                        <p className="schoolPlanner_plan_telegramSuggestionsSubtitle">
-                          {this.isArabic()
-                            ? "استخرج الاسم فقط أولاً، ثم اعتمد البطاقة المعلقة قبل طلب بقية التفاصيل لنفس المقرر."
-                            : "Extract the course name first, approve the pending card, then request the remaining details for that same course."}
-                        </p>
-                        <p className="schoolPlanner_plan_telegramSuggestionsSelectedPdf">
-                          {this.state.telegram_selectedSuggestionPdfTitle
-                            ? `Selected PDF: ${this.state.telegram_selectedSuggestionPdfTitle}`
-                            : "Select one PDF from the PDFs tab to generate name predictions."}
-                        </p>
-                        <label className="schoolPlanner_plan_telegramControlLabel">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(this.state.telegram_searchSelectedPdfs)}
-                            onChange={(event) =>
-                              this.setState({
-                                telegram_searchSelectedPdfs: event.target.checked,
-                              })
-                            }
-                          />{" "}
-                          {this.isArabic()
-                            ? "Ø§Ù„Ø¨Ø­Ø« ÙÙŠ PDF Ø§Ù„Ù…Ø­Ø¯Ø¯"
-                            : "Search in selected PDFs"}
-                        </label>
-                        <div className="fr schoolPlanner_plan_telegramSuggestionsActions">
-                          <button
-                            type="button"
-                            className="schoolPlanner_plan_telegramSuggestCoursesInline"
-                            onClick={() => this.fetchTelegramCourseSuggestions("ai")}
-                            disabled={
-                              this.state.telegram_courseSuggestionsLoading ||
-                              !String(
-                                this.state.telegram_panelGroupReference || "",
-                              ).trim()
-                            }
-                          >
-                            {this.state.telegram_courseSuggestionsLoading &&
-                            this.state.telegram_courseSuggestionsLoadingMode === "ai"
-                              ? "Analyzing stored..."
-                              : this.isArabic()
-                                ? "توقعات بالذكاء"
-                                : "Stored AI Suggestions"}
-                          </button>
-                          <button
-                            type="button"
-                            className="schoolPlanner_plan_telegramSuggestCoursesInline"
-                            onClick={this.openTelegramCourseSuggestions}
-                            disabled={
-                              this.state.telegram_courseSuggestionsPanelLoading ||
-                              !String(
-                                this.state.telegram_panelGroupReference || "",
-                              ).trim()
-                            }
-                          >
-                            {this.isArabic()
-                              ? "ØªØµÙØ­ Ø§Ù„Ù…Ø­ÙÙˆØ¸"
-                              : "Browse Stored"}
-                          </button>
-                          <button
-                            type="button"
-                            className="schoolPlanner_plan_telegramSuggestCoursesInline"
-                            onClick={() => this.fetchTelegramCourseSuggestions("more")}
-                            disabled={
-                              this.state.telegram_courseSuggestionsLoading ||
-                              this.state.telegram_courseSuggestionsView === "rejected" ||
-                              !String(
-                                this.state.telegram_panelGroupReference || "",
-                              ).trim() ||
-                              !Array.isArray(this.state.telegram_courseSuggestions) ||
-                              this.state.telegram_courseSuggestions.length === 0
-                            }
-                          >
-                            {this.state.telegram_courseSuggestionsLoading &&
-                            this.state.telegram_courseSuggestionsLoadingMode === "more"
-                              ? "Loading more..."
-                              : this.isArabic()
-                                ? "Ø§Ù‚ØªØ±Ø§Ø­Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©"
-                                : "More Stored Suggestions"}
-                          </button>
-                          <button
-                            type="button"
-                            className="schoolPlanner_plan_telegramSuggestCoursesInline schoolPlanner_plan_telegramSuggestCoursesLocal"
-                            onClick={this.openRejectedTelegramCourseSuggestions}
-                            disabled={
-                              this.state.telegram_courseSuggestionsPanelLoading ||
-                              !String(
-                                this.state.telegram_panelGroupReference || "",
-                              ).trim()
-                            }
-                          >
-                            {this.isArabic()
-                              ? "ØªØµÙØ­ Ø§Ù„Ù…Ø±ÙÙˆØ¶"
-                              : "Browse Rejected"}
-                          </button>
-                          <button
-                            type="button"
-                            className="schoolPlanner_plan_telegramSuggestCoursesInline schoolPlanner_plan_telegramSuggestCoursesClear"
-                            onClick={this.clearSavedTelegramCourseSuggestions}
-                            disabled={
-                              !Array.isArray(this.state.telegram_courseSuggestions) ||
-                              this.state.telegram_courseSuggestions.length === 0
-                            }
-                          >
-                            {this.isArabic() ? "مسح" : "Clear"}
-                          </button>
-                        </div>
-                      </div>
-                      {this.state.telegram_courseSuggestionsPanelLoading ? (
-                        <p className="schoolPlanner_plan_telegramSuggestionStatus">
-                          {this.isArabic()
-                            ? "جارٍ تحميل توقعات الأسماء المحفوظة..."
-                            : "Loading saved name predictions..."}
-                        </p>
-                      ) : null}
-                      {this.state.telegram_courseSuggestionsError ? (
-                        <p className="schoolPlanner_plan_telegramSuggestionStatus">
-                          {this.state.telegram_courseSuggestionsError}
-                        </p>
-                      ) : null}
-                      {this.state.telegram_courseSuggestionsFeedback ? (
-                        <p className="schoolPlanner_plan_telegramSuggestionStatus">
-                          {this.state.telegram_courseSuggestionsFeedback}
-                        </p>
-                      ) : null}
-                      {this.state.telegram_courseSuggestionsLiveStatus ? (
-                        <p className="schoolPlanner_plan_telegramSuggestionLiveLine">
-                          {this.state.telegram_courseSuggestionsLiveStatus}
-                        </p>
-                      ) : null}
-                      {this.state.telegram_courseSuggestions.length > 0 ? (
-                        <div className="schoolPlanner_plan_telegramSuggestionGrid">
-                      {this.state.telegram_courseSuggestions.map((suggestion) => {
-                        const coursePayload = suggestion.coursePayload || {};
-                        const courseArabic = suggestion.courseArabic || {};
-                        const courseEnglish = suggestion.courseEnglish || {};
-                        const duplicateKey = buildCourseDuplicateKey(coursePayload);
-                        const openingSuggestion =
-                          this.state.telegram_approvingSuggestionKey ===
-                          suggestion.suggestionKey;
-                        const rawCourseName = String(
-                          coursePayload.course_name || "",
-                        ).trim();
-                        const arabicTitle =
-                          String(courseArabic.course_name || "").trim() ||
-                          (/[ء-ي]/.test(rawCourseName) ? rawCourseName : "");
-                        const englishTitle =
-                          String(courseEnglish.course_name || "").trim() ||
-                          (/[A-Za-z]/.test(rawCourseName) ? rawCourseName : "");
-                        const displayMatchedKeys = Array.isArray(
-                          suggestion.matchedKeys,
-                        )
-                          ? [
-                              ...new Set(
-                                suggestion.matchedKeys
-                                  .map((key) => String(key || "").trim())
-                                  .filter(Boolean),
-                              ),
-                            ]
-                          : [];
-
-                        return (
-                          <div
-                            key={suggestion.suggestionKey || duplicateKey}
-                            className="schoolPlanner_plan_telegramSuggestionCard fc"
-                          >
-                            <div className="fr schoolPlanner_plan_telegramSuggestionHeader">
-                              <div className="fc schoolPlanner_plan_telegramSuggestionTitleWrap">
-                                <p className="schoolPlanner_plan_telegramSuggestionTitle">
-                                  {arabicTitle || this.t("noText")}
-                                </p>
-                                <p className="schoolPlanner_plan_telegramSuggestionMetaLine">
-                                  {englishTitle || this.t("noText")}
-                                </p>
-                              </div>
-                              <span className="schoolPlanner_plan_telegramSuggestionConfidence">
-                                {Number(suggestion.confidence || 0)}%
-                              </span>
-                            </div>
-                            <div className="fc schoolPlanner_plan_telegramSuggestionBody">
-                              <p className="schoolPlanner_plan_telegramSuggestionRow">
-                                <strong>{this.isArabic() ? "المفاتيح المطابقة" : "Matched keys"}:</strong>{" "}
-                                {displayMatchedKeys.length > 0
-                                  ? displayMatchedKeys.join(", ")
-                                  : "-"}
-                              </p>
-                              {Array.isArray(suggestion.reasons) &&
-                              suggestion.reasons.length > 0 ? (
-                                <div className="fc schoolPlanner_plan_telegramSuggestionReasons">
-                                  {suggestion.reasons.map((reason, reasonIndex) => (
-                                    <p
-                                      key={`${suggestion.suggestionKey}-reason-${reasonIndex}`}
-                                      className="schoolPlanner_plan_telegramSuggestionReason"
-                                    >
-                                      {reason}
-                                    </p>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                            {this.state.telegram_courseSuggestionsView !== "rejected" ? (
-                            <div className="fr schoolPlanner_plan_telegramSuggestionActions">
+                      {this.state.telegram_courseSuggestionsVisible ? (
+                        <div
+                          id="schoolPlanner_plan_telegramSuggestions"
+                          className="fc"
+                        >
+                          <div className="fc schoolPlanner_plan_telegramSuggestionsHeader">
+                            <p className="schoolPlanner_plan_telegramSuggestionsTitle">
+                              {this.isArabic()
+                                ? "توقعات أسماء المقررات"
+                                : this.state.telegram_courseSuggestionsView ===
+                                    "rejected"
+                                  ? "Rejected Course Suggestions"
+                                  : "AI Planner"}
+                            </p>
+                            <p className="schoolPlanner_plan_telegramSuggestionsSubtitle">
+                              {this.isArabic()
+                                ? "استخرج الاسم فقط أولاً، ثم اعتمد البطاقة المعلقة قبل طلب بقية التفاصيل لنفس المقرر."
+                                : "Extract the course name first, approve the pending card, then request the remaining details for that same course."}
+                            </p>
+                            <p className="schoolPlanner_plan_telegramSuggestionsSelectedPdf">
+                              {this.state.telegram_selectedSuggestionPdfTitle
+                                ? `Selected PDF: ${this.state.telegram_selectedSuggestionPdfTitle}`
+                                : "Select one PDF from the PDFs tab to generate name predictions."}
+                            </p>
+                            <label className="schoolPlanner_plan_telegramControlLabel">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(
+                                  this.state.telegram_searchSelectedPdfs,
+                                )}
+                                onChange={(event) =>
+                                  this.setState({
+                                    telegram_searchSelectedPdfs:
+                                      event.target.checked,
+                                  })
+                                }
+                              />{" "}
+                              {this.isArabic()
+                                ? "Ø§Ù„Ø¨Ø­Ø« ÙÙŠ PDF Ø§Ù„Ù…Ø­Ø¯Ø¯"
+                                : "Search in selected PDFs"}
+                            </label>
+                            <div className="fr schoolPlanner_plan_telegramSuggestionsActions">
                               <button
                                 type="button"
-                                className="schoolPlanner_plan_telegramSuggestApprove"
+                                className="schoolPlanner_plan_telegramSuggestCoursesInline"
                                 onClick={() =>
-                                  this.approveTelegramCourseSuggestion(
-                                    suggestion.suggestionKey,
-                                  )
+                                  this.fetchTelegramCourseSuggestions("ai")
                                 }
-                                disabled={openingSuggestion}
+                                disabled={
+                                  this.state
+                                    .telegram_courseSuggestionsLoading ||
+                                  !String(
+                                    this.state.telegram_panelGroupReference ||
+                                      "",
+                                  ).trim()
+                                }
                               >
-                                {openingSuggestion
-                                  ? this.isArabic()
-                                    ? "جاري الإضافة..."
-                                    : "Adding..."
+                                {this.state.telegram_courseSuggestionsLoading &&
+                                this.state
+                                  .telegram_courseSuggestionsLoadingMode ===
+                                  "ai"
+                                  ? "Analyzing stored..."
                                   : this.isArabic()
-                                    ? "اعتماد بطاقة معلقة"
-                                    : "Approve Pending Card"}
+                                    ? "توقعات بالذكاء"
+                                    : "Stored AI Suggestions"}
                               </button>
                               <button
                                 type="button"
-                                className="schoolPlanner_plan_telegramSuggestDismiss"
-                                onClick={() =>
-                                  this.dismissTelegramCourseSuggestion(
-                                    suggestion.suggestionKey,
-                                  )
+                                className="schoolPlanner_plan_telegramSuggestCoursesInline"
+                                onClick={this.openTelegramCourseSuggestions}
+                                disabled={
+                                  this.state
+                                    .telegram_courseSuggestionsPanelLoading ||
+                                  !String(
+                                    this.state.telegram_panelGroupReference ||
+                                      "",
+                                  ).trim()
                                 }
                               >
-                                {this.isArabic() ? "رفض" : "Reject"}
+                                {this.isArabic()
+                                  ? "ØªØµÙØ­ Ø§Ù„Ù…Ø­ÙÙˆØ¸"
+                                  : "Browse Stored"}
+                              </button>
+                              <button
+                                type="button"
+                                className="schoolPlanner_plan_telegramSuggestCoursesInline"
+                                onClick={() =>
+                                  this.fetchTelegramCourseSuggestions("more")
+                                }
+                                disabled={
+                                  this.state
+                                    .telegram_courseSuggestionsLoading ||
+                                  this.state.telegram_courseSuggestionsView ===
+                                    "rejected" ||
+                                  !String(
+                                    this.state.telegram_panelGroupReference ||
+                                      "",
+                                  ).trim() ||
+                                  !Array.isArray(
+                                    this.state.telegram_courseSuggestions,
+                                  ) ||
+                                  this.state.telegram_courseSuggestions
+                                    .length === 0
+                                }
+                              >
+                                {this.state.telegram_courseSuggestionsLoading &&
+                                this.state
+                                  .telegram_courseSuggestionsLoadingMode ===
+                                  "more"
+                                  ? "Loading more..."
+                                  : this.isArabic()
+                                    ? "Ø§Ù‚ØªØ±Ø§Ø­Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©"
+                                    : "More Stored Suggestions"}
+                              </button>
+                              <button
+                                type="button"
+                                className="schoolPlanner_plan_telegramSuggestCoursesInline schoolPlanner_plan_telegramSuggestCoursesLocal"
+                                onClick={
+                                  this.openRejectedTelegramCourseSuggestions
+                                }
+                                disabled={
+                                  this.state
+                                    .telegram_courseSuggestionsPanelLoading ||
+                                  !String(
+                                    this.state.telegram_panelGroupReference ||
+                                      "",
+                                  ).trim()
+                                }
+                              >
+                                {this.isArabic()
+                                  ? "ØªØµÙØ­ Ø§Ù„Ù…Ø±ÙÙˆØ¶"
+                                  : "Browse Rejected"}
+                              </button>
+                              <button
+                                type="button"
+                                className="schoolPlanner_plan_telegramSuggestCoursesInline schoolPlanner_plan_telegramSuggestCoursesClear"
+                                onClick={
+                                  this.clearSavedTelegramCourseSuggestions
+                                }
+                                disabled={
+                                  !Array.isArray(
+                                    this.state.telegram_courseSuggestions,
+                                  ) ||
+                                  this.state.telegram_courseSuggestions
+                                    .length === 0
+                                }
+                              >
+                                {this.isArabic() ? "مسح" : "Clear"}
                               </button>
                             </div>
-                            ) : null}
                           </div>
-                        );
-                      })}
+                          {this.state.telegram_courseSuggestionsPanelLoading ? (
+                            <p className="schoolPlanner_plan_telegramSuggestionStatus">
+                              {this.isArabic()
+                                ? "جارٍ تحميل توقعات الأسماء المحفوظة..."
+                                : "Loading saved name predictions..."}
+                            </p>
+                          ) : null}
+                          {this.state.telegram_courseSuggestionsError ? (
+                            <p className="schoolPlanner_plan_telegramSuggestionStatus">
+                              {this.state.telegram_courseSuggestionsError}
+                            </p>
+                          ) : null}
+                          {this.state.telegram_courseSuggestionsFeedback ? (
+                            <p className="schoolPlanner_plan_telegramSuggestionStatus">
+                              {this.state.telegram_courseSuggestionsFeedback}
+                            </p>
+                          ) : null}
+                          {this.state.telegram_courseSuggestionsLiveStatus ? (
+                            <p className="schoolPlanner_plan_telegramSuggestionLiveLine">
+                              {this.state.telegram_courseSuggestionsLiveStatus}
+                            </p>
+                          ) : null}
+                          {this.state.telegram_courseSuggestions.length > 0 ? (
+                            <div className="schoolPlanner_plan_telegramSuggestionGrid">
+                              {this.state.telegram_courseSuggestions.map(
+                                (suggestion) => {
+                                  const coursePayload =
+                                    suggestion.coursePayload || {};
+                                  const courseArabic =
+                                    suggestion.courseArabic || {};
+                                  const courseEnglish =
+                                    suggestion.courseEnglish || {};
+                                  const duplicateKey =
+                                    buildCourseDuplicateKey(coursePayload);
+                                  const openingSuggestion =
+                                    this.state
+                                      .telegram_approvingSuggestionKey ===
+                                    suggestion.suggestionKey;
+                                  const rawCourseName = String(
+                                    coursePayload.course_name || "",
+                                  ).trim();
+                                  const arabicTitle =
+                                    String(
+                                      courseArabic.course_name || "",
+                                    ).trim() ||
+                                    (/[ء-ي]/.test(rawCourseName)
+                                      ? rawCourseName
+                                      : "");
+                                  const englishTitle =
+                                    String(
+                                      courseEnglish.course_name || "",
+                                    ).trim() ||
+                                    (/[A-Za-z]/.test(rawCourseName)
+                                      ? rawCourseName
+                                      : "");
+                                  const displayMatchedKeys = Array.isArray(
+                                    suggestion.matchedKeys,
+                                  )
+                                    ? [
+                                        ...new Set(
+                                          suggestion.matchedKeys
+                                            .map((key) =>
+                                              String(key || "").trim(),
+                                            )
+                                            .filter(Boolean),
+                                        ),
+                                      ]
+                                    : [];
+
+                                  return (
+                                    <div
+                                      key={
+                                        suggestion.suggestionKey || duplicateKey
+                                      }
+                                      className="schoolPlanner_plan_telegramSuggestionCard fc"
+                                    >
+                                      <div className="fr schoolPlanner_plan_telegramSuggestionHeader">
+                                        <div className="fc schoolPlanner_plan_telegramSuggestionTitleWrap">
+                                          <p className="schoolPlanner_plan_telegramSuggestionTitle">
+                                            {arabicTitle || this.t("noText")}
+                                          </p>
+                                          <p className="schoolPlanner_plan_telegramSuggestionMetaLine">
+                                            {englishTitle || this.t("noText")}
+                                          </p>
+                                        </div>
+                                        <span className="schoolPlanner_plan_telegramSuggestionConfidence">
+                                          {Number(suggestion.confidence || 0)}%
+                                        </span>
+                                      </div>
+                                      <div className="fc schoolPlanner_plan_telegramSuggestionBody">
+                                        <p className="schoolPlanner_plan_telegramSuggestionRow">
+                                          <strong>
+                                            {this.isArabic()
+                                              ? "المفاتيح المطابقة"
+                                              : "Matched keys"}
+                                            :
+                                          </strong>{" "}
+                                          {displayMatchedKeys.length > 0
+                                            ? displayMatchedKeys.join(", ")
+                                            : "-"}
+                                        </p>
+                                        {Array.isArray(suggestion.reasons) &&
+                                        suggestion.reasons.length > 0 ? (
+                                          <div className="fc schoolPlanner_plan_telegramSuggestionReasons">
+                                            {suggestion.reasons.map(
+                                              (reason, reasonIndex) => (
+                                                <p
+                                                  key={`${suggestion.suggestionKey}-reason-${reasonIndex}`}
+                                                  className="schoolPlanner_plan_telegramSuggestionReason"
+                                                >
+                                                  {reason}
+                                                </p>
+                                              ),
+                                            )}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                      {this.state
+                                        .telegram_courseSuggestionsView !==
+                                      "rejected" ? (
+                                        <div className="fr schoolPlanner_plan_telegramSuggestionActions">
+                                          <button
+                                            type="button"
+                                            className="schoolPlanner_plan_telegramSuggestApprove"
+                                            onClick={() =>
+                                              this.approveTelegramCourseSuggestion(
+                                                suggestion.suggestionKey,
+                                              )
+                                            }
+                                            disabled={openingSuggestion}
+                                          >
+                                            {openingSuggestion
+                                              ? this.isArabic()
+                                                ? "جاري الإضافة..."
+                                                : "Adding..."
+                                              : this.isArabic()
+                                                ? "اعتماد بطاقة معلقة"
+                                                : "Approve Pending Card"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="schoolPlanner_plan_telegramSuggestDismiss"
+                                            onClick={() =>
+                                              this.dismissTelegramCourseSuggestion(
+                                                suggestion.suggestionKey,
+                                              )
+                                            }
+                                          >
+                                            {this.isArabic() ? "رفض" : "Reject"}
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                },
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
-                    </div>
-                    ) : null}
-                    {!this.state.telegram_courseSuggestionsVisible ? (
-                    <div id="schoolPlanner_plan_telegramBody" className="fc">
-                      {this.state.telegram_isLoading ? (
-                        <p className="schoolPlanner_plan_telegramStatus">
-                          {this.t("loadingTelegramMessages")}
-                        </p>
-                      ) : this.state.telegram_error ? (
-                        <p className="schoolPlanner_plan_telegramStatus">
-                          {this.state.telegram_error}
-                        </p>
-                      ) : this.state.telegram_viewMode === "pdfs" &&
-                        this.getSortedTelegramPdfs().length === 0 ? (
-                        <p className="schoolPlanner_plan_telegramStatus">
-                          {this.t("noTelegramPdfsYet")}
-                        </p>
-                      ) : this.state.telegram_viewMode === "pdfs" ? (
-                        <>
-                          {this.getSortedTelegramPdfs().map((message) => (
-                            <div
-                              key={
-                                message.id ||
-                                message.attachmentFileName ||
-                                `${message.sender}-${message.date}`
-                              }
-                              className="schoolPlanner_plan_telegramPdfCard fc"
-                            >
-                              <div className="fr schoolPlanner_plan_telegramPdfHeader">
-                                <span className="schoolPlanner_plan_telegramPdfBadge">
-                                  PDF
-                                </span>
-                                <span className="schoolPlanner_plan_telegramPdfTime">
-                                  {this.formatTelegramDateTime(message.date)}
-                                </span>
-                              </div>
-                              <p className="schoolPlanner_plan_telegramPdfTitle">
-                                {message.attachmentFileName ||
-                                  message.text ||
-                                  this.t("noText")}
-                              </p>
-                              {message.text &&
-                              message.text !== message.attachmentFileName ? (
-                                <p className="schoolPlanner_plan_telegramPdfCaption">
-                                  {message.text}
-                                </p>
-                              ) : null}
-                              {message.attachmentTextExtracted ? (
-                                <p className="schoolPlanner_plan_telegramPdfExtract">
-                                  {message.attachmentTextExtracted.slice(0, 280)}
-                                  {message.attachmentTextExtracted.length > 280
-                                    ? "..."
-                                    : ""}
-                                </p>
-                              ) : null}
-                              <div className="fr schoolPlanner_plan_telegramMeta">
-                                <span>
-                                  {message.sender || this.t("unknown")}
-                                </span>
-                                <span>
-                                  {this.formatTelegramAttachmentSize(
-                                    message.attachmentSizeBytes,
-                                  ) ||
-                                    String(
-                                      message.attachmentMimeType || "application/pdf",
-                                    )}
-                                </span>
-                              </div>
-                              <div className="fr schoolPlanner_plan_telegramPdfActions">
-                                <button
-                                  type="button"
-                                  className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfSuggest"
-                                  onClick={() =>
-                                    this.selectTelegramPdfForSuggestions(message)
-                                  }
-                                >
-                                  {Number(this.state.telegram_selectedSuggestionPdfId || 0) ===
-                                  Number(message?.id || 0)
-                                    ? "Selected for Suggestions"
-                                    : "Use for Suggestions"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="schoolPlanner_plan_telegramPdfOpen"
-                                  onClick={() => this.openStoredTelegramPdf(message)}
-                                  disabled={
-                                    this.state.telegram_openingPdfKey ===
-                                    `${String(
-                                      this.state.telegram_panelGroupReference || "",
-                                    ).trim()}:${Number(message?.id || 0)}`
-                                  }
-                                >
-                                  {this.state.telegram_openingPdfKey ===
-                                  `${String(
-                                    this.state.telegram_panelGroupReference || "",
-                                  ).trim()}:${Number(message?.id || 0)}`
-                                    ? "Opening..."
-                                    : this.isArabic()
-                                      ? "افتح"
-                                      : "Open"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfOpenAlt"
-                                  onClick={() => this.uploadStoredTelegramPdfToCloud(message)}
-                                  disabled={
-                                    this.state.telegram_cloudUploadPdfKey ===
-                                      `${String(
-                                        this.state.telegram_panelGroupReference || "",
-                                      ).trim()}:${Number(message?.id || 0)}` ||
-                                    Boolean(
-                                      this.state.telegram_cloudAddedPdfKeys?.[
-                                        `${String(
-                                          this.state.telegram_panelGroupReference || "",
-                                        ).trim()}:${Number(message?.id || 0)}`
-                                      ],
-                                    )
-                                  }
-                                >
-                                  {this.state.telegram_cloudAddedPdfKeys?.[
-                                  `${String(
-                                    this.state.telegram_panelGroupReference || "",
-                                  ).trim()}:${Number(message?.id || 0)}`
-                                  ]
-                                    ? "Added to Cloud"
-                                    : this.state.telegram_cloudUploadPdfKey ===
-                                        `${String(
-                                          this.state.telegram_panelGroupReference || "",
-                                        ).trim()}:${Number(message?.id || 0)}`
-                                    ? "Adding..."
-                                    : "Add to Cloud"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfOpenAlt"
-                                  onClick={() =>
-                                    this.openStoredTelegramPdfInNewTab(message)
-                                  }
-                                >
-                                  {this.isArabic() ? "علامة تبويب" : "Open Tab"}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </>
-                      ) : this.state.telegram_messages.length === 0 ? (
-                        <p className="schoolPlanner_plan_telegramStatus">
-                          {this.t("noTelegramMessagesYet")}
-                        </p>
-                      ) : (
-                        <>
-                          {this.groupTelegramMessagesByDay(
-                            this.state.telegram_messages,
-                          ).flatMap((messageGroup) => [
-                            <div
-                              key={`${messageGroup.dayLabel}-separator`}
-                              className="schoolPlanner_plan_telegramDaySeparator"
-                            >
-                              <span className="schoolPlanner_plan_telegramDaySeparatorText">
-                                {messageGroup.dayLabel}
-                              </span>
-                            </div>,
-                            ...messageGroup.items.map((message) => (
-                              <div
-                                key={
-                                  message.id ||
-                                  `${message.sender}-${message.date}`
-                                }
-                                className="schoolPlanner_plan_telegramMessageRow fc"
-                              >
+                      {!this.state.telegram_courseSuggestionsVisible ? (
+                        <div
+                          id="schoolPlanner_plan_telegramBody"
+                          className="fc"
+                        >
+                          {this.state.telegram_isLoading ? (
+                            <p className="schoolPlanner_plan_telegramStatus">
+                              {this.t("loadingTelegramMessages")}
+                            </p>
+                          ) : this.state.telegram_error ? (
+                            <p className="schoolPlanner_plan_telegramStatus">
+                              {this.state.telegram_error}
+                            </p>
+                          ) : this.state.telegram_viewMode === "pdfs" &&
+                            this.getSortedTelegramPdfs().length === 0 ? (
+                            <p className="schoolPlanner_plan_telegramStatus">
+                              {this.t("noTelegramPdfsYet")}
+                            </p>
+                          ) : this.state.telegram_viewMode === "pdfs" ? (
+                            <>
+                              {this.getSortedTelegramPdfs().map((message) => (
                                 <div
-                                  className="schoolPlanner_plan_telegramMessage fc"
-                                  dir="auto"
+                                  key={
+                                    message.id ||
+                                    message.attachmentFileName ||
+                                    `${message.sender}-${message.date}`
+                                  }
+                                  className="schoolPlanner_plan_telegramPdfCard fc"
                                 >
-                                  <p>{message.text || this.t("noText")}</p>
+                                  <div className="fr schoolPlanner_plan_telegramPdfHeader">
+                                    <span className="schoolPlanner_plan_telegramPdfBadge">
+                                      PDF
+                                    </span>
+                                    <span className="schoolPlanner_plan_telegramPdfTime">
+                                      {this.formatTelegramDateTime(
+                                        message.date,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <p className="schoolPlanner_plan_telegramPdfTitle">
+                                    {message.attachmentFileName ||
+                                      message.text ||
+                                      this.t("noText")}
+                                  </p>
+                                  {message.text &&
+                                  message.text !==
+                                    message.attachmentFileName ? (
+                                    <p className="schoolPlanner_plan_telegramPdfCaption">
+                                      {message.text}
+                                    </p>
+                                  ) : null}
+                                  {message.attachmentTextExtracted ? (
+                                    <p className="schoolPlanner_plan_telegramPdfExtract">
+                                      {message.attachmentTextExtracted.slice(
+                                        0,
+                                        280,
+                                      )}
+                                      {message.attachmentTextExtracted.length >
+                                      280
+                                        ? "..."
+                                        : ""}
+                                    </p>
+                                  ) : null}
                                   <div className="fr schoolPlanner_plan_telegramMeta">
                                     <span>
                                       {message.sender || this.t("unknown")}
                                     </span>
                                     <span>
-                                      {this.formatTelegramTimeOnly(
-                                        message.date,
-                                      )}
+                                      {this.formatTelegramAttachmentSize(
+                                        message.attachmentSizeBytes,
+                                      ) ||
+                                        String(
+                                          message.attachmentMimeType ||
+                                            "application/pdf",
+                                        )}
                                     </span>
                                   </div>
+                                  <div className="fr schoolPlanner_plan_telegramPdfActions">
+                                    <button
+                                      type="button"
+                                      className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfSuggest"
+                                      onClick={() =>
+                                        this.selectTelegramPdfForSuggestions(
+                                          message,
+                                        )
+                                      }
+                                    >
+                                      {Number(
+                                        this.state
+                                          .telegram_selectedSuggestionPdfId ||
+                                          0,
+                                      ) === Number(message?.id || 0)
+                                        ? "Selected for Suggestions"
+                                        : "Use for Suggestions"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="schoolPlanner_plan_telegramPdfOpen"
+                                      onClick={() =>
+                                        this.openStoredTelegramPdf(message)
+                                      }
+                                      disabled={
+                                        this.state.telegram_openingPdfKey ===
+                                        `${String(
+                                          this.state
+                                            .telegram_panelGroupReference || "",
+                                        ).trim()}:${Number(message?.id || 0)}`
+                                      }
+                                    >
+                                      {this.state.telegram_openingPdfKey ===
+                                      `${String(
+                                        this.state
+                                          .telegram_panelGroupReference || "",
+                                      ).trim()}:${Number(message?.id || 0)}`
+                                        ? "Opening..."
+                                        : this.isArabic()
+                                          ? "افتح"
+                                          : "Open"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfOpenAlt"
+                                      onClick={() =>
+                                        this.uploadStoredTelegramPdfToCloud(
+                                          message,
+                                        )
+                                      }
+                                      disabled={
+                                        this.state
+                                          .telegram_cloudUploadPdfKey ===
+                                          `${String(
+                                            this.state
+                                              .telegram_panelGroupReference ||
+                                              "",
+                                          ).trim()}:${Number(message?.id || 0)}` ||
+                                        Boolean(
+                                          this.state
+                                            .telegram_cloudAddedPdfKeys?.[
+                                            `${String(
+                                              this.state
+                                                .telegram_panelGroupReference ||
+                                                "",
+                                            ).trim()}:${Number(message?.id || 0)}`
+                                          ],
+                                        )
+                                      }
+                                    >
+                                      {this.state.telegram_cloudAddedPdfKeys?.[
+                                        `${String(
+                                          this.state
+                                            .telegram_panelGroupReference || "",
+                                        ).trim()}:${Number(message?.id || 0)}`
+                                      ]
+                                        ? "Added to Cloud"
+                                        : this.state
+                                              .telegram_cloudUploadPdfKey ===
+                                            `${String(
+                                              this.state
+                                                .telegram_panelGroupReference ||
+                                                "",
+                                            ).trim()}:${Number(message?.id || 0)}`
+                                          ? "Adding..."
+                                          : "Add to Cloud"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="schoolPlanner_plan_telegramPdfOpen schoolPlanner_plan_telegramPdfOpenAlt"
+                                      onClick={() =>
+                                        this.openStoredTelegramPdfInNewTab(
+                                          message,
+                                        )
+                                      }
+                                    >
+                                      {this.isArabic()
+                                        ? "علامة تبويب"
+                                        : "Open Tab"}
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )),
-                          ])}
-                        </>
-                      )}
-                      <p id="schoolPlanner_plan_telegramSearchSummary">
-                        {this.t("showingResults", {
-                          count: this.state.telegram_messages.length,
-                          rawCount: this.state.telegram_rawCount,
-                        })}
-                      </p>
+                              ))}
+                            </>
+                          ) : this.state.telegram_messages.length === 0 ? (
+                            <p className="schoolPlanner_plan_telegramStatus">
+                              {this.t("noTelegramMessagesYet")}
+                            </p>
+                          ) : (
+                            <>
+                              {this.groupTelegramMessagesByDay(
+                                this.state.telegram_messages,
+                              ).flatMap((messageGroup) => [
+                                <div
+                                  key={`${messageGroup.dayLabel}-separator`}
+                                  className="schoolPlanner_plan_telegramDaySeparator"
+                                >
+                                  <span className="schoolPlanner_plan_telegramDaySeparatorText">
+                                    {messageGroup.dayLabel}
+                                  </span>
+                                </div>,
+                                ...messageGroup.items.map((message) => (
+                                  <div
+                                    key={
+                                      message.id ||
+                                      `${message.sender}-${message.date}`
+                                    }
+                                    className="schoolPlanner_plan_telegramMessageRow fc"
+                                  >
+                                    <div
+                                      className="schoolPlanner_plan_telegramMessage fc"
+                                      dir="auto"
+                                    >
+                                      <p>{message.text || this.t("noText")}</p>
+                                      <div className="fr schoolPlanner_plan_telegramMeta">
+                                        <span>
+                                          {message.sender || this.t("unknown")}
+                                        </span>
+                                        <span>
+                                          {this.formatTelegramTimeOnly(
+                                            message.date,
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )),
+                              ])}
+                            </>
+                          )}
+                          <p id="schoolPlanner_plan_telegramSearchSummary">
+                            {this.t("showingResults", {
+                              count: this.state.telegram_messages.length,
+                              rawCount: this.state.telegram_rawCount,
+                            })}
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
-                    ) : null}
-                    </div>
-                  </div>
                   </div>
                 </div>
+              </div>
             </div>
           </aside>
           {this.renderScheduleSwipePage()}
@@ -8012,17 +8312,27 @@ export default class SchoolPlanner extends Component {
             id="schoolPlanner_navStrip_left"
             type="button"
             className="schoolPlanner_navStrip schoolPlanner_navStrip--left"
-            data-active={this.state.planner_swipeView === "telegram" ? "true" : "false"}
+            data-active={
+              this.state.planner_swipeView === "telegram" ? "true" : "false"
+            }
             onClick={this.toggleTelegramSwipeView}
             aria-label={
               this.state.planner_swipeView === "telegram"
-                ? (this.isArabic() ? "العودة إلى المخطط" : "Return to planner")
-                : (this.isArabic() ? "افتح صفحة تيليجرام" : "Open Telegram page")
+                ? this.isArabic()
+                  ? "العودة إلى المخطط"
+                  : "Return to planner"
+                : this.isArabic()
+                  ? "افتح صفحة تيليجرام"
+                  : "Open Telegram page"
             }
             title={
               this.state.planner_swipeView === "telegram"
-                ? (this.isArabic() ? "العودة إلى المخطط" : "Return to planner")
-                : (this.isArabic() ? "افتح صفحة تيليجرام" : "Open Telegram page")
+                ? this.isArabic()
+                  ? "العودة إلى المخطط"
+                  : "Return to planner"
+                : this.isArabic()
+                  ? "افتح صفحة تيليجرام"
+                  : "Open Telegram page"
             }
           >
             <span className="schoolPlanner_navStrip_label">
@@ -8040,17 +8350,27 @@ export default class SchoolPlanner extends Component {
             id="schoolPlanner_navStrip_bottom"
             type="button"
             className="schoolPlanner_navStrip schoolPlanner_navStrip--bottom"
-            data-active={this.state.planner_swipeView === "schedule" ? "true" : "false"}
+            data-active={
+              this.state.planner_swipeView === "schedule" ? "true" : "false"
+            }
             onClick={this.toggleScheduleSwipeView}
             aria-label={
               this.state.planner_swipeView === "schedule"
-                ? (this.isArabic() ? "العودة إلى المخطط" : "Return to planner")
-                : (this.isArabic() ? "افتح صفحة الجدول" : "Open schedule page")
+                ? this.isArabic()
+                  ? "العودة إلى المخطط"
+                  : "Return to planner"
+                : this.isArabic()
+                  ? "افتح صفحة الجدول"
+                  : "Open schedule page"
             }
             title={
               this.state.planner_swipeView === "schedule"
-                ? (this.isArabic() ? "العودة إلى المخطط" : "Return to planner")
-                : (this.isArabic() ? "افتح صفحة الجدول" : "Open schedule page")
+                ? this.isArabic()
+                  ? "العودة إلى المخطط"
+                  : "Return to planner"
+                : this.isArabic()
+                  ? "افتح صفحة الجدول"
+                  : "Open schedule page"
             }
           >
             <span className="schoolPlanner_navStrip_label">
@@ -8231,97 +8551,97 @@ export default class SchoolPlanner extends Component {
             </label>
           </div>
           {this.state.show_addCourseForm ? (
-          <div id="schoolPlanner_addCourse_div" className="fc">
-            <div
-              id="schoolPlanner_addCourse_closeButton"
-              role="button"
-              tabIndex={0}
-              onClick={this.closeAddCourseForm}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  this.closeAddCourseForm();
-                }
-              }}
-            >
-              {this.t("close")}
-            </div>
-            <div id="schoolPlanner_addCourse_scrollArea" className="fc">
-              <form id="schoolPlanner_addCourse_form" className="fc">
-                <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowSplit">
-                  <input
-                    id="schoolPlanner_addCourse_name_input"
-                    placeholder={this.t("courseNamePlaceholder")}
-                  />
-                  <select id="schoolPlanner_addCourse_component_input">
-                    <option selected={true} disabled="disabled" value="Course component">
-                      {this.t("courseComponentPlaceholder")}
-                    </option>
-                    <option value="In-class">{this.t("inClass")}</option>
-                    <option value="Out-of-class">{this.t("outOfClass")}</option>
-                  </select>
-                </div>
-                <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
-                  <div
-                    id="schoolPlanner_addCourse_dayAndTime_div"
-                    className="fr"
-                  >
-                    <section
-                      id="schoolPlanner_addCourse_dayAndTime_input_section"
-                      className="fc"
-                    >
-                      <div className="fc">
-                        <select id="schoolPlanner_addCourse_day_input">
-                          <option selected={true} disabled="disabled" value="Course day">
-                            {this.t("courseDayPlaceholder")}
-                          </option>
-                          <option value="Sunday">{this.t("sunday")}</option>
-                          <option value="Monday">{this.t("monday")}</option>
-                          <option value="Tuesday">{this.t("tuesday")}</option>
-                          <option value="Wednesday">{this.t("wednesday")}</option>
-                          <option value="Thursday">{this.t("thursday")}</option>
-                          <option value="Friday">{this.t("friday")}</option>
-                          <option value="Saturday">{this.t("saturday")}</option>
-                        </select>
-                        <div
-                          id="schoolPlanner_addCourse_time_inputs"
-                          className="fr"
-                        >
-                          <input
-                            placeholder="hh"
-                            id="schoolPlanner_addCourse_time_hour_input"
-                          />
-                          <input
-                            placeholder="mm"
-                            id="schoolPlanner_addCourse_time_minute_input"
-                          />
-                        </div>
-                      </div>
-                    </section>
-                    <ul
-                      id="schoolPlanner_addCourse_dayAndTime_ul"
+            <div id="schoolPlanner_addCourse_div" className="fc">
+              <div
+                id="schoolPlanner_addCourse_closeButton"
+                role="button"
+                tabIndex={0}
+                onClick={this.closeAddCourseForm}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    this.closeAddCourseForm();
+                  }
+                }}
+              >
+                {this.t("close")}
+              </div>
+              <div id="schoolPlanner_addCourse_scrollArea" className="fc">
+                <form id="schoolPlanner_addCourse_form" className="fc">
+                  <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowSplit">
+                    <input
+                      id="schoolPlanner_addCourse_name_input"
+                      placeholder={this.t("courseNamePlaceholder")}
+                    />
+                    <select id="schoolPlanner_addCourse_component_input">
+                      <option
+                        selected={true}
+                        disabled="disabled"
+                        value="Course component"
+                      >
+                        {this.t("courseComponentPlaceholder")}
+                      </option>
+                      <option value="In-class">{this.t("inClass")}</option>
+                      <option value="Out-of-class">
+                        {this.t("outOfClass")}
+                      </option>
+                    </select>
+                  </div>
+                  <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
+                    <div
+                      id="schoolPlanner_addCourse_dayAndTime_div"
                       className="fr"
-                    ></ul>
-                    <div id="schoolPlanner_addCourse_dayAndTime_label">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          this.addCourseDayAndTime({
-                            day: document.getElementById(
-                              "schoolPlanner_addCourse_day_input",
-                            ).value,
-                            time: buildExamTimeValue({
-                              hour: document.getElementById(
-                                "schoolPlanner_addCourse_time_hour_input",
-                              ).value,
-                              minute: document.getElementById(
-                                "schoolPlanner_addCourse_time_minute_input",
-                              ).value,
-                            }),
-                          });
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
+                    >
+                      <section
+                        id="schoolPlanner_addCourse_dayAndTime_input_section"
+                        className="fc"
+                      >
+                        <div className="fc">
+                          <select id="schoolPlanner_addCourse_day_input">
+                            <option
+                              selected={true}
+                              disabled="disabled"
+                              value="Course day"
+                            >
+                              {this.t("courseDayPlaceholder")}
+                            </option>
+                            <option value="Sunday">{this.t("sunday")}</option>
+                            <option value="Monday">{this.t("monday")}</option>
+                            <option value="Tuesday">{this.t("tuesday")}</option>
+                            <option value="Wednesday">
+                              {this.t("wednesday")}
+                            </option>
+                            <option value="Thursday">
+                              {this.t("thursday")}
+                            </option>
+                            <option value="Friday">{this.t("friday")}</option>
+                            <option value="Saturday">
+                              {this.t("saturday")}
+                            </option>
+                          </select>
+                          <div
+                            id="schoolPlanner_addCourse_time_inputs"
+                            className="fr"
+                          >
+                            <input
+                              placeholder="hh"
+                              id="schoolPlanner_addCourse_time_hour_input"
+                            />
+                            <input
+                              placeholder="mm"
+                              id="schoolPlanner_addCourse_time_minute_input"
+                            />
+                          </div>
+                        </div>
+                      </section>
+                      <ul
+                        id="schoolPlanner_addCourse_dayAndTime_ul"
+                        className="fr"
+                      ></ul>
+                      <div id="schoolPlanner_addCourse_dayAndTime_label">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
                             this.addCourseDayAndTime({
                               day: document.getElementById(
                                 "schoolPlanner_addCourse_day_input",
@@ -8335,279 +8655,22 @@ export default class SchoolPlanner extends Component {
                                 ).value,
                               }),
                             });
-                          }
-                        }}
-                      >
-                        {this.t("add")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowQuad">
-                  <select
-                    class="form-select"
-                    name="year"
-                    id="schoolPlanner_addCourse_year_input"
-                  >
-                    <option selected={true} disabled="disabled" value="Course year">
-                      {this.t("courseYearPlaceholder")}
-                    </option>
-                    <option value="1940">1940</option>
-                    <option value="1941">1941</option>
-                    <option value="1942">1942</option>
-                    <option value="1943">1943</option>
-                    <option value="1944">1944</option>
-                    <option value="1945">1945</option>
-                    <option value="1946">1946</option>
-                    <option value="1947">1947</option>
-                    <option value="1948">1948</option>
-                    <option value="1949">1949</option>
-                    <option value="1950">1950</option>
-                    <option value="1951">1951</option>
-                    <option value="1952">1952</option>
-                    <option value="1953">1953</option>
-                    <option value="1954">1954</option>
-                    <option value="1955">1955</option>
-                    <option value="1956">1956</option>
-                    <option value="1957">1957</option>
-                    <option value="1958">1958</option>
-                    <option value="1959">1959</option>
-                    <option value="1960">1960</option>
-                    <option value="1961">1961</option>
-                    <option value="1962">1962</option>
-                    <option value="1963">1963</option>
-                    <option value="1964">1964</option>
-                    <option value="1965">1965</option>
-                    <option value="1966">1966</option>
-                    <option value="1967">1967</option>
-                    <option value="1968">1968</option>
-                    <option value="1969">1969</option>
-                    <option value="1970">1970</option>
-                    <option value="1971">1971</option>
-                    <option value="1972">1972</option>
-                    <option value="1973">1973</option>
-                    <option value="1974">1974</option>
-                    <option value="1975">1975</option>
-                    <option value="1976">1976</option>
-                    <option value="1977">1977</option>
-                    <option value="1978">1978</option>
-                    <option value="1979">1979</option>
-                    <option value="1980">1980</option>
-                    <option value="1981">1981</option>
-                    <option value="1982">1982</option>
-                    <option value="1983">1983</option>
-                    <option value="1984">1984</option>
-                    <option value="1985">1985</option>
-                    <option value="1986">1986</option>
-                    <option value="1987">1987</option>
-                    <option value="1988">1988</option>
-                    <option value="1989">1989</option>
-                    <option value="1990">1990</option>
-                    <option value="1991">1991</option>
-                    <option value="1992">1992</option>
-                    <option value="1993">1993</option>
-                    <option value="1994">1994</option>
-                    <option value="1995">1995</option>
-                    <option value="1996">1996</option>
-                    <option value="1997">1997</option>
-                    <option value="1998">1998</option>
-                    <option value="1999">1999</option>
-                    <option value="2000">2000</option>
-                    <option value="2001">2001</option>
-                    <option value="2002">2002</option>
-                    <option value="2003">2003</option>
-                    <option value="2004">2004</option>
-                    <option value="2005">2005</option>
-                    <option value="2006">2006</option>
-                    <option value="2007">2007</option>
-                    <option value="2008">2008</option>
-                    <option value="2009">2009</option>
-                    <option value="2010">2010</option>
-                    <option value="2011">2011</option>
-                    <option value="2012">2012</option>
-                    <option value="2013">2013</option>
-                    <option value="2014">2014</option>
-                    <option value="2015">2015</option>
-                    <option value="2016">2016</option>
-                    <option value="2017">2017</option>
-                    <option value="2018">2018</option>
-                    <option value="2019">2019</option>
-                    <option value="2020">2020</option>
-                    <option value="2021">2021</option>
-                    <option value="2022">2022</option>
-                    <option value="2023">2023</option>
-                  </select>
-                  <select name="" id="schoolPlanner_addCourse_term_input">
-                    <option selected={true} disabled="disabled" value="Course term">
-                      {this.t("courseTermPlaceholder")}
-                    </option>
-                    <option value="Fall">{this.t("fall")}</option>
-                    <option value="Winter">{this.t("winter")}</option>
-                    <option value="Summer">{this.t("summer")}</option>
-                  </select>
-                  <select id="schoolPlanner_addCourse_class_input">
-                    <option
-                      selected={true}
-                      disabled="disabled"
-                      value="Course classification"
-                    >
-                      {this.t("courseClassificationPlaceholder")}
-                    </option>
-                    <option disabled="disabled">{this.t("inClassGroup")}</option>
-                    <option value="Basic science">{this.t("basicScience")}</option>
-                    <option value="Applied science">{this.t("appliedScience")}</option>
-                    <option disabled="disabled">{this.t("outOfClassGroup")}</option>
-                    <option value="Lab">{this.t("lab")}</option>
-                    <option value="Clinical rotation">{this.t("clinicalRotation")}</option>
-                  </select>
-                  <select name="" id="schoolPlanner_addCourse_status_input">
-                    <option selected={true} disabled="disabled" value="Course status">
-                      {this.t("courseStatusPlaceholder")}
-                    </option>
-                    <option value="Unstarted">{this.t("unstarted")}</option>
-                    <option value="Ongoing">{this.t("ongoing")}</option>
-                    <option value="Pass">{this.t("pass")}</option>
-                    <option value="Fail">{this.t("fail")}</option>
-                  </select>
-                </div>
-                <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
-                  <div
-                    id="schoolPlanner_addCourse_instructorsNames_div"
-                    className="fr"
-                  >
-                    <div
-                      id="schoolPlanner_addCourse_instructorName_section"
-                      className="fr"
-                    >
-                      <input
-                        id="schoolPlanner_addCourse_instructorName_input"
-                        placeholder={this.t("courseInstructorsPlaceholder")}
-                      />
-                      <ul
-                        id="schoolPlanner_addCourse_instructorsNames_ul"
-                        className="fr"
-                      ></ul>
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        this.addCourseInstructorsNames();
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          this.addCourseInstructorsNames();
-                        }
-                      }}
-                    >
-                      {this.t("add")}
-                    </div>
-                  </div>
-                </div>
-                <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide schoolPlanner_addCourse_rowMeta">
-                  <div id="schoolPlanner_addCourse_examSection" className="fc">
-                    <div id="schoolPlanner_addCourse_exam_div" className="fr">
-                      <section
-                        id="schoolPlanner_addCourse_exam_input_section"
-                        className="fc"
-                      >
-                        <div
-                          id="schoolPlanner_addCourse_exam_input_section_inner"
-                          className="fc"
-                        >
-                          <label
-                            htmlFor="schoolPlanner_addCourse_examDate_day_input"
-                            className="schoolPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examDateLabel")}
-                          </label>
-                          <div
-                            id="schoolPlanner_addCourse_examDate_inputs"
-                            className="fr"
-                          >
-                            <input
-                              placeholder="DD"
-                              id="schoolPlanner_addCourse_examDate_day_input"
-                            />
-                            <input
-                              placeholder="MM"
-                              id="schoolPlanner_addCourse_examDate_month_input"
-                            />
-                            <input
-                              placeholder="YYYY"
-                              id="schoolPlanner_addCourse_examDate_year_input"
-                            />
-                          </div>
-                          <label
-                            htmlFor="schoolPlanner_addCourse_examTime_hour_input"
-                            className="schoolPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examTimeLabel")}
-                          </label>
-                          <div
-                            id="schoolPlanner_addCourse_examTime_inputs"
-                            className="fr"
-                          >
-                            <input
-                              placeholder="hh"
-                              id="schoolPlanner_addCourse_examTime_hour_input"
-                            />
-                            <input
-                              placeholder="mm"
-                              id="schoolPlanner_addCourse_examTime_minute_input"
-                            />
-                          </div>
-                          <label
-                            htmlFor="schoolPlanner_addCourse_examType_input"
-                            className="schoolPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("examTypeLabel")}
-                          </label>
-                          <select id="schoolPlanner_addCourse_examType_input">
-                            <option selected={true} disabled="disabled" value="Exam type">
-                              {this.t("examTypeLabel")}
-                            </option>
-                            <option value="Quiz">{this.t("quiz")}</option>
-                            <option value="Midterm">{this.t("midterm")}</option>
-                            <option value="Final">{this.t("final")}</option>
-                            <option value="Practical">{this.t("practical")}</option>
-                            <option value="Oral">{this.t("oral")}</option>
-                          </select>
-                          <label
-                            htmlFor="schoolPlanner_addCourse_grade_input"
-                            className="schoolPlanner_addCourse_examFieldLabel"
-                          >
-                            {this.t("gradesLabel")}
-                          </label>
-                          <div
-                            id="schoolPlanner_addCourse_grade_div"
-                            className="fr"
-                          >
-                            <input
-                              placeholder={this.t("actualGrade")}
-                              id="schoolPlanner_addCourse_grade_input"
-                            />
-                            <input
-                              placeholder={this.t("fullGrade")}
-                              id="schoolPlanner_addCourse_fullGrade_input"
-                            />
-                          </div>
-                        </div>
-                      </section>
-                      <ul
-                        id="schoolPlanner_addCourse_exams_ul"
-                        className="fr"
-                      ></ul>
-                      <div id="schoolPlanner_addCourse_exam_label">
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
-                            this.addCourseExam();
                           }}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
-                              this.addCourseExam();
+                              this.addCourseDayAndTime({
+                                day: document.getElementById(
+                                  "schoolPlanner_addCourse_day_input",
+                                ).value,
+                                time: buildExamTimeValue({
+                                  hour: document.getElementById(
+                                    "schoolPlanner_addCourse_time_hour_input",
+                                  ).value,
+                                  minute: document.getElementById(
+                                    "schoolPlanner_addCourse_time_minute_input",
+                                  ).value,
+                                }),
+                              });
                             }
                           }}
                         >
@@ -8616,95 +8679,320 @@ export default class SchoolPlanner extends Component {
                       </div>
                     </div>
                   </div>
-                </div>
-              </form>
-            </div>
-            <div
-              id="schoolPlanner_addCourse_addButton_label"
-              role="button"
-              tabIndex={0}
-              onClick={() => {
-                let buttonName = document.getElementById(
-                  "schoolPlanner_addCourse_addButton_label",
-                ).textContent;
-                let course_name = document.getElementById(
-                  "schoolPlanner_addCourse_name_input",
-                ).value;
-                let course_component = document.getElementById(
-                  "schoolPlanner_addCourse_component_input",
-                ).value;
-                let course_year = document.getElementById(
-                  "schoolPlanner_addCourse_year_input",
-                ).value;
-                let course_term = document.getElementById(
-                  "schoolPlanner_addCourse_term_input",
-                ).value;
-                let course_class = document.getElementById(
-                  "schoolPlanner_addCourse_class_input",
-                ).value;
-                let course_status = document.getElementById(
-                  "schoolPlanner_addCourse_status_input",
-                ).value;
-                let course_grade = document.getElementById(
-                  "schoolPlanner_addCourse_grade_input",
-                ).value;
-                let course_fullGrade = document.getElementById(
-                  "schoolPlanner_addCourse_fullGrade_input",
-                ).value;
-                let exam_date = buildExamDateValue({
-                  day: document.getElementById(
-                    "schoolPlanner_addCourse_examDate_day_input",
-                  ).value,
-                  month: document.getElementById(
-                    "schoolPlanner_addCourse_examDate_month_input",
-                  ).value,
-                  year: document.getElementById(
-                    "schoolPlanner_addCourse_examDate_year_input",
-                  ).value,
-                });
-                let exam_time = buildExamTimeValue({
-                  hour: document.getElementById(
-                    "schoolPlanner_addCourse_examTime_hour_input",
-                  ).value,
-                  minute: document.getElementById(
-                    "schoolPlanner_addCourse_examTime_minute_input",
-                  ).value,
-                });
-                if (this.isActionLabel(buttonName, "Add")) {
-                  this.addCourse({
-                    course_name: course_name + " (" + course_component + ")",
-                    course_component: course_component,
-                    course_year: course_year,
-                    course_term: course_term,
-                    course_class: course_class,
-                    course_status: course_status,
-                    course_grade: course_grade,
-                    course_fullGrade: course_fullGrade,
-                    course_length: 0,
-                    course_progress: 0,
-                    exam_date: exam_date,
-                    exam_time: exam_time,
-                  });
-                }
-                if (this.isActionLabel(buttonName, "Edit")) {
-                  this.editCourse({
-                    course_name: course_name + " (" + course_component + ")",
-                    course_component: course_component,
-                    course_year: course_year,
-                    course_term: course_term,
-                    course_class: course_class,
-                    course_status: course_status,
-                    course_grade: course_grade,
-                    course_fullGrade: course_fullGrade,
-                    course_length: 0,
-                    course_progress: 0,
-                    exam_date: exam_date,
-                    exam_time: exam_time,
-                  });
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
+                  <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowQuad">
+                    <select
+                      class="form-select"
+                      name="year"
+                      id="schoolPlanner_addCourse_year_input"
+                    >
+                      <option
+                        selected={true}
+                        disabled="disabled"
+                        value="Course year"
+                      >
+                        {this.t("courseYearPlaceholder")}
+                      </option>
+                      <option value="1940">1940</option>
+                      <option value="1941">1941</option>
+                      <option value="1942">1942</option>
+                      <option value="1943">1943</option>
+                      <option value="1944">1944</option>
+                      <option value="1945">1945</option>
+                      <option value="1946">1946</option>
+                      <option value="1947">1947</option>
+                      <option value="1948">1948</option>
+                      <option value="1949">1949</option>
+                      <option value="1950">1950</option>
+                      <option value="1951">1951</option>
+                      <option value="1952">1952</option>
+                      <option value="1953">1953</option>
+                      <option value="1954">1954</option>
+                      <option value="1955">1955</option>
+                      <option value="1956">1956</option>
+                      <option value="1957">1957</option>
+                      <option value="1958">1958</option>
+                      <option value="1959">1959</option>
+                      <option value="1960">1960</option>
+                      <option value="1961">1961</option>
+                      <option value="1962">1962</option>
+                      <option value="1963">1963</option>
+                      <option value="1964">1964</option>
+                      <option value="1965">1965</option>
+                      <option value="1966">1966</option>
+                      <option value="1967">1967</option>
+                      <option value="1968">1968</option>
+                      <option value="1969">1969</option>
+                      <option value="1970">1970</option>
+                      <option value="1971">1971</option>
+                      <option value="1972">1972</option>
+                      <option value="1973">1973</option>
+                      <option value="1974">1974</option>
+                      <option value="1975">1975</option>
+                      <option value="1976">1976</option>
+                      <option value="1977">1977</option>
+                      <option value="1978">1978</option>
+                      <option value="1979">1979</option>
+                      <option value="1980">1980</option>
+                      <option value="1981">1981</option>
+                      <option value="1982">1982</option>
+                      <option value="1983">1983</option>
+                      <option value="1984">1984</option>
+                      <option value="1985">1985</option>
+                      <option value="1986">1986</option>
+                      <option value="1987">1987</option>
+                      <option value="1988">1988</option>
+                      <option value="1989">1989</option>
+                      <option value="1990">1990</option>
+                      <option value="1991">1991</option>
+                      <option value="1992">1992</option>
+                      <option value="1993">1993</option>
+                      <option value="1994">1994</option>
+                      <option value="1995">1995</option>
+                      <option value="1996">1996</option>
+                      <option value="1997">1997</option>
+                      <option value="1998">1998</option>
+                      <option value="1999">1999</option>
+                      <option value="2000">2000</option>
+                      <option value="2001">2001</option>
+                      <option value="2002">2002</option>
+                      <option value="2003">2003</option>
+                      <option value="2004">2004</option>
+                      <option value="2005">2005</option>
+                      <option value="2006">2006</option>
+                      <option value="2007">2007</option>
+                      <option value="2008">2008</option>
+                      <option value="2009">2009</option>
+                      <option value="2010">2010</option>
+                      <option value="2011">2011</option>
+                      <option value="2012">2012</option>
+                      <option value="2013">2013</option>
+                      <option value="2014">2014</option>
+                      <option value="2015">2015</option>
+                      <option value="2016">2016</option>
+                      <option value="2017">2017</option>
+                      <option value="2018">2018</option>
+                      <option value="2019">2019</option>
+                      <option value="2020">2020</option>
+                      <option value="2021">2021</option>
+                      <option value="2022">2022</option>
+                      <option value="2023">2023</option>
+                    </select>
+                    <select name="" id="schoolPlanner_addCourse_term_input">
+                      <option
+                        selected={true}
+                        disabled="disabled"
+                        value="Course term"
+                      >
+                        {this.t("courseTermPlaceholder")}
+                      </option>
+                      <option value="Fall">{this.t("fall")}</option>
+                      <option value="Winter">{this.t("winter")}</option>
+                      <option value="Summer">{this.t("summer")}</option>
+                    </select>
+                    <select id="schoolPlanner_addCourse_class_input">
+                      <option
+                        selected={true}
+                        disabled="disabled"
+                        value="Course classification"
+                      >
+                        {this.t("courseClassificationPlaceholder")}
+                      </option>
+                      <option disabled="disabled">
+                        {this.t("inClassGroup")}
+                      </option>
+                      <option value="Basic science">
+                        {this.t("basicScience")}
+                      </option>
+                      <option value="Applied science">
+                        {this.t("appliedScience")}
+                      </option>
+                      <option disabled="disabled">
+                        {this.t("outOfClassGroup")}
+                      </option>
+                      <option value="Lab">{this.t("lab")}</option>
+                      <option value="Clinical rotation">
+                        {this.t("clinicalRotation")}
+                      </option>
+                    </select>
+                    <select name="" id="schoolPlanner_addCourse_status_input">
+                      <option
+                        selected={true}
+                        disabled="disabled"
+                        value="Course status"
+                      >
+                        {this.t("courseStatusPlaceholder")}
+                      </option>
+                      <option value="Unstarted">{this.t("unstarted")}</option>
+                      <option value="Ongoing">{this.t("ongoing")}</option>
+                      <option value="Pass">{this.t("pass")}</option>
+                      <option value="Fail">{this.t("fail")}</option>
+                    </select>
+                  </div>
+                  <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
+                    <div
+                      id="schoolPlanner_addCourse_instructorsNames_div"
+                      className="fr"
+                    >
+                      <div
+                        id="schoolPlanner_addCourse_instructorName_section"
+                        className="fr"
+                      >
+                        <input
+                          id="schoolPlanner_addCourse_instructorName_input"
+                          placeholder={this.t("courseInstructorsPlaceholder")}
+                        />
+                        <ul
+                          id="schoolPlanner_addCourse_instructorsNames_ul"
+                          className="fr"
+                        ></ul>
+                      </div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          this.addCourseInstructorsNames();
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            this.addCourseInstructorsNames();
+                          }
+                        }}
+                      >
+                        {this.t("add")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide schoolPlanner_addCourse_rowMeta">
+                    <div
+                      id="schoolPlanner_addCourse_examSection"
+                      className="fc"
+                    >
+                      <div id="schoolPlanner_addCourse_exam_div" className="fr">
+                        <section
+                          id="schoolPlanner_addCourse_exam_input_section"
+                          className="fc"
+                        >
+                          <div
+                            id="schoolPlanner_addCourse_exam_input_section_inner"
+                            className="fc"
+                          >
+                            <label
+                              htmlFor="schoolPlanner_addCourse_examDate_day_input"
+                              className="schoolPlanner_addCourse_examFieldLabel"
+                            >
+                              {this.t("examDateLabel")}
+                            </label>
+                            <div
+                              id="schoolPlanner_addCourse_examDate_inputs"
+                              className="fr"
+                            >
+                              <input
+                                placeholder="DD"
+                                id="schoolPlanner_addCourse_examDate_day_input"
+                              />
+                              <input
+                                placeholder="MM"
+                                id="schoolPlanner_addCourse_examDate_month_input"
+                              />
+                              <input
+                                placeholder="YYYY"
+                                id="schoolPlanner_addCourse_examDate_year_input"
+                              />
+                            </div>
+                            <label
+                              htmlFor="schoolPlanner_addCourse_examTime_hour_input"
+                              className="schoolPlanner_addCourse_examFieldLabel"
+                            >
+                              {this.t("examTimeLabel")}
+                            </label>
+                            <div
+                              id="schoolPlanner_addCourse_examTime_inputs"
+                              className="fr"
+                            >
+                              <input
+                                placeholder="hh"
+                                id="schoolPlanner_addCourse_examTime_hour_input"
+                              />
+                              <input
+                                placeholder="mm"
+                                id="schoolPlanner_addCourse_examTime_minute_input"
+                              />
+                            </div>
+                            <label
+                              htmlFor="schoolPlanner_addCourse_examType_input"
+                              className="schoolPlanner_addCourse_examFieldLabel"
+                            >
+                              {this.t("examTypeLabel")}
+                            </label>
+                            <select id="schoolPlanner_addCourse_examType_input">
+                              <option
+                                selected={true}
+                                disabled="disabled"
+                                value="Exam type"
+                              >
+                                {this.t("examTypeLabel")}
+                              </option>
+                              <option value="Quiz">{this.t("quiz")}</option>
+                              <option value="Midterm">
+                                {this.t("midterm")}
+                              </option>
+                              <option value="Final">{this.t("final")}</option>
+                              <option value="Practical">
+                                {this.t("practical")}
+                              </option>
+                              <option value="Oral">{this.t("oral")}</option>
+                            </select>
+                            <label
+                              htmlFor="schoolPlanner_addCourse_grade_input"
+                              className="schoolPlanner_addCourse_examFieldLabel"
+                            >
+                              {this.t("gradesLabel")}
+                            </label>
+                            <div
+                              id="schoolPlanner_addCourse_grade_div"
+                              className="fr"
+                            >
+                              <input
+                                placeholder={this.t("actualGrade")}
+                                id="schoolPlanner_addCourse_grade_input"
+                              />
+                              <input
+                                placeholder={this.t("fullGrade")}
+                                id="schoolPlanner_addCourse_fullGrade_input"
+                              />
+                            </div>
+                          </div>
+                        </section>
+                        <ul
+                          id="schoolPlanner_addCourse_exams_ul"
+                          className="fr"
+                        ></ul>
+                        <div id="schoolPlanner_addCourse_exam_label">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              this.addCourseExam();
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                this.addCourseExam();
+                              }
+                            }}
+                          >
+                            {this.t("add")}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div
+                id="schoolPlanner_addCourse_addButton_label"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
                   let buttonName = document.getElementById(
                     "schoolPlanner_addCourse_addButton_label",
                   ).textContent;
@@ -8731,9 +9019,6 @@ export default class SchoolPlanner extends Component {
                   ).value;
                   let course_fullGrade = document.getElementById(
                     "schoolPlanner_addCourse_fullGrade_input",
-                  ).value;
-                  let exam_type = document.getElementById(
-                    "schoolPlanner_addCourse_examType_input",
                   ).value;
                   let exam_date = buildExamDateValue({
                     day: document.getElementById(
@@ -8766,7 +9051,6 @@ export default class SchoolPlanner extends Component {
                       course_fullGrade: course_fullGrade,
                       course_length: 0,
                       course_progress: 0,
-                      exam_type: exam_type,
                       exam_date: exam_date,
                       exam_time: exam_time,
                     });
@@ -8783,17 +9067,104 @@ export default class SchoolPlanner extends Component {
                       course_fullGrade: course_fullGrade,
                       course_length: 0,
                       course_progress: 0,
-                      exam_type: exam_type,
                       exam_date: exam_date,
                       exam_time: exam_time,
                     });
                   }
-                }
-              }}
-            >
-              {this.t("add")}
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    let buttonName = document.getElementById(
+                      "schoolPlanner_addCourse_addButton_label",
+                    ).textContent;
+                    let course_name = document.getElementById(
+                      "schoolPlanner_addCourse_name_input",
+                    ).value;
+                    let course_component = document.getElementById(
+                      "schoolPlanner_addCourse_component_input",
+                    ).value;
+                    let course_year = document.getElementById(
+                      "schoolPlanner_addCourse_year_input",
+                    ).value;
+                    let course_term = document.getElementById(
+                      "schoolPlanner_addCourse_term_input",
+                    ).value;
+                    let course_class = document.getElementById(
+                      "schoolPlanner_addCourse_class_input",
+                    ).value;
+                    let course_status = document.getElementById(
+                      "schoolPlanner_addCourse_status_input",
+                    ).value;
+                    let course_grade = document.getElementById(
+                      "schoolPlanner_addCourse_grade_input",
+                    ).value;
+                    let course_fullGrade = document.getElementById(
+                      "schoolPlanner_addCourse_fullGrade_input",
+                    ).value;
+                    let exam_type = document.getElementById(
+                      "schoolPlanner_addCourse_examType_input",
+                    ).value;
+                    let exam_date = buildExamDateValue({
+                      day: document.getElementById(
+                        "schoolPlanner_addCourse_examDate_day_input",
+                      ).value,
+                      month: document.getElementById(
+                        "schoolPlanner_addCourse_examDate_month_input",
+                      ).value,
+                      year: document.getElementById(
+                        "schoolPlanner_addCourse_examDate_year_input",
+                      ).value,
+                    });
+                    let exam_time = buildExamTimeValue({
+                      hour: document.getElementById(
+                        "schoolPlanner_addCourse_examTime_hour_input",
+                      ).value,
+                      minute: document.getElementById(
+                        "schoolPlanner_addCourse_examTime_minute_input",
+                      ).value,
+                    });
+                    if (this.isActionLabel(buttonName, "Add")) {
+                      this.addCourse({
+                        course_name:
+                          course_name + " (" + course_component + ")",
+                        course_component: course_component,
+                        course_year: course_year,
+                        course_term: course_term,
+                        course_class: course_class,
+                        course_status: course_status,
+                        course_grade: course_grade,
+                        course_fullGrade: course_fullGrade,
+                        course_length: 0,
+                        course_progress: 0,
+                        exam_type: exam_type,
+                        exam_date: exam_date,
+                        exam_time: exam_time,
+                      });
+                    }
+                    if (this.isActionLabel(buttonName, "Edit")) {
+                      this.editCourse({
+                        course_name:
+                          course_name + " (" + course_component + ")",
+                        course_component: course_component,
+                        course_year: course_year,
+                        course_term: course_term,
+                        course_class: course_class,
+                        course_status: course_status,
+                        course_grade: course_grade,
+                        course_fullGrade: course_fullGrade,
+                        course_length: 0,
+                        course_progress: 0,
+                        exam_type: exam_type,
+                        exam_date: exam_date,
+                        exam_time: exam_time,
+                      });
+                    }
+                  }
+                }}
+              >
+                {this.t("add")}
+              </div>
             </div>
-          </div>
           ) : null}
         </article>
         <PdfReaderModal

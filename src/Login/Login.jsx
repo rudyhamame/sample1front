@@ -1,10 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import "../Login/login.css";
-import "../Login/login.max-width-600.css";
-import "../Login/login.min-1200-max-1440.css";
-import "../Login/login.min-901-max-1199.css";
-import "../Login/login.min-601-max-900.css";
-import "../Login/login.max-width-500.css";
 import { apiUrl } from "../config/api";
 import InspectionOverlay from "../debug/InspectionOverlay";
 import {
@@ -12,6 +7,7 @@ import {
   readStoredSession,
   writeStoredSession,
 } from "../utils/sessionCleanup";
+import { normalizeUserPayload } from "../utils/normalizeUser";
 
 const clinicalRealityParagraphs = [
   "Phenomenon (trace-as-accessed) first exists in the mode of present appearing: it is an aspect of the phenomena-as-appearing to the subject, the 3D slice of appearance within experience. But once retained, it also becomes part of phenomena-as-stored, the 4D trajectory of experience, through which the subject gathers successive appearances into an experiential continuity.",
@@ -58,6 +54,284 @@ const loginAppLastUpdatedFallbackLabel = formatAppLastUpdatedLabel(
   "2026-03-22T12:00:00+03:00",
 );
 
+const countryPhoneCodes = {
+  Egypt: "+20",
+  Lebanon: "+961",
+  Jordan: "+962",
+  Syria: "+963",
+  USA: "+1",
+  UK: "+44",
+  Canada: "+1",
+  Australia: "+61",
+};
+
+const countryOptions = [
+  "Egypt",
+  "Lebanon",
+  "Jordan",
+  "Syria",
+  "USA",
+  "UK",
+  "Canada",
+  "Australia",
+  "Other",
+];
+
+const hometownCityOptionsByCountry = {
+  Egypt: ["Cairo", "Alexandria", "Giza", "Shubra El Kheima", "Port Said"],
+  Lebanon: ["Beirut", "Tripoli", "Sidon", "Tyre", "Jounieh"],
+  Jordan: ["Amman", "Zarqa", "Irbid", "Aqaba", "Madaba"],
+  Syria: ["Damascus", "Aleppo", "Homs", "Latakia", "Hama"],
+  USA: ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"],
+  UK: ["London", "Manchester", "Birmingham", "Leeds", "Glasgow"],
+  Canada: ["Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"],
+  Australia: ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide"],
+  Other: ["Other"],
+};
+
+const universityOptionsByCountry = {
+  Egypt: [
+    "Cairo University",
+    "Ain Shams University",
+    "Alexandria University",
+    "Mansoura University",
+    "Assiut University",
+  ],
+  Lebanon: [
+    "American University of Beirut",
+    "Lebanese University",
+    "Saint Joseph University",
+    "Lebanese American University",
+  ],
+  Jordan: [
+    "University of Jordan",
+    "Jordan University of Science and Technology",
+    "Yarmouk University",
+    "Hashemite University",
+  ],
+  Syria: [
+    "Damascus University",
+    "Aleppo University",
+    "Homs University",
+    "Latakia University",
+    "Hama University",
+  ],
+  USA: [
+    "Harvard University",
+    "Stanford University",
+    "MIT",
+    "UCLA",
+    "University of Michigan",
+  ],
+  UK: [
+    "University of Oxford",
+    "University of Cambridge",
+    "Imperial College London",
+    "UCL",
+    "King's College London",
+  ],
+  Canada: [
+    "University of Toronto",
+    "McGill University",
+    "University of British Columbia",
+    "University of Alberta",
+  ],
+  Australia: [
+    "University of Melbourne",
+    "University of Sydney",
+    "Monash University",
+    "UNSW Sydney",
+  ],
+  Other: [],
+};
+
+const applyPhoneCountryCode = (country, phone = "") => {
+  const code = countryPhoneCodes[country];
+  if (!code) {
+    return phone;
+  }
+
+  const digitsOnly = phone.replace(/\D+/g, "");
+  const normalized = digitsOnly.replace(
+    new RegExp(`^${code.replace("+", "")}`),
+    "",
+  );
+  return `${code}${normalized}`;
+};
+
+const getUniversityOptionsForCountry = (country = "") => {
+  const normalizedCountry = String(country || "").trim();
+  if (!normalizedCountry) {
+    return [];
+  }
+  return Array.isArray(universityOptionsByCountry[normalizedCountry])
+    ? universityOptionsByCountry[normalizedCountry]
+    : [];
+};
+
+const studyYearNumberOptions = Array.from(
+  { length: new Date().getFullYear() - 2000 + 7 },
+  (_, index) => String(2000 + index),
+);
+const studyTermOptions = ["First", "Second", "Third"];
+const programOptions = [
+  "Medicine",
+  "Dentistry",
+  "Pharmacy",
+  "Nursing",
+  "Biomedical Sciences",
+  "Engineering",
+  "Computer Science",
+  "Business",
+  "Law",
+  "Arts",
+  "Other",
+];
+const studyLanguageOptions = [
+  "Arabic",
+  "English",
+  "French",
+  "German",
+  "Spanish",
+  "Other",
+];
+
+const completeProfileCoreFields = [
+  {
+    key: "firstname",
+    label: "First name",
+    type: "text",
+  },
+  {
+    key: "lastname",
+    label: "Last name",
+    type: "text",
+  },
+  {
+    key: "email",
+    label: "Email address",
+    type: "email",
+  },
+  {
+    key: "phoneCountry",
+    label: "Phone country",
+    type: "select",
+    options: countryOptions,
+  },
+  {
+    key: "phone",
+    label: "Phone number",
+    type: "tel",
+  },
+  {
+    key: "dob",
+    label: "Date of birth",
+    type: "date",
+  },
+  {
+    key: "hometown.Country",
+    label: "Country",
+    type: "select",
+    options: countryOptions,
+  },
+  {
+    key: "hometown.City",
+    label: "City",
+    type: "select",
+    options: [],
+  },
+  {
+    key: "bio",
+    label: "Bio",
+    type: "textarea",
+  },
+];
+
+const completeProfileStudentFields = [
+  {
+    key: "studying.university",
+    label: "University",
+    type: "select",
+    options: [], // Will be populated dynamically
+  },
+  {
+    key: "studying.faculty",
+    label: "Faculty",
+    type: "text",
+  },
+  {
+    key: "studying.program",
+    label: "Program",
+    type: "select",
+    options: programOptions,
+  },
+  {
+    key: "studying.time.totalYears",
+    label: "Program total years",
+    type: "number",
+  },
+  {
+    key: "studying.time.currentAcademicYear",
+    label: "Current academic year number",
+    type: "number",
+  },
+  {
+    key: "studying.time.startDate.startYear",
+    label: "Program start year",
+    type: "select",
+    options: studyYearNumberOptions,
+  },
+  {
+    key: "studying.time.startDate.startTerm",
+    label: "Program start term",
+    type: "select",
+    options: studyTermOptions,
+  },
+  {
+    key: "studying.time.currentDate.year",
+    label: "Current year",
+    type: "select",
+    options: studyYearNumberOptions,
+  },
+  {
+    key: "studying.time.currentDate.term",
+    label: "Current term",
+    type: "select",
+    options: studyTermOptions,
+  },
+  {
+    key: "studying.language",
+    label: "Language of study",
+    type: "select",
+    options: studyLanguageOptions,
+  },
+];
+
+const completeProfileWorkingFields = [
+  {
+    key: "working.company",
+    label: "Company",
+    type: "text",
+  },
+  {
+    key: "working.position",
+    label: "Position",
+    type: "text",
+  },
+];
+
+const sanitizeNonNegativeNumberInput = (value) => {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) {
+    return "";
+  }
+  const parsedValue = Number(rawValue);
+  if (!Number.isFinite(parsedValue)) {
+    return "";
+  }
+  return String(Math.max(0, parsedValue));
+};
+
 const getStoredAuthState = () => {
   try {
     const rawState = window.sessionStorage.getItem("state");
@@ -100,6 +374,30 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+
+const parseApiPayload = async (response) => {
+  const contentType = String(response?.headers?.get("content-type") || "")
+    .trim()
+    .toLowerCase();
+
+  if (contentType.includes("application/json")) {
+    return response.json().catch(() => ({}));
+  }
+
+  const rawText = await response.text().catch(() => "");
+  const trimmedText = String(rawText || "").trim();
+
+  if (!trimmedText || trimmedText.startsWith("<!DOCTYPE")) {
+    return {
+      message:
+        "Backend returned HTML instead of JSON. Please check API base URL and route availability.",
+    };
+  }
+
+  return {
+    message: trimmedText,
+  };
+};
 
 const formatPastedPlainText = (plainText) => {
   const normalizedText = String(plainText || "").replace(/\r\n?/g, "\n");
@@ -151,6 +449,9 @@ const Login = ({ onLogin, onForceLogout }) => {
   const articleRef = useRef(null);
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
+  const previousAuthFormRectRef = useRef(null);
+  const authFormAnimationFrameRef = useRef(null);
+  const authFormAnimationTimeoutRef = useRef(null);
   const realityEditorRef = useRef(null);
   const hasSyncedRealityEditorRef = useRef(false);
   const hasCompletedClinicalRealityBootstrapRef = useRef(false);
@@ -163,6 +464,67 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [authReport, setAuthReport] = useState(null);
   const [signupMessage, setSignupMessage] = useState(null);
   const [authMode, setAuthMode] = useState("login");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [authFormInlineStyle, setAuthFormInlineStyle] = useState({});
+  const [alignedBlockMinHeight, setAlignedBlockMinHeight] = useState(0);
+  const [pendingSignupAuthReport, setPendingSignupAuthReport] = useState(null);
+  const [isPendingSignupUsernameEditable, setIsPendingSignupUsernameEditable] =
+    useState(false);
+  const [credentialsForm, setCredentialsForm] = useState({
+    username: "",
+    password: "",
+  });
+  const [profileCompletionForm, setProfileCompletionForm] = useState({
+    firstname: "",
+    lastname: "",
+    email: "",
+    phoneCountry: "",
+    phone: "",
+    dob: "",
+    hometown: {
+      Country: "",
+      City: "",
+    },
+    bio: "",
+    studying: {
+      university: "",
+      faculty: "",
+      program: "",
+      programStartYear: "",
+      term: "",
+      time: {
+        totalYears: "",
+        currentAcademicYear: "",
+        startDate: {
+          startYear: "",
+          startTerm: "",
+        },
+        currentDate: {
+          year: "",
+          term: "",
+        },
+      },
+      language: "",
+    },
+    working: {
+      company: "",
+      position: "",
+    },
+    profilePic: {
+      url: "",
+      publicId: "",
+      mimeType: "",
+      width: null,
+      height: null,
+    },
+    viewport: {
+      x: 0,
+      y: 0,
+      zoom: 1,
+      width: null,
+      height: null,
+    },
+  });
   const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
   const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
   const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(false);
@@ -193,6 +555,7 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
     loginAppLastUpdatedFallbackLabel,
   );
+  const [universityOptions, setUniversityOptions] = useState([]);
   const isWideLoginLayout = viewportSize.width > 1000;
   const feedbackMessage =
     (login_ok === false &&
@@ -301,16 +664,16 @@ const Login = ({ onLogin, onForceLogout }) => {
     if (login_ok && authReport) {
       setIsLoginTransitioning(true);
       writeStoredSession(authReport);
-
-      const timeoutId = window.setTimeout(() => {
-        setIs_loading(false);
-        if (onLogin) {
-          onLogin(authReport);
-        }
-      }, 5000);
-
-      return () => window.clearTimeout(timeoutId);
+      setIs_loading(false);
+      if (onLogin) {
+        onLogin(authReport);
+      }
+      const transitionResetTimer = window.setTimeout(() => {
+        setIsLoginTransitioning(false);
+      }, 280);
+      return () => window.clearTimeout(transitionResetTimer);
     }
+    setIsLoginTransitioning(false);
   }, [authReport, login_ok]);
 
   useEffect(() => {
@@ -344,6 +707,21 @@ const Login = ({ onLogin, onForceLogout }) => {
       window.removeEventListener("resize", updateZoomScale);
       window.visualViewport?.removeEventListener("resize", updateZoomScale);
     };
+  }, []);
+
+  useEffect(() => {
+    // Legacy backend source (kept as a supplemental fallback list).
+    fetch(apiUrl("/api/user/hometown-cities"))
+      .then((response) => response.json().catch(() => ({ cities: [] })))
+      .then((payload) => {
+        if (payload.cities && Array.isArray(payload.cities)) {
+          setUniversityOptions(payload.cities);
+        }
+      })
+      .catch(() => {
+        // If fetching fails, set empty options
+        setUniversityOptions([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -596,19 +974,321 @@ const Login = ({ onLogin, onForceLogout }) => {
   }, []);
 
   const formControl = (text) => {
+    // Prevent switching away from complete-profile mode if user must complete profile
+    if (authMode === "complete-profile" && text !== "complete-profile") {
+      return;
+    }
+
+    if (loginFormRef.current) {
+      const formRect = loginFormRef.current.getBoundingClientRect();
+      previousAuthFormRectRef.current = {
+        width: formRect.width,
+        height: formRect.height,
+      };
+    }
+
     setAuthMode(text);
     setLogin_ok(null);
     setLoginMessage(null);
     setSignup_ok(null);
     setSignupMessage(null);
+    if (text !== "complete-profile") {
+      setPendingSignupAuthReport(null);
+      setProfileCompletionForm({
+        firstname: "",
+        lastname: "",
+        email: "",
+        phone: "",
+        dob: "",
+        hometown: {
+          Country: "",
+          City: "",
+        },
+        bio: "",
+        studying: {
+          university: "",
+          faculty: "",
+          program: "",
+          programStartYear: "",
+          term: "",
+          time: {
+            totalYears: "",
+            currentAcademicYear: "",
+            startDate: {
+              startYear: "",
+              startTerm: "",
+            },
+            currentDate: {
+              year: "",
+              term: "",
+            },
+          },
+          language: "",
+        },
+        working: {
+          company: "",
+          position: "",
+        },
+        profilePic: {
+          url: "",
+          publicId: "",
+          mimeType: "",
+          width: null,
+          height: null,
+        },
+        viewport: {
+          x: 0,
+          y: 0,
+          zoom: 1,
+          width: null,
+          height: null,
+        },
+      });
+    }
   };
+
+  const goBackToSignupFromCompleteProfile = () => {
+    if (loginFormRef.current) {
+      const formRect = loginFormRef.current.getBoundingClientRect();
+      previousAuthFormRectRef.current = {
+        width: formRect.width,
+        height: formRect.height,
+      };
+    }
+
+    setAuthMode("signup");
+    setLogin_ok(null);
+    setLoginMessage(null);
+    setSignup_ok(null);
+    setSignupMessage(null);
+    setIsPendingSignupUsernameEditable(false);
+  };
+
+  const updateProfileCompletionField = (field, value) => {
+    setProfileCompletionForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const updateCredentialsField = (field, value) => {
+    setCredentialsForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  // Helper functions for nested object handling
+  const getNestedValue = (obj, path) => {
+    return path.split(".").reduce((current, key) => current?.[key], obj) || "";
+  };
+
+  const updateNestedField = (path, value) => {
+    setProfileCompletionForm((prev) => {
+      const keys = path.split(".");
+      const newForm = { ...prev };
+      let current = newForm;
+
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
+        current = current[keys[i]];
+      }
+
+      current[keys[keys.length - 1]] = value;
+      return newForm;
+    });
+  };
+
+  const renderTextField = ({
+    id,
+    label,
+    type = "text",
+    value,
+    onChange,
+    onEnter,
+    options = [],
+    disabled = false,
+  }) => {
+    const isPasswordField = type === "password";
+    const resolvedType = isPasswordField && isPasswordVisible ? "text" : type;
+
+    if (type === "select") {
+      return (
+        <label className="Login_authField" htmlFor={id} key={id}>
+          <span className="Login_authFieldLabel">{label}</span>
+          <span className="Login_authInputWrap">
+            <select
+              id={id}
+              value={value}
+              className="Login_authInput"
+              disabled={disabled}
+              onChange={(event) => onChange(event.target.value)}
+            >
+              <option value="">Select {label.toLowerCase()}</option>
+              {options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </span>
+        </label>
+      );
+    }
+
+    return (
+      <label className="Login_authField" htmlFor={id} key={id}>
+        <span className="Login_authFieldLabel">{label}</span>
+        <span className="Login_authInputWrap">
+          <input
+            id={id}
+            type={resolvedType}
+            value={value}
+            autoComplete="off"
+            min={type === "number" ? 0 : undefined}
+            step={type === "number" ? 1 : undefined}
+            className={
+              isPasswordField
+                ? "Login_authInput Login_authInput--password"
+                : "Login_authInput"
+            }
+            onChange={(event) => onChange(event.target.value)}
+            onWheel={(event) => {
+              if (type === "number") {
+                event.currentTarget.blur();
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && onEnter) {
+                onEnter(event);
+              }
+            }}
+          />
+          {isPasswordField ? (
+            <button
+              type="button"
+              className="Login_passwordToggle"
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+              title={isPasswordVisible ? "Hide password" : "Show password"}
+              onClick={() => setIsPasswordVisible((current) => !current)}
+            >
+              <i
+                className={
+                  isPasswordVisible ? "fi fi-rr-eye-crossed" : "fi fi-rr-eye"
+                }
+              ></i>
+            </button>
+          ) : null}
+        </span>
+      </label>
+    );
+  };
+
+  useEffect(() => {
+    const formElement = loginFormRef.current;
+    const previousRect = previousAuthFormRectRef.current;
+
+    if (!formElement || !previousRect || typeof window === "undefined") {
+      return;
+    }
+
+    const nextRect = formElement.getBoundingClientRect();
+    previousAuthFormRectRef.current = null;
+
+    if (
+      Math.abs((previousRect.width || 0) - (nextRect.width || 0)) < 1 &&
+      Math.abs((previousRect.height || 0) - (nextRect.height || 0)) < 1
+    ) {
+      setAuthFormInlineStyle({});
+      return;
+    }
+
+    if (authFormAnimationFrameRef.current) {
+      window.cancelAnimationFrame(authFormAnimationFrameRef.current);
+    }
+
+    if (authFormAnimationTimeoutRef.current) {
+      window.clearTimeout(authFormAnimationTimeoutRef.current);
+    }
+
+    setAuthFormInlineStyle({
+      width: `${previousRect.width}px`,
+      height: `${previousRect.height}px`,
+      overflow: "hidden",
+      transition: "none",
+    });
+
+    authFormAnimationFrameRef.current = window.requestAnimationFrame(() => {
+      setAuthFormInlineStyle({
+        width: `${nextRect.width}px`,
+        height: `${nextRect.height}px`,
+        overflow: "hidden",
+        transition: "width 260ms ease, height 260ms ease",
+      });
+
+      authFormAnimationTimeoutRef.current = window.setTimeout(() => {
+        setAuthFormInlineStyle({});
+      }, 280);
+    });
+  }, [authMode]);
+
+  useEffect(() => {
+    const formElement = loginFormRef.current;
+
+    if (!formElement || typeof window === "undefined") {
+      return;
+    }
+
+    const updateAlignedHeight = () => {
+      const nextHeight = Math.ceil(
+        formElement.getBoundingClientRect().height || 0,
+      );
+      setAlignedBlockMinHeight(nextHeight);
+    };
+
+    updateAlignedHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateAlignedHeight);
+      return () => window.removeEventListener("resize", updateAlignedHeight);
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateAlignedHeight();
+    });
+
+    resizeObserver.observe(formElement);
+    window.addEventListener("resize", updateAlignedHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateAlignedHeight);
+    };
+  }, [authMode, isWideLoginLayout]);
+
+  useEffect(() => {
+    return () => {
+      if (authFormAnimationFrameRef.current && typeof window !== "undefined") {
+        window.cancelAnimationFrame(authFormAnimationFrameRef.current);
+      }
+
+      if (
+        authFormAnimationTimeoutRef.current &&
+        typeof window !== "undefined"
+      ) {
+        window.clearTimeout(authFormAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const login = () => {
     let login;
-    let Login_username_input = document.getElementById("Login_username_input");
-    let Login_password_input = document.getElementById("Login_password_input");
+    const username = credentialsForm.username.trim();
+    const password = credentialsForm.password;
 
-    if (Login_password_input.value && Login_username_input.value) {
+    if (password && username) {
       setIs_loading(true);
       setLoginMessage(null);
       let url = apiUrl("/api/user/login/");
@@ -617,69 +1297,57 @@ const Login = ({ onLogin, onForceLogout }) => {
         mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: Login_username_input.value,
-          password: Login_password_input.value,
+          username,
+          password,
         }),
       });
 
       fetch(req)
-        .then((response) => {
+        .then(async (response) => {
+          const payload = await parseApiPayload(response);
+
           if (response.status === 201) {
             login = true;
-            return response.json(response);
+            return payload;
           }
+
+          if (response.status === 202 && payload.requiresProfileCompletion) {
+            // Profile completion required - redirect to post-signup form
+            setPendingSignupAuthReport({
+              token: payload.token,
+              user: payload.user,
+            });
+            setIsPendingSignupUsernameEditable(false);
+            setAuthMode("complete-profile");
+            setLoginMessage("Please complete your profile to continue.");
+            setIs_loading(false);
+            return null;
+          }
+
           if (response.status === 401) {
             setLoginMessage(
               "The password you entered is not correct, please try again",
             );
             setLogin_ok(false);
             setIs_loading(false);
-            return response.json(response);
+            return payload;
           }
+
           throw new Error(
-            "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+            payload?.message ||
+              "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
           );
         })
         .then((userdata) => {
           if (userdata && login === true) {
-            const nextAuthReport = {
-              my_id: userdata.user._id,
-              username: userdata.user.info.username,
-              firstname: userdata.user.info.firstname,
-              lastname: userdata.user.info.lastname,
-              program: userdata.user.info.program || "",
-              university: userdata.user.info.university || "",
-              studyYear: userdata.user.info.studyYear || "",
-              term: userdata.user.info.term || "",
-              aiProvider: userdata.user.info.aiProvider || "openai",
-              profilePicture: userdata.user.media?.profilePicture?.url || "",
-              profilePictureViewport:
-                userdata.user.media?.profilePictureViewport || {
-                  scale: 1,
-                  offsetX: 0,
-                  offsetY: 0,
-                },
-              homeDrawing:
-                userdata.user.media?.homeDrawing &&
-                typeof userdata.user.media.homeDrawing === "object"
-                  ? userdata.user.media.homeDrawing
-                  : { draftPaths: [], appliedPaths: [], textItems: [] },
-              imageGallery: Array.isArray(userdata.user.media?.imageGallery)
-                ? userdata.user.media.imageGallery
-                : [],
-              dob: userdata.user.info.dob,
+            const nextAuthReport = normalizeUserPayload(userdata.user, {
               token: userdata.token,
               isConnected: true,
-              notes: userdata.user.notes,
-              friends: userdata.user.friends,
-              friend_requests: userdata.user.friend_requests,
-              notifications: userdata.user.notifications,
-              posts: userdata.user.posts,
-              login_record: userdata.user.login_record || [],
-              courses: userdata.user.schoolPlanner.courses,
-              lectures: userdata.user.schoolPlanner.lectures,
-            };
+            });
 
+            setAuthReport(nextAuthReport);
+            setLoginMessage(null);
+            setLogin_ok(true);
             setIsClinicalRealitySaving(true);
             saveClinicalRealityToDb({
               token: userdata.token,
@@ -696,9 +1364,6 @@ const Login = ({ onLogin, onForceLogout }) => {
               .finally(() => {
                 setIsClinicalRealitySaving(false);
                 setCanPersistClinicalReality(true);
-                setAuthReport(nextAuthReport);
-                setLoginMessage(null);
-                setLogin_ok(true);
               });
           } else {
             setLoginMessage(
@@ -1032,36 +1697,19 @@ const Login = ({ onLogin, onForceLogout }) => {
   };
 
   const signup = (event) => {
-    event.preventDefault();
+    event?.preventDefault();
     setIs_loading(true);
     setSignupMessage(null);
+    const username = credentialsForm.username.trim();
+    const password = credentialsForm.password;
 
-    let Login_username_input = document.getElementById("Login_username_input");
-    let Login_password_input = document.getElementById("Login_password_input");
-    let Login_firstname_input = document.getElementById(
-      "Login_firstname_input",
-    );
-    let Login_lastname_input = document.getElementById("Login_lastname_input");
-    let Login_email_input = document.getElementById("Login_email_input");
-    let Login_dob_input = document.getElementById("Login_dob_input");
-
-    if (
-      Login_username_input.value &&
-      Login_password_input.value &&
-      Login_firstname_input.value &&
-      Login_lastname_input.value &&
-      Login_email_input.value
-    ) {
+    if (username && password) {
       const signupPayload = {
-        username: Login_username_input.value,
-        password: Login_password_input.value,
-        firstname: Login_firstname_input.value,
-        lastname: Login_lastname_input.value,
-        email: Login_email_input.value,
-        dob: Login_dob_input.value,
+        username,
+        password,
       };
 
-      const url = apiUrl("/api/user/signup/request-code");
+      const url = apiUrl("/api/user/signup");
       const req = new Request(url, {
         method: "POST",
         mode: "cors",
@@ -1071,7 +1719,7 @@ const Login = ({ onLogin, onForceLogout }) => {
 
       fetch(req)
         .then(async (response) => {
-          const data = await response.json();
+          const data = await parseApiPayload(response);
 
           if (!response.ok) {
             throw new Error(
@@ -1082,8 +1730,27 @@ const Login = ({ onLogin, onForceLogout }) => {
           return data;
         })
         .then((data) => {
+          const nextPendingAuthReport = normalizeUserPayload(data.user, {
+            token: data.token,
+            isConnected: true,
+          });
+
+          if (loginFormRef.current) {
+            const formRect = loginFormRef.current.getBoundingClientRect();
+            previousAuthFormRectRef.current = {
+              width: formRect.width,
+              height: formRect.height,
+            };
+          }
+
+          setPendingSignupAuthReport(nextPendingAuthReport);
+          setIsPendingSignupUsernameEditable(false);
           setSignup_ok(true);
-          setSignupMessage(data.message || "You have successfully signed up!");
+          setSignupMessage(
+            data.message ||
+              "Account created. Complete your profile to continue.",
+          );
+          setAuthMode("complete-profile");
         })
         .catch((err) => {
           setSignup_ok(false);
@@ -1095,8 +1762,199 @@ const Login = ({ onLogin, onForceLogout }) => {
     } else {
       setIs_loading(false);
       setSignup_ok(false);
-      setSignupMessage("Please make sure you entered valid information");
+      setSignupMessage("Please enter a valid username and password.");
     }
+  };
+
+  const completeSignupProfile = (event) => {
+    event?.preventDefault();
+
+    if (!pendingSignupAuthReport?.token) {
+      setSignup_ok(false);
+      setSignupMessage("Your signup session expired. Please sign up again.");
+      setAuthMode("signup");
+      return;
+    }
+
+    const {
+      firstname,
+      lastname,
+      email,
+      phoneCountry,
+      phone,
+      dob,
+      hometown,
+      bio,
+      studying,
+      working,
+    } = profileCompletionForm;
+
+    if (
+      !firstname.trim() ||
+      !lastname.trim() ||
+      !email.trim() ||
+      !phoneCountry.trim() ||
+      !phone.trim() ||
+      !dob.trim() ||
+      !hometown.Country.trim() ||
+      !hometown.City.trim() ||
+      !bio.trim()
+    ) {
+      setSignup_ok(false);
+      setSignupMessage("Please complete all required personal information.");
+      return;
+    }
+
+    // Check if user provided studying or working info
+    const isStudying = studying.university.trim() || studying.program.trim();
+    const isWorking = working.company.trim() || working.position.trim();
+
+    if (isStudying) {
+      if (
+        !studying.program.trim() ||
+        !studying.university.trim() ||
+        !String(studying?.time?.startDate?.startYear || "").trim() ||
+        !String(studying?.time?.startDate?.startTerm || "").trim() ||
+        !String(studying?.time?.currentDate?.year || "").trim() ||
+        !String(studying?.time?.currentDate?.term || "").trim()
+      ) {
+        setSignup_ok(false);
+        setSignupMessage("Please complete all education information.");
+        return;
+      }
+    }
+
+    if (isWorking) {
+      if (!working.company.trim() || !working.position.trim()) {
+        setSignup_ok(false);
+        setSignupMessage("Please complete all professional information.");
+        return;
+      }
+    }
+
+    if (!isStudying && !isWorking) {
+      setSignup_ok(false);
+      setSignupMessage(
+        "Please provide either education or professional information.",
+      );
+      return;
+    }
+
+    setIs_loading(true);
+    setSignupMessage(null);
+
+    fetch(apiUrl("/api/user/signup/personal"), {
+      method: "PUT",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pendingSignupAuthReport.token}`,
+      },
+      body: JSON.stringify({
+        firstname,
+        lastname,
+        email,
+        phone,
+        dob,
+        hometown,
+        bio,
+        studying: isStudying ? studying : undefined,
+        working: isWorking ? working : undefined,
+      }),
+    })
+      .then(async (response) => {
+        const data = await parseApiPayload(response);
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Unable to save your personal information.",
+          );
+        }
+
+        return data;
+      })
+      .then((data) => {
+        const nextAuthReport = normalizeUserPayload(data.user, {
+          token: pendingSignupAuthReport.token,
+          isConnected: true,
+        });
+
+        setAuthReport(nextAuthReport);
+        setLogin_ok(true);
+        setLoginMessage(null);
+        setSignup_ok(true);
+        setSignupMessage(
+          data.message || "Profile completed successfully. Redirecting...",
+        );
+        setCanPersistClinicalReality(true);
+      })
+      .catch((error) => {
+        setSignup_ok(false);
+        setSignupMessage(error.message);
+      })
+      .finally(() => {
+        setIs_loading(false);
+      });
+  };
+
+  const editPendingSignupAuth = () => {
+    if (!pendingSignupAuthReport?.token) {
+      setSignup_ok(false);
+      setSignupMessage("Your signup session expired. Please sign up again.");
+      setAuthMode("signup");
+      return;
+    }
+
+    const username = String(credentialsForm.username || "").trim();
+    const password = String(credentialsForm.password || "");
+
+    if (!username || !password) {
+      setSignup_ok(false);
+      setSignupMessage("Please provide username and password before editing.");
+      return;
+    }
+
+    setIs_loading(true);
+    setSignupMessage(null);
+
+    fetch(apiUrl("/api/user/signup/auth"), {
+      method: "PUT",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pendingSignupAuthReport.token}`,
+      },
+      body: JSON.stringify({
+        username,
+        password,
+      }),
+    })
+      .then(async (response) => {
+        const data = await parseApiPayload(response);
+
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to update signup credentials.");
+        }
+
+        return data;
+      })
+      .then((data) => {
+        setPendingSignupAuthReport((current) => ({
+          ...(current || {}),
+          user: data.user,
+        }));
+        setIsPendingSignupUsernameEditable(false);
+        setSignup_ok(true);
+        setSignupMessage("Credentials updated. Continue profile completion.");
+        setAuthMode("complete-profile");
+      })
+      .catch((error) => {
+        setSignup_ok(false);
+        setSignupMessage(error.message);
+      })
+      .finally(() => {
+        setIs_loading(false);
+      });
   };
 
   const summarizeClinicalReality = async () => {
@@ -1144,6 +2002,247 @@ const Login = ({ onLogin, onForceLogout }) => {
     }
   };
 
+  const authSubmitLabel =
+    authMode === "login"
+      ? "Log in"
+      : authMode === "signup"
+        ? "Sign up"
+        : "Continue to Home";
+  const authSubmitAction =
+    authMode === "login"
+      ? login
+      : authMode === "signup"
+        ? signup
+        : completeSignupProfile;
+  const isSignupAuthEditMode =
+    authMode === "signup" && Boolean(pendingSignupAuthReport?.token);
+
+  const isSubmitDisabled = (() => {
+    if (authMode === "login" || authMode === "signup") {
+      return !credentialsForm.username.trim() || !credentialsForm.password;
+    }
+    if (authMode === "complete-profile") {
+      const {
+        firstname,
+        lastname,
+        email,
+        phone,
+        dob,
+        hometown,
+        bio,
+        studying,
+        working,
+      } = profileCompletionForm;
+      if (
+        !firstname.trim() ||
+        !lastname.trim() ||
+        !email.trim() ||
+        !phone.trim() ||
+        !dob.trim() ||
+        !hometown.Country.trim() ||
+        !hometown.City.trim() ||
+        !bio.trim()
+      ) {
+        return true;
+      }
+      // Check if user is studying or working
+      const isStudying = studying.university.trim() || studying.program.trim();
+      const isWorking = working.company.trim() || working.position.trim();
+
+      if (isStudying) {
+        return (
+          !studying.program.trim() ||
+          !studying.university.trim() ||
+          !String(studying?.time?.startDate?.startYear || "").trim() ||
+          !String(studying?.time?.startDate?.startTerm || "").trim() ||
+          !String(studying?.time?.currentDate?.year || "").trim() ||
+          !String(studying?.time?.currentDate?.term || "").trim()
+        );
+      }
+      if (isWorking) {
+        return !working.company.trim() || !working.position.trim();
+      }
+      // User must be either studying or working
+      return !isStudying && !isWorking;
+    }
+    return false;
+  })();
+
+  const authModeSwitchLabel =
+    authMode === "login" ? "Create an account" : "I already have an account";
+
+  const credentialFields =
+    authMode === "login" || authMode === "signup"
+      ? [
+          renderTextField({
+            id: "login-username-input",
+            label: "Username",
+            value: credentialsForm.username,
+            onChange: (value) => updateCredentialsField("username", value),
+            onEnter:
+              authMode === "login"
+                ? () => login()
+                : isSignupAuthEditMode
+                  ? () => {
+                      if (isPendingSignupUsernameEditable) {
+                        editPendingSignupAuth();
+                      }
+                    }
+                  : signup,
+            disabled:
+              authMode === "signup" &&
+              Boolean(pendingSignupAuthReport?.token) &&
+              !isPendingSignupUsernameEditable,
+          }),
+          renderTextField({
+            id: "login-password-input",
+            label: "Password",
+            type: "password",
+            value: credentialsForm.password,
+            onChange: (value) => updateCredentialsField("password", value),
+            onEnter:
+              authMode === "login"
+                ? () => login()
+                : isSignupAuthEditMode
+                  ? () => {
+                      if (isPendingSignupUsernameEditable) {
+                        editPendingSignupAuth();
+                      }
+                    }
+                  : signup,
+          }),
+        ]
+      : [];
+
+  const completeProfileFields =
+    authMode === "complete-profile"
+      ? [
+          ...(() => {
+            const renderCoreField = (field) => {
+            const isNestedField = field.key.includes(".");
+            const value = isNestedField
+              ? getNestedValue(profileCompletionForm, field.key)
+              : profileCompletionForm[field.key];
+            const options =
+              field.key === "hometown.City"
+                ? hometownCityOptionsByCountry[
+                    profileCompletionForm.hometown.Country
+                  ] || []
+                : field.options;
+            const onChange = (value) => {
+              if (field.key === "phoneCountry") {
+                setProfileCompletionForm((current) => ({
+                  ...current,
+                  phoneCountry: value,
+                  phone: applyPhoneCountryCode(value, current.phone),
+                }));
+              } else if (field.key === "hometown.Country") {
+                setProfileCompletionForm((current) => ({
+                  ...current,
+                  hometown: {
+                    ...current.hometown,
+                    Country: value,
+                    City: "",
+                  },
+                }));
+              } else if (isNestedField) {
+                updateNestedField(field.key, value);
+              } else {
+                updateProfileCompletionField(field.key, value);
+              }
+            };
+
+            return renderTextField({
+              id: `complete-profile-${field.key.replace(".", "-")}`,
+              label: field.label,
+              type: field.type,
+              value,
+              onChange,
+              options,
+              disabled:
+                field.key === "hometown.City" &&
+                !profileCompletionForm.hometown.Country,
+            });
+            };
+
+            const renderedCoreFields = [];
+            const phoneCountryField = completeProfileCoreFields.find(
+              (field) => field.key === "phoneCountry",
+            );
+            const phoneField = completeProfileCoreFields.find(
+              (field) => field.key === "phone",
+            );
+
+            completeProfileCoreFields.forEach((field) => {
+              if (field.key === "phoneCountry" || field.key === "phone") {
+                return;
+              }
+
+              renderedCoreFields.push(renderCoreField(field));
+
+              if (field.key === "email" && phoneCountryField && phoneField) {
+                renderedCoreFields.push(
+                  <div key="complete-profile-phone-row" className="Login_authInlineRow">
+                    {renderCoreField(phoneCountryField)}
+                    {renderCoreField(phoneField)}
+                  </div>,
+                );
+              }
+            });
+
+            return renderedCoreFields;
+          })(),
+          // Studying section
+          <div key="studying-section" className="profile-section">
+            <h3>Education (Optional)</h3>
+            {completeProfileStudentFields.map((field) =>
+              renderTextField({
+                id: `complete-profile-${field.key.replaceAll(".", "-")}`,
+                label: field.label,
+                type: field.type,
+                value:
+                  field.type === "number"
+                    ? sanitizeNonNegativeNumberInput(
+                        getNestedValue(profileCompletionForm, field.key),
+                      )
+                    : getNestedValue(profileCompletionForm, field.key),
+                onChange: (value) =>
+                  updateNestedField(
+                    field.key,
+                    field.type === "number"
+                      ? sanitizeNonNegativeNumberInput(value)
+                      : value,
+                  ),
+                options:
+                  field.key === "studying.university"
+                    ? [
+                        ...new Set([
+                          ...getUniversityOptionsForCountry(
+                            profileCompletionForm.hometown.Country,
+                          ),
+                          ...universityOptions,
+                        ]),
+                      ]
+                    : field.options,
+              }),
+            )}
+          </div>,
+          // Working section
+          <div key="working-section" className="profile-section">
+            <h3>Professional (Optional)</h3>
+            {completeProfileWorkingFields.map((field) =>
+              renderTextField({
+                id: `complete-profile-${field.key.replace(".", "-")}`,
+                label: field.label,
+                type: field.type,
+                value: getNestedValue(profileCompletionForm, field.key),
+                onChange: (value) => updateNestedField(field.key, value),
+              }),
+            )}
+          </div>,
+        ]
+      : [];
+
   return (
     <article
       id="Login_article"
@@ -1174,7 +2273,10 @@ const Login = ({ onLogin, onForceLogout }) => {
       )}
       <main
         id="Login_main"
-        className={`fc${isClinicalRealityOpen ? " Login_main--reality-open" : ""}`}
+        className={`fc${isClinicalRealityOpen ? " Login_main--reality-open" : ""}${authMode === "complete-profile" ? " Login_main--post-signup" : ""}`}
+        style={{
+          "--login-aligned-block-min-height": `${Math.max(0, alignedBlockMinHeight)}px`,
+        }}
       >
         <section
           id="Login_realityPanel"
@@ -1443,111 +2545,197 @@ const Login = ({ onLogin, onForceLogout }) => {
           </div>
         </section>
         <section
-          id="Login_loginLogo_container"
+          id="Login_brandPanel"
           className={
-            isClinicalRealityOpen && isWideLoginLayout ? "is-collapsed" : ""
+            isClinicalRealityOpen && isWideLoginLayout
+              ? "is-collapsed"
+              : authMode === "complete-profile"
+                ? "is-collapsed"
+                : ""
           }
         >
-          <h1 id="Login_loginLogo_text">
-            <span className="Login_loginLogo_mark">H</span>
-            <span className="Login_loginLogo_divider" aria-hidden="true">
-              &middot;
-            </span>
-            <span className="Login_loginLogo_name">MCTOS</span>
-          </h1>
-          <h2 id="Login_loginLogo_cloneText">PhenoMed</h2>
-          <h4 id="Login_subLoginLogo_text">
-            From Clinical-related Phenomena to Diagnosis
-          </h4>
+          <div id="Login_brandContentWrap" className="fc">
+            <h1 id="Login_brandWordmark">
+              <span className="Login_brandWordmarkFlex">
+                <span className="Login_brandMark">H</span>
+                <span className="Login_brandDivider" aria-hidden="true">
+                  &middot;
+                </span>
+                <span className="Login_brandName">MCTOS</span>
+              </span>
+            </h1>
+            <h2 id="Login_brandProduct">PhenoMed</h2>
+            <h4 id="Login_brandTagline">
+              From Clinical-related Phenomena to Diagnosis
+            </h4>
+          </div>
         </section>
         <section
-          id="Login_loginForm_container"
+          id="Login_authPanel"
           className={
-            isLoginTransitioning || (isClinicalRealityOpen && isWideLoginLayout)
+            isClinicalRealityOpen && isWideLoginLayout
               ? "is-collapsed"
               : ""
           }
         >
           <section
-            id="Login_loginFrom_form"
-            className={`fc Login_loginFrom_form--${authMode}`}
+            id="Login_authCard"
+            className="fc"
             ref={loginFormRef}
+            style={authFormInlineStyle}
           >
-            {authMode === "signup" && (
-              <input
-                id="Login_firstname_input"
-                type="text"
-                placeholder="doctor's first name"
-              />
-            )}
-            {authMode === "signup" && (
-              <input
-                id="Login_lastname_input"
-                type="text"
-                placeholder="doctor's last name"
-              />
-            )}
-            <input
-              id="Login_username_input"
-              type="text"
-              placeholder="doctor's username"
-              onKeyPress={(event) => {
-                if (event.which === 13) {
-                  login();
-                }
-              }}
-            />
-            <input
-              id="Login_password_input"
-              type="password"
-              placeholder="password"
-              onKeyPress={(event) => {
-                if (event.which === 13) {
-                  login();
-                }
-              }}
-            />
-            {authMode === "signup" && (
-              <input
-                id="Login_email_input"
-                type="email"
-                placeholder="doctor's email address"
-              />
-            )}
-            {authMode === "signup" && (
-              <input id="Login_dob_input" type="date" />
-            )}
-            {authMode === "login" ? (
-              <button id="Login_login_button" onClick={login}>
-                Log in
-              </button>
-            ) : (
-              <button id="Login_signup_button" onClick={signup}>
-                Sign up
-              </button>
-            )}
-            <nav id="Login_modeNav" aria-label="Authentication mode">
-              {authMode === "signup" && (
-                <h4
-                  className={authMode === "login" ? "is-active" : ""}
-                  id="Login_loginShow_text"
-                  onClick={() => formControl("login")}
+            {authMode === "complete-profile" && (
+              <div id="Login_authCardHeader">
+                <button
+                  id="Login_authBackButton"
+                  type="button"
+                  onClick={goBackToSignupFromCompleteProfile}
+                  aria-label="Back to sign up"
                 >
-                  Log in
+                  <i className="fas fa-arrow-left" />
+                </button>
+                <h4 id="Login_authFeedback">
+                  Account created. Complete your personal information to
+                  continue to Home.
                 </h4>
-              )}
-              {authMode === "login" && (
-                <h4
-                  id="Login_signupShow_text"
-                  onClick={() => formControl("signup")}
-                >
-                  Sign up
-                </h4>
-              )}
-            </nav>
-            {feedbackMessage && (
-              <h4 id="Login_feedback_text">{feedbackMessage}</h4>
+              </div>
             )}
+            <section
+              id="Login_authFields"
+              className={`fc${authMode === "complete-profile" ? " is-scrollable" : ""}`}
+            >
+              {credentialFields}
+              {completeProfileFields}
+            </section>
+            <section id="Login_authActions" className="fc">
+              {authMode === "signup" && pendingSignupAuthReport?.token && (
+                <div id="Login_authPendingSignupActionsRow">
+                  <button
+                    id="Login_authEditUsernameButton"
+                    type="button"
+                    onClick={() => {
+                      if (!isPendingSignupUsernameEditable) {
+                        setIsPendingSignupUsernameEditable(true);
+                        return;
+                      }
+                      editPendingSignupAuth();
+                    }}
+                  >
+                    {isPendingSignupUsernameEditable ? "Save Edit" : "Edit"}
+                  </button>
+                  <button
+                    id="Login_authContinueToPostSignupButton"
+                    type="button"
+                    aria-label="Go to post-signup form"
+                    title="Go to post-signup form"
+                    onClick={() => {
+                      setIsPendingSignupUsernameEditable(false);
+                      setAuthMode("complete-profile");
+                    }}
+                  >
+                    <i className="fas fa-arrow-right" />
+                  </button>
+                </div>
+              )}
+              {authMode === "complete-profile" ? (
+                <div className="Login_authSubmitRow">
+                  <button
+                    id="Login_authSubmitButton"
+                    type="button"
+                    onClick={authSubmitAction}
+                    disabled={isSubmitDisabled}
+                  >
+                    {authSubmitLabel}
+                  </button>
+                  <button
+                    id="Login_authClearButton"
+                    type="button"
+                    onClick={() =>
+                      setProfileCompletionForm({
+                        firstname: "",
+                        lastname: "",
+                        email: "",
+                        phoneCountry: "",
+                        phone: "",
+                        dob: "",
+                        hometown: {
+                          Country: "",
+                          City: "",
+                        },
+                        bio: "",
+                        studying: {
+                          university: "",
+                          faculty: "",
+                          program: "",
+                          programStartYear: "",
+                          term: "",
+                          time: {
+                            totalYears: "",
+                            currentAcademicYear: "",
+                            startDate: {
+                              startYear: "",
+                              startTerm: "",
+                            },
+                            currentDate: {
+                              year: "",
+                              term: "",
+                            },
+                          },
+                          language: "",
+                        },
+                        working: {
+                          company: "",
+                          position: "",
+                        },
+                        profilePic: {
+                          url: "",
+                          publicId: "",
+                          mimeType: "",
+                          width: null,
+                          height: null,
+                        },
+                        viewport: {
+                          x: 0,
+                          y: 0,
+                          zoom: 1,
+                          width: null,
+                          height: null,
+                        },
+                      })
+                    }
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                !isSignupAuthEditMode && (
+                  <button
+                    id="Login_authSubmitButton"
+                    type="button"
+                    onClick={authSubmitAction}
+                    disabled={isSubmitDisabled}
+                  >
+                    {authSubmitLabel}
+                  </button>
+                )
+              )}
+              {authMode !== "complete-profile" && (
+                <nav id="Login_authModeSwitch" aria-label="Authentication mode">
+                  <button
+                    type="button"
+                    className="Login_authModeSwitchButton"
+                    onClick={() =>
+                      formControl(authMode === "login" ? "signup" : "login")
+                    }
+                  >
+                    {authModeSwitchLabel}
+                  </button>
+                </nav>
+              )}
+              {feedbackMessage && authMode !== "complete-profile" && (
+                <h4 id="Login_authFeedback">{feedbackMessage}</h4>
+              )}
+            </section>
           </section>
         </section>
       </main>
@@ -1558,8 +2746,10 @@ const Login = ({ onLogin, onForceLogout }) => {
         }
         ref={footerRef}
       >
-        <section id="Login_copyright_container">
+        <div id="Login_footer_left">
           <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
+        </div>
+        <div id="Login_footer_right">
           <p id="Login_poweredBy_text">
             Powered by OpenAI API to support intelligent medical knowledge and
             enquiry experiences.
@@ -1567,7 +2757,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           <p id="Login_lastUpdated_text">
             App last updated: {loginAppLastUpdatedLabel}
           </p>
-        </section>
+        </div>
       </footer>
       {is_loading === true && (
         <div id="Login_loaderImg_div" className="loaderImg_div fc">

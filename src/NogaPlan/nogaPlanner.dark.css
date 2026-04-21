@@ -55,19 +55,14 @@ body.dark #nogaPlanner_article,
   --nogaPlanner-overlay: var(--nogaPlanner-dark-overlay);
   --nogaPlanner-bg-overlay-start: rgba(9, 26, 33, 0.54);
   --nogaPlanner-bg-overlay-end: rgba(11, 31, 39, 0.5);
-  --nogaPlanner-bg-image: none;
+  --nogaPlanner-bg-image: url("/img/NogaPlannerBG.png");
   background-color: var(--nogaPlanner-page-bg-mid);
   background-image:
-    radial-gradient(circle at 12% 9%, rgba(20, 78, 88, 0.22), transparent 30%),
-    radial-gradient(circle at 85% 18%, rgba(10, 116, 105, 0.18), transparent 26%),
-    linear-gradient(
-      180deg,
-      var(--nogaPlanner-page-bg-start) 0%,
-      var(--nogaPlanner-page-bg-mid) 48%,
-      var(--nogaPlanner-page-bg-end) 100%
-    );
-  background-size: cover;
-  background-position: center;
+    linear-gradient(rgba(7, 17, 21, 0.74), rgba(7, 17, 21, 0.74)),
+    var(--nogaPlanner-bg-image);
+  background-size: auto, 420px 420px;
+  background-position: 0 0, center;
+  background-repeat: repeat, repeat;
 }
 
 /* Input focus ring */
@@ -158,11 +153,24 @@ body.dark #nogaPlanner_lectureDetailsCard,
 }
 
 body.dark #nogaPlanner_courses_aside,
-.dark #nogaPlanner_courses_aside {
+body.dark #nogaPlanner_savedCoursesColumn,
+.dark #nogaPlanner_courses_aside,
+.dark #nogaPlanner_savedCoursesColumn {
   background: linear-gradient(180deg, rgba(17, 46, 54, 0.9), rgba(11, 33, 40, 0.88));
   box-shadow:
     inset 0 1px 0 rgba(196, 230, 236, 0.08),
     inset 0 -1px 0 rgba(0, 0, 0, 0.72);
+}
+
+body.dark .nogaPlanner_coursesTitleRow,
+.dark .nogaPlanner_coursesTitleRow {
+  border-color: rgba(132, 193, 203, 0.22);
+  background:
+    linear-gradient(180deg, rgba(196, 230, 236, 0.08), rgba(196, 230, 236, 0.03)),
+    linear-gradient(135deg, rgba(23, 65, 76, 0.94), rgba(14, 39, 48, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(196, 230, 236, 0.1),
+    0 12px 26px rgba(0, 0, 0, 0.26);
 }
 
 /* Table shell and header */
@@ -264,6 +272,62 @@ body.dark .nogaPlanner_inlineCourseFormField input,
   border-color: rgba(110, 168, 180, 0.3);
 }
 
+body.dark .nogaPlanner_savedCoursesDetailsList,
+.dark .nogaPlanner_savedCoursesDetailsList {
+  border-color: rgba(110, 168, 180, 0.26);
+  background:
+    linear-gradient(180deg, rgba(196, 230, 236, 0.08), rgba(196, 230, 236, 0.02)),
+    rgba(8, 24, 31, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.08),
+    0 12px 22px rgba(0, 0, 0, 0.28);
+}
+
+body.dark .nogaPlanner_savedCoursesDetailsItem,
+.dark .nogaPlanner_savedCoursesDetailsItem {
+  border-color: rgba(110, 168, 180, 0.3);
+  background:
+    linear-gradient(180deg, rgba(23, 65, 76, 0.9), rgba(11, 33, 40, 0.9)),
+    rgba(11, 33, 40, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(208, 235, 240, 0.12),
+    0 12px 24px rgba(0, 0, 0, 0.34);
+}
+
+body.dark .nogaPlanner_savedCoursesDetailsItem strong,
+.dark .nogaPlanner_savedCoursesDetailsItem strong {
+  background: rgba(136, 212, 199, 0.16);
+  border-color: rgba(136, 212, 199, 0.24);
+  color: rgba(196, 230, 236, 0.84);
+}
+
+body.dark .nogaPlanner_savedCoursesDetailsItem span,
+.dark .nogaPlanner_savedCoursesDetailsItem span {
+  background: rgba(8, 24, 31, 0.78);
+  border-color: rgba(110, 168, 180, 0.22);
+  color: rgba(242, 251, 255, 0.96);
+  box-shadow: inset 0 1px 0 rgba(208, 235, 240, 0.08);
+}
+
+body.dark .nogaPlanner_savedCoursesDetailsInput,
+.dark .nogaPlanner_savedCoursesDetailsInput {
+  background: rgba(6, 20, 27, 0.86);
+  border-color: rgba(110, 168, 180, 0.28);
+  color: rgba(242, 251, 255, 0.96);
+}
+
+body.dark .nogaPlanner_savedCoursesDetailsInput:focus,
+.dark .nogaPlanner_savedCoursesDetailsInput:focus {
+  border-color: rgba(136, 212, 199, 0.54);
+  box-shadow: 0 0 0 3px rgba(136, 212, 199, 0.14);
+}
+
+body.dark .nogaPlanner_savedCoursesSchedulePill,
+.dark .nogaPlanner_savedCoursesSchedulePill {
+  background: rgba(136, 212, 199, 0.14);
+  border-color: rgba(136, 212, 199, 0.24);
+  color: rgba(242, 251, 255, 0.92);
+}
 /* Action and utility buttons */
 body.dark #nogaPlanner_article button,
 body.dark .nogaPlanner_telegramSendButton,
@@ -285,4 +349,54 @@ body.dark .nogaPlanner_telegramSendButton:hover,
 .dark #nogaPlanner_article button:hover,
 .dark .nogaPlanner_telegramSendButton:hover {
   filter: saturate(1.1) brightness(1.06);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBar,
+body.dark-mode .nogaPlanner_coursesMiniBar {
+  border-color: rgba(126, 156, 192, 0.2);
+  background:
+    linear-gradient(180deg, rgba(34, 45, 64, 0.9), rgba(23, 31, 45, 0.86)),
+    rgba(13, 18, 28, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 22px rgba(0, 0, 0, 0.24);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarGroup,
+body.dark-mode .nogaPlanner_coursesMiniBarGroup {
+  background: rgba(84, 108, 141, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarGroup--editDelete,
+body.dark-mode .nogaPlanner_coursesMiniBarGroup--editDelete {
+  background: rgba(126, 78, 92, 0.22);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarBtn,
+body.dark-mode .nogaPlanner_coursesMiniBarBtn {
+  border-color: rgba(126, 156, 192, 0.22);
+  background: linear-gradient(180deg, rgba(63, 82, 110, 0.92), rgba(40, 54, 74, 0.9));
+  color: rgba(233, 240, 250, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 14px rgba(0, 0, 0, 0.22);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarBtn:hover:not(:disabled),
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarBtn:focus-visible:not(:disabled),
+body.dark-mode .nogaPlanner_coursesMiniBarBtn:hover:not(:disabled),
+body.dark-mode .nogaPlanner_coursesMiniBarBtn:focus-visible:not(:disabled) {
+  border-color: rgba(161, 197, 241, 0.32);
+  background: linear-gradient(180deg, rgba(73, 96, 130, 0.96), rgba(48, 67, 93, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
+.app_page[data-theme="dark"] .nogaPlanner_coursesMiniBarBtn:disabled,
+body.dark-mode .nogaPlanner_coursesMiniBarBtn:disabled {
+  color: rgba(165, 177, 194, 0.58);
+  background: linear-gradient(180deg, rgba(49, 59, 73, 0.88), rgba(34, 40, 51, 0.84));
+  border-color: rgba(112, 126, 147, 0.16);
 }

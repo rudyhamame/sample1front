@@ -1,0 +1,421 @@
+#server_answer {
+  position: relative;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  flex-shrink: 0;
+  gap: 6px;
+  width: 100%;
+  max-width: none;
+  min-height: var(--server-answer-height);
+  max-height: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -8px 18px rgba(6, 29, 31, 0.18);
+  color: rgba(30, 82, 90, 0.58);
+  justify-content: flex-start;
+  pointer-events: auto;
+  overflow: visible;
+  padding: 0 20px;
+}
+
+#server_answer #SubApps_article {
+  flex: 0 0 auto;
+  margin-right: 2px;
+}
+
+#server_answer #SubApps_dropMenu_container {
+  text-align: left;
+}
+
+#app_page.app_page--has-background-pattern #server_answer {
+  border-top-color: var(--main-article-color1, rgba(234, 147, 128, 0.3));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.162),
+    inset 0 -8px 18px rgba(139, 85, 75, 0.15);
+  color: rgba(80, 40, 30, 0.85);
+}
+
+#app_page.app_page--has-background-pattern.app_page--home-dark #server_answer,
+body.dark #app_page.app_page--has-background-pattern #server_answer {
+  border-top-color: rgba(110, 168, 180, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -8px 18px rgba(0, 0, 0, 0.24);
+  color: rgba(216, 232, 237, 0.84);
+}
+
+#app_page.app_page--home-dark #server_answer,
+body.dark #server_answer {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 22, 28, 0.98),
+    rgba(11, 30, 37, 0.96)
+  );
+  border-top-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -8px 18px rgba(0, 0, 0, 0.22);
+  color: rgba(216, 232, 237, 0.82);
+}
+
+#server_answer.server_answer--noga {
+  background-color: #e4d3bc !important;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(255, 250, 240, 0.52) 0%,
+      rgba(228, 211, 188, 0.92) 100%
+    ),
+    repeating-linear-gradient(
+      82deg,
+      rgba(255, 250, 230, 0.08) 0 2px,
+      transparent 2px 8px
+    ),
+    repeating-linear-gradient(
+      96deg,
+      rgba(105, 72, 71, 0.05) 0 1px,
+      transparent 1px 9px
+    ) !important;
+  background-size: auto, 240px 180px, 210px 170px;
+  background-position: 0 0, 0 0, 12px 28px;
+  border-top-color: rgba(105, 72, 71, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -8px 18px rgba(105, 72, 71, 0.12);
+  color: rgba(105, 72, 71, 0.72);
+}
+
+#server_answer.server_answer--noga #server_answer_message {
+  color: rgba(105, 72, 71, 0.86);
+}
+
+#server_answer.server_answer--noga #server_answer_message.server_answer_message--idle {
+  color: rgba(105, 72, 71, 0.66);
+}
+
+#server_answer.server_answer--noga #server_answer_light {
+  background: rgba(126, 79, 76, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+#server_answer_light {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 999px;
+  background: rgba(117, 141, 148, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+#server_answer_light.server_answer_light--active {
+  background: #21c86f;
+  box-shadow:
+    0 0 0 3px rgba(33, 200, 111, 0.14),
+    0 0 18px rgba(33, 200, 111, 0.48);
+  animation: App_serverReplyBlink 0.9s ease-in-out infinite;
+}
+
+#app_page.app_page--home-dark #server_answer_message,
+body.dark #server_answer_message {
+  color: rgba(232, 245, 247, 0.9);
+}
+
+#app_page.app_page--home-dark #server_answer_message.server_answer_message--idle,
+body.dark #server_answer_message.server_answer_message--idle {
+  color: rgba(197, 223, 228, 0.82);
+  opacity: 1;
+}
+
+#server_answer_message {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: rgba(246, 252, 252, 0.82);
+  font-size: 0.58rem;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#server_answer_message.server_answer_message--idle {
+  font-size: 0.58rem;
+  opacity: 0.72;
+}
+
+.server_answer_locale_button {
+  margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 2.2rem;
+  padding: 0.32rem 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(248, 251, 251, 0.94);
+  color: rgba(30, 82, 90, 0.84);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  font-family: "IBM Plex Mono", monospace;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.server_answer_locale_button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.98);
+  color: #114a4f;
+  box-shadow: 0 8px 18px rgba(6, 29, 31, 0.16);
+}
+
+.server_answer_locale_button:disabled,
+.server_answer_locale_button.server_answer_locale_button--active {
+  cursor: default;
+  border-color: rgba(17, 106, 77, 0.24);
+  background: rgba(232, 247, 240, 0.98);
+  color: #116a4d;
+  box-shadow: none;
+}
+
+#app_page.app_page--home-dark .server_answer_locale_button,
+#app_page.app_page--home-dark .server_answer_noga_playerButton,
+body.dark .server_answer_locale_button,
+body.dark .server_answer_noga_playerButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(226, 242, 244, 0.88);
+}
+
+#app_page.app_page--home-dark .server_answer_locale_button:hover:not(:disabled),
+#app_page.app_page--home-dark .server_answer_noga_playerButton:hover:not(:disabled),
+body.dark .server_answer_locale_button:hover:not(:disabled),
+body.dark .server_answer_noga_playerButton:hover:not(:disabled) {
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.98);
+  color: #f5fcfc;
+}
+
+.server_answer_noga_playerButton {
+  flex: 0 0 auto;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  border-radius: 999px;
+  background: rgba(248, 251, 251, 0.56);
+  color: rgba(30, 82, 90, 0.78);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.server_answer_noga_playerButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(124, 157, 165, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  color: #114a4f;
+  box-shadow: 0 6px 12px rgba(6, 29, 31, 0.1);
+}
+
+.server_answer_noga_playerButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+.server_answer_noga_playerButton i {
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+#server_answer.server_answer--noga .server_answer_noga_playerButton {
+  border-color: rgba(126, 79, 76, 0.16);
+  background: rgba(255, 250, 244, 0.82);
+  color: rgba(105, 72, 71, 0.82);
+}
+
+#server_answer.server_answer--noga .server_answer_noga_playerButton:hover:not(:disabled) {
+  border-color: rgba(126, 79, 76, 0.28);
+  background: rgba(255, 250, 244, 0.98);
+  color: rgba(90, 57, 56, 0.92);
+  box-shadow: 0 8px 18px rgba(105, 72, 71, 0.12);
+}
+
+body.dark #server_answer.server_answer--noga {
+  background-color: rgba(9, 24, 31, 0.98) !important;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(12, 34, 41, 0.98),
+      rgba(8, 22, 28, 0.96)
+    ),
+    repeating-linear-gradient(
+      82deg,
+      rgba(110, 168, 180, 0.05) 0 2px,
+      transparent 2px 8px
+    ),
+    repeating-linear-gradient(
+      96deg,
+      rgba(205, 107, 106, 0.05) 0 1px,
+      transparent 1px 9px
+    ) !important;
+  border-top-color: rgba(110, 168, 180, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -8px 18px rgba(0, 0, 0, 0.24);
+  color: rgba(216, 232, 237, 0.82);
+}
+
+body.dark #server_answer.server_answer--noga #server_answer_message {
+  color: rgba(232, 245, 247, 0.9);
+}
+
+body.dark
+  #server_answer.server_answer--noga
+  #server_answer_message.server_answer_message--idle {
+  color: rgba(197, 223, 228, 0.82);
+}
+
+body.dark #server_answer.server_answer--noga #server_answer_light {
+  background: rgba(117, 141, 148, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+body.dark #server_answer.server_answer--noga .server_answer_noga_playerButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(13, 35, 41, 0.92);
+  color: rgba(212, 236, 240, 0.88);
+}
+
+body.dark
+  #server_answer.server_answer--noga
+  .server_answer_noga_playerButton:hover:not(:disabled) {
+  border-color: rgba(34, 207, 187, 0.24);
+  background: rgba(15, 44, 50, 0.94);
+  color: rgba(245, 252, 252, 0.96);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+#server_answer_musicPlayer {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.35rem;
+  padding: 0.18rem 0.24rem 0.18rem 0.18rem;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  background: rgba(248, 251, 251, 0.42);
+}
+
+#app_page.app_page--home-dark #server_answer_musicPlayer,
+body.dark #server_answer_musicPlayer {
+  border-color: rgba(110, 168, 180, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 24, 30, 0.96),
+    rgba(12, 33, 40, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+#server_answer_musicPlayer.server_answer_musicPlayer--idle {
+  opacity: 0.72;
+}
+
+#server_answer_musicMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 0.25rem 0 0.15rem;
+}
+
+#server_answer_musicLabel,
+#server_answer_musicTrack {
+  margin: 0;
+  min-width: 0;
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#server_answer_musicLabel {
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(30, 82, 90, 0.52);
+}
+
+#app_page.app_page--home-dark #server_answer_musicLabel,
+body.dark #server_answer_musicLabel {
+  color: rgba(173, 217, 226, 0.82);
+}
+
+#server_answer_musicTrack {
+  max-width: 12rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(30, 82, 90, 0.84);
+}
+
+#app_page.app_page--home-dark #server_answer_musicTrack,
+body.dark #server_answer_musicTrack {
+  color: rgba(239, 249, 250, 0.96);
+}
+
+/* Home-specific footer styling */
+#server_answer.server_answer--home {
+  background: linear-gradient(
+    180deg,
+    rgba(245, 250, 248, 0.96),
+    rgba(237, 246, 242, 0.92)
+  );
+  border-top-color: rgba(30, 142, 116, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -8px 18px rgba(30, 142, 116, 0.08);
+  color: rgba(30, 82, 90, 0.72);
+}
+
+#server_answer.server_answer--home .server_answer_locale_button {
+  background: rgba(230, 245, 240, 0.94);
+  border-color: rgba(30, 142, 116, 0.18);
+  color: #1a8560;
+}
+
+body:not(.dark) #server_answer.server_answer--home #server_answer_message {
+  color: #000000;
+}
+
+body:not(.dark) #server_answer.server_answer--home #server_answer_message.server_answer_message--idle {
+  color: rgba(0, 0, 0, 0.62);
+}

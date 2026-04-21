@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as pdfjs from "pdfjs-dist/build/pdf";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf";
 import { TextLayerBuilder } from "pdfjs-dist/web/pdf_viewer.js";
 import "./pdfReaderModal.css";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+import pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -238,6 +238,43 @@ const sanitizeClinicalRealityHtml = (html) => {
   return container.innerHTML;
 };
 
+const normalizeOcrText = (value = "") => {
+  const normalizedValue = String(value || "").replace(/\r\n?/g, "\n");
+
+  return normalizedValue
+    .replace(/-\n(?=\p{L})/gu, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/([^\n])\n(?=[^\n])/g, "$1 ")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line, index, allLines) => {
+      if (!line) {
+        return true;
+      }
+
+      const compactLine = line.replace(/\s+/g, " ").trim();
+      const isStandalonePageMarker =
+        /^page\s+\d+$/i.test(compactLine) ||
+        /^p\.\s*\d+$/i.test(compactLine) ||
+        /^\d+$/.test(compactLine);
+
+      if (!isStandalonePageMarker) {
+        return true;
+      }
+
+      const previousLine = String(allLines[index - 1] || "").trim();
+      const nextLine = String(allLines[index + 1] || "").trim();
+
+      return Boolean(previousLine || nextLine) === false;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 const PdfReaderModal = ({
   isOpen,
   fileUrl,
@@ -280,6 +317,8 @@ const PdfReaderModal = ({
   const panSessionRef = useRef(null);
   const visiblePagesRef = useRef(new Set());
   const layoutSyncTimeoutRef = useRef(null);
+  const ocrWorkerRef = useRef(null);
+  const ocrWorkerPromiseRef = useRef(null);
 
   const [pdfDocument, setPdfDocument] = useState(null);
   const [numPages, setNumPages] = useState(0);
@@ -332,6 +371,11 @@ const PdfReaderModal = ({
   const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [annotationsByPage, setAnnotationsByPage] = useState({});
   const [studySummary, setStudySummary] = useState("");
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrText, setOcrText] = useState("");
+  const [normalizedOcrText, setNormalizedOcrText] = useState("");
+  const [ocrSourcePage, setOcrSourcePage] = useState(null);
+  const [isRunningOcr, setIsRunningOcr] = useState(false);
   const handlePdfToolButton = useCallback(
     (buttonId, effect) => {
       disableErasers();
@@ -372,6 +416,81 @@ const PdfReaderModal = ({
   );
   const isSelectingText = tool === "select";
 
+  const getOcrWorker = useCallback(async () => {
+    if (ocrWorkerRef.current) {
+      return ocrWorkerRef.current;
+    }
+
+    if (!ocrWorkerPromiseRef.current) {
+      ocrWorkerPromiseRef.current = import("tesseract.js").then(
+        async ({ createWorker }) => {
+          const worker = await createWorker("eng", 1, {
+            logger: (message) => {
+              if (message?.status) {
+                const progressSuffix = Number.isFinite(message?.progress)
+                  ? ` ${Math.round(message.progress * 100)}%`
+                  : "";
+                setOcrStatus(`${message.status}${progressSuffix}`);
+              }
+            },
+          });
+
+          ocrWorkerRef.current = worker;
+          return worker;
+        },
+      );
+    }
+
+    return ocrWorkerPromiseRef.current;
+  }, []);
+
+  const appendOcrTextToSummary = useCallback(() => {
+    const nextText = String(normalizedOcrText || ocrText || "").trim();
+
+    if (!nextText) {
+      return;
+    }
+
+    setStudySummary((currentValue) => {
+      const separator = currentValue.trim() ? "<p><br></p>" : "";
+      return `${currentValue}${separator}${formatPastedPlainText(nextText)}`;
+    });
+  }, [normalizedOcrText, ocrText]);
+
+  const runOcrForCurrentPage = useCallback(async () => {
+    const activeCanvas = canvasRefs.current[pageNumber];
+
+    if (!activeCanvas) {
+      setOcrStatus("Current page is not ready for OCR yet.");
+      return;
+    }
+
+    setIsRunningOcr(true);
+    setOcrStatus(`Preparing OCR for page ${pageNumber}...`);
+    setOcrSourcePage(pageNumber);
+
+    try {
+      const worker = await getOcrWorker();
+      const result = await worker.recognize(activeCanvas);
+      const nextText = String(result?.data?.text || "").trim();
+      const nextNormalizedText = normalizeOcrText(nextText);
+
+      setOcrText(nextText);
+      setNormalizedOcrText(nextNormalizedText);
+      setOcrStatus(
+        nextText
+          ? `OCR finished for page ${pageNumber}.`
+          : `OCR finished for page ${pageNumber}, but no text was detected.`,
+      );
+    } catch (ocrError) {
+      setOcrStatus(
+        ocrError?.message || "OCR failed for the current page.",
+      );
+    } finally {
+      setIsRunningOcr(false);
+    }
+  }, [getOcrWorker, pageNumber]);
+
   useEffect(() => {
     setPageNumber(Math.max(1, Number(initialPage) || 1));
     setZoom(Math.min(2.5, Math.max(0.6, Number(initialZoom) || 1)));
@@ -391,6 +510,24 @@ const PdfReaderModal = ({
   useEffect(() => {
     draftAnnotationRef.current = draftAnnotation;
   }, [draftAnnotation]);
+
+  useEffect(() => {
+    return () => {
+      const terminateWorker = async () => {
+        try {
+          const worker = await ocrWorkerPromiseRef.current;
+          await worker?.terminate?.();
+        } catch {
+          // Ignore OCR worker cleanup failures.
+        } finally {
+          ocrWorkerRef.current = null;
+          ocrWorkerPromiseRef.current = null;
+        }
+      };
+
+      terminateWorker();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -2779,6 +2916,87 @@ const PdfReaderModal = ({
                     ? "Visual study mode is active. This works well for scanned or OCR-resistant PDFs."
                     : "Standard view is active."}
                 </p>
+              </div>
+
+              <div id="pdfReader_ocrBlock" className="pdfReader_panelBlock">
+                <div className="pdfReader_ocrHeader">
+                  <div className="pdfReader_ocrCopy">
+                    <label
+                      id="pdfReader_ocrLabel"
+                      className="pdfReader_inputLabel"
+                      htmlFor="pdf-reader-ocr-output"
+                    >
+                      OCR extraction
+                    </label>
+                    <p className="pdfReader_hint">
+                      Extract text from the current PDF page using Tesseract.
+                    </p>
+                  </div>
+                  <button
+                    id="pdfReader_runOcrButton"
+                    type="button"
+                    className="pdfReader_ocrAction"
+                    onClick={runOcrForCurrentPage}
+                    disabled={
+                      !fileUrl ||
+                      documentLoading ||
+                      isCurrentPageRendering ||
+                      isRunningOcr
+                    }
+                  >
+                    {isRunningOcr ? "Running OCR..." : `OCR page ${pageNumber}`}
+                  </button>
+                </div>
+                <div id="pdfReader_ocrStatus" className="pdfReader_ocrStatus">
+                  {ocrStatus ||
+                    "OCR is idle. Use this when the PDF page is a scan or image."}
+                </div>
+                <label
+                  id="pdfReader_ocrRawLabel"
+                  className="pdfReader_inputLabel"
+                  htmlFor="pdf-reader-ocr-output"
+                >
+                  Raw OCR text
+                </label>
+                <textarea
+                  id="pdf-reader-ocr-output"
+                  className="pdfReader_ocrOutput"
+                  value={ocrText}
+                  onChange={(event) => setOcrText(event.target.value)}
+                  rows={8}
+                  placeholder="OCR text will appear here."
+                />
+                <label
+                  id="pdfReader_ocrNormalizedLabel"
+                  className="pdfReader_inputLabel"
+                  htmlFor="pdf-reader-ocr-normalized"
+                >
+                  Normalized OCR text
+                </label>
+                <textarea
+                  id="pdf-reader-ocr-normalized"
+                  className="pdfReader_ocrOutput pdfReader_ocrOutput--normalized"
+                  value={normalizedOcrText}
+                  onChange={(event) => setNormalizedOcrText(event.target.value)}
+                  rows={8}
+                  placeholder="Normalized OCR text will appear here."
+                />
+                <div className="pdfReader_ocrActionsRow">
+                  <span className="pdfReader_ocrMeta">
+                    {ocrSourcePage
+                      ? `Last OCR page: ${ocrSourcePage}`
+                      : "No OCR result yet"}
+                  </span>
+                  <button
+                    id="pdfReader_appendOcrButton"
+                    type="button"
+                    className="pdfReader_ocrAction"
+                    onClick={appendOcrTextToSummary}
+                    disabled={!String(normalizedOcrText || ocrText || "").trim()}
+                  >
+                    Add normalized OCR to summary
+                  </button>
+                </div>
               </div>
 
               <div id="pdfReader_notesIntroBlock" className="pdfReader_panelBlock">

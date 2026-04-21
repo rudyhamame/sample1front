@@ -32,7 +32,21 @@ export const clearStoredSession = () => {
   localStorage.clear();
 };
 
-export const notifyBackendLogout = ({ userId } = {}) => {
+export const notifyBackendLogout = ({ userId, token } = {}) => {
+  if (token && typeof fetch === "function") {
+    return fetch(apiUrl("/api/user/logout"), {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      keepalive: true,
+    })
+      .then(() => undefined)
+      .catch(() => undefined);
+  }
+
   if (!userId) {
     return Promise.resolve();
   }
@@ -79,6 +93,7 @@ export const logoutStoredSession = ({ clear = true } = {}) => {
 
   return notifyBackendLogout({
     userId: storedSession?.my_id,
+    token: storedSession?.token,
   }).finally(() => {
     if (clear) {
       clearStoredSession();

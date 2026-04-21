@@ -3,7 +3,6 @@ import React from "react";
 
 //........import CSS...........
 import "./App.css";
-import "../Nav/Notifications/notifications.css";
 import "../Nav/nav.css";
 import { Route } from "react-router-dom";
 import Home from "../Home/Home";
@@ -23,6 +22,9 @@ import PdfReaderPage from "../PdfReaderPage.jsx";
 import TelegramControlPage from "../TelegramControlPage.jsx";
 import Profile from "../Profile/Profile.jsx";
 import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
+import Footer from "./Footer/Footer";
+import SubApps from "../Nav/SubApps/SubApps";
+import { getHomeSubApps } from "../utils/homeSubApps";
 import { apiUrl } from "../config/api";
 import { connectRealtime } from "../realtime/socket";
 import {
@@ -30,6 +32,7 @@ import {
   readStoredSession,
   writeStoredSession,
 } from "../utils/sessionCleanup";
+import { normalizeUserUpdatePayload } from "../utils/backendUser";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 //...........component..................
@@ -46,6 +49,22 @@ class App extends React.Component {
       username: storedSession.username || "",
       firstname: storedSession.firstname || "",
       lastname: storedSession.lastname || "",
+      email: storedSession.email || "",
+      phone: storedSession.phone || "",
+      bio: storedSession.bio || "",
+      hometown:
+        storedSession.hometown && typeof storedSession.hometown === "object"
+          ? storedSession.hometown
+          : { Country: "", City: "" },
+      studying:
+        storedSession.studying && typeof storedSession.studying === "object"
+          ? storedSession.studying
+          : {},
+      working:
+        storedSession.working && typeof storedSession.working === "object"
+          ? storedSession.working
+          : {},
+      faculty: storedSession.faculty || "",
       program: storedSession.program || "",
       university: storedSession.university || "",
       studyYear: storedSession.studyYear || "",
@@ -65,6 +84,15 @@ class App extends React.Component {
       imageGallery: Array.isArray(storedSession.imageGallery)
         ? storedSession.imageGallery
         : [],
+      bioWrapperWallpaper:
+        typeof storedSession.bioWrapperWallpaper === "string"
+          ? storedSession.bioWrapperWallpaper
+          : "",
+      bioWrapperWallpaperSize: Number(storedSession.bioWrapperWallpaperSize) || 520,
+      bioWrapperWallpaperRepeat:
+        storedSession.bioWrapperWallpaperRepeat !== undefined
+          ? Boolean(storedSession.bioWrapperWallpaperRepeat)
+          : true,
       dob: storedSession.dob || null,
       token: storedSession.token || "",
       isConnected: Boolean(storedSession.isConnected ?? true),
@@ -72,8 +100,16 @@ class App extends React.Component {
       friends: Array.isArray(storedSession.friends)
         ? storedSession.friends
         : [],
+      friend_requests: Array.isArray(storedSession.friend_requests)
+        ? storedSession.friend_requests
+        : [],
+      sent_friend_requests: Array.isArray(storedSession.sent_friend_requests)
+        ? storedSession.sent_friend_requests
+        : [],
+      rejected_users: Array.isArray(storedSession.rejected_users)
+        ? storedSession.rejected_users
+        : [],
       chat: [],
-      terminology: [],
       posts: Array.isArray(storedSession.posts) ? storedSession.posts : [],
       lectures: Array.isArray(storedSession.lectures)
         ? storedSession.lectures
@@ -90,19 +126,13 @@ class App extends React.Component {
       searching_on: false,
       friendsPosts_retrieved: false,
       retrievingFriendsPosts_DONE: false,
-      retrievingTerminology_DONE: false,
-      retrievingStudySessions_DONE: false,
-      notifications: [],
       visitLogRefreshToken: 0,
       timer: {
         hours: 0,
         mins: 0,
         secs: 0,
       },
-      study_session: null,
-      login_record: Array.isArray(storedSession.login_record)
-        ? storedSession.login_record
-        : [],
+      login_record: [],
       profile: false,
       friendAddedSuccessfully: null,
       posts_updated: false,
@@ -113,6 +143,7 @@ class App extends React.Component {
       backend_health_status: "checking",
       ai_connection_statuses: {
         openai: "checking",
+        groq: "checking",
         gemini: "checking",
         telegram: "checking",
         cloudinary: "checking",
@@ -124,7 +155,7 @@ class App extends React.Component {
     };
   }
   serverReplyTimeout = null;
-  notificationAudioContext = null;
+  serverReplyAudioContext = null;
   realtimeSocket = null;
   backendHealthPollInterval = null;
   sessionHeartbeatInterval = null;
@@ -142,6 +173,22 @@ class App extends React.Component {
       username: storedSession.username || "",
       firstname: storedSession.firstname || "",
       lastname: storedSession.lastname || "",
+      email: storedSession.email || "",
+      phone: storedSession.phone || "",
+      bio: storedSession.bio || "",
+      hometown:
+        storedSession.hometown && typeof storedSession.hometown === "object"
+          ? storedSession.hometown
+          : { Country: "", City: "" },
+      studying:
+        storedSession.studying && typeof storedSession.studying === "object"
+          ? storedSession.studying
+          : {},
+      working:
+        storedSession.working && typeof storedSession.working === "object"
+          ? storedSession.working
+          : {},
+      faculty: storedSession.faculty || "",
       program: storedSession.program || "",
       university: storedSession.university || "",
       studyYear: storedSession.studyYear || "",
@@ -156,6 +203,15 @@ class App extends React.Component {
       imageGallery: Array.isArray(storedSession.imageGallery)
         ? storedSession.imageGallery
         : [],
+      bioWrapperWallpaper:
+        typeof storedSession.bioWrapperWallpaper === "string"
+          ? storedSession.bioWrapperWallpaper
+          : "",
+      bioWrapperWallpaperSize: Number(storedSession.bioWrapperWallpaperSize) || 520,
+      bioWrapperWallpaperRepeat:
+        storedSession.bioWrapperWallpaperRepeat !== undefined
+          ? Boolean(storedSession.bioWrapperWallpaperRepeat)
+          : true,
       dob: storedSession.dob || null,
       token: storedSession.token || "",
     });
@@ -177,10 +233,10 @@ class App extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    this.buildNotifications();
-
     if (!prevState.my_id && this.state.my_id) {
       this.startSessionHeartbeat();
+      this.updateUserInfo();
+      this.connectRealtime();
     }
 
     if (
@@ -203,9 +259,9 @@ class App extends React.Component {
       window.clearTimeout(this.serverReplyTimeout);
       this.serverReplyTimeout = null;
     }
-    if (this.notificationAudioContext) {
-      this.notificationAudioContext.close().catch(() => null);
-      this.notificationAudioContext = null;
+    if (this.serverReplyAudioContext) {
+      this.serverReplyAudioContext.close().catch(() => null);
+      this.serverReplyAudioContext = null;
     }
     if (this.realtimeSocket) {
       this.realtimeSocket.disconnect();
@@ -219,12 +275,6 @@ class App extends React.Component {
       window.clearInterval(this.sessionHeartbeatInterval);
       this.sessionHeartbeatInterval = null;
     }
-    // if (this.props.path === "/study") {
-    //   let input = window.confirm(
-    //     "Do you want this study session to be counted?"
-    //   );
-    //   if (input) this.updateBeforeLeave();
-    // }
     // if (this.props.path === "/") {
     //   this.availableToChat(false);
     // }
@@ -324,6 +374,9 @@ class App extends React.Component {
             openai: String(payload?.ai?.openai || "offline")
               .trim()
               .toLowerCase(),
+            groq: String(payload?.ai?.groq || "offline")
+              .trim()
+              .toLowerCase(),
             gemini: String(payload?.ai?.gemini || "offline")
               .trim()
               .toLowerCase(),
@@ -341,6 +394,7 @@ class App extends React.Component {
           backend_health_status: "offline",
           ai_connection_statuses: {
             openai: "offline",
+            groq: "offline",
             gemini: "offline",
             telegram: "offline",
             cloudinary: "offline",
@@ -500,12 +554,6 @@ class App extends React.Component {
             status: "read",
           };
         },
-      ),
-      notifications: (prevState.notifications || []).map((notification) =>
-        String(notification?.id || "").trim() === normalizedFriendId &&
-        notification?.type === "chat_message"
-          ? { ...notification, status: "read" }
-          : notification,
       ),
     }));
   };
@@ -976,414 +1024,6 @@ class App extends React.Component {
     if (this.profilePosts.length === 0) {
     }
   };
-  ////////////////////////// RetrievingMyStudySessions////////////////////////////////
-  RetrievingMyStudySessions = () => {
-    let secs_sessionInworking = 0;
-    let mins_sessionInworking = 0;
-    let hours_sessionInworking = 0;
-    let total_hours = 0;
-    let total_mins = 0;
-    let total_secs = 0;
-    let secs_totalInworking = 0;
-    let mins_totalInworking = 0;
-
-    // document.getElementById("Posts_studySessions_area").innerHTML = "";
-    // && ul to fix unknown problem
-    if (this.state.study_session) {
-      for (var i = 0; i < this.state.study_session.length; i++) {
-        let ul = document.getElementById("Home_studySessions_area");
-        let p1 = document.createElement("p");
-        let p2 = document.createElement("p");
-        let li = document.createElement("li");
-        let div = document.createElement("div");
-
-        //............date.................................
-        let date = this.state.study_session[i].date;
-        let date_timezone = new Date(date);
-        let date_string = date_timezone.toDateString();
-
-        //.............................................
-        secs_sessionInworking = this.state.study_session[i].length.secs;
-        mins_sessionInworking = this.state.study_session[i].length.mins;
-        hours_sessionInworking = this.state.study_session[i].length.hours;
-        if (
-          secs_sessionInworking < 10 ||
-          mins_sessionInworking < 10 ||
-          hours_sessionInworking < 10
-        ) {
-          if (secs_sessionInworking < 10)
-            secs_sessionInworking = "0" + secs_sessionInworking;
-          if (mins_sessionInworking < 10)
-            mins_sessionInworking = "0" + mins_sessionInworking;
-          if (hours_sessionInworking < 10)
-            hours_sessionInworking = "0" + hours_sessionInworking;
-        }
-        li.className = "fc";
-        p1.textContent = "On " + date_string;
-        p2.textContent =
-          "Duration: " +
-          hours_sessionInworking +
-          ":" +
-          mins_sessionInworking +
-          ":" +
-          secs_sessionInworking;
-        div.appendChild(p1);
-        div.appendChild(p2);
-
-        li.appendChild(div);
-        ul.prepend(li);
-        total_hours = total_hours + this.state.study_session[i].length.hours;
-        total_mins = total_mins + this.state.study_session[i].length.mins;
-        total_secs = total_secs + this.state.study_session[i].length.secs;
-        secs_totalInworking = total_secs;
-        mins_totalInworking = total_mins;
-      }
-      for (i = 0; secs_totalInworking >= 60; i++) {
-        secs_totalInworking--;
-        if (secs_totalInworking % 60 === 0) {
-          total_mins++;
-          total_secs = total_secs - 60;
-        }
-      }
-      for (i = 0; mins_totalInworking >= 60; i++) {
-        mins_totalInworking--;
-        if (mins_totalInworking % 60 === 0) {
-          total_hours++;
-          total_mins = total_mins - 60;
-        }
-      }
-      if (total_secs < 10 || total_mins < 10 || total_hours < 10) {
-        if (total_secs < 10) total_secs = "0" + total_secs;
-        if (total_mins < 10) total_mins = "0" + total_mins;
-        if (total_hours < 10) total_hours = "0" + total_hours;
-      }
-      let li = document.getElementById("Home_totalDuration_li");
-      let p = document.createElement("p");
-      p.style.fontWeight = "600";
-      p.style.padding = "10px";
-
-      p.textContent =
-        "Total duration: " + total_hours + ":" + total_mins + ":" + total_secs;
-      li.appendChild(p);
-
-      this.setState({
-        retrievingStudySessions_DONE: true,
-      });
-    }
-  };
-
-  ///////////////////////////Retrieving terminology//////////////////////////
-  RetrievingTerminology = () => {
-    if (this.state.terminology) {
-      this.state.terminology.forEach((term) => {
-        let ul = document.getElementById("Terminology_content_container");
-        let p1 = document.createElement("p");
-        let p2 = document.createElement("p");
-        let p3 = document.createElement("p");
-        let p4 = document.createElement("p");
-        let p5 = document.createElement("p");
-        let p6 = document.createElement("p");
-        let li = document.createElement("li");
-        p1.textContent = term.term;
-        p1.style.fontSize = "16pt";
-        p1.style.textAlign = "center";
-        p1.style.backgroundColor = "var(--white)";
-        p1.style.color = "var(--black)";
-        p2.textContent = term.meaning;
-        p2.style.fontSize = "14pt";
-        p3.textContent = term.category;
-        p3.style.fontSize = "10pt";
-        p3.style.textAlign = "right";
-        p4.textContent = term.subject;
-        p4.style.fontSize = "10pt";
-        p4.style.textAlign = "right";
-        p5.textContent = "Delete";
-        p5.style.backgroundColor = "var(--red)";
-        p5.style.width = "fit-content";
-        p5.style.padding = "0 5px";
-        p5.style.cursor = "pointer";
-        p5.addEventListener("click", () => {
-          this.deleteTerminology(term._id);
-        });
-        p6.textContent = "Edit";
-        p6.style.backgroundColor = "var(--red)";
-        p6.style.width = "fit-content";
-        p6.style.padding = "0 5px";
-        p6.style.marginTop = "5px";
-
-        p6.style.cursor = "pointer";
-        p6.addEventListener("click", () => {
-          this.editTerminology(term._id);
-        });
-        li.appendChild(p1);
-        li.appendChild(p2);
-        li.appendChild(p3);
-        li.appendChild(p4);
-        li.appendChild(p5);
-        li.appendChild(p6);
-        li.setAttribute("id", "li_term" + term._id);
-        ul.prepend(li);
-      });
-      this.setState({
-        retrievingTerminology_DONE: true,
-      });
-    }
-  };
-  ////////////////////////////Delete terminology////////////////////////////
-  deleteTerminology = (term_id) => {
-    let url =
-      apiUrl("/api/user/deleteTerminology/") + term_id + "/" + this.state.my_id;
-    let options = {
-      method: "DELETE",
-      mode: "cors",
-      headers: {
-        Authorization: "Bearer " + this.state.token,
-        "Content-Type": "application/json",
-      },
-    };
-    let req = new Request(url, options);
-    fetch(req).then((response) => {
-      if (response.status === 201) {
-        document.getElementById("li_term" + term_id).remove();
-        this.serverReply("term deleted");
-      } else {
-        this.serverReply("delete failed");
-      }
-    });
-  };
-  ////////////////////////////Edit terminology////////////////////////////
-  termIsEditing = false;
-  termIdSelected;
-  editEvenCounter = -1;
-  editTerminology = (term_id) => {
-    this.editEvenCounter++;
-    if (this.editEvenCounter % 2 === 0) {
-      this.termIdSelected = term_id;
-      this.termIsEditing = true;
-      document.getElementById("Terminology_term").value =
-        document.getElementById("li_term" + term_id).children[0].textContent;
-      document.getElementById("Terminology_meaning").value =
-        document.getElementById("li_term" + term_id).children[1].textContent;
-      document.getElementById("Terminology_category").value =
-        document.getElementById("li_term" + term_id).children[2].textContent;
-      document.getElementById("Terminology_subject").value =
-        document.getElementById("li_term" + term_id).children[3].textContent;
-      //.........................
-      document.getElementById("Terminology_inputs_container").style.display =
-        "flex";
-      document.getElementById("Terminology_control_icon_close").style.display =
-        "inline";
-      document.getElementById("Terminology_control_icon_open").style.display =
-        "none";
-      document.getElementById("li_term" + term_id).children[5].textContent =
-        "Cancel?";
-      document.getElementById(
-        "li_term" + term_id,
-      ).children[5].style.backgroundColor = "var(--black)";
-      document.getElementById("Terminology_post_button").textContent = "Edit";
-      //.......
-    } else {
-      this.termIsEditing = false;
-      document.getElementById("Terminology_inputs_container").style.display =
-        "none";
-      document.getElementById("Terminology_control_icon_close").style.display =
-        "none";
-      document.getElementById("Terminology_control_icon_open").style.display =
-        "inline";
-      //...........
-      document.getElementById(
-        "li_term" + term_id,
-      ).children[5].style.backgroundColor = "var(--red)";
-      document.getElementById("li_term" + term_id).children[5].textContent =
-        "Edit";
-      document.getElementById("Terminology_post_button").textContent = "Post";
-      //.......
-      document.getElementById("Terminology_term").value = "";
-      document.getElementById("Terminology_meaning").value = "";
-      document.getElementById("Terminology_category").value = "";
-      document.getElementById("Terminology_subject").value = "";
-    }
-  };
-
-  //................................................................................................
-  ////////////////////////////Posting a terminology////////////////////////
-  postingTerminology = (term, meaning, category, subject) => {
-    if (this.termIsEditing === false) {
-      this.setState({
-        app_is_loading: true,
-      });
-      let url = apiUrl("/api/user/newTerminology/") + this.state.my_id;
-      let options = {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          Authorization: "Bearer " + this.state.token,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          term: term,
-          meaning: meaning,
-          category: category,
-          subject: subject,
-          date: new Date(),
-        }),
-      };
-      let req = new Request(url, options);
-      fetch(req)
-        .then((result) => {
-          if (result.status === 201) {
-            document.getElementById("Terminology_term").value = "";
-            document.getElementById("Terminology_meaning").value = "";
-            document.getElementById("Terminology_category").value = "";
-            document.getElementById("Terminology_subject").value = "";
-            this.serverReply("Posted successfully!");
-          } else {
-            this.serverReply(
-              "Posting failed. Please make sure you select a category and/or a subject for your note",
-            );
-            this.setState({
-              app_is_loading: false,
-            });
-          }
-          return result.json();
-        })
-        .then((result) => {
-          if (result) {
-            let ul = document.getElementById("Terminology_content_container");
-            let p1 = document.createElement("p");
-            let p2 = document.createElement("p");
-            let p3 = document.createElement("p");
-            let p4 = document.createElement("p");
-            let p5 = document.createElement("p");
-            let p6 = document.createElement("p");
-            let li = document.createElement("li");
-
-            // //.............................................
-            // let date = result.date;
-            // let date_timezone = new Date(date);
-            // let date_string = date_timezone.toDateString();
-            // let time_string = date_timezone.toLocaleTimeString();
-            // p2.textContent =
-            //   "Posted on: " + date_string + ", " + "at: " + time_string;
-            // //.............................................
-            p1.textContent = result.term;
-            p1.style.fontSize = "16pt";
-            p1.style.textAlign = "center";
-            p1.style.backgroundColor = "var(--white)";
-            p1.style.color = "var(--black)";
-            p2.textContent = result.meaning;
-            p2.style.fontSize = "14pt";
-            p3.textContent = result.category;
-            p3.style.fontSize = "10pt";
-            p3.style.textAlign = "right";
-            p4.textContent = result.subject;
-            p4.style.fontSize = "10pt";
-            p4.style.textAlign = "right";
-            p5.textContent = "Delete";
-            p5.style.backgroundColor = "var(--red)";
-            p5.style.width = "fit-content";
-            p5.style.padding = "0 5px";
-            p5.style.cursor = "pointer";
-            p5.addEventListener("click", () => {
-              this.deleteTerminology(result._id);
-            });
-            p6.textContent = "Edit";
-            p6.style.backgroundColor = "var(--red)";
-            p6.style.width = "fit-content";
-            p6.style.padding = "0 5px";
-            p6.style.marginTop = "5px";
-            p6.style.cursor = "pointer";
-            p6.addEventListener("click", () => {
-              this.editTerminology(result._id);
-            });
-            li.setAttribute("id", "li_term" + result._id);
-            li.appendChild(p1);
-            li.appendChild(p2);
-            li.appendChild(p3);
-            li.appendChild(p4);
-            li.appendChild(p5);
-            li.appendChild(p6);
-            li.setAttribute("id", "li_term" + result._id);
-
-            ul.prepend(li);
-            //...................................
-            this.setState({
-              app_is_loading: false,
-              retrievingTerminology_DONE: true,
-            });
-          }
-        });
-    } else {
-      let url =
-        apiUrl("/api/user/editTerminology/") +
-        this.termIdSelected +
-        "/" +
-        this.state.my_id;
-      let options = {
-        method: "PUT",
-        mode: "cors",
-        headers: {
-          Authorization: "Bearer " + this.state.token,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          term: document.getElementById("Terminology_term").value,
-          meaning: document.getElementById("Terminology_meaning").value,
-          category: document.getElementById("Terminology_category").value,
-          subject: document.getElementById("Terminology_subject").value,
-          date: new Date(),
-        }),
-      };
-      let req = new Request(url, options);
-      fetch(req)
-        .then((response) => {
-          if (response.status === 201) {
-            this.enableEditPost = false;
-            document.getElementById("Terminology_post_button").textContent =
-              "Post";
-
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[0].textContent =
-              document.getElementById("Terminology_term").value;
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[1].textContent = document.getElementById(
-              "Terminology_meaning",
-            ).value;
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[2].textContent = document.getElementById(
-              "Terminology_category",
-            ).value;
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[3].textContent = document.getElementById(
-              "Terminology_subject",
-            ).value;
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[5].textContent = "Edit";
-            document.getElementById(
-              "li_term" + this.termIdSelected,
-            ).children[5].style.backgroundColor = "var(--red)";
-            this.serverReply("term modified");
-          } else {
-            this.serverReply(
-              "modifying failed. Please make sure you select a category and/or a subject for your note",
-            );
-          }
-        })
-        .then(() => {
-          document.getElementById("Terminology_term").value = "";
-          document.getElementById("Terminology_meaning").value = "";
-          document.getElementById("Terminology_category").value = "";
-          document.getElementById("Terminology_subject").value = "";
-          this.termIsEditing = false;
-        });
-    }
-  };
-
   ////////////////////////////////Edit Post///////////////////////////////////////////
   enableEditPost = false;
   targetIDEditPost;
@@ -1422,28 +1062,7 @@ class App extends React.Component {
   ////////////////////////Post Comment/////////////////////////////
   postComment = (event, post_id, input_id) => {
     if (event.which === 13) {
-      let url =
-        apiUrl("/api/posts/commentPost/") +
-        post_id.slice(10, post_id.length) +
-        "/" +
-        document.getElementById(input_id).value;
-      let options = {
-        method: "PUT",
-        mode: "cors",
-        headers: {
-          Authorization: "Bearer " + this.state.token,
-          "Content-Type": "application/json",
-        },
-      };
-      let req = new Request(url, options);
-      fetch(req).then((response) => {
-        if (response.status === 201) {
-          document.getElementById(input_id).value = "";
-          this.serverReply("post modified");
-        } else {
-          this.serverReply("modify failed");
-        }
-      });
+      this.serverReply("Posts are disabled");
     }
   };
   //////////////////////////SEND MESSAGE TO FRIEND'S Chat////////////////////////////////
@@ -1648,104 +1267,28 @@ class App extends React.Component {
 
   ////////////////////////ACCEPT FRIEND/////////////////////////////////////////////
 
-  hideNotificationRow = (notificationId) => {
-    const row = document.getElementById(String(notificationId));
-
-    if (row?.parentElement) {
-      row.parentElement.style.display = "none";
-    }
-  };
-
-  markNotificationReadLocally = (notificationId) => {
+  markFriendRequestReadLocally = (requestId) => {
     this.setState((prevState) => ({
-      notifications: (prevState.notifications || []).map((notification) =>
-        String(notification?._id || notification?.id) === String(notificationId)
-          ? { ...notification, status: "read" }
-          : notification,
+      friend_requests: (prevState.friend_requests || []).map((request) =>
+        String(request?._id || "") === String(requestId) ||
+        String(request?.id || "") === String(requestId)
+          ? { ...request, status: "read" }
+          : request,
       ),
     }));
   };
 
-  markChatNotificationsReadLocally = (friendId) => {
-    this.setState((prevState) => ({
-      notifications: (prevState.notifications || []).map((notification) =>
-        String(notification?.id) === String(friendId) &&
-        notification?.type === "chat_message"
-          ? { ...notification, status: "read" }
-          : notification,
-      ),
-    }));
-  };
-
-  markChatNotificationsRead = (friendId) => {
+  markSelectedFriendMessagesRead = (friendId) => {
     if (!friendId || !this.state?.my_id) {
       return Promise.resolve(false);
     }
 
-    const unreadChatNotifications = (this.state.notifications || []).filter(
-      (notification) =>
-        String(notification?.id) === String(friendId) &&
-        notification?.type === "chat_message" &&
-        notification?.status !== "read",
-    );
-
-    if (!unreadChatNotifications.length) {
-      return Promise.resolve(false);
-    }
-
-    if (this.realtimeSocket) {
-      this.markMessagesRead(friendId);
-      this.markChatNotificationsReadLocally(friendId);
-      return Promise.resolve(true);
-    }
-
-    if (!this.state?.token) {
-      return Promise.resolve(false);
-    }
-
-    const unreadNotificationIds = unreadChatNotifications
-      .map((notification) => String(notification?._id || "").trim())
-      .filter(Boolean);
-
-    if (!unreadNotificationIds.length) {
-      return Promise.resolve(false);
-    }
-
-    return Promise.all(
-      unreadNotificationIds.map((notificationId) =>
-        fetch(
-          new Request(
-            apiUrl("/api/user/notifications/") + notificationId + "/read",
-            {
-              method: "PUT",
-              mode: "cors",
-              headers: {
-                Authorization: "Bearer " + this.state.token,
-                "Content-Type": "application/json",
-              },
-            },
-          ),
-        ),
-      ),
-    )
-      .then((responses) => {
-        if (responses.every((response) => response.ok)) {
-          this.markChatNotificationsReadLocally(friendId);
-          return true;
-        }
-
-        return false;
-      })
-      .catch(() => false);
+    this.markMessagesRead(friendId);
+    return Promise.resolve(true);
   };
 
   acceptFriend = (friend) => {
     let friend_trim = friend.slice(11, friend.length);
-    const notificationRow = document.getElementById(friend_trim);
-
-    if (notificationRow) {
-      notificationRow.style.backgroundColor = "var(--black)";
-    }
 
     this.serverReply("Adding ...");
     let url =
@@ -1761,82 +1304,99 @@ class App extends React.Component {
     let req = new Request(url, options);
     fetch(req).then((response) => {
       if (response.status === 201) {
-        this.markNotificationReadLocally(friend_trim);
         this.serverReply("You're now friends!");
-
-        let url =
-          apiUrl("/api/user/editUserInfo/") +
-          this.state.my_id +
-          "/" +
-          friend_trim;
-        let options = {
-          method: "PUT",
-          mode: "cors",
-          headers: {
-            Authorization: "Bearer " + this.state.token,
-            "Content-Type": "application/json",
-          },
-        };
-        let req = new Request(url, options);
-        fetch(req).then((response) => {
-          if (response.ok) {
-            this.markNotificationReadLocally(friend_trim);
-            this.hideNotificationRow(friend_trim);
-          }
-        });
+        this.markFriendRequestReadLocally(friend_trim);
+        this.updateUserInfo();
       }
       if (response.status === 409) {
-        this.markNotificationReadLocally(friend_trim);
+        this.markFriendRequestReadLocally(friend_trim);
         this.serverReply("You're already friends!");
-        this.hideNotificationRow(friend_trim);
+        this.updateUserInfo();
       }
     });
   };
-  ////////////////////////Decline Request/////////////////////////////////////////////
 
-  makeNotificationsRead = (notificationTarget) => {
-    const notificationId = String(notificationTarget || "").startsWith(
-      "decline_icon",
-    )
-      ? String(notificationTarget).slice(12)
-      : String(notificationTarget || "");
+  dismissFriendRequest = (requestTarget) => {
+    const requestId = String(requestTarget || "").startsWith("decline_icon")
+      ? String(requestTarget).slice(12)
+      : String(requestTarget || "");
 
-    if (!notificationId) {
-      this.serverReply("Unable to dismiss notification.");
+    if (!requestId) {
+      this.serverReply("Unable to dismiss friend request.");
       return Promise.resolve(false);
     }
 
-    let url = apiUrl("/api/user/notifications/") + notificationId + "/read";
-
-    let options = {
-      method: "PUT",
-      mode: "cors",
-      headers: {
-        Authorization: "Bearer " + this.state.token,
-        "Content-Type": "application/json",
-      },
-    };
-    let req = new Request(url, options);
-    return fetch(req)
+    return fetch(
+      new Request(apiUrl("/api/user/friend-requests/") + requestId + "/read", {
+        method: "PUT",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.state.token,
+          "Content-Type": "application/json",
+        },
+      }),
+    )
       .then((response) => {
-        const notificationRow = document.getElementById(notificationId);
-
-        if (notificationRow) {
-          notificationRow.style.backgroundColor = "var(--black)";
-        }
-
-        if (response.status === 200) {
-          this.markNotificationReadLocally(notificationId);
-          this.hideNotificationRow(notificationId);
-          this.serverReply("Done!");
+        if (response.ok) {
+          this.markFriendRequestReadLocally(requestId);
+          this.updateUserInfo();
+          this.serverReply("Friend request rejected.");
           return true;
         }
 
-        this.serverReply("Unable to dismiss notification.");
+        this.serverReply("Unable to dismiss friend request.");
         return false;
       })
       .catch(() => {
-        this.serverReply("Unable to dismiss notification.");
+        this.serverReply("Unable to dismiss friend request.");
+        return false;
+      });
+  };
+
+  cancelSentFriendRequest = (receiverId) => {
+    const normalizedReceiverId = String(receiverId || "").trim();
+
+    if (!normalizedReceiverId) {
+      this.serverReply("Unable to cancel friend request.");
+      return Promise.resolve(false);
+    }
+
+    return fetch(
+      apiUrl(
+        `/api/user/friend-requests/sent/${encodeURIComponent(
+          normalizedReceiverId,
+        )}`,
+      ),
+      {
+        method: "DELETE",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.state.token,
+          "Content-Type": "application/json",
+        },
+      },
+    )
+      .then((response) => {
+        if (response.ok) {
+          this.setState((prevState) => ({
+            sent_friend_requests: (
+              Array.isArray(prevState.sent_friend_requests)
+                ? prevState.sent_friend_requests
+                : []
+            ).filter(
+              (request) => String(request?.id || "") !== normalizedReceiverId,
+            ),
+          }));
+          this.updateUserInfo();
+          this.serverReply("Friend request cancelled.");
+          return true;
+        }
+
+        this.serverReply("Unable to cancel friend request.");
+        return false;
+      })
+      .catch(() => {
+        this.serverReply("Unable to cancel friend request.");
         return false;
       });
   };
@@ -1875,10 +1435,12 @@ class App extends React.Component {
             let li = document.createElement("li");
             let icon = document.createElement("i");
 
+            const friendIdentity = jsonData.friends[i]?.identity || {};
+            const friendPersonal = friendIdentity.personal || {};
             p.textContent =
-              jsonData.friends[i].info.firstname +
+              String(friendPersonal.firstname || "") +
               " " +
-              jsonData.friends[i].info.lastname;
+              String(friendPersonal.lastname || "");
             p.setAttribute("id", [i]);
             li.appendChild(p);
             li.setAttribute("id", jsonData.friends[i]._id);
@@ -1890,12 +1452,12 @@ class App extends React.Component {
               ).style.display = "none";
             });
             li.setAttribute("class", "fr");
-            li.setAttribute("title", jsonData.friends[i].info.firstname);
+            li.setAttribute("title", String(friendPersonal.firstname || ""));
             icon.setAttribute("id", "online_icon" + jsonData.friends[i]._id);
             icon.setAttribute("class", "fas fa-circle");
             li.appendChild(icon);
             ul.appendChild(li);
-            if (jsonData.friends[i].status.isConnected) {
+            if (Boolean(jsonData.friends[i]?.identity?.status?.isLoggedIn)) {
               icon.style.color = "#32cd32";
             } else {
               icon.style.color = "var(--black)";
@@ -1923,10 +1485,11 @@ class App extends React.Component {
     let activeChatFriendName = "";
     this.state.friends.forEach((friend) => {
       if (friend._id === friendID) {
+        const friendPersonal = friend?.identity?.personal || friend?.info || {};
         activeChatFriendName =
-          friend.info?.firstname && friend.info?.lastname
-            ? `${friend.info.firstname} ${friend.info.lastname}`
-            : friend.info?.firstname || "Chat";
+          friendPersonal?.firstname && friendPersonal?.lastname
+            ? `${friendPersonal.firstname} ${friendPersonal.lastname}`
+            : friendPersonal?.firstname || "Chat";
       }
     });
 
@@ -1939,7 +1502,7 @@ class App extends React.Component {
 
     this.updateMyChatPresence(friendID, true);
     this.updateMyTypingPresence(friendID, false);
-    this.markChatNotificationsRead(friendID);
+    this.markSelectedFriendMessagesRead(friendID);
     this.RetrievingMySendingMessages(friendID);
   };
 
@@ -2006,6 +1569,10 @@ class App extends React.Component {
   };
   ////////////////////////////Update State//////////DONE/////////////////////
   updateUserInfo = () => {
+    if (!this.state.my_id) {
+      return;
+    }
+
     let url = apiUrl("/api/user/update/") + this.state.my_id;
     let req = new Request(url, {
       method: "GET",
@@ -2018,22 +1585,19 @@ class App extends React.Component {
         }
       })
       .then((jsonData) => {
-        const nextProfilePicture = String(
-          jsonData?.media?.profilePicture?.url || "",
-        ).trim();
-        const nextImageGallery = Array.isArray(jsonData?.media?.imageGallery)
-          ? jsonData.media.imageGallery
-          : [];
+        const normalizedPayload = normalizeUserUpdatePayload(jsonData);
+        const personal = normalizedPayload.personal || {};
+        const nextStudying =
+          normalizedPayload.studying &&
+          typeof normalizedPayload.studying === "object"
+            ? normalizedPayload.studying
+            : this.state.studying;
+        const nextProfilePicture =
+          normalizedPayload.profilePicture || this.state.profilePicture;
+        const nextImageGallery = normalizedPayload.imageGallery;
         const nextProfilePictureViewport =
-          jsonData?.media?.profilePictureViewport &&
-          typeof jsonData.media.profilePictureViewport === "object"
-            ? jsonData.media.profilePictureViewport
-            : { scale: 1, offsetX: 0, offsetY: 0 };
-        const fetchedHomeDrawing =
-          jsonData?.media?.homeDrawing &&
-          typeof jsonData.media.homeDrawing === "object"
-            ? jsonData.media.homeDrawing
-            : { draftPaths: [], appliedPaths: [], textItems: [] };
+          normalizedPayload.profilePictureViewport;
+        const fetchedHomeDrawing = normalizedPayload.homeDrawing;
         const currentHomeDrawing =
           this.state.homeDrawing && typeof this.state.homeDrawing === "object"
             ? this.state.homeDrawing
@@ -2064,55 +1628,57 @@ class App extends React.Component {
           (currentAppliedCount > 0 || currentTextCount > 0)
             ? currentHomeDrawing
             : fetchedHomeDrawing;
-
         this.setState({
-          username: jsonData.info?.username || this.state.username,
-          firstname: jsonData.info?.firstname || this.state.firstname,
-          lastname: jsonData.info?.lastname || this.state.lastname,
-          program: jsonData.info?.program || "",
-          university: jsonData.info?.university || "",
-          studyYear: jsonData.info?.studyYear || "",
-          term: jsonData.info?.term || "",
-          aiProvider: jsonData.info?.aiProvider || "openai",
-          friends: jsonData.friends,
-          posts: jsonData.posts,
-          chat: jsonData.chat,
-          notifications: jsonData.notifications,
-          terminology: jsonData.terminology,
-          study_session: jsonData.study_session,
-          login_record: jsonData.login_record || [],
-          isOnline: jsonData.isOnline,
+          username:
+            normalizedPayload?.identity?.atSignup?.username ||
+            this.state.username,
+          firstname: personal?.firstname || this.state.firstname,
+          lastname: personal?.lastname || this.state.lastname,
+          studying: nextStudying,
+          faculty: personal?.faculty || this.state.faculty || "",
+          program: personal?.program || "",
+          university: personal?.university || "",
+          studyYear: personal?.year || personal?.studyYear || "",
+          term: personal?.term || "",
+          aiProvider: normalizedPayload.aiProvider,
+          friends: normalizedPayload.friends,
+          friend_requests: normalizedPayload.friendRequests,
+          sent_friend_requests: normalizedPayload.sentFriendRequests,
+          rejected_users: normalizedPayload.rejectedUsers,
+          posts: normalizedPayload.posts,
+          chat: normalizedPayload.chat,
+          login_record: [],
+          isOnline: normalizedPayload.isOnline,
           profilePicture: nextProfilePicture,
           profilePictureViewport: nextProfilePictureViewport,
           homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
         });
         this.persistStoredSession({
-          username: jsonData.info?.username || this.state.username,
-          firstname: jsonData.info?.firstname || this.state.firstname,
-          lastname: jsonData.info?.lastname || this.state.lastname,
-          program: jsonData.info?.program || "",
-          university: jsonData.info?.university || "",
-          studyYear: jsonData.info?.studyYear || "",
-          term: jsonData.info?.term || "",
-          aiProvider: jsonData.info?.aiProvider || "openai",
+          username:
+            normalizedPayload?.identity?.atSignup?.username ||
+            this.state.username,
+          firstname: personal?.firstname || this.state.firstname,
+          lastname: personal?.lastname || this.state.lastname,
+          studying: nextStudying,
+          faculty: personal?.faculty || this.state.faculty || "",
+          program: personal?.program || "",
+          university: personal?.university || "",
+          studyYear: personal?.year || personal?.studyYear || "",
+          term: personal?.term || "",
+          aiProvider: normalizedPayload.aiProvider,
           profilePicture: nextProfilePicture,
           profilePictureViewport: nextProfilePictureViewport,
           homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
-          friends: jsonData.friends,
-          posts: jsonData.posts,
-          notifications: jsonData.notifications,
-          login_record: jsonData.login_record || [],
+          friends: normalizedPayload.friends,
+          friend_requests: normalizedPayload.friendRequests,
+          sent_friend_requests: normalizedPayload.sentFriendRequests,
+          rejected_users: normalizedPayload.rejectedUsers,
+          posts: normalizedPayload.posts,
+          login_record: [],
         });
-        for (
-          var i = 0;
-          i < (jsonData.schoolPlanner?.courses || []).length;
-          i++
-        ) {
-          this.memory.courses.push(jsonData.schoolPlanner.courses[i]);
-          console.log(this.memory.courses[i]);
-        }
+        this.memory.courses = normalizedPayload.memory.courses;
       })
       .catch((err) => {
         if (err.message === "Cannot read property 'credentials' of null")
@@ -2151,7 +1717,7 @@ class App extends React.Component {
         university: String(nextInfo?.university || "").trim(),
         studyYear: String(nextInfo?.studyYear || "").trim(),
         term: String(nextInfo?.term || "").trim(),
-        aiProvider: ["openai", "gemini"].includes(
+        aiProvider: ["openai", "groq", "gemini"].includes(
           String(nextInfo?.aiProvider || "")
             .trim()
             .toLowerCase(),
@@ -2166,6 +1732,7 @@ class App extends React.Component {
           firstname: this.state.firstname,
           lastname: this.state.lastname,
           username: this.state.username,
+          faculty: this.state.faculty,
           program: this.state.program,
           university: this.state.university,
           studyYear: this.state.studyYear,
@@ -2177,7 +1744,13 @@ class App extends React.Component {
   };
 
   setUserMediaInfo = (nextMedia = {}) => {
-    const nextProfilePicture = String(nextMedia?.profilePicture || "").trim();
+    const requestedProfilePicture = nextMedia?.profilePicture;
+    const nextProfilePicture =
+      typeof requestedProfilePicture === "object" && requestedProfilePicture
+        ? String(
+            requestedProfilePicture.url || requestedProfilePicture.secure_url || "",
+          ).trim()
+        : String(requestedProfilePicture || this.state.profilePicture || "").trim();
     const nextImageGallery = Array.isArray(nextMedia?.imageGallery)
       ? nextMedia.imageGallery
       : [];
@@ -2190,13 +1763,64 @@ class App extends React.Component {
       nextMedia?.homeDrawing && typeof nextMedia.homeDrawing === "object"
         ? nextMedia.homeDrawing
         : this.state.homeDrawing;
+    const nextBioWrapperWallpaper =
+      nextMedia?.bioWrapperWallpaper !== undefined
+        ? String(nextMedia.bioWrapperWallpaper || "").trim()
+        : this.state.bioWrapperWallpaper;
+    const requestedBioWrapperWallpaperSize = Number(
+      nextMedia?.bioWrapperWallpaperSize,
+    );
+    const nextBioWrapperWallpaperSize = Number.isFinite(
+      requestedBioWrapperWallpaperSize,
+    )
+      ? Math.min(Math.max(requestedBioWrapperWallpaperSize, 180), 1400)
+      : Number(this.state.bioWrapperWallpaperSize) || 520;
+    const nextBioWrapperWallpaperRepeat =
+      nextMedia?.bioWrapperWallpaperRepeat !== undefined
+        ? Boolean(nextMedia.bioWrapperWallpaperRepeat)
+        : this.state.bioWrapperWallpaperRepeat;
 
     this.setState(
-      {
-        profilePicture: nextProfilePicture,
-        profilePictureViewport: nextProfilePictureViewport,
-        homeDrawing: nextHomeDrawing,
-        imageGallery: nextImageGallery,
+      (currentState) => {
+        const currentViewport = currentState.profilePictureViewport || {};
+        const nextViewport = nextProfilePictureViewport || {};
+        const isViewportUnchanged =
+          Number(currentViewport.scale) === Number(nextViewport.scale) &&
+          Number(currentViewport.offsetX) === Number(nextViewport.offsetX) &&
+          Number(currentViewport.offsetY) === Number(nextViewport.offsetY);
+        const isHomeDrawingUnchanged =
+          JSON.stringify(currentState.homeDrawing || {}) ===
+          JSON.stringify(nextHomeDrawing || {});
+        const isGalleryUnchanged =
+          JSON.stringify(currentState.imageGallery || []) ===
+          JSON.stringify(nextImageGallery);
+        const isBioWallpaperUnchanged =
+          String(currentState.bioWrapperWallpaper || "") ===
+            nextBioWrapperWallpaper &&
+          Number(currentState.bioWrapperWallpaperSize || 520) ===
+            nextBioWrapperWallpaperSize &&
+          Boolean(currentState.bioWrapperWallpaperRepeat) ===
+            nextBioWrapperWallpaperRepeat;
+
+        if (
+          currentState.profilePicture === nextProfilePicture &&
+          isViewportUnchanged &&
+          isHomeDrawingUnchanged &&
+          isGalleryUnchanged &&
+          isBioWallpaperUnchanged
+        ) {
+          return null;
+        }
+
+        return {
+          profilePicture: nextProfilePicture,
+          profilePictureViewport: nextProfilePictureViewport,
+          homeDrawing: nextHomeDrawing,
+          imageGallery: nextImageGallery,
+          bioWrapperWallpaper: nextBioWrapperWallpaper,
+          bioWrapperWallpaperSize: nextBioWrapperWallpaperSize,
+          bioWrapperWallpaperRepeat: nextBioWrapperWallpaperRepeat,
+        };
       },
       () => {
         this.persistStoredSession({
@@ -2204,13 +1828,16 @@ class App extends React.Component {
           profilePictureViewport: this.state.profilePictureViewport,
           homeDrawing: this.state.homeDrawing,
           imageGallery: this.state.imageGallery,
+          bioWrapperWallpaper: this.state.bioWrapperWallpaper,
+          bioWrapperWallpaperSize: this.state.bioWrapperWallpaperSize,
+          bioWrapperWallpaperRepeat: this.state.bioWrapperWallpaperRepeat,
         });
       },
     );
   };
 
   setSelectedAiProvider = (provider) => {
-    const nextProvider = ["openai", "gemini"].includes(
+    const nextProvider = ["openai", "groq", "gemini"].includes(
       String(provider || "")
         .trim()
         .toLowerCase(),
@@ -2259,25 +1886,6 @@ class App extends React.Component {
     }).catch(() => undefined);
   };
 
-  ////////////////////////////////////BUILD NOTIFICATIONS////////////////////////
-  notificaitons_array = [];
-
-  buildNotifications = () => {
-    let bell = document.getElementById("i_bell_open");
-    if (!bell) {
-      return;
-    }
-
-    let hasUnreadNotifications = false;
-    for (var i = 0; i < this.state.notifications.length; i++) {
-      if (this.state.notifications[i].status !== "read") {
-        hasUnreadNotifications = true;
-      }
-      this.notificaitons_array[i] = this.state.notifications[i]._id;
-    }
-
-    bell.style.color = hasUnreadNotifications ? "#58b78a" : "";
-  };
   ///////////////////////////////////////Counter////////////////////////////////////////////////
   counter = () => {
     let secs;
@@ -2317,41 +1925,6 @@ class App extends React.Component {
     }, 1000);
   };
 
-  ////////////////////////////////////////////////////UPDATE isConnect on databae////////////////////////////////
-
-  updateBeforeLeave = () => {
-    let url = apiUrl("/api/user/updateBeforeLeave/") + this.state.my_id;
-    let options = {
-      method: "PUT",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        study_session: {
-          date: new Date(),
-          length: this.state.timer,
-        },
-      }),
-    };
-
-    let req = new Request(url, options);
-    fetch(req)
-      .then((response) => {
-        if (response.status === 201 && this.state.isConnected === false) {
-          if (this.props.onLogout) {
-            this.props.onLogout();
-          }
-          return response.json();
-        } else {
-          throw new Error("bad Http");
-        }
-      })
-      .catch((err) => {
-        console.log("error:", err.message);
-      });
-  };
-
   playServerReplySound = () => {
     if (typeof window === "undefined") {
       return;
@@ -2364,11 +1937,11 @@ class App extends React.Component {
     }
 
     try {
-      if (!this.notificationAudioContext) {
-        this.notificationAudioContext = new AudioContextClass();
+      if (!this.serverReplyAudioContext) {
+        this.serverReplyAudioContext = new AudioContextClass();
       }
 
-      const context = this.notificationAudioContext;
+      const context = this.serverReplyAudioContext;
 
       if (context.state === "suspended") {
         context.resume().catch(() => null);
@@ -2466,15 +2039,6 @@ class App extends React.Component {
         isConnected: false,
       },
       () => {
-        if (this.props.path === "/study") {
-          let input = window.confirm(
-            "Do you want this study session to be counted?",
-          );
-          if (input) {
-            this.updateBeforeLeave();
-          }
-        }
-
         this.availableToChat(false)
           .catch(() => null)
           .finally(finishLogout);
@@ -2514,11 +2078,8 @@ class App extends React.Component {
   };
   searchPosts = (keyword, subject, category) => {
     let ul = document.getElementById("MountPosts_content_container");
-    let ul_term = document.getElementById("Terminology_content_container");
     let array = [];
-    let array_term = [];
     ul.innerHTML = "";
-    ul_term.innerHTML = "";
     //..................................
     this.state.posts.forEach((post) => {
       if (keyword !== "$" && subject === "$" && category === "$") {
@@ -2579,69 +2140,6 @@ class App extends React.Component {
         }
       }
     });
-    //..............................................
-    this.state.terminology.forEach((term) => {
-      if (keyword !== "$" && subject === "$" && category === "$") {
-        if (
-          String(term.term).toLowerCase() === keyword.toLowerCase() ||
-          String(term.term).toLowerCase().includes(keyword.toLowerCase())
-        ) {
-          array_term.push(term);
-        }
-      }
-      if (keyword === "$" && subject !== "$" && category === "$") {
-        if (term.subject === subject) {
-          array_term.push(term);
-        }
-      }
-      if (keyword === "$" && subject === "$" && category !== "$") {
-        if (term.category === category) {
-          array_term.push(term);
-        }
-      }
-      if (keyword !== "$" && subject !== "$" && category === "$") {
-        if (
-          String(term.note).toLowerCase() === keyword.toLowerCase() ||
-          String(term.note)
-            .toLowerCase()
-            .includes(keyword.toLowerCase() && term.subject === subject)
-        ) {
-          array_term.push(term);
-        }
-      }
-      if (keyword !== "$" && subject === "$" && category !== "$") {
-        if (
-          String(term.note).toLowerCase() === keyword.toLowerCase() ||
-          String(term.note)
-            .toLowerCase()
-            .includes(keyword.toLowerCase() && term.category === category)
-        ) {
-          array_term.push(term);
-        }
-      }
-      if (keyword === "$" && subject !== "$" && category !== "$") {
-        if (term.subject === subject && term.category === category) {
-          array_term.push(term);
-        }
-      }
-      if (keyword !== "$" && subject !== "$" && category !== "$") {
-        if (
-          String(term.note).toLowerCase() === keyword.toLowerCase() ||
-          String(term.note)
-            .toLowerCase()
-            .includes(
-              keyword.toLowerCase() &&
-                term.subject === subject &&
-                term.category === category,
-            )
-        ) {
-          array_term.push(term);
-        }
-      }
-    });
-    //.......................................
-    this.searchTerminology(array_term);
-    //.............................................
     let array_associate = [];
     for (var i = 0; i < array.length; i++) {
       if (array_associate[i] !== array[i]._id) {
@@ -2761,62 +2259,6 @@ class App extends React.Component {
       array_associate[i] = array[i]._id;
     }
   };
-  searchTerminology = (array) => {
-    if (array) {
-      array.forEach((term) => {
-        let ul = document.getElementById("Terminology_content_container");
-        let p1 = document.createElement("p");
-        let p2 = document.createElement("p");
-        let p3 = document.createElement("p");
-        let p4 = document.createElement("p");
-        let p5 = document.createElement("p");
-        let p6 = document.createElement("p");
-        let li = document.createElement("li");
-        p1.textContent = term.term;
-        p1.style.fontSize = "16pt";
-        p1.style.textAlign = "center";
-        p1.style.backgroundColor = "var(--white)";
-        p1.style.color = "var(--black)";
-        p2.textContent = term.meaning;
-        p2.style.fontSize = "14pt";
-        p3.textContent = term.category;
-        p3.style.fontSize = "10pt";
-        p3.style.textAlign = "right";
-        p4.textContent = term.subject;
-        p4.style.fontSize = "10pt";
-        p4.style.textAlign = "right";
-        p5.textContent = "Delete";
-        p5.style.backgroundColor = "var(--red)";
-        p5.style.width = "fit-content";
-        p5.style.padding = "0 5px";
-        p5.style.cursor = "pointer";
-        p5.addEventListener("click", () => {
-          this.deleteTerminology(term._id);
-        });
-        p6.textContent = "Edit";
-        p6.style.backgroundColor = "var(--red)";
-        p6.style.width = "fit-content";
-        p6.style.padding = "0 5px";
-        p6.style.marginTop = "5px";
-
-        p6.style.cursor = "pointer";
-        p6.addEventListener("click", () => {
-          this.editTerminology(term._id);
-        });
-        li.appendChild(p1);
-        li.appendChild(p2);
-        li.appendChild(p3);
-        li.appendChild(p4);
-        li.appendChild(p5);
-        li.appendChild(p6);
-        li.setAttribute("id", "li_term" + term._id);
-        ul.prepend(li);
-      });
-      this.setState({
-        retrievingTerminology_DONE: true,
-      });
-    }
-  };
   show_profile = (boolean) => {
     this.setState({
       profile: boolean,
@@ -2834,6 +2276,7 @@ class App extends React.Component {
       );
     }
   };
+
   //.....Reander Login HTML..........
   render() {
     const isNogaPlanRoute =
@@ -2846,181 +2289,6 @@ class App extends React.Component {
     const showServerAnswerFooter = !this.state.hide_app_footer;
     const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
     const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
-    const plannerMusic = this.state.planner_music || getPlannerMusicSnapshot();
-    const currentPath =
-      typeof window !== "undefined" ? window.location.pathname : "";
-    const isArabicSchoolPlannerRoute =
-      currentPath === "/phenomed/schoolplanner/ar" ||
-      currentPath === "/phenomed/nogaplan";
-    const openArabicSchoolPlanner = () => {
-      if (typeof window === "undefined" || isArabicSchoolPlannerRoute) {
-        return;
-      }
-
-      const arabicTargetPath = currentPath.includes(
-        "/phenomed/schoolplanner/nogaplan",
-      )
-        ? "/phenomed/nogaplan"
-        : "/phenomed/schoolplanner/ar";
-
-      window.location.assign(arabicTargetPath);
-    };
-    const serverAnswerFooter = (
-      <footer
-        id="server_answer"
-        className={`${this.state.has_active_server_reply ? "server_answer--active " : ""}${isNaghamNogaFooter ? "server_answer--noga" : ""}`.trim()}
-      >
-        <span
-          id="server_answer_backend_status"
-          className={`server_answer_backend_status--${this.state.backend_health_status}`}
-        >
-          {this.state.backend_health_status === "checking"
-            ? "BACKEND CHECKING"
-            : this.state.backend_health_status === "healthy"
-              ? "BACKEND HEALTHY"
-              : this.state.backend_health_status === "degraded"
-                ? "BACKEND DEGRADED"
-                : "BACKEND OFFLINE"}
-        </span>
-        <button
-          type="button"
-          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.openai || "offline"}${this.state.aiProvider === "openai" ? " server_answer_ai_status--selected" : ""}`}
-          onClick={() => this.setSelectedAiProvider("openai")}
-          aria-pressed={this.state.aiProvider === "openai"}
-          title="Select OpenAI"
-        >
-          {this.state.ai_connection_statuses?.openai === "connected"
-            ? "OPENAI CONNECTED"
-            : this.state.ai_connection_statuses?.openai === "checking"
-              ? "OPENAI CHECKING"
-              : "OPENAI OFFLINE"}
-        </button>
-        <button
-          type="button"
-          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.gemini || "offline"}${this.state.aiProvider === "gemini" ? " server_answer_ai_status--selected" : ""}`}
-          onClick={() => this.setSelectedAiProvider("gemini")}
-          aria-pressed={this.state.aiProvider === "gemini"}
-          title="Select Gemini"
-        >
-          {this.state.ai_connection_statuses?.gemini === "connected"
-            ? "GEMINI CONNECTED"
-            : this.state.ai_connection_statuses?.gemini === "checking"
-              ? "GEMINI CHECKING"
-              : "GEMINI OFFLINE"}
-        </button>
-        <span
-          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.telegram || "offline"}`}
-        >
-          {this.state.ai_connection_statuses?.telegram === "connected"
-            ? "TELEGRAM CONNECTED"
-            : this.state.ai_connection_statuses?.telegram === "checking"
-              ? "TELEGRAM CHECKING"
-              : "TELEGRAM OFFLINE"}
-        </span>
-        <span
-          className={`server_answer_ai_status server_answer_ai_status--${this.state.ai_connection_statuses?.cloudinary || "offline"}`}
-        >
-          {this.state.ai_connection_statuses?.cloudinary === "connected"
-            ? "CLOUDINARY CONNECTED"
-            : this.state.ai_connection_statuses?.cloudinary === "checking"
-              ? "CLOUDINARY CHECKING"
-              : "CLOUDINARY OFFLINE"}
-        </span>
-        <span
-          id="server_answer_light"
-          className={
-            this.state.has_active_server_reply
-              ? "server_answer_light--active"
-              : ""
-          }
-          aria-hidden="true"
-        ></span>
-        <p
-          id="server_answer_message"
-          className={
-            this.state.server_answer === "NO NEW SERVER REPLY"
-              ? "server_answer_message--idle"
-              : ""
-          }
-        >
-          {this.state.server_answer}
-        </p>
-        <div
-          id="server_answer_musicPlayer"
-          className={
-            !plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""
-          }
-        >
-          <button
-            type="button"
-            id="server_answer_noga_prev"
-            className="server_answer_noga_playerButton"
-            onClick={() => playPreviousSharedPlannerMusicTrack(true)}
-            aria-label="Previous planner track"
-            title="Previous planner track"
-            disabled={!plannerMusic.isReady}
-          >
-            <i className="fi fi-rr-angle-small-left"></i>
-          </button>
-          <button
-            type="button"
-            id="server_answer_noga_toggle"
-            className="server_answer_noga_playerButton"
-            onClick={() => toggleSharedPlannerMusic()}
-            aria-label={
-              plannerMusic.isPlaying
-                ? "Pause planner music"
-                : "Play planner music"
-            }
-            title={
-              plannerMusic.isPlaying
-                ? "Pause planner music"
-                : "Play planner music"
-            }
-            disabled={!plannerMusic.isReady}
-          >
-            <i
-              className={
-                plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
-              }
-            ></i>
-          </button>
-          <button
-            type="button"
-            id="server_answer_noga_next"
-            className="server_answer_noga_playerButton"
-            onClick={() => playNextSharedPlannerMusicTrack(true)}
-            aria-label="Next planner track"
-            title="Next planner track"
-            disabled={!plannerMusic.isReady}
-          >
-            <i className="fi fi-rr-angle-small-right"></i>
-          </button>
-          <div id="server_answer_musicMeta">
-            <span id="server_answer_musicLabel">
-              {plannerMusic.isReady ? "Planner music" : "Music unavailable"}
-            </span>
-            <span
-              id="server_answer_musicTrack"
-              title={`${plannerMusic.trackTitle || "Planner Music"} - ${plannerMusic.trackArtist || "Internet Archive"}`}
-            >
-              {plannerMusic.trackTitle || "Planner Music"}
-              {plannerMusic.trackArtist ? ` / ${plannerMusic.trackArtist}` : ""}
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className={`server_answer_locale_button${isArabicSchoolPlannerRoute ? " server_answer_locale_button--active" : ""}`}
-          onClick={openArabicSchoolPlanner}
-          aria-label="Open Arabic School Planner"
-          title="Arabic School Planner"
-          disabled={isArabicSchoolPlannerRoute}
-        >
-          Ar
-        </button>
-      </footer>
-    );
 
     return (
       <React.Fragment>
@@ -3031,7 +2299,10 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
+                dismissFriendRequest={this.dismissFriendRequest}
+                cancelSentFriendRequest={this.cancelSentFriendRequest}
+                removeFriend={this.removeFriend}
+                updateUserInfo={this.updateUserInfo}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
                 sendToThemMessage={this.sendToThemMessage}
@@ -3044,7 +2315,13 @@ class App extends React.Component {
                 setUserMediaInfo={this.setUserMediaInfo}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/home/noga">
@@ -3054,7 +2331,10 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
+                dismissFriendRequest={this.dismissFriendRequest}
+                cancelSentFriendRequest={this.cancelSentFriendRequest}
+                removeFriend={this.removeFriend}
+                updateUserInfo={this.updateUserInfo}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
                 sendToThemMessage={this.sendToThemMessage}
@@ -3067,7 +2347,13 @@ class App extends React.Component {
                 setUserMediaInfo={this.setUserMediaInfo}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route path="/study">
@@ -3082,7 +2368,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />{" "}
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/schoolplanner/nogaplan">
@@ -3099,7 +2391,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/nogaplan">
@@ -3116,7 +2414,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/schoolplanner/ar">
@@ -3133,7 +2437,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/schoolplanner">
@@ -3149,7 +2459,13 @@ class App extends React.Component {
                 serverReply={this.serverReply}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route path="/ecg">
@@ -3159,11 +2475,16 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
                 serverReply={this.serverReply}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/pdf-reader">
@@ -3173,10 +2494,15 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route exact path="/phenomed/telegram-control">
@@ -3186,16 +2512,27 @@ class App extends React.Component {
                 state={this.state}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
-                makeNotificationsRead={this.makeNotificationsRead}
               />
             </main>
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         <Route path="/profile/:username">
           <article id="app_page" className={appPageClassName}>
             <Profile viewerState={this.state} logOut={this.logOut} />
-            {showServerAnswerFooter ? serverAnswerFooter : null}
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
           </article>
         </Route>
         {this.state.app_is_loading && (

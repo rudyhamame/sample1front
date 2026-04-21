@@ -470,7 +470,12 @@ export const drawHomeLedRopePath = (
   context,
   points,
   palette,
-  { ropeWidth = 0.75, bulbSpacing = 13, musicSignal = null } = {},
+  {
+    ropeWidth = 0.75,
+    bulbSpacing = 13,
+    musicSignal = null,
+    animateBulbs = false,
+  } = {},
 ) => {
   if (!context || !Array.isArray(points) || points.length < 2 || !palette) {
     return;
@@ -491,6 +496,15 @@ export const drawHomeLedRopePath = (
     0.96 +
     normalizedMusicSignal.tempo * 0.34 +
     normalizedMusicSignal.pulse * 0.16;
+  const isBulbMotionEnabled = Boolean(animateBulbs && musicSignal);
+  const motionSpeed =
+    18 +
+    normalizedMusicSignal.tempo * 58 +
+    normalizedMusicSignal.pulse * 28 +
+    normalizedMusicSignal.energy * 18;
+  const motionOffset = isBulbMotionEnabled
+    ? (normalizedMusicSignal.fallbackTime * motionSpeed) % bulbSpacing
+    : 0;
 
   context.save();
   context.beginPath();
@@ -568,35 +582,100 @@ export const drawHomeLedRopePath = (
     context.restore();
   };
 
-  drawBulb(points[0], 1.7, 0);
-  drawBulb(points[points.length - 1], 1.7, 1);
+  const getPointAtDistance = (targetDistance) => {
+    if (targetDistance <= 0) {
+      return points[0];
+    }
 
-  let carriedDistance = 0;
-  let lastBulbPoint = points[0];
-  let renderedBulbCount = 2;
+    let travelledDistance = 0;
 
-  for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
-    const nextPoint = points[pointIndex];
-    let segmentDistance = pointDistance(lastBulbPoint, nextPoint);
+    for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+      const previousPoint = points[pointIndex - 1];
+      const nextPoint = points[pointIndex];
+      const segmentDistance = pointDistance(previousPoint, nextPoint);
 
-    while (segmentDistance + carriedDistance >= bulbSpacing && segmentDistance > 0) {
-      const interpolationRatio =
-        (bulbSpacing - carriedDistance) / segmentDistance;
-      const bulbPoint = {
-        x: lastBulbPoint.x + (nextPoint.x - lastBulbPoint.x) * interpolationRatio,
-        y: lastBulbPoint.y + (nextPoint.y - lastBulbPoint.y) * interpolationRatio,
-      };
+      if (travelledDistance + segmentDistance >= targetDistance) {
+        const interpolationRatio =
+          (targetDistance - travelledDistance) / Math.max(segmentDistance, 1);
 
-      drawBulb(bulbPoint, 1.65, renderedBulbCount);
+        return {
+          x:
+            previousPoint.x +
+            (nextPoint.x - previousPoint.x) * interpolationRatio,
+          y:
+            previousPoint.y +
+            (nextPoint.y - previousPoint.y) * interpolationRatio,
+        };
+      }
 
-      lastBulbPoint = bulbPoint;
-      segmentDistance = pointDistance(lastBulbPoint, nextPoint);
-      carriedDistance = 0;
+      travelledDistance += segmentDistance;
+    }
+
+    return points[points.length - 1];
+  };
+
+  const totalPathDistance = points.reduce((totalDistance, point, pointIndex) => {
+    if (pointIndex === 0) {
+      return 0;
+    }
+
+    return totalDistance + pointDistance(points[pointIndex - 1], point);
+  }, 0);
+
+  let renderedBulbCount = 0;
+
+  if (isBulbMotionEnabled) {
+    for (
+      let bulbDistance = motionOffset;
+      bulbDistance <= totalPathDistance;
+      bulbDistance += bulbSpacing
+    ) {
+      drawBulb(getPointAtDistance(bulbDistance), 1.65, renderedBulbCount);
       renderedBulbCount += 1;
     }
 
-    carriedDistance += segmentDistance;
-    lastBulbPoint = nextPoint;
+    if (renderedBulbCount === 0) {
+      drawBulb(getPointAtDistance(totalPathDistance / 2), 1.55, 0);
+      renderedBulbCount = 1;
+    }
+  } else {
+    drawBulb(points[0], 1.7, 0);
+    drawBulb(points[points.length - 1], 1.7, 1);
+
+    let carriedDistance = 0;
+    let lastBulbPoint = points[0];
+    renderedBulbCount = 2;
+
+    for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+      const nextPoint = points[pointIndex];
+      let segmentDistance = pointDistance(lastBulbPoint, nextPoint);
+
+      while (
+        segmentDistance + carriedDistance >= bulbSpacing &&
+        segmentDistance > 0
+      ) {
+        const interpolationRatio =
+          (bulbSpacing - carriedDistance) / segmentDistance;
+        const bulbPoint = {
+          x:
+            lastBulbPoint.x +
+            (nextPoint.x - lastBulbPoint.x) * interpolationRatio,
+          y:
+            lastBulbPoint.y +
+            (nextPoint.y - lastBulbPoint.y) * interpolationRatio,
+        };
+
+        drawBulb(bulbPoint, 1.65, renderedBulbCount);
+
+        lastBulbPoint = bulbPoint;
+        segmentDistance = pointDistance(lastBulbPoint, nextPoint);
+        carriedDistance = 0;
+        renderedBulbCount += 1;
+      }
+
+      carriedDistance += segmentDistance;
+      lastBulbPoint = nextPoint;
+    }
   }
 
   if (renderedBulbCount <= 2) {

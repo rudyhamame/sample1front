@@ -1,9 +1,8 @@
 import { Link, useHistory } from "react-router-dom";
 import "./home-noga.css";
 import Nav from "../Nav/Nav";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../config/api";
-import { compressVideo } from "../utils/video-compress";
 import {
   drawHomeLedRopePath,
   drawHomeSketchPath,
@@ -14,6 +13,7 @@ import {
 import { getHomeSubApps } from "../utils/homeSubApps";
 import FriendChat from "../HomeChat/FriendChat";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
+import io from "socket.io-client";
 
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
 const NAGHAM_COURSE_LIST_STORAGE_KEY = "schoolPlanner_nagham_course_list";
@@ -27,6 +27,9 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
+const HOME_GALLERY_PATTERNS_STORAGE_KEY = "home_gallery_pattern_public_ids";
+const DEFAULT_HOME_BIO_WALLPAPER_URL = "/img/schoolplanner-floral.avif";
+const DEFAULT_HOME_BIO_WALLPAPER_SIZE = 520;
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
@@ -45,6 +48,166 @@ const HOME_CHAT_CONTENT = {
     empty: "Open a conversation to view messages here.",
     inputPlaceholder: "Write a message",
   },
+};
+
+const DEFAULT_BLOCKED_LIST_USER_MODE = "friend";
+const DEFAULT_BLOCKED_LIST_GROUP = "friends";
+const BLOCKED_LIST_USER_MODE_ORDER = [
+  "friend",
+  "requestsent",
+  "requestreceived",
+  "blocked",
+];
+const BLOCKED_LIST_GROUP_ORDER = ["friends", "pending", "blocked"];
+const BLOCKED_LIST_GROUP_META = {
+  pending: { label: "Pending", iconClass: "fa-user-clock" },
+  blocked: { label: "Blocked", iconClass: "fa-user-slash" },
+  friends: { label: "Friends", iconClass: "fa-user-check" },
+};
+
+const HOME_DRAWING_ALLOWLIST_ZONES = [
+  { id: "canvas", label: "Canvas", selector: "#Home_Noga_main_wrapper" },
+  {
+    id: "leftColumn",
+    label: "Left column",
+    selector: "#Home_Noga_main_leftColumn_wrapper",
+  },
+  {
+    id: "rightColumn",
+    label: "Right column",
+    selector: "#Home_Noga_rightColumn_wrapper",
+  },
+  {
+    id: "bio",
+    label: "Bio",
+    selector: "#Home_Noga_bioWrapper",
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    selector: "#Home_Noga_preStart_reportsWrapper",
+  },
+];
+
+const HOME_DRAWING_VISIBILITY_WRAPPERS = [
+  {
+    id: "leftColumn",
+    label: "Left column",
+    selector: "#Home_Noga_main_leftColumn_wrapper",
+  },
+  {
+    id: "bio",
+    label: "Bio wrapper",
+    selector: "#Home_Noga_bioWrapper",
+  },
+  {
+    id: "profile",
+    label: "Profile picture",
+    selector: "#Home_Noga_preStart_profileWrapper",
+  },
+  {
+    id: "bioText",
+    label: "Bio text",
+    selector: "#Home_Noga_preStart_personalBio",
+  },
+  {
+    id: "rightColumn",
+    label: "Right column",
+    selector: "#Home_Noga_rightColumn_wrapper",
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    selector: "#Home_Noga_preStart_reportsWrapper",
+  },
+];
+
+const FRIEND_USER_MODE_META = {
+  blocked: {
+    label: "Blocked",
+    iconClass: "fa-user-slash",
+    emptyLabel: "No blocked users to show.",
+  },
+  requestsent: {
+    label: "Sent",
+    iconClass: "fa-paper-plane",
+    emptyLabel: "No pending sent requests to show.",
+  },
+  requestreceived: {
+    label: "Received",
+    iconClass: "fa-user-clock",
+    emptyLabel: "No pending received requests to show.",
+  },
+  friend: {
+    label: "Friends",
+    iconClass: "fa-user-check",
+    emptyLabel: "No friends to show.",
+  },
+};
+
+const getFriendUserModeMeta = (value) => {
+  const normalizedValue = String(value || DEFAULT_BLOCKED_LIST_USER_MODE)
+    .trim()
+    .toLowerCase();
+  return (
+    FRIEND_USER_MODE_META[normalizedValue] || {
+      label: normalizedValue.replace(/_/g, " "),
+      iconClass: "fa-user",
+      emptyLabel: "No users to show.",
+    }
+  );
+};
+
+const normalizeFriendUserMode = (value) => {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalizedValue === "friend") {
+    return "friend";
+  }
+
+  if (
+    normalizedValue === "requestsent" ||
+    normalizedValue.includes("requestsent")
+  ) {
+    return "requestsent";
+  }
+
+  if (
+    normalizedValue === "requestreceived" ||
+    normalizedValue.includes("requestreceived")
+  ) {
+    return "requestreceived";
+  }
+
+  if (normalizedValue.includes("blocked")) {
+    return "blocked";
+  }
+
+  if (normalizedValue.includes("_accepted")) {
+    return "friend";
+  }
+
+  return "stranger";
+};
+
+const getBlockedListGroupIdForMode = (value) => {
+  const normalizedValue = normalizeFriendUserMode(value);
+
+  if (normalizedValue === "requestsent" || normalizedValue === "requestreceived") {
+    return "pending";
+  }
+
+  if (normalizedValue === "friend") {
+    return "friends";
+  }
+
+  if (normalizedValue === "blocked") {
+    return "blocked";
+  }
+
+  return DEFAULT_BLOCKED_LIST_GROUP;
 };
 
 const sanitizeGalleryFileName = (value) =>
@@ -95,8 +258,6 @@ const isVideoGalleryItem = (item) => {
   return url.includes("/video/upload/");
 };
 
-// ...existing code...
-
 const buildMusicSearchTerms = (searchFields) => ({
   song: String(searchFields?.song || "").trim(),
   artist: String(searchFields?.artist || "").trim(),
@@ -104,7 +265,7 @@ const buildMusicSearchTerms = (searchFields) => ({
 
 const buildInternetArchiveSearchUrl = (searchFields) => {
   const { song, artist } = buildMusicSearchTerms(searchFields);
-  const queryClauses = ['mediatype:audio', 'collection:opensource_audio'];
+  const queryClauses = ["mediatype:audio", "collection:opensource_audio"];
   const fieldClauses = [];
 
   if (song) {
@@ -149,9 +310,10 @@ const buildMusicBrainzSearchUrl = (searchFields) =>
   )}`;
 
 const buildMusicLibraryLineLabel = (title, artist, fallbackValue = "") => {
-  const parts = [String(title || "").trim(), String(artist || "").trim()].filter(
-    Boolean,
-  );
+  const parts = [
+    String(title || "").trim(),
+    String(artist || "").trim(),
+  ].filter(Boolean);
 
   if (parts.length > 0) {
     return parts.join(" - ");
@@ -264,7 +426,9 @@ const formatStoredMusicLibraryItemsForProvider = (
   defaultLines = [],
 ) => {
   const storedItems = readStoredMusicLibraryItems();
-  const providerItems = storedItems.filter((item) => item.provider === provider);
+  const providerItems = storedItems.filter(
+    (item) => item.provider === provider,
+  );
 
   if (providerItems.length > 0) {
     return providerItems
@@ -454,7 +618,9 @@ const ImageViewerModal = ({
       }
 
       if (event.key === "ArrowLeft") {
-        onChangeIndex?.((boundedIndex - 1 + safeImages.length) % safeImages.length);
+        onChangeIndex?.(
+          (boundedIndex - 1 + safeImages.length) % safeImages.length,
+        );
       }
 
       if (event.key === "ArrowRight") {
@@ -484,7 +650,10 @@ const ImageViewerModal = ({
   ).trim();
   const activeImageLabel =
     String(
-      activeImage?.publicId || activeImage?.originalFilename || title || "Image",
+      activeImage?.publicId ||
+        activeImage?.originalFilename ||
+        title ||
+        "Image",
     ).trim() || "Image";
 
   return (
@@ -655,11 +824,734 @@ const ImageViewerModal = ({
   );
 };
 
+const clampVideoViewerWindowRect = (rect) => {
+  if (typeof window === "undefined") {
+    return rect;
+  }
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const minWidth = 360;
+  const minHeight = 240;
+  const safeGap = 8;
+  const nextWidth = Math.min(
+    Math.max(Number(rect?.width) || minWidth, minWidth),
+    Math.max(minWidth, viewportWidth - safeGap * 2),
+  );
+  const nextHeight = Math.min(
+    Math.max(Number(rect?.height) || minHeight, minHeight),
+    Math.max(minHeight, viewportHeight - safeGap * 2),
+  );
+  const nextX = Math.min(
+    Math.max(Number(rect?.x) || safeGap, safeGap),
+    Math.max(safeGap, viewportWidth - nextWidth - safeGap),
+  );
+  const nextY = Math.min(
+    Math.max(Number(rect?.y) || safeGap, safeGap),
+    Math.max(safeGap, viewportHeight - nextHeight - safeGap),
+  );
+
+  return {
+    x: nextX,
+    y: nextY,
+    width: nextWidth,
+    height: nextHeight,
+  };
+};
+
+const getDefaultVideoViewerWindowRect = () => {
+  if (typeof window === "undefined") {
+    return { x: 48, y: 48, width: 720, height: 440 };
+  }
+
+  const width = Math.min(Math.max(window.innerWidth * 0.68, 420), 960);
+  const height = Math.min(Math.max(window.innerHeight * 0.56, 280), 640);
+
+  return clampVideoViewerWindowRect({
+    x: (window.innerWidth - width) / 2,
+    y: Math.max(18, (window.innerHeight - height) / 2),
+    width,
+    height,
+  });
+};
+
+const getVideoViewerWindowRectForAspectRatio = (aspectRatio) => {
+  if (typeof window === "undefined") {
+    return getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 20;
+  const maxWidth = Math.max(360, window.innerWidth - safeGap * 2);
+  const maxHeight = Math.max(220, window.innerHeight - safeGap * 2);
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+
+  let width = Math.min(maxWidth, maxHeight * normalizedAspectRatio);
+  let height = width / normalizedAspectRatio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * normalizedAspectRatio;
+  }
+
+  return {
+    x: Math.max(safeGap, (window.innerWidth - width) / 2),
+    y: Math.max(safeGap, (window.innerHeight - height) / 2),
+    width,
+    height,
+  };
+};
+
+const getVideoViewerWindowRectAtPositionForAspectRatio = (rect, aspectRatio) => {
+  if (typeof window === "undefined") {
+    return rect || getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 8;
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const maxWidth = Math.max(220, window.innerWidth - safeGap * 2);
+  const maxHeight = Math.max(160, window.innerHeight - safeGap * 2);
+  let width = Math.min(Math.max(Number(rect?.width) || 420, 220), maxWidth);
+  let height = width / normalizedAspectRatio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * normalizedAspectRatio;
+  }
+
+  return clampVideoViewerWindowPosition({
+    x: Number(rect?.x) || safeGap,
+    y: Number(rect?.y) || safeGap,
+    width,
+    height,
+  });
+};
+
+const clampVideoViewerWindowPosition = (rect) => {
+  if (typeof window === "undefined") {
+    return rect;
+  }
+
+  const safeGap = 8;
+  const width = Number(rect?.width) || 360;
+  const height = Number(rect?.height) || 240;
+
+  return {
+    ...rect,
+    x: Math.min(
+      Math.max(Number(rect?.x) || safeGap, safeGap),
+      Math.max(safeGap, window.innerWidth - width - safeGap),
+    ),
+    y: Math.min(
+      Math.max(Number(rect?.y) || safeGap, safeGap),
+      Math.max(safeGap, window.innerHeight - height - safeGap),
+    ),
+  };
+};
+
+const getAspectLockedVideoViewerResizeRect = ({
+  startRect,
+  direction,
+  deltaX,
+  deltaY,
+  aspectRatio,
+}) => {
+  if (!startRect) {
+    return getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 8;
+  const viewportWidth =
+    typeof window !== "undefined" ? window.innerWidth : startRect.width + 16;
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : startRect.height + 16;
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const minWidth = Math.min(
+    Math.max(220, 180 * normalizedAspectRatio),
+    Math.max(220, viewportWidth - safeGap * 2),
+  );
+  const minHeight = minWidth / normalizedAspectRatio;
+  const startWidth = Math.max(startRect.width, minWidth);
+  const startHeight = startWidth / normalizedAspectRatio;
+  const right = startRect.x + startWidth;
+  const bottom = startRect.y + startHeight;
+  const centerX = startRect.x + startWidth / 2;
+  const centerY = startRect.y + startHeight / 2;
+  let nextWidth = startWidth;
+
+  if (direction.includes("e")) {
+    nextWidth = startWidth + deltaX;
+  } else if (direction.includes("w")) {
+    nextWidth = startWidth - deltaX;
+  } else if (direction.includes("s")) {
+    nextWidth = (startHeight + deltaY) * normalizedAspectRatio;
+  } else if (direction.includes("n")) {
+    nextWidth = (startHeight - deltaY) * normalizedAspectRatio;
+  }
+
+  if (
+    (direction.length === 2 && Math.abs(deltaY) > Math.abs(deltaX)) ||
+    (!direction.includes("e") && !direction.includes("w"))
+  ) {
+    if (direction.includes("s")) {
+      nextWidth = (startHeight + deltaY) * normalizedAspectRatio;
+    } else if (direction.includes("n")) {
+      nextWidth = (startHeight - deltaY) * normalizedAspectRatio;
+    }
+  }
+
+  const maxWidthByViewport = viewportWidth - safeGap * 2;
+  nextWidth = Math.min(Math.max(nextWidth, minWidth), maxWidthByViewport);
+  let nextHeight = nextWidth / normalizedAspectRatio;
+
+  if (nextHeight > viewportHeight - safeGap * 2) {
+    nextHeight = viewportHeight - safeGap * 2;
+    nextWidth = nextHeight * normalizedAspectRatio;
+  }
+
+  let nextX = startRect.x;
+  let nextY = startRect.y;
+
+  if (direction.includes("w")) {
+    nextX = right - nextWidth;
+  } else if (!direction.includes("e")) {
+    nextX = centerX - nextWidth / 2;
+  }
+
+  if (direction.includes("n")) {
+    nextY = bottom - nextHeight;
+  } else if (!direction.includes("s")) {
+    nextY = centerY - nextHeight / 2;
+  }
+
+  nextX = Math.min(
+    Math.max(nextX, safeGap),
+    Math.max(safeGap, viewportWidth - nextWidth - safeGap),
+  );
+  nextY = Math.min(
+    Math.max(nextY, safeGap),
+    Math.max(safeGap, viewportHeight - nextHeight - safeGap),
+  );
+
+  return {
+    x: nextX,
+    y: nextY,
+    width: nextWidth,
+    height: nextHeight,
+  };
+};
+
+const VIDEO_VIEWER_RESIZE_DIRECTIONS = [
+  "n",
+  "s",
+  "e",
+  "w",
+  "ne",
+  "nw",
+  "se",
+  "sw",
+];
+
+const HOME_NOGA_VIDEO_VIEWER_STATE_PREFIX = "homeNogaVideoViewerWindow:";
+
+const getVideoViewerStorageKey = (videoKey = "") =>
+  `${HOME_NOGA_VIDEO_VIEWER_STATE_PREFIX}${String(videoKey || "default").trim() || "default"}`;
+
+const getSavedVideoViewerWindowState = (videoKey = "") => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const parsedState = JSON.parse(
+      window.localStorage.getItem(getVideoViewerStorageKey(videoKey)) || "null",
+    );
+    const rect = parsedState?.rect;
+    const aspectRatio = Number(parsedState?.aspectRatio || 0);
+
+    if (
+      !rect ||
+      !Number.isFinite(Number(rect?.width)) ||
+      !Number.isFinite(Number(rect?.height))
+    ) {
+      return null;
+    }
+
+    return {
+      rect: clampVideoViewerWindowPosition({
+        x: Number(rect.x) || 8,
+        y: Number(rect.y) || 8,
+        width: Number(rect.width) || 420,
+        height: Number(rect.height) || 240,
+      }),
+      aspectRatio:
+        Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const saveVideoViewerWindowState = (videoKey = "", rect, aspectRatio) => {
+  if (typeof window === "undefined" || !rect) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      getVideoViewerStorageKey(videoKey),
+      JSON.stringify({
+        rect,
+        aspectRatio:
+          Number.isFinite(Number(aspectRatio)) && Number(aspectRatio) > 0
+            ? Number(aspectRatio)
+            : null,
+      }),
+    );
+  } catch {
+  }
+};
+
+const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
+  const videoKey = React.useMemo(
+    () =>
+      String(
+        video?.publicId ||
+          video?.url ||
+          video?.fileName ||
+          title ||
+          "",
+      ).trim(),
+    [title, video?.fileName, video?.publicId, video?.url],
+  );
+  const [windowRect, setWindowRect] = React.useState(() =>
+    getSavedVideoViewerWindowState(videoKey)?.rect ||
+    getDefaultVideoViewerWindowRect(),
+  );
+  const [videoAspectRatio, setVideoAspectRatio] = React.useState(
+    () => getSavedVideoViewerWindowState(videoKey)?.aspectRatio || 16 / 9,
+  );
+  const [isWindowMinimized, setIsWindowMinimized] = React.useState(false);
+  const [isWindowMaximized, setIsWindowMaximized] = React.useState(false);
+  const dragStateRef = React.useRef(null);
+  const hasAppliedVideoRatioRef = React.useRef(false);
+  const hasUserPositionedWindowRef = React.useRef(false);
+  const restoredWindowRectRef = React.useRef(null);
+
+  const closeVideoWindow = React.useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-closed"));
+    }
+    onClose?.();
+  }, [onClose]);
+
+  const stopWindowInteraction = React.useCallback(() => {
+    dragStateRef.current = null;
+    window.removeEventListener("pointermove", handleWindowPointerMove);
+    window.removeEventListener("pointerup", stopWindowInteraction);
+    window.removeEventListener("pointercancel", stopWindowInteraction);
+  }, []);
+
+  function handleWindowPointerMove(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+
+    if (dragState.mode === "move") {
+      hasUserPositionedWindowRef.current = true;
+      setWindowRect(
+        clampVideoViewerWindowPosition({
+          ...dragState.startRect,
+          x: dragState.startRect.x + deltaX,
+          y: dragState.startRect.y + deltaY,
+        }),
+      );
+      return;
+    }
+
+    const direction = String(dragState.direction || "");
+    hasUserPositionedWindowRef.current = true;
+    setWindowRect(
+      getAspectLockedVideoViewerResizeRect({
+        startRect: dragState.startRect,
+        direction,
+        deltaX,
+        deltaY,
+        aspectRatio: videoAspectRatio,
+      }),
+    );
+  }
+
+  const beginWindowMove = React.useCallback((event) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    if (!event.target?.closest(".Home_Noga_videoViewerWindowDragButton")) {
+      return;
+    }
+
+    dragStateRef.current = {
+      mode: "move",
+      startX: event.clientX,
+      startY: event.clientY,
+      startRect: windowRect,
+    };
+    hasUserPositionedWindowRef.current = true;
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", stopWindowInteraction);
+    window.addEventListener("pointercancel", stopWindowInteraction);
+    event.preventDefault();
+    event.stopPropagation();
+  }, [stopWindowInteraction, windowRect]);
+
+  const toggleWindowSize = React.useCallback((event) => {
+    event.stopPropagation();
+
+    if (isWindowMinimized) {
+      setIsWindowMinimized(false);
+      setWindowRect(getVideoViewerWindowRectForAspectRatio(videoAspectRatio));
+      setIsWindowMaximized(true);
+      return;
+    }
+
+    if (!isWindowMaximized) {
+      restoredWindowRectRef.current = windowRect;
+      setIsWindowMinimized(true);
+      setIsWindowMaximized(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("home-noga-video-window-minimized"),
+        );
+      }
+      return;
+    }
+
+    if (isWindowMaximized) {
+      restoredWindowRectRef.current =
+        restoredWindowRectRef.current || windowRect;
+      setIsWindowMinimized(true);
+      setIsWindowMaximized(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("home-noga-video-window-minimized"),
+        );
+      }
+      return;
+    }
+  }, [isWindowMaximized, isWindowMinimized, videoAspectRatio, windowRect]);
+
+  const beginWindowResize = React.useCallback((event, direction) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    dragStateRef.current = {
+      mode: "resize",
+      direction,
+      startX: event.clientX,
+      startY: event.clientY,
+      startRect: windowRect,
+    };
+    hasUserPositionedWindowRef.current = true;
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", stopWindowInteraction);
+    window.addEventListener("pointercancel", stopWindowInteraction);
+    event.preventDefault();
+    event.stopPropagation();
+  }, [stopWindowInteraction, windowRect]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      stopWindowInteraction();
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeVideoWindow();
+      }
+    };
+
+    const initialAspectRatio =
+      Number(video?.width || 0) / Number(video?.height || 0);
+    const savedWindowState = getSavedVideoViewerWindowState(videoKey);
+
+    hasAppliedVideoRatioRef.current = false;
+    restoredWindowRectRef.current = null;
+    hasUserPositionedWindowRef.current = false;
+    setIsWindowMinimized(false);
+    setIsWindowMaximized(false);
+
+    if (savedWindowState?.rect) {
+      const savedAspectRatio =
+        savedWindowState.aspectRatio ||
+        (Number.isFinite(initialAspectRatio) && initialAspectRatio > 0
+          ? initialAspectRatio
+          : 16 / 9);
+
+      hasAppliedVideoRatioRef.current = true;
+      setVideoAspectRatio(savedAspectRatio);
+      setWindowRect(savedWindowState.rect);
+    } else if (Number.isFinite(initialAspectRatio) && initialAspectRatio > 0) {
+      hasAppliedVideoRatioRef.current = true;
+      setVideoAspectRatio(initialAspectRatio);
+      setWindowRect(
+        getVideoViewerWindowRectForAspectRatio(initialAspectRatio),
+      );
+    } else {
+      setVideoAspectRatio(16 / 9);
+      setWindowRect(getDefaultVideoViewerWindowRect());
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      stopWindowInteraction();
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeVideoWindow, isOpen, stopWindowInteraction, videoKey]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      setWindowRect((currentRect) =>
+        isWindowMaximized
+          ? getVideoViewerWindowRectForAspectRatio(videoAspectRatio)
+          : clampVideoViewerWindowPosition(currentRect),
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isOpen, isWindowMaximized, videoAspectRatio]);
+
+  React.useEffect(() => {
+    if (!isOpen || isWindowMinimized) {
+      return;
+    }
+
+    saveVideoViewerWindowState(videoKey, windowRect, videoAspectRatio);
+  }, [isOpen, isWindowMinimized, videoAspectRatio, videoKey, windowRect]);
+
+  React.useEffect(() => {
+    if (!isOpen && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-closed"));
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const restoreVideoWindow = () => {
+      setIsWindowMinimized(false);
+      setIsWindowMaximized(false);
+      setWindowRect(
+        clampVideoViewerWindowPosition(
+          restoredWindowRectRef.current ||
+            getVideoViewerWindowRectForAspectRatio(videoAspectRatio),
+        ),
+      );
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-restored"));
+    };
+
+    window.addEventListener(
+      "home-noga-video-window-restore",
+      restoreVideoWindow,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "home-noga-video-window-restore",
+        restoreVideoWindow,
+      );
+    };
+  }, [isOpen, videoAspectRatio]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const videoUrl = String(video?.url || "").trim();
+  const videoLabel =
+    String(video?.publicId || video?.fileName || title || "Video").trim() ||
+    "Video";
+
+  if (isWindowMinimized) {
+    return null;
+  }
+
+  return (
+    <div
+      className="Home_Noga_videoViewerOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={String(title || videoLabel || "Video player")}
+    >
+      <div
+        className={`fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard Home_Noga_videoViewerCard${
+          isWindowMinimized ? " Home_Noga_videoViewerCard--minimized" : ""
+        }${isWindowMaximized ? " Home_Noga_videoViewerCard--maximized" : ""}`}
+        style={{
+          transform: `translate(${windowRect.x}px, ${windowRect.y}px)`,
+          width: isWindowMinimized ? "132px" : `${windowRect.width}px`,
+          height: isWindowMinimized ? "38px" : `${windowRect.height}px`,
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="Home_Noga_videoViewerWindowControls fr">
+          <button
+            type="button"
+            className="Home_Noga_videoViewerWindowButton Home_Noga_videoViewerWindowDragButton"
+            onPointerDown={beginWindowMove}
+            aria-label="Move video player"
+            title="Move"
+          >
+            <i className="fas fa-arrows-alt" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            className="Home_Noga_videoViewerWindowButton"
+            onClick={toggleWindowSize}
+            aria-label={
+              isWindowMinimized
+                ? "Maximize video player"
+                : isWindowMaximized
+                  ? "Minimize video player"
+                  : "Minimize video player"
+            }
+            title={
+              isWindowMinimized
+                ? "Maximize"
+                : isWindowMaximized
+                  ? "Minimize"
+                  : "Minimize"
+            }
+          >
+            <i
+              className={`fas ${
+                isWindowMinimized
+                  ? "fa-expand-alt"
+                  : isWindowMaximized
+                    ? "fa-minus"
+                    : "fa-minus"
+              }`}
+              aria-hidden="true"
+            ></i>
+          </button>
+          <button
+            type="button"
+            className="Home_Noga_videoViewerWindowButton Home_Noga_videoViewerWindowButton--close"
+            onClick={(event) => {
+              event.stopPropagation();
+              closeVideoWindow();
+            }}
+            aria-label="Close video player"
+            title="Close"
+          >
+            <i className="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div className="Home_Noga_reportBody Home_Noga_videoViewerBody isOpen">
+          <div
+            className="Home_Noga_videoViewerFrame"
+            style={{ aspectRatio: String(videoAspectRatio) }}
+          >
+            <video
+              src={videoUrl}
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+              className="Home_Noga_videoViewerMedia"
+              onLoadedMetadata={(event) => {
+                const nextAspectRatio =
+                  Number(event.currentTarget.videoWidth || 0) /
+                  Number(event.currentTarget.videoHeight || 0);
+
+                if (!Number.isFinite(nextAspectRatio) || nextAspectRatio <= 0) {
+                  return;
+                }
+
+                setVideoAspectRatio(nextAspectRatio);
+
+                if (!hasAppliedVideoRatioRef.current) {
+                  hasAppliedVideoRatioRef.current = true;
+                  setWindowRect((currentRect) =>
+                    hasUserPositionedWindowRef.current
+                      ? getVideoViewerWindowRectAtPositionForAspectRatio(
+                          currentRect,
+                          nextAspectRatio,
+                        )
+                      : getVideoViewerWindowRectForAspectRatio(nextAspectRatio),
+                  );
+                }
+              }}
+            />
+          </div>
+        </div>
+        {VIDEO_VIEWER_RESIZE_DIRECTIONS.map((direction) => (
+          <span
+            key={direction}
+            className={`Home_Noga_videoViewerResizeHandle Home_Noga_videoViewerResizeHandle--${direction}`}
+            onPointerDown={(event) => beginWindowResize(event, direction)}
+            aria-hidden="true"
+          ></span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 function HomeNoga(props) {
   const isNaghamtrkmani = true;
   const homeThemeClassName = isNaghamtrkmani
     ? "Home_Noga_themeNoga"
     : "Home_Noga_themeGreen";
+  const [isHomeNogaDarkTheme, setIsHomeNogaDarkTheme] = useState(() =>
+    typeof document !== "undefined"
+      ? document.body.classList.contains("dark")
+      : false,
+  );
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const syncTheme = () => {
+      setIsHomeNogaDarkTheme(document.body.classList.contains("dark"));
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    const intervalId = window.setInterval(syncTheme, 800);
+    document.addEventListener("visibilitychange", syncTheme);
+    window.addEventListener("focus", syncTheme);
+
+    return () => {
+      observer.disconnect();
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", syncTheme);
+      window.removeEventListener("focus", syncTheme);
+    };
+  }, []);
   // Set background style for everyone except naghamtrkmani
   const baseUrl =
     typeof import.meta !== "undefined" &&
@@ -684,7 +1576,11 @@ function HomeNoga(props) {
       updatedAt: 0,
     },
   );
+  const homeMusicIsPlayingRef = React.useRef(
+    Boolean(props.state?.planner_music?.isPlaying),
+  );
   const [inlineCallActionsTarget, setInlineCallActionsTarget] = useState(null);
+  const inlineCallActionsTargetNodeRef = React.useRef(null);
   const history = useHistory();
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
@@ -693,6 +1589,7 @@ function HomeNoga(props) {
   const drawingCanvasHostRef = React.useRef(null);
   const appliedDrawingCanvasRef = React.useRef(null);
   const appliedDrawingCanvasHostRef = React.useRef(null);
+  const drawingVisibilityCanvasRefs = React.useRef(new Map());
   const drawingPathsRef = React.useRef([]);
   const drawingCurrentPathRef = React.useRef(null);
   const isDrawingPointerActiveRef = React.useRef(false);
@@ -709,6 +1606,25 @@ function HomeNoga(props) {
   });
   // (Fixed: removed misplaced JSX here)
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
+  // Gallery tab state: 'images' | 'patterns' | 'videos'
+  const [galleryTab, setGalleryTab] = useState("images");
+  const [galleryPatternIds, setGalleryPatternIds] = useState(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    try {
+      const rawValue = window.localStorage.getItem(
+        HOME_GALLERY_PATTERNS_STORAGE_KEY,
+      );
+      const parsedValue = JSON.parse(rawValue || "[]");
+      return Array.isArray(parsedValue)
+        ? parsedValue.map((value) => String(value || "").trim()).filter(Boolean)
+        : [];
+    } catch {
+      return [];
+    }
+  });
   const [isImageGalleryDeletingPublicId, setIsImageGalleryDeletingPublicId] =
     useState("");
   const [
@@ -718,6 +1634,8 @@ function HomeNoga(props) {
   const [clearPendingFeedback, setClearPendingFeedback] = useState("");
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
+  const [isVideoViewerOpen, setIsVideoViewerOpen] = useState(false);
+  const [activeGalleryVideo, setActiveGalleryVideo] = useState(null);
   const [activeGalleryActionsPublicId, setActiveGalleryActionsPublicId] =
     useState("");
   const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
@@ -916,9 +1834,38 @@ function HomeNoga(props) {
   const [isReportsWrapperOpen, setIsReportsWrapperOpen] = useState(false);
   const [showGalleryInRightColumn, setShowGalleryInRightColumn] =
     useState(false);
+  // --- Friends/Requests/Blocked/Chat logic from Home.jsx (full clone) ---
   const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
+  const [activeBlockedListTab, setActiveBlockedListTab] = useState(
+    DEFAULT_BLOCKED_LIST_USER_MODE,
+  );
+  const [activeBlockedListGroup, setActiveBlockedListGroup] = useState(
+    DEFAULT_BLOCKED_LIST_GROUP,
+  );
+  const [friendSearchQuery, setFriendSearchQuery] = useState("");
+  const [pageSearchQuery, setPageSearchQuery] = useState("");
+  const [groupSearchQuery, setGroupSearchQuery] = useState("");
+  const [friendSearchResults, setFriendSearchResults] = useState([]);
+  const [isFriendSearchLoading, setIsFriendSearchLoading] = useState(false);
+  const [friendSearchFeedback, setFriendSearchFeedback] = useState("");
+  const [sendingFriendRequestUsername, setSendingFriendRequestUsername] =
+    useState("");
+  // Add any additional refs or state from Home.jsx friends logic here as needed
+
+  // (Insert all memoized selectors, effects, callbacks, and renderers for friends, search, requests, blocked, and chat from Home.jsx here)
+  // ...existing code...
   const [isHomeDrawingModeEnabled, setIsHomeDrawingModeEnabled] =
     useState(false);
+  const [isHomeDrawingAllowListEnabled, setIsHomeDrawingAllowListEnabled] =
+    useState(false);
+  const [activeHomeDrawingAllowZoneId, setActiveHomeDrawingAllowZoneId] =
+    useState(HOME_DRAWING_ALLOWLIST_ZONES[0]?.id || "canvas");
+  const [isHomeDrawingAllowZoneMenuOpen, setIsHomeDrawingAllowZoneMenuOpen] =
+    useState(false);
+  const [isHomeDrawingVisibilityMenuOpen, setIsHomeDrawingVisibilityMenuOpen] =
+    useState(false);
+  const [homeDrawingVisibleWrapperIds, setHomeDrawingVisibleWrapperIds] =
+    useState(() => ["bio"]);
   const [isHomeDrawingAutoGlueEnabled, setIsHomeDrawingAutoGlueEnabled] =
     useState(true);
   const [isHomeDrawingStartingFresh, setIsHomeDrawingStartingFresh] =
@@ -933,6 +1880,8 @@ function HomeNoga(props) {
   const latestHomeDrawingSaveRequestIdRef = React.useRef(0);
   const pendingHomeDrawingSyncRef = React.useRef(false);
   const [isGalleryTopRowVisible, setIsGalleryTopRowVisible] = useState(false);
+  const [isBioWallpaperControlsOpen, setIsBioWallpaperControlsOpen] =
+    useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
   const hasHydratedProfilePictureViewportRef = React.useRef(true);
@@ -976,138 +1925,9 @@ function HomeNoga(props) {
     }));
   };
 
-  const introWrapRef = React.useRef(null);
-  const separatorDraggingRef = React.useRef(false);
-  const separatorStartXRef = React.useRef(0);
-  const separatorStartWidthRef = React.useRef(0);
-  const [leftColumnWidthPercent, setLeftColumnWidthPercent] = useState(66);
-  const HOME_INTRO_SEPARATOR_WIDTH = 38;
-  const HOME_LEFT_COLUMN_MIN_WIDTH = 520;
-  const HOME_RIGHT_COLUMN_MIN_WIDTH = 300;
-  const HOME_LEFT_COLUMN_MAX_WIDTH_RATIO = 0.82;
-
-  const touchMoveOptions = React.useMemo(() => ({ passive: false }), []);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const HOME_DRAWING_PATH_FILL = "rgba(118, 233, 247, 0.08)";
   const HOME_DRAWING_PATH_GLOW = "rgba(118, 233, 247, 0.16)";
-
-  const clampLeftColumnWidthPercent = React.useCallback((nextWidthPercent) => {
-    const containerWidth =
-      introWrapRef.current?.getBoundingClientRect().width || 1;
-    const availableWidth = Math.max(
-      containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
-      1,
-    );
-    const minWidthPercent = (HOME_LEFT_COLUMN_MIN_WIDTH / availableWidth) * 100;
-    const maxWidthPercent = Math.min(
-      ((availableWidth - HOME_RIGHT_COLUMN_MIN_WIDTH) / availableWidth) * 100,
-      HOME_LEFT_COLUMN_MAX_WIDTH_RATIO * 100,
-    );
-    const nextWidth = Math.min(
-      maxWidthPercent,
-      Math.max(minWidthPercent, nextWidthPercent),
-    );
-    return Number.isFinite(nextWidth) ? nextWidth : 66;
-  }, []);
-
-  const handlePointerMove = React.useCallback(
-    (event) => {
-      if (!separatorDraggingRef.current) {
-        return;
-      }
-
-      const pageX =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      const containerWidth =
-        introWrapRef.current?.getBoundingClientRect().width || 1;
-      const availableWidth = Math.max(
-        containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
-        1,
-      );
-      const deltaPercent =
-        ((pageX - separatorStartXRef.current) / availableWidth) * 100;
-
-      setLeftColumnWidthPercent(
-        clampLeftColumnWidthPercent(
-          separatorStartWidthRef.current + deltaPercent,
-        ),
-      );
-      event.preventDefault();
-    },
-    [clampLeftColumnWidthPercent],
-  );
-
-  const handlePointerUp = React.useCallback(() => {
-    if (!separatorDraggingRef.current) {
-      return;
-    }
-    separatorDraggingRef.current = false;
-    document.removeEventListener("mousemove", handlePointerMove);
-    document.removeEventListener(
-      "touchmove",
-      handlePointerMove,
-      touchMoveOptions,
-    );
-    document.removeEventListener("mouseup", handlePointerUp);
-    document.removeEventListener("touchend", handlePointerUp);
-    document.removeEventListener("touchcancel", handlePointerUp);
-  }, [handlePointerMove]);
-
-  const startSeparatorDrag = React.useCallback(
-    (event) => {
-      event.preventDefault();
-      separatorDraggingRef.current = true;
-      separatorStartXRef.current =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      separatorStartWidthRef.current = leftColumnWidthPercent;
-      document.addEventListener("mousemove", handlePointerMove);
-      document.addEventListener(
-        "touchmove",
-        handlePointerMove,
-        touchMoveOptions,
-      );
-      document.addEventListener("mouseup", handlePointerUp);
-      document.addEventListener("touchend", handlePointerUp);
-      document.addEventListener("touchcancel", handlePointerUp);
-    },
-    [handlePointerMove, handlePointerUp, leftColumnWidthPercent],
-  );
-
-  React.useEffect(() => {
-    return () => {
-      document.removeEventListener("mousemove", handlePointerMove);
-      document.removeEventListener(
-        "touchmove",
-        handlePointerMove,
-        touchMoveOptions,
-      );
-      document.removeEventListener("mouseup", handlePointerUp);
-      document.removeEventListener("touchend", handlePointerUp);
-      document.removeEventListener("touchcancel", handlePointerUp);
-    };
-  }, [handlePointerMove, handlePointerUp, touchMoveOptions]);
-
-  React.useEffect(() => {
-    setLeftColumnWidthPercent((currentWidth) =>
-      clampLeftColumnWidthPercent(currentWidth),
-    );
-  }, [clampLeftColumnWidthPercent]);
-
-  React.useEffect(() => {
-    if (!introWrapRef.current) {
-      return;
-    }
-
-    introWrapRef.current.style.setProperty(
-      "--home-left-column-width",
-      `${leftColumnWidthPercent}%`,
-    );
-    introWrapRef.current.style.setProperty(
-      "--home-right-column-width",
-      `calc(${100 - leftColumnWidthPercent}% - ${HOME_INTRO_SEPARATOR_WIDTH}px)`,
-    );
-  }, [HOME_INTRO_SEPARATOR_WIDTH, leftColumnWidthPercent]);
 
   const getNavChildForbiddenRects = React.useCallback(() => {
     if (!mainWrapperRef.current) {
@@ -1214,6 +2034,126 @@ function HomeNoga(props) {
       });
   }, []);
 
+  const getHomeDrawingAllowListRects = React.useCallback(() => {
+    if (!mainWrapperRef.current) {
+      return [];
+    }
+
+    const activeZone = HOME_DRAWING_ALLOWLIST_ZONES.find(
+      (zone) => zone.id === activeHomeDrawingAllowZoneId,
+    );
+
+    if (!activeZone?.selector) {
+      return [];
+    }
+
+    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+
+    return Array.from(mainWrapperRef.current.querySelectorAll(activeZone.selector))
+      .filter((element) => {
+        if (!(element instanceof HTMLElement)) {
+          return false;
+        }
+
+        const elementRect = element.getBoundingClientRect();
+        return elementRect.width > 0 && elementRect.height > 0;
+      })
+      .map((element) => {
+        const elementRect = element.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(element);
+        const topLeftRadius = Number.parseFloat(
+          computedStyle.borderTopLeftRadius || "0",
+        );
+        const topRightRadius = Number.parseFloat(
+          computedStyle.borderTopRightRadius || "0",
+        );
+        const bottomRightRadius = Number.parseFloat(
+          computedStyle.borderBottomRightRadius || "0",
+        );
+        const bottomLeftRadius = Number.parseFloat(
+          computedStyle.borderBottomLeftRadius || "0",
+        );
+
+        return {
+          left: elementRect.left - wrapperRect.left,
+          top: elementRect.top - wrapperRect.top,
+          right: elementRect.right - wrapperRect.left,
+          bottom: elementRect.bottom - wrapperRect.top,
+          radii: {
+            topLeft: Number.isFinite(topLeftRadius) ? topLeftRadius : 0,
+            topRight: Number.isFinite(topRightRadius) ? topRightRadius : 0,
+            bottomRight: Number.isFinite(bottomRightRadius)
+              ? bottomRightRadius
+              : 0,
+            bottomLeft: Number.isFinite(bottomLeftRadius)
+              ? bottomLeftRadius
+              : 0,
+          },
+        };
+      });
+  }, [activeHomeDrawingAllowZoneId]);
+
+  const isPointInsideAllowedZone = React.useCallback(
+    (point) => {
+      if (!isHomeDrawingAllowListEnabled) {
+        return true;
+      }
+
+      const allowListRects = getHomeDrawingAllowListRects();
+
+      if (!Array.isArray(allowListRects) || allowListRects.length === 0) {
+        return false;
+      }
+
+      return allowListRects.some(
+        (rect) =>
+          point.x >= rect.left &&
+          point.x <= rect.right &&
+          point.y >= rect.top &&
+          point.y <= rect.bottom,
+      );
+    },
+    [getHomeDrawingAllowListRects, isHomeDrawingAllowListEnabled],
+  );
+
+  const setHomeDrawingVisibilityCanvasRef = React.useCallback(
+    (wrapperId, canvasNode) => {
+      if (canvasNode) {
+        drawingVisibilityCanvasRefs.current.set(wrapperId, canvasNode);
+        return;
+      }
+
+      drawingVisibilityCanvasRefs.current.delete(wrapperId);
+    },
+    [],
+  );
+
+  const toggleHomeDrawingVisibleWrapper = React.useCallback((wrapperId) => {
+    setHomeDrawingVisibleWrapperIds((currentIds) => {
+      const normalizedIds = Array.isArray(currentIds) ? currentIds : [];
+
+      if (normalizedIds.includes(wrapperId)) {
+        return normalizedIds.filter((currentId) => currentId !== wrapperId);
+      }
+
+      return [...normalizedIds, wrapperId];
+    });
+  }, []);
+
+  const renderHomeDrawingVisibilityCanvas = React.useCallback(
+    (wrapperId) =>
+      homeDrawingVisibleWrapperIds.includes(wrapperId) ? (
+        <canvas
+          ref={(canvasNode) =>
+            setHomeDrawingVisibilityCanvasRef(wrapperId, canvasNode)
+          }
+          className="Home_Noga_drawingVisibilityCanvas"
+          aria-hidden="true"
+        />
+      ) : null,
+    [homeDrawingVisibleWrapperIds, setHomeDrawingVisibilityCanvasRef],
+  );
+
   const redrawHomeDrawingCanvas = React.useCallback(() => {
     const appliedCanvas = appliedDrawingCanvasRef.current;
     const appliedHost = appliedDrawingCanvasHostRef.current;
@@ -1274,6 +2214,60 @@ function HomeNoga(props) {
       draftContext.fillRect(0, 0, width, height);
     }
 
+    const nowSeconds =
+      typeof performance !== "undefined"
+        ? performance.now() / 1000
+        : Date.now() / 1000;
+    const homeMusicSignal = homeMusicSignalRef.current || {};
+    const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
+    const signalAgeMs =
+      signalUpdatedAt > 0
+        ? Math.max(0, Date.now() - signalUpdatedAt)
+        : Number.POSITIVE_INFINITY;
+    const hasFreshSignal = signalAgeMs < 1400;
+    const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
+    const isHomeMusicPlaying =
+      Boolean(props.state?.planner_music?.isPlaying) ||
+      Boolean(homeMusicIsPlayingRef.current);
+    const effectiveMusicSignal = isHomeMusicPlaying
+      ? {
+          energy: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
+            0.2 + fallbackBeat * 0.18,
+          ),
+          bass: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
+            0.24 + fallbackBeat * 0.22,
+          ),
+          mid: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
+            0.16 + fallbackBeat * 0.14,
+          ),
+          treble: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
+            0.12 + fallbackBeat * 0.12,
+          ),
+          pitch: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
+            0.18 + fallbackBeat * 0.16,
+          ),
+          tempo: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
+            0.24 + fallbackBeat * 0.12,
+          ),
+          pulse: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
+            0.3 + fallbackBeat * 0.32,
+          ),
+          fallbackTime:
+            hasFreshSignal &&
+            Number.isFinite(Number(homeMusicSignal.fallbackTime))
+              ? Number(homeMusicSignal.fallbackTime)
+              : nowSeconds,
+          updatedAt: signalUpdatedAt || Date.now(),
+        }
+      : null;
+
     homeDrawing.appliedPaths.forEach((segment) => {
       const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
       if (rawPoints.length < 2) {
@@ -1282,54 +2276,10 @@ function HomeNoga(props) {
 
       const palette = resolveHomeDrawingPalette(segment);
       const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
-      const nowSeconds =
-        typeof performance !== "undefined" ? performance.now() / 1000 : Date.now() / 1000;
-      const homeMusicSignal = homeMusicSignalRef.current || {};
-      const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
-      const signalAgeMs =
-        signalUpdatedAt > 0 ? Math.max(0, Date.now() - signalUpdatedAt) : Number.POSITIVE_INFINITY;
-      const hasFreshSignal = signalAgeMs < 1400;
-      const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
-      const effectiveMusicSignal = props.state?.planner_music?.isPlaying
-        ? {
-            energy: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
-              0.2 + fallbackBeat * 0.18,
-            ),
-            bass: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
-              0.24 + fallbackBeat * 0.22,
-            ),
-            mid: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
-              0.16 + fallbackBeat * 0.14,
-            ),
-            treble: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
-              0.12 + fallbackBeat * 0.12,
-            ),
-            pitch: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
-              0.18 + fallbackBeat * 0.16,
-            ),
-            tempo: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
-              0.24 + fallbackBeat * 0.12,
-            ),
-            pulse: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
-              0.3 + fallbackBeat * 0.32,
-            ),
-            fallbackTime:
-              hasFreshSignal && Number.isFinite(Number(homeMusicSignal.fallbackTime))
-                ? Number(homeMusicSignal.fallbackTime)
-                : nowSeconds,
-            updatedAt: signalUpdatedAt || Date.now(),
-          }
-        : null;
 
       drawHomeLedRopePath(appliedContext, smoothedPoints, palette, {
         musicSignal: effectiveMusicSignal,
+        animateBulbs: Boolean(effectiveMusicSignal),
       });
     });
 
@@ -1344,12 +2294,12 @@ function HomeNoga(props) {
       drawHomeSketchPath(draftContext, rawPoints, palette);
     });
 
-    getHomeDrawingMaskedRects().forEach((rect) => {
+    const appendRoundedRectPath = (context, rect) => {
       const bleed = 0;
       const left = Math.max(0, rect.left - bleed);
       const top = Math.max(0, rect.top - bleed);
-      const width = Math.max(0, rect.right - rect.left + bleed * 2);
-      const height = Math.max(0, rect.bottom - rect.top + bleed * 2);
+      const rectWidth = Math.max(0, rect.right - rect.left + bleed * 2);
+      const rectHeight = Math.max(0, rect.bottom - rect.top + bleed * 2);
       const safeRadius = {
         topLeft: Math.max(0, Number(rect?.radii?.topLeft || 0)),
         topRight: Math.max(0, Number(rect?.radii?.topRight || 0)),
@@ -1357,61 +2307,196 @@ function HomeNoga(props) {
         bottomLeft: Math.max(0, Number(rect?.radii?.bottomLeft || 0)),
       };
 
-      [draftContext].forEach((context) => {
-        context.save();
-        context.globalCompositeOperation = "destination-out";
-        context.beginPath();
+      if (rectWidth <= 0 || rectHeight <= 0) {
+        return;
+      }
 
-        if (typeof context.roundRect === "function") {
-          context.roundRect(left, top, width, height, [
-            safeRadius.topLeft,
-            safeRadius.topRight,
-            safeRadius.bottomRight,
-            safeRadius.bottomLeft,
-          ]);
-        } else {
-          const maxRadius = Math.min(width, height) / 2;
-          const topLeft = Math.min(safeRadius.topLeft, maxRadius);
-          const topRight = Math.min(safeRadius.topRight, maxRadius);
-          const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
-          const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
+      if (typeof context.roundRect === "function") {
+        context.roundRect(left, top, rectWidth, rectHeight, [
+          safeRadius.topLeft,
+          safeRadius.topRight,
+          safeRadius.bottomRight,
+          safeRadius.bottomLeft,
+        ]);
+        return;
+      }
 
-          context.moveTo(left + topLeft, top);
-          context.lineTo(left + width - topRight, top);
-          context.quadraticCurveTo(
-            left + width,
-            top,
-            left + width,
-            top + topRight,
-          );
-          context.lineTo(left + width, top + height - bottomRight);
-          context.quadraticCurveTo(
-            left + width,
-            top + height,
-            left + width - bottomRight,
-            top + height,
-          );
-          context.lineTo(left + bottomLeft, top + height);
-          context.quadraticCurveTo(
-            left,
-            top + height,
-            left,
-            top + height - bottomLeft,
-          );
-          context.lineTo(left, top + topLeft);
-          context.quadraticCurveTo(left, top, left + topLeft, top);
+      const maxRadius = Math.min(rectWidth, rectHeight) / 2;
+      const topLeft = Math.min(safeRadius.topLeft, maxRadius);
+      const topRight = Math.min(safeRadius.topRight, maxRadius);
+      const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
+      const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
+
+      context.moveTo(left + topLeft, top);
+      context.lineTo(left + rectWidth - topRight, top);
+      context.quadraticCurveTo(left + rectWidth, top, left + rectWidth, top + topRight);
+      context.lineTo(left + rectWidth, top + rectHeight - bottomRight);
+      context.quadraticCurveTo(
+        left + rectWidth,
+        top + rectHeight,
+        left + rectWidth - bottomRight,
+        top + rectHeight,
+      );
+      context.lineTo(left + bottomLeft, top + rectHeight);
+      context.quadraticCurveTo(left, top + rectHeight, left, top + rectHeight - bottomLeft);
+      context.lineTo(left, top + topLeft);
+      context.quadraticCurveTo(left, top, left + topLeft, top);
+      context.closePath();
+    };
+
+    const applyCanvasRectMask = (context, rects, operation) => {
+      if (!Array.isArray(rects) || rects.length === 0) {
+        return;
+      }
+
+      context.save();
+      context.globalCompositeOperation = operation;
+      context.beginPath();
+      rects.forEach((rect) => appendRoundedRectPath(context, rect));
+      context.fill();
+      context.restore();
+    };
+
+    const getElementCanvasRect = (element) => {
+      if (!(element instanceof HTMLElement)) {
+        return null;
+      }
+
+      const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      if (elementRect.width <= 0 || elementRect.height <= 0) {
+        return null;
+      }
+
+      const computedStyle = window.getComputedStyle(element);
+
+      return {
+        left: elementRect.left - wrapperRect.left,
+        top: elementRect.top - wrapperRect.top,
+        right: elementRect.right - wrapperRect.left,
+        bottom: elementRect.bottom - wrapperRect.top,
+        radii: {
+          topLeft: Number.parseFloat(computedStyle.borderTopLeftRadius || "0"),
+          topRight: Number.parseFloat(computedStyle.borderTopRightRadius || "0"),
+          bottomRight: Number.parseFloat(
+            computedStyle.borderBottomRightRadius || "0",
+          ),
+          bottomLeft: Number.parseFloat(
+            computedStyle.borderBottomLeftRadius || "0",
+          ),
+        },
+      };
+    };
+
+    const visibleWrapperRects = HOME_DRAWING_VISIBILITY_WRAPPERS.map((wrapper) => {
+      const wrapperElement = mainWrapperRef.current.querySelector(wrapper.selector);
+      const wrapperCanvas = drawingVisibilityCanvasRefs.current.get(wrapper.id);
+      const wrapperRect = getElementCanvasRect(wrapperElement);
+
+      if (!wrapperCanvas || !wrapperElement || !wrapperRect) {
+        return null;
+      }
+
+      const wrapperContext = wrapperCanvas.getContext("2d");
+      const wrapperWidth = Math.max(
+        1,
+        Math.round(wrapperRect.right - wrapperRect.left),
+      );
+      const wrapperHeight = Math.max(
+        1,
+        Math.round(wrapperRect.bottom - wrapperRect.top),
+      );
+
+      if (!wrapperContext) {
+        return wrapperRect;
+      }
+
+      if (
+        wrapperCanvas.width !== Math.round(wrapperWidth * devicePixelRatio) ||
+        wrapperCanvas.height !== Math.round(wrapperHeight * devicePixelRatio)
+      ) {
+        wrapperCanvas.width = Math.round(wrapperWidth * devicePixelRatio);
+        wrapperCanvas.height = Math.round(wrapperHeight * devicePixelRatio);
+        wrapperCanvas.style.width = `${wrapperWidth}px`;
+        wrapperCanvas.style.height = `${wrapperHeight}px`;
+      }
+
+      wrapperContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      wrapperContext.clearRect(0, 0, wrapperWidth, wrapperHeight);
+
+      homeDrawing.appliedPaths.forEach((segment) => {
+        const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
+
+        if (rawPoints.length < 2) {
+          return;
         }
 
-        context.closePath();
-        context.fill();
-        context.restore();
+        const shiftedPoints = smoothHomeDrawingPoints(rawPoints).map((point) => ({
+          x: point.x - wrapperRect.left,
+          y: point.y - wrapperRect.top,
+        }));
+
+        drawHomeLedRopePath(
+          wrapperContext,
+          shiftedPoints,
+          resolveHomeDrawingPalette(segment),
+          {
+            musicSignal: effectiveMusicSignal,
+            animateBulbs: Boolean(effectiveMusicSignal),
+          },
+        );
       });
-    });
+
+      homeDrawing.draftPaths.forEach((segment) => {
+        const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
+
+        if (rawPoints.length < 2) {
+          return;
+        }
+
+        drawHomeSketchPath(
+          wrapperContext,
+          rawPoints.map((point) => ({
+            x: point.x - wrapperRect.left,
+            y: point.y - wrapperRect.top,
+          })),
+          resolveHomeDrawingPalette(segment),
+        );
+      });
+
+      return wrapperRect;
+    }).filter(Boolean);
+
+    if (isHomeDrawingAllowListEnabled) {
+      const allowListRects = getHomeDrawingAllowListRects();
+
+      if (allowListRects.length === 0) {
+        draftContext.clearRect(0, 0, width, height);
+      } else {
+        applyCanvasRectMask(draftContext, allowListRects, "destination-in");
+      }
+
+      applyCanvasRectMask(
+        draftContext,
+        getNavChildForbiddenRects(),
+        "destination-out",
+      );
+
+      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
+    } else {
+      applyCanvasRectMask(draftContext, getHomeDrawingMaskedRects(), "destination-out");
+      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
+    }
   }, [
     HOME_DRAWING_PATH_FILL,
+    getHomeDrawingAllowListRects,
     getHomeDrawingMaskedRects,
+    getNavChildForbiddenRects,
+    homeDrawingVisibleWrapperIds,
     homeDrawing.appliedPaths,
     homeDrawing.draftPaths,
+    isHomeDrawingAllowListEnabled,
     isHomeDrawingModeEnabled,
     props.state?.planner_music?.isPlaying,
   ]);
@@ -1447,6 +2532,59 @@ function HomeNoga(props) {
     drawingPathsRef.current = homeDrawing.draftPaths;
   }, [homeDrawing.draftPaths]);
 
+  React.useEffect(() => {
+    homeMusicIsPlayingRef.current = Boolean(props.state?.planner_music?.isPlaying);
+  }, [props.state?.planner_music?.isPlaying]);
+
+  React.useEffect(() => {
+    if (!isHomeDrawingAllowListEnabled || !isHomeDrawingModeEnabled) {
+      setIsHomeDrawingAllowZoneMenuOpen(false);
+    }
+
+    if (!isHomeDrawingModeEnabled) {
+      setIsHomeDrawingVisibilityMenuOpen(false);
+    }
+  }, [isHomeDrawingAllowListEnabled, isHomeDrawingModeEnabled]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !mainWrapperRef.current) {
+      return undefined;
+    }
+
+    const wrapperNode = mainWrapperRef.current;
+    const bioWrapperNode = wrapperNode.querySelector("#Home_Noga_bioWrapper");
+    const rightColumnNode = wrapperNode.querySelector(
+      "#Home_Noga_rightColumn_wrapper",
+    );
+
+    if (!(bioWrapperNode instanceof HTMLElement)) {
+      return undefined;
+    }
+
+    const syncGalleryHeaderHeight = () => {
+      const nextHeight = Math.max(
+        0,
+        Math.round(bioWrapperNode.getBoundingClientRect().height),
+      );
+
+      if (rightColumnNode instanceof HTMLElement) {
+        rightColumnNode.style.setProperty(
+          "--home-bio-wrapper-height",
+          `${nextHeight}px`,
+        );
+      }
+    };
+
+    syncGalleryHeaderHeight();
+
+    const observer = new ResizeObserver(() => {
+      syncGalleryHeaderHeight();
+    });
+
+    observer.observe(bioWrapperNode);
+    return () => observer.disconnect();
+  }, []);
+
   const beginHomeDrawingStroke = React.useCallback(
     (event) => {
       if (!isHomeDrawingModeEnabled) {
@@ -1455,7 +2593,11 @@ function HomeNoga(props) {
 
       const point = getCanvasPointFromEvent(event);
 
-      if (!point || isPointInsideNavChildCard(point)) {
+      if (
+        !point ||
+        isPointInsideNavChildCard(point) ||
+        !isPointInsideAllowedZone(point)
+      ) {
         drawingCurrentPathRef.current = null;
         isDrawingPointerActiveRef.current = true;
         return;
@@ -1485,6 +2627,7 @@ function HomeNoga(props) {
       activeHomeDrawingPaletteId,
       getCanvasPointFromEvent,
       isHomeDrawingModeEnabled,
+      isPointInsideAllowedZone,
       isPointInsideNavChildCard,
     ],
   );
@@ -1503,7 +2646,7 @@ function HomeNoga(props) {
 
       event.preventDefault();
 
-      if (isPointInsideNavChildCard(point)) {
+      if (isPointInsideNavChildCard(point) || !isPointInsideAllowedZone(point)) {
         drawingCurrentPathRef.current = null;
         return;
       }
@@ -1538,6 +2681,7 @@ function HomeNoga(props) {
       activeHomeDrawingPaletteId,
       getCanvasPointFromEvent,
       isHomeDrawingModeEnabled,
+      isPointInsideAllowedZone,
       isPointInsideNavChildCard,
     ],
   );
@@ -1782,10 +2926,32 @@ function HomeNoga(props) {
       return undefined;
     }
 
+    window.addEventListener(
+      "home-noga-toggle-drawing",
+      handleToggleHomeDrawingMode,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "home-noga-toggle-drawing",
+        handleToggleHomeDrawingMode,
+      );
+    };
+  }, [handleToggleHomeDrawingMode]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
     const handlePlannerMusicSignalChange = (event) => {
       const nextAudioSignal = event?.detail?.audioSignal;
+      if (typeof event?.detail?.isPlaying === "boolean") {
+        homeMusicIsPlayingRef.current = event.detail.isPlaying;
+      }
 
       if (!nextAudioSignal) {
+        redrawHomeDrawingCanvas();
         return;
       }
 
@@ -1823,7 +2989,6 @@ function HomeNoga(props) {
   }, [
     activeFriendsMiniTab,
     isReportsWrapperOpen,
-    leftColumnWidthPercent,
     openChatFriendId,
     redrawHomeDrawingCanvas,
     showGalleryInRightColumn,
@@ -1911,19 +3076,17 @@ function HomeNoga(props) {
     const globalActiveChatFriendId = String(
       props.state?.activeChatFriendId || "",
     ).trim();
-
     if (!globalActiveChatFriendId) {
       setOpenChatFriendId((currentFriendId) =>
         currentFriendId ? null : currentFriendId,
       );
       return;
     }
-
-    setOpenChatFriendId((currentFriendId) =>
-      currentFriendId === globalActiveChatFriendId
+    setOpenChatFriendId((currentFriendId) => {
+      return currentFriendId === globalActiveChatFriendId
         ? currentFriendId
-        : globalActiveChatFriendId,
-    );
+        : globalActiveChatFriendId;
+    });
   }, [props.state?.activeChatFriendId]);
 
   React.useEffect(() => {
@@ -1945,17 +3108,35 @@ function HomeNoga(props) {
     );
   }, [profilePictureViewport]);
 
+  const handleInlineCallActionsTargetRef = React.useCallback((node) => {
+    if (inlineCallActionsTargetNodeRef.current === node) {
+      return;
+    }
+
+    inlineCallActionsTargetNodeRef.current = node;
+    setInlineCallActionsTarget(node);
+  }, []);
+
   const toggleGalleryTopRow = () => {
     setIsGalleryTopRowVisible((value) => !value);
   };
 
   React.useEffect(() => {
-    setAcademicInfoFields({
+    const nextAcademicInfoFields = {
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
       studyYear: String(props.state?.studyYear || ""),
       term: String(props.state?.term || ""),
-    });
+    };
+
+    setAcademicInfoFields((currentFields) =>
+      currentFields.program === nextAcademicInfoFields.program &&
+      currentFields.university === nextAcademicInfoFields.university &&
+      currentFields.studyYear === nextAcademicInfoFields.studyYear &&
+      currentFields.term === nextAcademicInfoFields.term
+        ? currentFields
+        : nextAcademicInfoFields,
+    );
   }, [
     props.state?.program,
     props.state?.university,
@@ -1964,8 +3145,14 @@ function HomeNoga(props) {
   ]);
 
   React.useEffect(() => {
-    setLoginLogEntries(
-      Array.isArray(props.state?.login_record) ? props.state.login_record : [],
+    const nextLoginLogEntries = Array.isArray(props.state?.login_record)
+      ? props.state.login_record
+      : [];
+
+    setLoginLogEntries((currentEntries) =>
+      JSON.stringify(currentEntries) === JSON.stringify(nextLoginLogEntries)
+        ? currentEntries
+        : nextLoginLogEntries,
     );
   }, [props.state?.login_record]);
 
@@ -1999,114 +3186,349 @@ function HomeNoga(props) {
   );
   const profilePictureSrc = String(props.state?.profilePicture || "").trim();
   const activeGalleryImage = imageOnlyGallery[activeGalleryImageIndex] || null;
-  const socialFriends = Array.isArray(props.state?.friends)
-    ? [...props.state.friends]
-        .filter((friend) => friend && typeof friend === "object" && friend.info)
-        .map((friend) => {
-          const firstName = String(friend.info?.firstname || "").trim();
-          const lastName = String(friend.info?.lastname || "").trim();
-          const username = String(friend.info?.username || "").trim();
-          const displayName =
-            `${firstName} ${lastName}`.trim() || username || "Doctor";
-          const initials =
-            `${firstName.charAt(0) || displayName.charAt(0) || "D"}${
-              lastName.charAt(0) || username.charAt(0) || ""
-            }`.toUpperCase();
+  const socialFriends = React.useMemo(() => {
+    const rawFriends = Array.isArray(props.state?.friends)
+      ? props.state.friends
+      : [];
 
-          return {
-            id: String(friend._id || username || displayName).trim(),
-            chatId: String(friend._id || "").trim(),
-            displayName,
-            initials: initials || "D",
-            username,
-            avatarUrl: String(
-              friend?.media?.profilePicture?.url ||
-                friend?.profilePicture ||
-                friend?.info?.profilePicture ||
-                "",
-            ).trim(),
-            isConnected: Boolean(friend.status?.isConnected),
-          };
-        })
-        .sort((firstFriend, secondFriend) => {
-          if (firstFriend.isConnected !== secondFriend.isConnected) {
-            return (
-              Number(secondFriend.isConnected) - Number(firstFriend.isConnected)
-            );
+    return rawFriends
+      .filter((friend) => friend && typeof friend === "object")
+      .filter((friend) => {
+        const userMode = String(
+          friend?.userMode ||
+            friend?.mode ||
+            friend?.relationship?.userMode ||
+            "",
+        )
+          .trim()
+          .toLowerCase();
+
+        return userMode === "friend";
+      })
+      .map((friend, index) => {
+        const info =
+          friend?.info ||
+          friend?.user?.info ||
+          friend?.user ||
+          friend?.id?.info ||
+          friend;
+        const firstName = String(info?.firstname || "").trim();
+        const lastName = String(info?.lastname || "").trim();
+        const username = String(
+          info?.username || friend?.username || "",
+        ).trim();
+        const displayName =
+          `${firstName} ${lastName}`.trim() || username || "Friend";
+        const initials =
+          `${firstName.charAt(0) || displayName.charAt(0) || "F"}${
+            lastName.charAt(0) || username.charAt(0) || ""
+          }`.toUpperCase() || "F";
+        const avatarUrl = String(
+          friend?.media?.profilePicture?.url ||
+            info?.profilePicture?.url ||
+            info?.profilePicture ||
+            friend?.profilePicture ||
+            "",
+        ).trim();
+        const chatId = String(
+          friend?.chatId ||
+            friend?.friendId ||
+            friend?._id ||
+            friend?.id ||
+            info?._id ||
+            username ||
+            index,
+        ).trim();
+
+        return {
+          id: String(friend?._id || friend?.id || chatId || index),
+          chatId,
+          username,
+          displayName,
+          initials,
+          avatarUrl,
+          isConnected: Boolean(
+            friend?.isConnected || props.state?.friendChatPresence?.[chatId],
+          ),
+        };
+      })
+      .filter((friend) => friend.chatId);
+  }, [props.state?.friendChatPresence, props.state?.friends]);
+
+  // TODO: Refactor unreadChatCountsByFriendId to use chat state or friends[].userMode if needed
+  const unreadChatCountsByFriendId = React.useMemo(() => ({}), []);
+
+  // TODO: Refactor friendRequestNotifications to use friends[].userMode if needed
+  const friendRequestNotifications = React.useMemo(() => [], []);
+
+  React.useEffect(() => {
+    if (activeFriendsMiniTab === "search") {
+      setActiveFriendsMiniTab("friends");
+    }
+  }, [activeFriendsMiniTab]);
+
+  React.useEffect(() => {
+    if (activeFriendsMiniTab === "requests") {
+      props.updateUserInfo?.();
+    }
+  }, [activeFriendsMiniTab, props.updateUserInfo]);
+
+  const incomingFriendRequestIds = React.useMemo(
+    () =>
+      new Set(
+        friendRequestNotifications
+          .map((notification) => String(notification?.id || "").trim())
+          .filter(Boolean),
+      ),
+    [friendRequestNotifications],
+  );
+
+  const incomingFriendRequestIdsByUsername = React.useMemo(
+    () =>
+      new Set(
+        friendRequestNotifications
+          .map((notification) =>
+            String(notification?.info?.username || notification?.username || "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    [friendRequestNotifications],
+  );
+
+  const existingFriendUsernames = React.useMemo(
+    () =>
+      new Set(
+        socialFriends
+          .map((friend) =>
+            String(friend?.username || "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    [socialFriends],
+  );
+
+  const existingFriendIds = React.useMemo(
+    () =>
+      new Set(
+        socialFriends
+          .map((friend) => String(friend?.chatId || friend?.id || "").trim())
+          .filter(Boolean),
+      ),
+    [socialFriends],
+  );
+
+  const sentFriendRequestIds = React.useMemo(
+    () =>
+      new Set(
+        (Array.isArray(props.state?.sent_friend_requests)
+          ? props.state.sent_friend_requests
+          : []
+        )
+          .filter(
+            (request) =>
+              String(request?.status || "")
+                .trim()
+                .toLowerCase() === "pending",
+          )
+          .map((request) => String(request?.id || "").trim())
+          .filter(Boolean),
+      ),
+    [props.state?.sent_friend_requests],
+  );
+
+  const deriveSearchUserMode = React.useCallback(
+    (candidate) => {
+      const candidateId = String(candidate?.id || "").trim();
+      const candidateUsername = String(candidate?.username || "")
+        .trim()
+        .toLowerCase();
+
+      if (
+        candidateId &&
+        (existingFriendIds.has(candidateId) ||
+          existingFriendUsernames.has(candidateUsername))
+      ) {
+        return "friend";
+      }
+
+      if (
+        candidateId &&
+        (incomingFriendRequestIds.has(candidateId) ||
+          incomingFriendRequestIdsByUsername.has(candidateUsername))
+      ) {
+        return "requestReceived";
+      }
+
+      if (candidateId && sentFriendRequestIds.has(candidateId)) {
+        return "requestSent";
+      }
+
+      return "stranger";
+    },
+    [
+      existingFriendIds,
+      existingFriendUsernames,
+      incomingFriendRequestIds,
+      incomingFriendRequestIdsByUsername,
+      sentFriendRequestIds,
+    ],
+  );
+
+  React.useEffect(() => {
+    const normalizedQuery = String(friendSearchQuery || "").trim();
+    if (!normalizedQuery) {
+      setFriendSearchResults([]);
+      setFriendSearchFeedback("");
+      setIsFriendSearchLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsFriendSearchLoading(true);
+
+    const timeoutId = window.setTimeout(() => {
+      fetch(
+        apiUrl(`/api/user/searchUsers/${encodeURIComponent(normalizedQuery)}`),
+      )
+        .then((response) =>
+          response.ok
+            ? response.json()
+            : Promise.reject(new Error("search_failed")),
+        )
+        .then((payload) => {
+          if (isCancelled) {
+            return;
           }
 
-          return firstFriend.displayName.localeCompare(
-            secondFriend.displayName,
+          const currentUserId = String(props.state?.my_id || "").trim();
+          const currentUsername = String(props.state?.username || "")
+            .trim()
+            .toLowerCase();
+          const users = Array.isArray(payload?.array) ? payload.array : [];
+
+          const normalizedResults = users
+            .map((user) => {
+              const info = user?.info || {};
+              const identity = user?.identity || {};
+              const personal = identity?.personal || {};
+              const atSignup = identity?.atSignup || {};
+              const id = String(user?._id || info?._id || "").trim();
+              const username = String(
+                info?.username || atSignup?.username || user?.username || "",
+              )
+                .trim()
+                .toLowerCase();
+              const firstname = String(
+                info?.firstname || personal?.firstname || "",
+              ).trim();
+              const lastname = String(
+                info?.lastname || personal?.lastname || "",
+              ).trim();
+              const displayName =
+                `${firstname} ${lastname}`.trim() || username || "User";
+              const profilePicture =
+                personal?.profilePicture?.picture ||
+                personal?.profilePicture ||
+                user?.profilePicture ||
+                {};
+              const avatarUrl = String(
+                profilePicture?.url || profilePicture?.secure_url || "",
+              ).trim();
+              const initials =
+                `${firstname.charAt(0) || displayName.charAt(0) || "U"}${
+                  lastname.charAt(0) || username.charAt(0) || ""
+                }`.toUpperCase() || "U";
+              return {
+                id,
+                username,
+                firstname,
+                lastname,
+                displayName,
+                avatarUrl,
+                initials,
+              };
+            })
+            .filter((user) => user.id && user.username)
+            .filter((user) => user.id !== currentUserId)
+            .filter((user) => user.username !== currentUsername)
+            .map((user) => ({
+              ...user,
+              userMode: deriveSearchUserMode(user),
+            }));
+
+          setFriendSearchResults(normalizedResults);
+          setFriendSearchFeedback(
+            normalizedResults.length
+              ? ""
+              : "No users found. Try another name or username.",
           );
         })
-    : [];
+        .catch(() => {
+          if (isCancelled) {
+            return;
+          }
+          setFriendSearchResults([]);
+          setFriendSearchFeedback("Unable to search users right now.");
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsFriendSearchLoading(false);
+          }
+        });
+    }, 260);
 
-  const unreadChatCountsByFriendId = React.useMemo(() => {
-    const notifications = Array.isArray(props.state?.notifications)
-      ? props.state.notifications
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [friendSearchQuery, props.state?.my_id, props.state?.username]);
+
+  // All non-stranger friends (pending, accepted, blocked, refused, etc)
+  const relationshipEntries = React.useMemo(() => {
+    const rawFriends = Array.isArray(props.state?.friends)
+      ? props.state.friends
       : [];
-
-    return notifications.reduce((counts, notification) => {
-      if (
-        notification?.type !== "chat_message" ||
-        notification?.status === "read"
-      ) {
-        return counts;
-      }
-
-      const friendId = String(notification.id || "").trim();
-
-      if (!friendId) {
-        return counts;
-      }
-
-      const nextCount = Number(notification.count);
-      counts[friendId] = Number.isFinite(nextCount)
-        ? Math.max(0, nextCount)
-        : 1;
-      return counts;
-    }, {});
-  }, [props.state?.notifications]);
-
-  const friendRequestNotifications = React.useMemo(() => {
-    const notifications = Array.isArray(props.state?.notifications)
-      ? props.state.notifications
-      : [];
-
-    return notifications.filter(
-      (notification) =>
-        notification?.type === "friend_request" &&
-        notification?.status !== "read",
-    );
-  }, [props.state?.notifications]);
-
-  const blockedUsers = React.useMemo(() => {
-    const rawBlockedUsers = Array.isArray(props.state?.blockedUsers)
-      ? props.state.blockedUsers
-      : Array.isArray(props.state?.blockList)
-        ? props.state.blockList
-        : Array.isArray(props.state?.blocks)
-          ? props.state.blocks
-          : [];
-
-    return rawBlockedUsers
+    return rawFriends
+      .filter((entry) => entry && typeof entry === "object")
+      .filter((entry) => {
+        const mode = normalizeFriendUserMode(
+          entry?.userMode ||
+            entry?.mode ||
+            entry?.relationship?.userMode ||
+            "stranger",
+        );
+        return mode !== "stranger";
+      })
       .map((entry, index) => {
-        const info = entry?.info || entry?.user?.info || entry?.user || entry;
+        const info =
+          entry?.info ||
+          entry?.user?.info ||
+          entry?.user ||
+          entry?.id?.info ||
+          entry;
         const firstName = String(info?.firstname || "").trim();
         const lastName = String(info?.lastname || "").trim();
         const username = String(info?.username || entry?.username || "").trim();
         const displayName =
-          `${firstName} ${lastName}`.trim() || username || "Blocked user";
+          `${firstName} ${lastName}`.trim() || username || "User";
         const initials =
-          `${firstName.charAt(0) || displayName.charAt(0) || "B"}${
-            lastName.charAt(0) || username.charAt(0) || ""
-          }`.toUpperCase() || "B";
-
+          `${firstName.charAt(0) || displayName.charAt(0) || "U"}${lastName.charAt(0) || username.charAt(0) || ""}`.toUpperCase() ||
+          "U";
         return {
-          id: String(entry?._id || info?._id || username || index),
+          id: String(entry?._id || entry?.id || info?._id || username || index),
           displayName,
           username,
           initials,
+          userMode: normalizeFriendUserMode(
+            entry?.userMode ||
+              entry?.mode ||
+              entry?.relationship?.userMode ||
+              "stranger",
+          ),
           avatarUrl: String(
             entry?.media?.profilePicture?.url ||
               info?.profilePicture ||
@@ -2116,7 +3538,90 @@ function HomeNoga(props) {
         };
       })
       .filter((entry) => entry.id);
-  }, [props.state?.blockList, props.state?.blockedUsers, props.state?.blocks]);
+  }, [props.state?.friends]);
+
+  const blockedRelationshipEntries = relationshipEntries;
+
+  const blockedListTabs = React.useMemo(
+    () =>
+      BLOCKED_LIST_USER_MODE_ORDER.map((mode) => {
+        const entries = blockedRelationshipEntries.filter(
+          (entry) =>
+            String(entry?.userMode || DEFAULT_BLOCKED_LIST_USER_MODE)
+              .trim()
+              .toLowerCase() === mode,
+        );
+        const meta = getFriendUserModeMeta(mode);
+        return {
+          id: mode,
+          entries,
+          count: entries.length,
+          label: meta.label,
+          iconClass: meta.iconClass,
+          emptyLabel: meta.emptyLabel,
+        };
+      }),
+    [blockedRelationshipEntries],
+  );
+
+  const blockedListGroups = React.useMemo(
+    () =>
+      BLOCKED_LIST_GROUP_ORDER.map((groupId) => {
+        const tabs = blockedListTabs.filter(
+          (tab) => getBlockedListGroupIdForMode(tab.id) === groupId,
+        );
+        const meta = BLOCKED_LIST_GROUP_META[groupId] || {
+          label: groupId,
+          iconClass: "fa-users",
+        };
+        return {
+          id: groupId,
+          label: meta.label,
+          iconClass: meta.iconClass,
+          tabs,
+          count: tabs.reduce((sum, tab) => sum + tab.count, 0),
+        };
+      }),
+    [blockedListTabs],
+  );
+
+  const activeBlockedListGroupMeta = blockedListGroups.find(
+    (group) => group.id === activeBlockedListGroup,
+  ) ||
+    blockedListGroups[0] || {
+      id: DEFAULT_BLOCKED_LIST_GROUP,
+      label: BLOCKED_LIST_GROUP_META[DEFAULT_BLOCKED_LIST_GROUP].label,
+      iconClass: BLOCKED_LIST_GROUP_META[DEFAULT_BLOCKED_LIST_GROUP].iconClass,
+      tabs: [],
+      count: 0,
+    };
+
+  const activeBlockedListTabMeta = activeBlockedListGroupMeta.tabs.find(
+    (tab) => tab.id === activeBlockedListTab,
+  ) ||
+    activeBlockedListGroupMeta.tabs[0] ||
+    blockedListTabs.find((tab) => tab.id === activeBlockedListTab) ||
+    blockedListTabs[0] || {
+      id: DEFAULT_BLOCKED_LIST_USER_MODE,
+      entries: [],
+      count: 0,
+      ...getFriendUserModeMeta(DEFAULT_BLOCKED_LIST_USER_MODE),
+    };
+
+  React.useEffect(() => {
+    const nextGroupId = getBlockedListGroupIdForMode(
+      activeBlockedListTabMeta.id,
+    );
+    if (nextGroupId !== activeBlockedListGroup) {
+      setActiveBlockedListGroup(nextGroupId);
+    }
+  }, [activeBlockedListGroup, activeBlockedListTabMeta.id]);
+
+  React.useEffect(() => {
+    if (activeBlockedListTabMeta.id !== activeBlockedListTab) {
+      setActiveBlockedListTab(activeBlockedListTabMeta.id);
+    }
+  }, [activeBlockedListTab, activeBlockedListTabMeta.id]);
 
   const friendsMiniTabs = React.useMemo(
     () => [
@@ -2124,26 +3629,22 @@ function HomeNoga(props) {
         id: "friends",
         iconClass: "fas fa-user-friends",
         label: "Friends",
-        count: socialFriends.length,
+        count: relationshipEntries.length,
       },
       {
-        id: "requests",
-        iconClass: "fas fa-user-clock",
-        label: "Friend requests",
-        count: friendRequestNotifications.length,
+        id: "pages",
+        iconClass: "fas fa-file-alt",
+        label: "Pages",
+        count: 0,
       },
       {
-        id: "blocked",
-        iconClass: "fas fa-user-slash",
-        label: "Block list",
-        count: blockedUsers.length,
+        id: "groups",
+        iconClass: "fas fa-users",
+        label: "Groups",
+        count: 0,
       },
     ],
-    [
-      blockedUsers.length,
-      friendRequestNotifications.length,
-      socialFriends.length,
-    ],
+    [relationshipEntries.length],
   );
 
   const activeFriendsMiniTabIndex = Math.max(
@@ -2161,6 +3662,8 @@ function HomeNoga(props) {
       ) || null,
     [openChatFriendId, socialFriends],
   );
+  const hasActiveFriendSearchQuery =
+    String(friendSearchQuery || "").trim() !== "";
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
@@ -2195,6 +3698,42 @@ function HomeNoga(props) {
     [props.state?.friendChatPresence],
   );
 
+  const getSearchCandidateUserModeMeta = React.useCallback((candidate) => {
+    const userMode = String(candidate?.userMode || "stranger")
+      .trim()
+      .toLowerCase();
+
+    if (userMode === "requestreceived") {
+      return {
+        iconClass: "fa-user-clock",
+        label: "Request received",
+        modifierClass: "Home_Noga_socialFriendStatus--online",
+      };
+    }
+
+    if (userMode === "requestsent") {
+      return {
+        iconClass: "fa-paper-plane",
+        label: "Request sent",
+        modifierClass: "Home_Noga_socialFriendStatus--connected",
+      };
+    }
+
+    if (userMode === "friend") {
+      return {
+        iconClass: "fa-user-check",
+        label: "Friend",
+        modifierClass: "Home_Noga_socialFriendStatus--connected",
+      };
+    }
+
+    return {
+      iconClass: "fa-user-plus",
+      label: "Not connected",
+      modifierClass: "Home_Noga_socialFriendStatus--offline",
+    };
+  }, []);
+
   const handleToggleInlineFriendChat = React.useCallback(
     (friend) => {
       if (!friend?.chatId) {
@@ -2217,6 +3756,11 @@ function HomeNoga(props) {
 
   const handleSelectFriendsMiniTab = React.useCallback(
     (nextTab) => {
+      // If leaving 'friends' tab, clear search query/results
+      if (activeFriendsMiniTab === "friends" && nextTab !== "friends") {
+        setFriendSearchQuery("");
+        setFriendSearchResults([]);
+      }
       setActiveFriendsMiniTab(nextTab);
 
       if (openChatFriendId) {
@@ -2225,7 +3769,7 @@ function HomeNoga(props) {
         props.closeActiveChat?.();
       }
     },
-    [openChatFriendId, props],
+    [activeFriendsMiniTab, openChatFriendId, props],
   );
 
   const renderFriendListItem = React.useCallback(
@@ -2235,7 +3779,8 @@ function HomeNoga(props) {
         ? 0
         : unreadChatCountsByFriendId[friend.chatId] || 0;
       const friendPresenceState = getFriendPresenceState(friend);
-      const incomingCall = props.state?.global_call_session?.incomingCall || null;
+      const incomingCall =
+        props.state?.global_call_session?.incomingCall || null;
       const isIncomingCallForFriend =
         String(incomingCall?.fromUserId || "").trim() ===
         String(friend.chatId || "").trim();
@@ -2263,7 +3808,9 @@ function HomeNoga(props) {
             onClick={() => handleToggleInlineFriendChat(friend)}
             aria-expanded={isFriendChatOpen}
             aria-controls={
-              friend.chatId ? `Home_Noga_friendChat_${friend.chatId}` : undefined
+              friend.chatId
+                ? `Home_Noga_friendChat_${friend.chatId}`
+                : undefined
             }
             disabled={!friend.chatId}
           >
@@ -2303,11 +3850,7 @@ function HomeNoga(props) {
               {isFriendChatOpen ? (
                 <div
                   className="Home_Noga_socialFriendInlineCallActionsSlot"
-                  ref={(node) => {
-                    setInlineCallActionsTarget((currentTarget) =>
-                      currentTarget === node ? currentTarget : node,
-                    );
-                  }}
+                  ref={handleInlineCallActionsTargetRef}
                 />
               ) : null}
             </div>
@@ -2315,9 +3858,7 @@ function HomeNoga(props) {
           {isIncomingCallForFriend ? (
             <div className="Home_Noga_socialFriendIncomingCall fc">
               <div className="Home_Noga_socialFriendIncomingCallCopy fc">
-                <strong>
-                  Incoming {incomingCallMode} call
-                </strong>
+                <strong>Incoming {incomingCallMode} call</strong>
                 <span>
                   {friend.displayName || "Your friend"} is calling you.
                 </span>
@@ -2392,20 +3933,36 @@ function HomeNoga(props) {
         notification?._id || notification?.id || "",
       ).trim();
       const requesterId = String(notification?.id || "").trim();
-      const requestLabel = String(
-        notification?.message || "Friend request",
+      const requesterFirstName = String(
+        notification?.info?.firstname || notification?.firstname || "",
       ).trim();
+      const requesterLastName = String(
+        notification?.info?.lastname || notification?.lastname || "",
+      ).trim();
+      const requesterUsername = String(
+        notification?.info?.username || notification?.username || "",
+      ).trim();
+      const senderFromMessage = String(notification?.message || "")
+        .replace(/\s*sent\s+you\s+a\s+friend\s+request\s*$/i, "")
+        .trim();
+      const requestLabel =
+        `${requesterFirstName} ${requesterLastName}`.trim() ||
+        senderFromMessage ||
+        requesterUsername ||
+        "Friend request";
 
       return (
-        <li key={requestId || requesterId} className="Home_Noga_socialFriendItem fc">
+        <li
+          key={requestId || requesterId}
+          className="Home_Noga_socialFriendItem Home_Noga_socialFriendItem--request fc"
+        >
           <div className="Home_Noga_socialFriendSummary fr">
             <div className="Home_Noga_socialFriendIdentity fr">
-              <div className="Home_Noga_socialFriendAvatar">
+              <div className="Home_Noga_socialFriendAvatar Home_Noga_socialFriendAvatar--request">
                 <i className="fas fa-user-clock" aria-hidden="true"></i>
               </div>
               <div className="Home_Noga_socialFriendCopy fc">
-                <span className="Home_Noga_socialFriendName">Pending request</span>
-                <span className="Home_Noga_socialFriendUsername">
+                <span className="Home_Noga_socialFriendName">
                   {requestLabel}
                 </span>
               </div>
@@ -2422,13 +3979,13 @@ function HomeNoga(props) {
               aria-label="Accept friend request"
               title="Accept friend request"
             >
-              <i className="fas fa-user-check"></i>
+              <i className="fas fa-user-plus"></i>
             </button>
             <button
               type="button"
               className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
               onClick={() =>
-                requestId && props.makeNotificationsRead?.(requestId)
+                requestId && props.dismissFriendRequest?.(requestId)
               }
               disabled={!requestId}
               aria-label="Dismiss friend request"
@@ -2443,7 +4000,247 @@ function HomeNoga(props) {
     [props],
   );
 
+  const sendFriendRequestToUser = React.useCallback(
+    (candidate) => {
+      const username = String(candidate?.username || "")
+        .trim()
+        .toLowerCase();
+      if (!username || !props.state?.token || !props.state?.my_id) {
+        return;
+      }
+
+      const senderDisplayName = String(
+        `${props.state?.firstname || ""} ${props.state?.lastname || ""}`,
+      ).trim();
+      const senderLabel =
+        senderDisplayName ||
+        String(props.state?.username || "").trim() ||
+        "A user";
+
+      setSendingFriendRequestUsername(username);
+      fetch(apiUrl(`/api/user/addFriend/${encodeURIComponent(username)}/`), {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: props.state.my_id,
+          message: `${senderLabel} sent you a friend request`,
+        }),
+      })
+        .then((response) =>
+          response.ok
+            ? response.json()
+            : Promise.reject(new Error("send_failed")),
+        )
+        .then(() => {
+          setFriendSearchResults((currentResults) =>
+            currentResults.filter((entry) => entry.username !== username),
+          );
+          setFriendSearchFeedback("Friend request sent.");
+          props.serverReply?.("Friend request sent!");
+        })
+        .catch(() => {
+          setFriendSearchResults((currentResults) =>
+            currentResults.length === 0 ? currentResults : [],
+          );
+          setFriendSearchFeedback("Unable to send friend request.");
+          props.serverReply?.("Unable to send friend request.");
+        })
+        .finally(() => {
+          setSendingFriendRequestUsername("");
+        });
+    },
+    [
+      props.serverReply,
+      props.state?.firstname,
+      props.state?.lastname,
+      props.state?.my_id,
+      props.state?.token,
+      props.state?.username,
+    ],
+  );
+
+  const renderSearchedUserListItem = React.useCallback(
+    (candidate) => {
+      const isSending = sendingFriendRequestUsername === candidate.username;
+      const candidateUserModeMeta = getSearchCandidateUserModeMeta(candidate);
+      const candidateId = String(candidate?.id || "").trim();
+      const candidateMode = String(candidate?.userMode || "stranger")
+        .trim()
+        .toLowerCase();
+      const canSendRequest = candidateMode === "stranger";
+      const canCancelRequest = candidateMode === "requestsent";
+      const canAcceptRequest =
+        candidateMode === "requestreceived";
+      const canRemoveFriend = candidateMode === "friend";
+      return (
+        <li key={candidate.id} className="Home_Noga_socialFriendItem fc">
+          <div className="Home_Noga_socialFriendSummary fr">
+            <div className="Home_Noga_socialFriendIdentity fr">
+              <div className="Home_Noga_socialFriendAvatar">
+                {candidate.avatarUrl ? (
+                  <img
+                    src={candidate.avatarUrl}
+                    alt={`${candidate.displayName} avatar`}
+                    className="Home_Noga_socialFriendAvatarImage"
+                  />
+                ) : (
+                  <span aria-hidden="true">{candidate.initials}</span>
+                )}
+              </div>
+              <div className="Home_Noga_socialFriendCopy fc">
+                <span className="Home_Noga_socialFriendName">
+                  {candidate.displayName}
+                </span>
+                <span className="Home_Noga_socialFriendUsername">
+                  {candidate.username || "Phenomed user"}
+                </span>
+              </div>
+            </div>
+            <div className="Home_Noga_socialFriendPresence">
+              <span
+                className={`Home_Noga_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
+              >
+                <i className={`fas ${candidateUserModeMeta.iconClass}`}></i>
+                <span>{candidateUserModeMeta.label}</span>
+              </span>
+            </div>
+            <div className="Home_Noga_socialRequestActions fr">
+              {canSendRequest ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
+                  onClick={() => sendFriendRequestToUser(candidate)}
+                  disabled={isSending}
+                  aria-label="Send friend request"
+                  title="Send friend request"
+                >
+                  <i className="fas fa-user-plus"></i>
+                </button>
+              ) : null}
+              {canCancelRequest ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                  onClick={() => props.cancelSentFriendRequest?.(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Cancel friend request"
+                  title="Cancel friend request"
+                >
+                  <i className="fas fa-ban"></i>
+                </button>
+              ) : null}
+              {canAcceptRequest ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
+                  onClick={() =>
+                    candidateId &&
+                    props.acceptFriend?.(`accept_icon${candidateId}`)
+                  }
+                  disabled={!candidateId}
+                  aria-label="Accept friend request"
+                  title="Accept friend request"
+                >
+                  <i className="fas fa-user-check"></i>
+                </button>
+              ) : null}
+              {canAcceptRequest ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                  onClick={() => props.dismissFriendRequest?.(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Dismiss friend request"
+                  title="Dismiss friend request"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              ) : null}
+              {canRemoveFriend ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                  onClick={() => props.removeFriend?.(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Remove friend"
+                  title="Remove friend"
+                >
+                  <i className="fas fa-user-minus"></i>
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </li>
+      );
+    },
+    [
+      getSearchCandidateUserModeMeta,
+      props,
+      sendFriendRequestToUser,
+      sendingFriendRequestUsername,
+    ],
+  );
+
+  const renderConnectionSearchPanel = React.useCallback(
+    ({ value, onChange, placeholder, ariaLabel }) => (
+      <div className="Home_Noga_socialRequestSearchRow">
+        <div className="Home_Noga_socialRequestSearchWrap fr">
+          <i className="fas fa-search" aria-hidden="true"></i>
+          <input
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+          />
+        </div>
+      </div>
+    ),
+    [],
+  );
+
+  const renderFriendSearchPanel = React.useCallback(
+    () =>
+      renderConnectionSearchPanel({
+        value: friendSearchQuery,
+        onChange: setFriendSearchQuery,
+        placeholder: "Search friends",
+        ariaLabel: "Search friends",
+      }),
+    [friendSearchQuery, renderConnectionSearchPanel],
+  );
+
+  const renderPageSearchPanel = React.useCallback(
+    () =>
+      renderConnectionSearchPanel({
+        value: pageSearchQuery,
+        onChange: setPageSearchQuery,
+        placeholder: "Search pages",
+        ariaLabel: "Search pages",
+      }),
+    [pageSearchQuery, renderConnectionSearchPanel],
+  );
+
+  const renderGroupSearchPanel = React.useCallback(
+    () =>
+      renderConnectionSearchPanel({
+        value: groupSearchQuery,
+        onChange: setGroupSearchQuery,
+        placeholder: "Search groups",
+        ariaLabel: "Search groups",
+      }),
+    [groupSearchQuery, renderConnectionSearchPanel],
+  );
+
   const renderBlockedUserListItem = React.useCallback((user) => {
+    const userModeMeta = getFriendUserModeMeta(user?.userMode);
     return (
       <li key={user.id} className="Home_Noga_socialFriendItem fc">
         <div className="Home_Noga_socialFriendSummary fr">
@@ -2460,7 +4257,9 @@ function HomeNoga(props) {
               )}
             </div>
             <div className="Home_Noga_socialFriendCopy fc">
-              <span className="Home_Noga_socialFriendName">{user.displayName}</span>
+              <span className="Home_Noga_socialFriendName">
+                {user.displayName}
+              </span>
               <span className="Home_Noga_socialFriendUsername">
                 {user.username || "Blocked user"}
               </span>
@@ -2468,14 +4267,68 @@ function HomeNoga(props) {
           </div>
           <div className="Home_Noga_socialFriendPresence">
             <span className="Home_Noga_socialFriendStatus Home_Noga_socialFriendStatus--offline">
-              <i className="fas fa-user-slash"></i>
-              <span>Blocked</span>
+              <i className={`fas ${userModeMeta.iconClass}`}></i>
+              <span>{userModeMeta.label}</span>
             </span>
           </div>
         </div>
       </li>
     );
   }, []);
+
+  const renderBlockedListPanel = React.useCallback(
+    () => (
+      <div className="Home_Noga_socialBlockedPanel fc">
+        <div className="Home_Noga_socialBlockedTabs fr">
+          {blockedListGroups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              className={`Home_Noga_socialBlockedTab${
+                activeBlockedListGroup === group.id ? " isActive" : ""
+              }`}
+              onClick={() => setActiveBlockedListGroup(group.id)}
+            >
+              {group.label} ({group.count})
+            </button>
+          ))}
+        </div>
+        {activeBlockedListGroupMeta.tabs.length > 1 ? (
+          <div className="Home_Noga_socialBlockedTabs fr">
+            {activeBlockedListGroupMeta.tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`Home_Noga_socialBlockedTab${
+                  activeBlockedListTab === tab.id ? " isActive" : ""
+                }`}
+                onClick={() => setActiveBlockedListTab(tab.id)}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <ul className="Home_Noga_socialFriendsList">
+          {activeBlockedListTabMeta.entries.length === 0 ? (
+            <li className="Home_Noga_socialFriendsEmptyState">
+              {activeBlockedListTabMeta.emptyLabel}
+            </li>
+          ) : (
+            activeBlockedListTabMeta.entries.map(renderBlockedUserListItem)
+          )}
+        </ul>
+      </div>
+    ),
+    [
+      activeBlockedListGroup,
+      activeBlockedListGroupMeta,
+      activeBlockedListTab,
+      activeBlockedListTabMeta,
+      blockedListGroups,
+      renderBlockedUserListItem,
+    ],
+  );
   const openProfilePicturePicker = () => {
     galleryUploadInputRef.current?.click();
   };
@@ -2710,6 +4563,118 @@ function HomeNoga(props) {
     });
   };
 
+  const currentBioWallpaperUrl = String(
+    props.state?.bioWrapperWallpaper || DEFAULT_HOME_BIO_WALLPAPER_URL,
+  ).trim();
+  const currentBioWallpaperSize = Math.min(
+    Math.max(Number(props.state?.bioWrapperWallpaperSize) || DEFAULT_HOME_BIO_WALLPAPER_SIZE, 180),
+    1400,
+  );
+  const currentBioWallpaperRepeat =
+    props.state?.bioWrapperWallpaperRepeat !== undefined
+      ? Boolean(props.state.bioWrapperWallpaperRepeat)
+      : true;
+
+  const updateBioWallpaperState = React.useCallback(
+    (nextWallpaper = {}) => {
+      props.setUserMediaInfo?.({
+        profilePicture: String(props.state?.profilePicture || "").trim(),
+        profilePictureViewport: props.state?.profilePictureViewport || {
+          scale: 1,
+          offsetX: 0,
+          offsetY: 0,
+        },
+        homeDrawing:
+          props.state?.homeDrawing && typeof props.state.homeDrawing === "object"
+            ? props.state.homeDrawing
+            : { draftPaths: [], appliedPaths: [], textItems: [] },
+        imageGallery: Array.isArray(props.state?.imageGallery)
+          ? props.state.imageGallery
+          : [],
+        bioWrapperWallpaper:
+          nextWallpaper.bioWrapperWallpaper !== undefined
+            ? nextWallpaper.bioWrapperWallpaper
+            : currentBioWallpaperUrl,
+        bioWrapperWallpaperSize:
+          nextWallpaper.bioWrapperWallpaperSize !== undefined
+            ? nextWallpaper.bioWrapperWallpaperSize
+            : currentBioWallpaperSize,
+        bioWrapperWallpaperRepeat:
+          nextWallpaper.bioWrapperWallpaperRepeat !== undefined
+            ? nextWallpaper.bioWrapperWallpaperRepeat
+            : currentBioWallpaperRepeat,
+      });
+    },
+    [
+      currentBioWallpaperRepeat,
+      currentBioWallpaperSize,
+      currentBioWallpaperUrl,
+      props.setUserMediaInfo,
+      props.state?.homeDrawing,
+      props.state?.imageGallery,
+      props.state?.profilePicture,
+      props.state?.profilePictureViewport,
+    ],
+  );
+
+  const handleSetGalleryImageAsBioWallpaper = React.useCallback(
+    (image) => {
+      if (!image || isVideoGalleryItem(image)) {
+        return;
+      }
+
+      updateBioWallpaperState({
+        bioWrapperWallpaper: String(image?.url || "").trim(),
+      });
+      setActiveGalleryActionsPublicId("");
+      setIsBioWallpaperControlsOpen(true);
+    },
+    [updateBioWallpaperState],
+  );
+
+  const resetBioWallpaperToDefault = React.useCallback(() => {
+    updateBioWallpaperState({
+      bioWrapperWallpaper: DEFAULT_HOME_BIO_WALLPAPER_URL,
+      bioWrapperWallpaperSize: DEFAULT_HOME_BIO_WALLPAPER_SIZE,
+      bioWrapperWallpaperRepeat: true,
+    });
+  }, [updateBioWallpaperState]);
+
+  const clearBioWallpaper = React.useCallback(() => {
+    updateBioWallpaperState({
+      bioWrapperWallpaper: "",
+    });
+  }, [updateBioWallpaperState]);
+
+  const loadImageGalleryOnMount = React.useCallback(async () => {
+    if (!props.state?.token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(apiUrl("/api/user/image-gallery"), {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load media gallery.");
+      }
+
+      props.setUserMediaInfo?.({
+        profilePicture: String(payload?.profilePicture?.url || "").trim(),
+        imageGallery: Array.isArray(payload?.imageGallery)
+          ? payload.imageGallery
+          : [],
+      });
+    } catch (error) {
+      // Keep existing state if gallery hydration fails on mount.
+    }
+  }, [props.setUserMediaInfo, props.state?.token]);
+
   const openGalleryViewer = (publicId = "") => {
     const targetPublicId = String(publicId || "").trim();
     if (!imageOnlyGallery.length) {
@@ -2727,6 +4692,16 @@ function HomeNoga(props) {
     setActiveGalleryActionsPublicId("");
   };
 
+  const openGalleryVideoPlayer = React.useCallback((video) => {
+    if (!video || !String(video?.url || "").trim()) {
+      return;
+    }
+
+    setActiveGalleryVideo(video);
+    setIsVideoViewerOpen(true);
+    setActiveGalleryActionsPublicId("");
+  }, []);
+
   const toggleGalleryItemActions = (publicId) => {
     const nextPublicId = String(publicId || "").trim();
 
@@ -2739,42 +4714,98 @@ function HomeNoga(props) {
     );
   };
 
+  const toggleGalleryPattern = React.useCallback((publicId) => {
+    const nextPublicId = String(publicId || "").trim();
+
+    if (!nextPublicId) {
+      return;
+    }
+
+    setGalleryPatternIds((currentIds) =>
+      currentIds.includes(nextPublicId)
+        ? currentIds.filter((itemId) => itemId !== nextPublicId)
+        : [...currentIds, nextPublicId],
+    );
+  }, []);
+
   const uploadGalleryImage = async (selectedFile, options = {}) => {
     if (!selectedFile || !props.state?.token) {
       return;
     }
 
-    // Enforce 100MB max video file size before upload, with auto-compression
     const maxVideoSizeBytes = 100 * 1024 * 1024;
     const preCheckMimeType = String(selectedFile?.type || "").trim();
     const isVideoFilePre = preCheckMimeType.toLowerCase().startsWith("video/");
-    let fileToUploadPre = selectedFile;
-    if (isVideoFilePre && selectedFile.size > maxVideoSizeBytes) {
-      sendCloudinaryReply(
-        `Video file is too large (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB). Compressing before upload...`,
-      );
+
+    // If video and >=100MB, send to backend for compression/upload
+    if (isVideoFilePre && selectedFile.size >= maxVideoSizeBytes) {
+      setIsImageGalleryUploading(true);
       try {
-        fileToUploadPre = await compressVideo(selectedFile);
-        sendCloudinaryReply(
-          `Compressed video size: ${(fileToUploadPre.size / 1024 / 1024).toFixed(2)}MB.`,
-        );
-        if (fileToUploadPre.size > maxVideoSizeBytes) {
-          sendCloudinaryReply(
-            `Compressed video is still too large (${(fileToUploadPre.size / 1024 / 1024).toFixed(2)}MB). The maximum allowed size is 100MB. Please select a shorter video.`,
+        const formData = new FormData();
+        formData.append("video", selectedFile);
+        // Use XMLHttpRequest for progress events
+        const uploadResult = await new Promise((resolve, reject) => {
+          const xhr = new window.XMLHttpRequest();
+          xhr.open("POST", apiUrl("/api/user/videoUpload"));
+          xhr.setRequestHeader("Authorization", `Bearer ${props.state.token}`);
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              sendCloudinaryReply(`Uploading video: ${percent}%`);
+            }
+          };
+          xhr.onload = () => {
+            let result = {};
+            try {
+              result = JSON.parse(xhr.responseText);
+            } catch {}
+            if (xhr.status >= 200 && xhr.status < 300) {
+              sendCloudinaryReply(
+                result?.message || "Video uploaded and processed.",
+              );
+              resolve(result);
+            } else {
+              sendCloudinaryReply(result?.message || "Video upload failed.");
+              reject(new Error(result?.message || "Video upload failed."));
+            }
+          };
+          xhr.onerror = () => {
+            sendCloudinaryReply("Video upload failed.");
+            reject(new Error("Video upload failed."));
+          };
+          xhr.send(formData);
+        });
+
+        const galleryResponse = await fetch(apiUrl("/api/user/image-gallery"), {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${props.state.token}`,
+          },
+        });
+        const galleryPayload = await galleryResponse.json().catch(() => ({}));
+
+        if (!galleryResponse.ok) {
+          throw new Error(
+            galleryPayload?.message ||
+              uploadResult?.message ||
+              "Unable to refresh media gallery.",
           );
-          return;
         }
-      } catch (compressionError) {
-        sendCloudinaryReply(
-          `Video compression failed: ${compressionError?.message || "Unknown error."}`,
-        );
-        return;
+
+        syncUserMediaState(galleryPayload, {
+          keepCurrentProfilePicture: true,
+        });
+      } catch (error) {
+        // Error message already sent in onerror/onload
+      } finally {
+        setIsImageGalleryUploading(false);
       }
+      return;
     }
 
+    // Otherwise, use existing Cloudinary flow for photos and small videos
     const existingUploadTask = options?.uploadTask || null;
-    // Use the possibly compressed file
-    const fileToUploadFinal = fileToUploadPre;
+    const fileToUploadFinal = selectedFile;
     const fileName = String(
       existingUploadTask?.fileName ||
         fileToUploadFinal?.name ||
@@ -2805,10 +4836,7 @@ function HomeNoga(props) {
       lastModified: Number(fileToUploadFinal?.lastModified) || 0,
     };
 
-    // ...existing code...
-
     setIsImageGalleryUploading(true);
-
     let triedCompression = false;
     let fileToUpload = selectedFile;
 
@@ -2921,7 +4949,6 @@ function HomeNoga(props) {
         syncUserMediaState(savePayload, {
           keepCurrentProfilePicture: true,
         });
-        // ...existing code...
         sendCloudinaryReply(
           savePayload?.message || "Media saved to Cloudinary.",
         );
@@ -2998,13 +5025,11 @@ function HomeNoga(props) {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload?.message || "Unable to delete image.");
+        throw new Error(payload?.message || "Unable to delete media.");
       }
 
       syncUserMediaState(payload);
-      sendCloudinaryReply(
-        payload?.message || "Image deleted from Cloudinary gallery.",
-      );
+      sendCloudinaryReply(payload?.message || "Media deleted from gallery.");
       if (isImageViewerOpen) {
         setIsImageViewerOpen(false);
       }
@@ -3047,6 +5072,7 @@ function HomeNoga(props) {
       }
 
       syncUserMediaState(payload);
+      setActiveGalleryActionsPublicId("");
       sendCloudinaryReply(payload?.message || "Profile picture updated.");
     } catch (error) {
       sendCloudinaryReply(error?.message || "Unable to set profile picture.");
@@ -3058,6 +5084,10 @@ function HomeNoga(props) {
   // Removed: handleClearPendingUploads (no longer needed)
 
   // Removed: resumePendingUploads effect (no longer resumes uploads after refresh)
+
+  React.useEffect(() => {
+    loadImageGalleryOnMount();
+  }, [loadImageGalleryOnMount]);
 
   React.useEffect(() => {
     if (!imageOnlyGallery.length) {
@@ -3076,6 +5106,30 @@ function HomeNoga(props) {
   }, [activeGalleryImageIndex, imageOnlyGallery.length, isImageViewerOpen]);
 
   React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      HOME_GALLERY_PATTERNS_STORAGE_KEY,
+      JSON.stringify(galleryPatternIds),
+    );
+  }, [galleryPatternIds]);
+
+  React.useEffect(() => {
+    const validPublicIds = new Set(
+      imageOnlyGallery
+        .map((item) => String(item?.publicId || "").trim())
+        .filter(Boolean),
+    );
+
+    setGalleryPatternIds((currentIds) => {
+      const nextIds = currentIds.filter((itemId) => validPublicIds.has(itemId));
+      return nextIds.length === currentIds.length ? currentIds : nextIds;
+    });
+  }, [imageOnlyGallery]);
+
+  React.useEffect(() => {
     if (!activeGalleryActionsPublicId) {
       return;
     }
@@ -3088,6 +5142,28 @@ function HomeNoga(props) {
       setActiveGalleryActionsPublicId("");
     }
   }, [activeGalleryActionsPublicId, imageGallery]);
+
+  React.useEffect(() => {
+    if (!isVideoViewerOpen || !activeGalleryVideo) {
+      return;
+    }
+
+    const activeVideoPublicId = String(
+      activeGalleryVideo?.publicId || "",
+    ).trim();
+    const nextActiveVideo =
+      imageGallery.find(
+        (image) => String(image?.publicId || "").trim() === activeVideoPublicId,
+      ) || null;
+
+    if (!nextActiveVideo) {
+      setIsVideoViewerOpen(false);
+      setActiveGalleryVideo(null);
+      return;
+    }
+
+    setActiveGalleryVideo(nextActiveVideo);
+  }, [activeGalleryVideo, imageGallery, isVideoViewerOpen]);
 
   React.useEffect(() => {
     if (loginRecords.length === 0) {
@@ -3279,7 +5355,11 @@ function HomeNoga(props) {
 
       return normalizedViewport;
     });
-  }, [props.state?.profilePictureViewport]);
+  }, [
+    props.state?.profilePictureViewport?.scale,
+    props.state?.profilePictureViewport?.offsetX,
+    props.state?.profilePictureViewport?.offsetY,
+  ]);
 
   React.useEffect(() => {
     const normalizedDrawing = normalizeHomeDrawingPayload(
@@ -3311,7 +5391,9 @@ function HomeNoga(props) {
   }, [
     homeDrawing.draftPaths.length,
     isHomeDrawingModeEnabled,
-    props.state?.homeDrawing,
+    props.state?.homeDrawing?.draftPaths,
+    props.state?.homeDrawing?.appliedPaths,
+    props.state?.homeDrawing?.textItems,
   ]);
 
   React.useEffect(() => {
@@ -3374,6 +5456,18 @@ function HomeNoga(props) {
       return;
     }
 
+    const stateViewport = normalizeProfilePictureViewport(
+      props.state?.profilePictureViewport,
+    );
+
+    if (
+      stateViewport.scale === profilePictureViewport.scale &&
+      stateViewport.offsetX === profilePictureViewport.offsetX &&
+      stateViewport.offsetY === profilePictureViewport.offsetY
+    ) {
+      return;
+    }
+
     const saveTimeout = window.setTimeout(async () => {
       try {
         const response = await fetch(apiUrl("/api/user/profile"), {
@@ -3418,6 +5512,7 @@ function HomeNoga(props) {
     props.setUserMediaInfo,
     props.state?.imageGallery,
     props.state?.profilePicture,
+    props.state?.profilePictureViewport,
     props.state?.token,
   ]);
 
@@ -3461,13 +5556,13 @@ function HomeNoga(props) {
     };
   }, [
     isHomeDrawingModeEnabled,
-    homeDrawing,
+    homeDrawing.appliedPaths,
+    homeDrawing.draftPaths.length,
+    homeDrawing.textItems,
     persistHomeDrawing,
-    props.setUserMediaInfo,
-    props.state?.imageGallery,
-    props.state?.homeDrawing,
-    props.state?.profilePicture,
-    props.state?.profilePictureViewport,
+    props.state?.homeDrawing?.draftPaths,
+    props.state?.homeDrawing?.appliedPaths,
+    props.state?.homeDrawing?.textItems,
     props.state?.token,
   ]);
 
@@ -3797,7 +5892,8 @@ function HomeNoga(props) {
       setMusicArchivePlaylistFeedback("Saved planner music API settings.");
     } catch (error) {
       setMusicArchivePlaylistFeedback(
-        error?.message || "Saved settings, but could not refresh the player yet.",
+        error?.message ||
+          "Saved settings, but could not refresh the player yet.",
       );
     }
   };
@@ -3819,7 +5915,9 @@ function HomeNoga(props) {
       return [];
     }
 
-    const response = await fetch(buildInternetArchiveSearchUrl({ song, artist }));
+    const response = await fetch(
+      buildInternetArchiveSearchUrl({ song, artist }),
+    );
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -4042,7 +6140,9 @@ function HomeNoga(props) {
       return;
     }
 
-    setMusicBrainzPlaylistInput([...existingLabels, normalizedLabel].join("\n"));
+    setMusicBrainzPlaylistInput(
+      [...existingLabels, normalizedLabel].join("\n"),
+    );
     setMusicArchivePlaylistFeedback("Song added to the playlist.");
   };
 
@@ -4525,12 +6625,360 @@ function HomeNoga(props) {
       </div>
     );
   };
+
+  const profileState =
+    props.state && typeof props.state === "object" ? props.state : {};
+  const profileStudying =
+    profileState.studying && typeof profileState.studying === "object"
+      ? profileState.studying
+      : {};
+  const profileWorking =
+    profileState.working && typeof profileState.working === "object"
+      ? profileState.working
+      : {};
+  const profileHometown =
+    profileState.hometown && typeof profileState.hometown === "object"
+      ? profileState.hometown
+      : {};
+  const profileStudyingTime =
+    profileStudying.time && typeof profileStudying.time === "object"
+      ? profileStudying.time
+      : {};
+  const profileStudyingStartDate =
+    profileStudyingTime.startDate &&
+    typeof profileStudyingTime.startDate === "object"
+      ? profileStudyingTime.startDate
+      : {};
+  const profileStudyingCurrentDate =
+    profileStudyingTime.currentDate &&
+    typeof profileStudyingTime.currentDate === "object"
+      ? profileStudyingTime.currentDate
+      : {};
+  const formatProfileValue = (value) => {
+    const normalized = String(value ?? "").trim();
+    return normalized || "-";
+  };
+  const formattedDob = (() => {
+    if (!profileState.dob) {
+      return "-";
+    }
+    const parsedDate = new Date(profileState.dob);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return formatProfileValue(profileState.dob);
+    }
+    return parsedDate.toLocaleDateString();
+  })();
+  const profileColumns = [
+    {
+      title: "User Info",
+      rows: [
+        {
+          label: "First name",
+          value: formatProfileValue(profileState.firstname),
+        },
+        {
+          label: "Last name",
+          value: formatProfileValue(profileState.lastname),
+        },
+        {
+          label: "Username",
+          value: formatProfileValue(profileState.username),
+        },
+        {
+          label: "DOB",
+          value: formattedDob,
+        },
+      ],
+    },
+    {
+      title: "Study",
+      rows: [
+        {
+          label: "University",
+          value: formatProfileValue(
+            profileStudying.university || profileState.university,
+          ),
+        },
+        {
+          label: "Program",
+          value: formatProfileValue(
+            profileStudying.program || profileState.program,
+          ),
+        },
+        {
+          label: "Faculty",
+          value: formatProfileValue(
+            profileStudying.faculty || profileState.faculty,
+          ),
+        },
+        {
+          label: "Current year",
+          value: formatProfileValue(profileStudyingCurrentDate.year),
+        },
+        {
+          label: "Current term",
+          value: formatProfileValue(
+            profileStudyingCurrentDate.term ||
+              profileStudying.term ||
+              profileState.term,
+          ),
+        },
+        {
+          label: "Academic year",
+          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
+        },
+        {
+          label: "Language",
+          value: formatProfileValue(profileStudying.language),
+        },
+      ],
+    },
+    {
+      title: "Work",
+      rows: [
+        {
+          label: "Company",
+          value: formatProfileValue(profileWorking.company),
+        },
+        {
+          label: "Position",
+          value: formatProfileValue(profileWorking.position),
+        },
+      ],
+    },
+    {
+      title: "Contact",
+      rows: [
+        {
+          label: "Email",
+          value: formatProfileValue(profileState.email),
+        },
+        {
+          label: "Phone",
+          value: formatProfileValue(profileState.phone),
+        },
+        {
+          label: "Location",
+          value: formatProfileValue(
+            [profileHometown.Country, profileHometown.City]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+              .join(" / "),
+          ),
+        },
+      ],
+    },
+  ];
+  const compactDisplayName = formatProfileValue(
+    [profileState.firstname, profileState.lastname]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" "),
+  );
+  const compactUsername = formatProfileValue(
+    profileState.username ? `@${profileState.username}` : "",
+  );
+  const compactBio = formatProfileValue(profileState.bio);
+  const bioWrapperStyle = {
+    "--home-bio-wallpaper-image": currentBioWallpaperUrl
+      ? `url("${currentBioWallpaperUrl.replace(/"/g, '\\"')}")`
+      : "none",
+    "--home-bio-wallpaper-size": `${currentBioWallpaperSize}px auto`,
+    "--home-bio-wallpaper-repeat": currentBioWallpaperRepeat
+      ? "repeat"
+      : "no-repeat",
+  };
+  const drawingControlsPanel = (
+    <div
+      className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open fr"
+    >
+      <button
+        type="button"
+        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
+          isHomeDrawingStartingFresh ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingStartingFresh}
+        aria-label="Start a fresh unlinked line"
+        title="Start a fresh unlinked line"
+      >
+        <i className="fas fa-plus"></i>
+      </button>
+      <button
+        type="button"
+        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
+          isHomeDrawingAutoGlueEnabled ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingAutoGlueEnabled((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingAutoGlueEnabled}
+        aria-label={
+          isHomeDrawingAutoGlueEnabled
+            ? "Disable auto-gluing the line"
+            : "Enable auto-gluing the line"
+        }
+        title={isHomeDrawingAutoGlueEnabled ? "Auto-glue on" : "Auto-glue off"}
+      >
+        <i className="fas fa-link"></i>
+      </button>
+      <button
+        type="button"
+        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
+          isHomeDrawingAllowListEnabled ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingAllowListEnabled((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingAllowListEnabled}
+        aria-label="Toggle allow-list drawing zones"
+        title={
+          isHomeDrawingAllowListEnabled
+            ? "Allow-list zones on"
+            : "Allow-list zones off"
+        }
+      >
+        <i className="fas fa-filter"></i>
+      </button>
+      {isHomeDrawingAllowListEnabled ? (
+        <div className="Home_Noga_mainDrawingAllowList Home_Noga_mainDrawingControls_panelItem">
+          <button
+            type="button"
+            className="Home_Noga_mainDrawingAllowSelect"
+            onClick={() =>
+              setIsHomeDrawingAllowZoneMenuOpen((currentValue) => !currentValue)
+            }
+            aria-haspopup="listbox"
+            aria-expanded={isHomeDrawingAllowZoneMenuOpen}
+            title="Select allow-list zone"
+          >
+            {HOME_DRAWING_ALLOWLIST_ZONES.find(
+              (zone) => zone.id === activeHomeDrawingAllowZoneId,
+            )?.label || "Canvas"}
+            <i className="fas fa-chevron-down" aria-hidden="true"></i>
+          </button>
+          {isHomeDrawingAllowZoneMenuOpen ? (
+            <div
+              className="Home_Noga_mainDrawingAllowMenu"
+              role="listbox"
+              aria-label="Allowed drawing zones"
+            >
+              {HOME_DRAWING_ALLOWLIST_ZONES.map((zone) => (
+                <button
+                  key={zone.id}
+                  type="button"
+                  className={`Home_Noga_mainDrawingAllowOption${
+                    activeHomeDrawingAllowZoneId === zone.id ? " isActive" : ""
+                  }`}
+                  onClick={() => {
+                    setActiveHomeDrawingAllowZoneId(zone.id);
+                    setIsHomeDrawingAllowZoneMenuOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={activeHomeDrawingAllowZoneId === zone.id}
+                >
+                  {zone.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="Home_Noga_mainDrawingAllowList Home_Noga_mainDrawingControls_panelItem">
+        <button
+          type="button"
+          className="Home_Noga_mainDrawingAllowSelect"
+          onClick={() =>
+            setIsHomeDrawingVisibilityMenuOpen((currentValue) => !currentValue)
+          }
+          aria-haspopup="listbox"
+          aria-expanded={isHomeDrawingVisibilityMenuOpen}
+          title="Choose wrappers where drawing stays visible under children"
+        >
+          Visible ({homeDrawingVisibleWrapperIds.length})
+          <i className="fas fa-eye" aria-hidden="true"></i>
+        </button>
+        {isHomeDrawingVisibilityMenuOpen ? (
+          <div
+            className="Home_Noga_mainDrawingAllowMenu Home_Noga_mainDrawingVisibilityMenu"
+            role="listbox"
+            aria-label="Drawing visibility wrappers"
+          >
+            {HOME_DRAWING_VISIBILITY_WRAPPERS.map((wrapper) => {
+              const isChecked = homeDrawingVisibleWrapperIds.includes(
+                wrapper.id,
+              );
+
+              return (
+                <button
+                  key={wrapper.id}
+                  type="button"
+                  className={`Home_Noga_mainDrawingAllowOption${
+                    isChecked ? " isActive" : ""
+                  }`}
+                  onClick={() => toggleHomeDrawingVisibleWrapper(wrapper.id)}
+                  role="option"
+                  aria-selected={isChecked}
+                >
+                  <span className="Home_Noga_mainDrawingVisibilityCheck">
+                    {isChecked ? "✓" : ""}
+                  </span>
+                  <span>{wrapper.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+      <div className="Home_Noga_mainDrawingPalette fr Home_Noga_mainDrawingControls_panelItem">
+        {HOME_DRAWING_PALETTES.map((palette) => (
+          <button
+            key={palette.id}
+            type="button"
+            className={`Home_Noga_mainDrawingPaletteButton${
+              activeHomeDrawingPaletteId === palette.id ? " isActive" : ""
+            }`}
+            onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
+            aria-label={`Use ${palette.label} rope light color`}
+            title={palette.label}
+            style={{
+              "--home-drawing-palette-stroke": palette.stroke,
+              "--home-drawing-palette-glow": palette.glow,
+            }}
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem"
+        onClick={clearHomeDrawingCanvas}
+        aria-label="Clear glow lines"
+        title="Clear glow lines"
+      >
+        <i className="fas fa-eraser"></i>
+      </button>
+      <button
+        type="button"
+        className="Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem"
+        onClick={handleToggleHomeDrawingMode}
+        aria-label="Finish glow line drawing"
+        title="Finish glow line drawing"
+      >
+        <i className="fas fa-check"></i>
+      </button>
+    </div>
+  );
   return (
     <>
       <article
         id="Home_Noga_studysessions_article"
         className={[
           homeThemeClassName,
+          isHomeNogaDarkTheme ? "Home_Noga_themeDark" : "",
           !isNaghamtrkmani ? "Home_Noga_root--bg" : "",
         ]
           .filter(Boolean)
@@ -4538,103 +6986,6 @@ function HomeNoga(props) {
       >
         <section id="Home_Noga_visible_wrapper" className="fc slide-top">
           <div id="Home_Noga_main_wrapper" className="fc" ref={mainWrapperRef}>
-            <div
-              className={`Home_Noga_mainDrawingControls fr${
-                isHomeDrawingModeEnabled
-                  ? " Home_Noga_mainDrawingControls--open"
-                  : " Home_Noga_mainDrawingControls--closed"
-              }`}
-            >
-              <button
-                type="button"
-                className={`Home_Noga_mainDrawingButton${
-                  isHomeDrawingModeEnabled ? " isActive" : ""
-                }`}
-                onClick={handleToggleHomeDrawingMode}
-                aria-pressed={isHomeDrawingModeEnabled}
-                aria-label={
-                  isHomeDrawingModeEnabled
-                    ? "Disable glow line drawing"
-                    : "Enable glow line drawing"
-                }
-                title={
-                  isHomeDrawingModeEnabled
-                    ? "Disable glow line drawing"
-                    : "Enable glow line drawing"
-                }
-              >
-                <i className="fas fa-pen-nib"></i>
-              </button>
-              <button
-                type="button"
-                className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
-                  isHomeDrawingStartingFresh ? " isActive" : ""
-                }`}
-                onClick={() =>
-                  setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
-                }
-                aria-pressed={isHomeDrawingStartingFresh}
-                aria-label="Start a fresh unlinked line"
-                title="Start a fresh unlinked line"
-              >
-                <i className="fas fa-plus"></i>
-              </button>
-              <button
-                type="button"
-                className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
-                  isHomeDrawingAutoGlueEnabled ? " isActive" : ""
-                }`}
-                onClick={() =>
-                  setIsHomeDrawingAutoGlueEnabled(
-                    (currentValue) => !currentValue,
-                  )
-                }
-                aria-pressed={isHomeDrawingAutoGlueEnabled}
-                aria-label={
-                  isHomeDrawingAutoGlueEnabled
-                    ? "Disable auto-gluing the line"
-                    : "Enable auto-gluing the line"
-                }
-                title={
-                  isHomeDrawingAutoGlueEnabled
-                    ? "Auto-glue on"
-                    : "Auto-glue off"
-                }
-              >
-                <i className="fas fa-link"></i>
-              </button>
-              <div className="Home_Noga_mainDrawingPalette fr Home_Noga_mainDrawingControls_panelItem">
-                {HOME_DRAWING_PALETTES.map((palette) => (
-                  <button
-                    key={palette.id}
-                    type="button"
-                    className={`Home_Noga_mainDrawingPaletteButton${
-                      activeHomeDrawingPaletteId === palette.id
-                        ? " isActive"
-                        : ""
-                    }`}
-                    onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
-                    aria-label={`Use ${palette.label} rope light color`}
-                    title={palette.label}
-                    style={{
-                      "--home-drawing-palette-stroke": palette.stroke,
-                      "--home-drawing-palette-glow": palette.glow,
-                    }}
-                  >
-                    <span aria-hidden="true"></span>
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem"
-                onClick={clearHomeDrawingCanvas}
-                aria-label="Clear glow lines"
-                title="Clear glow lines"
-              >
-                <i className="fas fa-eraser"></i>
-              </button>
-            </div>
             <div
               ref={appliedDrawingCanvasHostRef}
               className="Home_Noga_mainDrawingCanvasHost Home_Noga_mainDrawingCanvasHost--display"
@@ -4663,68 +7014,29 @@ function HomeNoga(props) {
                 onPointerCancel={endHomeDrawingStroke}
               />
             </div>
-            <div id="Home_Noga_topControls" className="fr">
-              <div id="Home_Noga_navWrap">
-                <Nav
-                  path="/"
-                  state={props.state}
-                  logOut={props.logOut}
-                  acceptFriend={props.acceptFriend}
-                  makeNotificationsRead={props.makeNotificationsRead}
-                  extraActions={[
-                    {
-                      id: "friends-list",
-                      label: "Friends",
-                      iconClass: "fas fa-user-friends",
-                      isActive:
-                        !isReportsWrapperOpen && !showGalleryInRightColumn,
-                      onClick: () => {
-                        setIsReportsWrapperOpen(false);
-                        setShowGalleryInRightColumn(false);
-                        setOpenChatFriendId(null);
-                        props.closeActiveChat?.();
-                      },
-                    },
-                    {
-                      id: "media-gallery",
-                      label: "Media",
-                      iconClass: "fas fa-images",
-                      isActive:
-                        !isReportsWrapperOpen && showGalleryInRightColumn,
-                      onClick: () => {
-                        setIsReportsWrapperOpen(false);
-                        setShowGalleryInRightColumn(true);
-                      },
-                    },
-                    {
-                      id: "reports-settings",
-                      label: isReportsWrapperOpen
-                        ? "Hide Reports"
-                        : "Open Reports",
-                      iconClass: "fas fa-cog",
-                      isActive: isReportsWrapperOpen,
-                      onClick: () =>
-                        setIsReportsWrapperOpen(
-                          (currentValue) => !currentValue,
-                        ),
-                    },
-                  ]}
-                  subApps={homeSubApps}
-                />
-              </div>
-            </div>
-            <div id="Home_Noga_preStart_introWrap" className="fr" ref={introWrapRef}>
+            {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
+            <div
+              id="Home_Noga_preStart_introWrap"
+              className="fr"
+            >
               {/* Removed Home_Noga_preStart_profileWrapper and its contents */}
               <div
                 id="Home_Noga_main_leftColumn_wrapper"
                 className="Home_Noga_main_leftColumn_wrapper"
               >
-                <div id="Home_Noga_bioWrapper" className="Home_Noga_bioWrapper fc">
+                {renderHomeDrawingVisibilityCanvas("leftColumn")}
+                <div
+                  id="Home_Noga_bioWrapper"
+                  className="Home_Noga_bioWrapper fc"
+                  style={bioWrapperStyle}
+                >
+                  {renderHomeDrawingVisibilityCanvas("bio")}
                   <div
                     id="Home_Noga_preStart_profileWrapper"
                     ref={profilePictureWrapperRef}
                     style={{ position: "relative" }}
                   >
+                    {renderHomeDrawingVisibilityCanvas("profile")}
                     {profilePictureSrc ? (
                       <img
                         id="Home_Noga_preStart_profilePic"
@@ -4755,148 +7067,218 @@ function HomeNoga(props) {
                     />
                   </div>
                   <div id="Home_Noga_preStart_personalBio" className="fc">
-                    <div className="Home_Noga_preStart_bioFlexRow">
-                      <div className="Home_Noga_preStart_bioLeft fc">
-                        <span id="Home_Noga_preStart_bio_name">
-                          {props.state.firstname || "-"}{" "}
-                          {props.state.lastname || "-"}
-                        </span>
-                        <span id="Home_Noga_preStart_bio_username">
-                          ({props.state.username || "-"})
-                        </span>
-                      </div>
-                      <div className="Home_Noga_preStart_bioRight fc">
-                        <span id="Home_Noga_preStart_bio_study">
-                          Studying {props.state.program || "-"} at{" "}
-                          {props.state.university || "-"} University
-                        </span>
-                        <div id="Home_Noga_preStart_bio_yearTermRow">
-                          <span id="Home_Noga_preStart_bio_year">
-                            Year {props.state.studyYear || "-"}
-                          </span>
-                          <span id="Home_Noga_preStart_bio_term">
-                            Term {props.state.term || "-"}
-                          </span>
+                    {renderHomeDrawingVisibilityCanvas("bioText")}
+                    <div
+                      id="Home_Noga_preStart_personalInfoGrid"
+                      className="Home_Noga_preStart_personalInfoGrid--compact"
+                    >
+                      <div className="Home_Noga_compactBioCard">
+                        <div className="Home_Noga_compactBioIdentity fc">
+                          <h3 className="Home_Noga_compactBioName">
+                            {compactDisplayName}
+                          </h3>
+                          <p className="Home_Noga_compactBioUsername">
+                            {compactUsername}
+                          </p>
+                        </div>
+                        <div className="Home_Noga_compactBioSummary fc">
+                          <p className="Home_Noga_compactBioEyebrow">Bio</p>
+                          <p className="Home_Noga_compactBioText">
+                            {compactBio}
+                          </p>
+                          <button
+                            type="button"
+                            className="Home_Noga_aboutButton"
+                            onClick={() =>
+                              setIsAboutOpen((currentValue) => !currentValue)
+                            }
+                            aria-pressed={isAboutOpen}
+                          >
+                            {isAboutOpen ? "Close About" : "About"}
+                          </button>
+                          <button
+                            type="button"
+                            className="Home_Noga_aboutButton Home_Noga_wallpaperButton"
+                            onClick={() =>
+                              setIsBioWallpaperControlsOpen(
+                                (currentValue) => !currentValue,
+                              )
+                            }
+                            aria-pressed={isBioWallpaperControlsOpen}
+                          >
+                            {isBioWallpaperControlsOpen
+                              ? "Close Wallpaper"
+                              : "Wallpaper"}
+                          </button>
+                          {isBioWallpaperControlsOpen ? (
+                            <div className="Home_Noga_bioWallpaperControls fc">
+                              <label className="Home_Noga_bioWallpaperControlRow fc">
+                                <span>Pattern size</span>
+                                <input
+                                  type="range"
+                                  min="180"
+                                  max="1400"
+                                  step="20"
+                                  value={currentBioWallpaperSize}
+                                  onChange={(event) =>
+                                    updateBioWallpaperState({
+                                      bioWrapperWallpaperSize: Number(
+                                        event.target.value,
+                                      ),
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="Home_Noga_bioWallpaperControlCheck fr">
+                                <input
+                                  type="checkbox"
+                                  checked={currentBioWallpaperRepeat}
+                                  onChange={(event) =>
+                                    updateBioWallpaperState({
+                                      bioWrapperWallpaperRepeat:
+                                        event.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>Repeat for denser motifs</span>
+                              </label>
+                              <div className="Home_Noga_bioWallpaperControlActions fr">
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton Home_Noga_wallpaperAction"
+                                  onClick={resetBioWallpaperToDefault}
+                                >
+                                  Use Floral
+                                </button>
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton Home_Noga_wallpaperAction"
+                                  onClick={clearBioWallpaper}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
-                    <div
-                      className="Home_Noga_headerRibbon Home_Noga_headerRibbon--inline"
-                      aria-hidden="true"
-                    ></div>
                   </div>
                 </div>
-              </div>
-              <div
-                className="Home_Noga_introSeparator"
-                role="separator"
-                aria-orientation="vertical"
-                aria-valuemin={45}
-                aria-valuemax={85}
-                aria-valuenow={Math.round(leftColumnWidthPercent)}
-                onMouseDown={startSeparatorDrag}
-                onTouchStart={startSeparatorDrag}
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowLeft") {
-                    setLeftColumnWidthPercent((current) =>
-                      clampLeftColumnWidthPercent(current - 2),
-                    );
-                  } else if (event.key === "ArrowRight") {
-                    setLeftColumnWidthPercent((current) =>
-                      clampLeftColumnWidthPercent(current + 2),
-                    );
-                  }
-                }}
-              />
-              <section
-                id="Home_Noga_rightColumn_wrapper"
-                className="Home_Noga_socialFriendsPanel fc"
-              >
-                <div
-                  id="Home_Noga_friendsCard"
-                  className={`Home_Noga_socialFriendsCard fc${activeFriendCard ? " Home_Noga_socialFriendsCard--chatMounted" : ""}`}
-                >
-                  {activeFriendCard ? null : (
-                    <div className="Home_Noga_gallery_Header_wrapper fr">
-                      <div className="Home_Noga_socialFriendsHeaderCopy fc">
-                        <div className="Home_Noga_socialFriendsHeaderTitleRow fr">
-                          <h3 className="Home_Noga_socialFriendsTitle">
-                            {isReportsWrapperOpen
-                              ? "Settings"
-                              : showGalleryInRightColumn
-                                ? "Gallery"
-                                : "Friends"}
-                          </h3>
-                          {isReportsWrapperOpen ? null : (
-                            <span className="Home_Noga_socialFriendsCount">
-                              {showGalleryInRightColumn
-                                ? imageGallery.length
-                                : activeFriendsMiniTabMeta?.count || 0}
-                            </span>
-                          )}
+                <div className="Home_Noga_friendsEventsWrapper fr">
+                  <div className="Home_Noga_friendsEvents fc">
+                    {isAboutOpen ? (
+                      <>
+                        <div className="Home_Noga_friendsEventsHeader fr">
+                          <h3>About Profile</h3>
                         </div>
-                        {!isReportsWrapperOpen && !showGalleryInRightColumn ? (
-                          <div
-                            className="Home_Noga_socialFriendsMiniNav"
-                            style={{
-                              "--home-friends-tab-count":
-                                friendsMiniTabs.length,
-                              "--home-friends-tab-index":
-                                activeFriendsMiniTabIndex,
-                            }}
-                          >
-                            <div className="Home_Noga_socialFriendsMiniNavRail">
-                              <span
-                                className="Home_Noga_socialFriendsMiniNavSelector"
-                                aria-hidden="true"
-                              ></span>
-                              {friendsMiniTabs.map((tab) => (
-                                <button
-                                  key={tab.id}
-                                  type="button"
-                                  className={`Home_Noga_socialFriendsMiniNavButton${
-                                    activeFriendsMiniTab === tab.id
-                                      ? " isActive"
-                                      : ""
-                                  }`}
-                                  onClick={() =>
-                                    handleSelectFriendsMiniTab(tab.id)
-                                  }
-                                  aria-label={tab.label}
-                                  title={tab.label}
-                                >
-                                  <i className={tab.iconClass}></i>
-                                </button>
+                        <div className="Home_Noga_aboutPanel fc">
+                          {profileColumns.map((column) => (
+                            <section
+                              key={`about-${column.title}`}
+                              className="Home_Noga_profileInfoColumn fc"
+                            >
+                              <h4 className="Home_Noga_profileInfoColumnTitle">
+                                {column.title}
+                              </h4>
+                              {column.rows.map((row) => (
+                                <p key={`${column.title}-${row.label}`}>
+                                  <strong>{row.label}</strong>
+                                  <span>{row.value}</span>
+                                </p>
                               ))}
-                            </div>
-                          </div>
-                        ) : null}
+                            </section>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="Home_Noga_friendsEventsHeader fr">
+                          <h3>Friends Events</h3>
+                        </div>
+                        <div className="Home_Noga_friendsEventsEmpty">
+                          There is no events to show.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="Home_Noga_friendsGallery fc">
+                    <div className="Home_Noga_friendsGalleryHeader fc">
+                      <div className="Home_Noga_friendsGalleryHeaderTitleRow fr">
+                        <h3>Gallery</h3>
+                        <button
+                          type="button"
+                          className="Home_Noga_changePasswordSubmit Home_Noga_galleryUploadButton Home_Noga_friendsGalleryUploadButton"
+                          onClick={openProfilePicturePicker}
+                          disabled={isImageGalleryUploading}
+                          aria-label={
+                            isImageGalleryUploading
+                              ? "Uploading gallery item"
+                              : "Upload gallery item"
+                          }
+                          title={
+                            isImageGalleryUploading
+                              ? "Uploading..."
+                              : "Upload"
+                          }
+                        >
+                          <i
+                            className={`fi ${isImageGalleryUploading ? "fi-rr-spinner" : "fi-rr-cloud-upload-alt"}`}
+                            aria-hidden="true"
+                          ></i>
+                        </button>
                       </div>
-                      <div
-                        className="Home_Noga_headerRibbon"
-                        aria-hidden="true"
-                      ></div>
+                        <div className="Home_Noga_friendsGalleryHeaderControls fr">
+                        <div className="Home_Noga_galleryTabs fr">
+                          <button
+                            type="button"
+                            className={`Home_Noga_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("images")}
+                            aria-label="Images"
+                            title="Images"
+                          >
+                            <i className="fi fi-rr-copy-image" aria-hidden="true"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className={`Home_Noga_galleryTabButton${galleryTab === "patterns" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("patterns")}
+                            aria-label="Patterns"
+                            title="Patterns"
+                          >
+                            <i className="fas fa-shapes" aria-hidden="true"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className={`Home_Noga_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("videos")}
+                            aria-label="Videos"
+                            title="Videos"
+                          >
+                            <i className="fi fi-rr-film" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  {isReportsWrapperOpen ? null : showGalleryInRightColumn ? (
-                    <div className="Home_Noga_socialFriendsList Home_Noga_socialFriendsList--gallery">
-                      <button
-                        id="Home_Noga_uploadMediaButton"
-                        type="button"
-                        className="Home_Noga_changePasswordSubmit Home_Noga_galleryUploadButton"
-                        onClick={openProfilePicturePicker}
-                        disabled={isImageGalleryUploading}
-                      >
-                        {isImageGalleryUploading
-                          ? "Uploading..."
-                          : "Upload media"}
-                      </button>
-                      {imageGallery.length ? (
-                        <div id="Home_Noga_galleryGrid" className="Home_Noga_galleryGrid">
-                          {imageGallery.map((image) => {
+                    {imageGallery.length ? (
+                      <div className="Home_Noga_galleryGrid">
+                        {imageGallery
+                          .filter((image) =>
+                            galleryTab === "images"
+                              ? !isVideoGalleryItem(image)
+                              : galleryTab === "patterns"
+                                ? !isVideoGalleryItem(image) &&
+                                  galleryPatternIds.includes(
+                                    String(image?.publicId || "").trim(),
+                                  )
+                                : isVideoGalleryItem(image),
+                          )
+                          .map((image) => {
                             const imagePublicId = String(image?.publicId || "");
                             const isVideoItem = isVideoGalleryItem(image);
+                            const isPatternItem =
+                              !isVideoItem &&
+                              galleryPatternIds.includes(imagePublicId);
                             const isActionsOpen =
                               imagePublicId === activeGalleryActionsPublicId;
                             const isCurrentProfilePicture =
@@ -4940,22 +7322,25 @@ function HomeNoga(props) {
                                       className="Home_Noga_editPicButton"
                                       onClick={() => {
                                         if (isVideoItem) {
-                                          if (typeof window !== "undefined") {
-                                            window.open(
-                                              image.url,
-                                              "_blank",
-                                              "noopener,noreferrer",
-                                            );
-                                          }
+                                          openGalleryVideoPlayer(image);
                                           return;
                                         }
                                         openGalleryViewer(image.publicId);
                                       }}
+                                      aria-label={
+                                        isVideoItem
+                                          ? "Open video"
+                                          : "View image"
+                                      }
+                                      title={
+                                        isVideoItem
+                                          ? "Open video"
+                                          : "View image"
+                                      }
                                     >
-                                      <i className="fas fa-expand"></i>
-                                      <span>
-                                        {isVideoItem ? "Open" : "View"}
-                                      </span>
+                                      <i
+                                        className={`fas ${isVideoItem ? "fa-play" : "fa-expand"}`}
+                                      ></i>
                                     </button>
                                     <button
                                       type="button"
@@ -4971,18 +7356,74 @@ function HomeNoga(props) {
                                         isImageGallerySettingProfilePublicId ===
                                           image.publicId
                                       }
+                                      aria-label={
+                                        isImageGallerySettingProfilePublicId ===
+                                        image.publicId
+                                          ? "Saving profile picture"
+                                          : isVideoItem
+                                            ? "Only images can be profile pictures"
+                                            : isCurrentProfilePicture
+                                              ? "Current profile picture"
+                                              : "Set as profile picture"
+                                      }
+                                      title={
+                                        isImageGallerySettingProfilePublicId ===
+                                        image.publicId
+                                          ? "Saving profile picture"
+                                          : isVideoItem
+                                            ? "Only images can be profile pictures"
+                                            : isCurrentProfilePicture
+                                              ? "Current profile picture"
+                                              : "Set as profile picture"
+                                      }
                                     >
                                       <i className="fas fa-user-check"></i>
-                                      <span>
-                                        {isImageGallerySettingProfilePublicId ===
-                                        image.publicId
-                                          ? "Saving..."
-                                          : isVideoItem
-                                            ? "Image only"
-                                            : isCurrentProfilePicture
-                                              ? "Current pp"
-                                              : "Set as pp"}
-                                      </span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="Home_Noga_editPicButton"
+                                      onClick={() =>
+                                        toggleGalleryPattern(image.publicId)
+                                      }
+                                      disabled={isVideoItem}
+                                      aria-label={
+                                        isVideoItem
+                                          ? "Only images can become patterns"
+                                          : isPatternItem
+                                            ? "Remove from patterns"
+                                            : "Add to patterns"
+                                      }
+                                      title={
+                                        isVideoItem
+                                          ? "Only images can become patterns"
+                                          : isPatternItem
+                                            ? "Remove from patterns"
+                                            : "Add to patterns"
+                                      }
+                                    >
+                                      <i
+                                        className={`fas ${isPatternItem ? "fa-shapes" : "fa-vector-square"}`}
+                                      ></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="Home_Noga_editPicButton"
+                                      onClick={() =>
+                                        handleSetGalleryImageAsBioWallpaper(image)
+                                      }
+                                      disabled={isVideoItem}
+                                      aria-label={
+                                        isVideoItem
+                                          ? "Only images can be used as bio wallpaper"
+                                          : "Set as bio wallpaper"
+                                      }
+                                      title={
+                                        isVideoItem
+                                          ? "Only images can be used as bio wallpaper"
+                                          : "Set as bio wallpaper"
+                                      }
+                                    >
+                                      <i className="fas fa-panorama"></i>
                                     </button>
                                     <button
                                       type="button"
@@ -4994,57 +7435,127 @@ function HomeNoga(props) {
                                         isImageGalleryDeletingPublicId ===
                                         image.publicId
                                       }
+                                      aria-label={
+                                        isImageGalleryDeletingPublicId ===
+                                        image.publicId
+                                          ? "Deleting media"
+                                          : "Delete media"
+                                      }
+                                      title={
+                                        isImageGalleryDeletingPublicId ===
+                                        image.publicId
+                                          ? "Deleting media"
+                                          : "Delete media"
+                                      }
                                     >
                                       <i className="fas fa-trash-alt"></i>
-                                      <span>
-                                        {isImageGalleryDeletingPublicId ===
-                                        image.publicId
-                                          ? "Deleting..."
-                                          : "Delete"}
-                                      </span>
                                     </button>
                                   </div>
                                 </div>
                               </article>
                             );
                           })}
+                      </div>
+                    ) : (
+                      <div className="Home_Noga_galleryEmptyState">
+                        {galleryTab === "patterns"
+                          ? "No saved patterns yet."
+                          : "No media uploaded yet."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <section
+                id="Home_Noga_rightColumn_wrapper"
+                className="Home_Noga_socialFriendsPanel fc"
+              >
+                {renderHomeDrawingVisibilityCanvas("rightColumn")}
+                <div
+                  id="Home_Noga_friendsCard"
+                  className={`Home_Noga_socialFriendsCard fc${activeFriendCard ? " Home_Noga_socialFriendsCard--chatMounted" : ""}`}
+                >
+                  {activeFriendCard ? null : (
+                    <div className="Home_Noga_gallery_Header_wrapper fr">
+                      <div className="Home_Noga_socialFriendsHeaderCopy fc">
+                        <div className="Home_Noga_socialFriendsHeaderTitleRow fr">
+                          <h3 className="Home_Noga_socialFriendsTitle">
+                            {isReportsWrapperOpen
+                              ? "Settings"
+                              : activeFriendsMiniTabMeta?.label || "Friends"}
+                          </h3>
+                          {isReportsWrapperOpen ? null : (
+                            <span className="Home_Noga_socialFriendsCount">
+                              {activeFriendsMiniTabMeta?.count || 0}
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="Home_Noga_galleryEmptyState">
-                          No media uploaded yet.
-                        </div>
-                      )}
+                        {!isReportsWrapperOpen ? (
+                          <div
+                            className="Home_Noga_socialFriendsMiniNav"
+                            style={{
+                              "--home-friends-tab-count": 3,
+                              "--home-friends-tab-index": Math.max(
+                                0,
+                                Math.min(activeFriendsMiniTabIndex, 2),
+                              ),
+                            }}
+                          >
+                            <div className="Home_Noga_socialFriendsMiniNavRail">
+                              <span
+                                className="Home_Noga_socialFriendsMiniNavSelector"
+                                aria-hidden="true"
+                              ></span>
+                              {friendsMiniTabs.map((tab) => (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  className={`Home_Noga_socialFriendsMiniNavButton${
+                                    activeFriendsMiniTab === tab.id
+                                      ? " isActive"
+                                      : ""
+                                  }`}
+                                  onClick={() =>
+                                    handleSelectFriendsMiniTab(tab.id)
+                                  }
+                                  aria-label={tab.label}
+                                  title={tab.label}
+                                >
+                                  <i className={tab.iconClass}></i>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  ) : (
-                    <ul className="Home_Noga_socialFriendsList">
-                      {activeFriendCard ? (
-                        renderFriendListItem(activeFriendCard)
-                      ) : activeFriendsMiniTab === "requests" ? (
-                        friendRequestNotifications.length === 0 ? (
-                          <li className="Home_Noga_socialFriendsEmptyState">
-                            No pending friend requests right now.
-                          </li>
-                        ) : (
-                          friendRequestNotifications.map(
-                            renderFriendRequestListItem,
-                          )
-                        )
-                      ) : activeFriendsMiniTab === "blocked" ? (
-                        blockedUsers.length === 0 ? (
-                          <li className="Home_Noga_socialFriendsEmptyState">
-                            No blocked users to show.
-                          </li>
-                        ) : (
-                          blockedUsers.map(renderBlockedUserListItem)
-                        )
-                      ) : socialFriends.length === 0 ? (
-                        <li className="Home_Noga_socialFriendsEmptyState">
-                          No friends yetâ€”share Phenomed Social with a colleague.
-                        </li>
+                  )}
+                  {isReportsWrapperOpen ? null : (
+                    <>
+                      {activeFriendsMiniTab === "friends" ? (
+                        <div className="Home_Noga_socialFriendsSearchAndBlocked fc">
+                          {renderFriendSearchPanel()}
+                          {renderBlockedListPanel()}
+                        </div>
                       ) : (
-                        socialFriends.map(renderFriendListItem)
+                        <>
+                          {activeFriendsMiniTab === "pages"
+                            ? renderPageSearchPanel()
+                            : renderGroupSearchPanel()}
+                          <ul className="Home_Noga_socialFriendsList">
+                            <li className="Home_Noga_socialFriendsEmptyState">
+                              {activeFriendsMiniTab === "pages"
+                                ? pageSearchQuery.trim()
+                                  ? "No pages matched your search."
+                                  : "No pages to show yet."
+                                : groupSearchQuery.trim()
+                                  ? "No groups matched your search."
+                                  : "No groups to show yet."}
+                            </li>
+                          </ul>
+                        </>
                       )}
-                    </ul>
+                    </>
                   )}
                 </div>
               </section>
@@ -5055,126 +7566,241 @@ function HomeNoga(props) {
             id="Home_Noga_preStart_reportsWrapper"
             className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reportsWrapper--closed"}`}
           >
-              <div className="Home_Noga_settingsBackRow fr">
-                <button
-                  type="button"
-                  className="Home_Noga_settingsBackButton"
-                  onClick={() => setIsReportsWrapperOpen(false)}
-                  aria-label="Back from settings"
-                  title="Back"
-                >
-                  <i className="fas fa-arrow-left"></i>
-                  <span>Back</span>
-                </button>
+            {renderHomeDrawingVisibilityCanvas("reports")}
+            <div className="Home_Noga_settingsBackRow fr">
+              <button
+                type="button"
+                className="Home_Noga_settingsBackButton"
+                onClick={() => setIsReportsWrapperOpen(false)}
+                aria-label="Back from settings"
+                title="Back"
+              >
+                <i className="fas fa-arrow-left"></i>
+                <span>Back</span>
+              </button>
+            </div>
+            <div className="fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard">
+              <div className="Home_Noga_gallery_Header_wrapper fr">
+                <h3>Log Record: Date and Time</h3>
+                <div className="Home_Noga_gallery_Header_wrapperActions fr">
+                  <button
+                    type="button"
+                    className="Home_Noga_reportDeleteButton"
+                    onClick={clearLoginLog}
+                    disabled={isLoginLogDeleting}
+                    aria-label="Delete all login log entries"
+                    title="Delete all login log entries"
+                  >
+                    <i className="fas fa-trash-alt"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="Home_Noga_reportToggleButton"
+                    onClick={() => toggleReportSection("loginLog")}
+                    aria-label="Toggle login log"
+                    aria-expanded={isReportSectionOpen("loginLog")}
+                    title="Toggle login log"
+                  >
+                    <i
+                      className={`fas ${isReportSectionOpen("loginLog") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                    ></i>
+                  </button>
+                </div>
               </div>
+              <div
+                className={`Home_Noga_reportBody fc${isReportSectionOpen("loginLog") ? " isOpen" : ""}`}
+              >
+                <ul className="fc Home_Noga_studySessions_area">
+                  {loginLogError ? (
+                    <div>{loginLogError}</div>
+                  ) : activeLoginRecord === null ? (
+                    <div>No login records to show yet</div>
+                  ) : (
+                    (() => {
+                      const loggedInAt = new Date(activeLoginRecord.loggedInAt);
+                      const loggedOutAt = activeLoginRecord.loggedOutAt
+                        ? new Date(activeLoginRecord.loggedOutAt)
+                        : null;
+
+                      return (
+                        <li
+                          key={
+                            activeLoginRecord._id ||
+                            activeLoginRecord.loggedInAt ||
+                            loginLogIndex
+                          }
+                          className="Home_Noga_logRecordViewer"
+                        >
+                          <button
+                            type="button"
+                            className="Home_Noga_logRecordArrow"
+                            onClick={() =>
+                              setLoginLogIndex((currentIndex) =>
+                                Math.max(currentIndex - 1, 0),
+                              )
+                            }
+                            disabled={loginLogIndex === 0}
+                            aria-label="Show newer login record"
+                            title="Show newer login record"
+                          >
+                            <i className="fas fa-angle-up"></i>
+                          </button>
+                          <div className="Home_Noga_logRecordCard">
+                            <div className="Home_Noga_logRecordEntry fc">
+                              <span className="Home_Noga_logRecordLabel">
+                                Login:
+                              </span>
+                              <span className="Home_Noga_logRecordValue">
+                                {loggedInAt.toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}{" "}
+                                {loggedInAt.toLocaleTimeString(undefined, {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <div className="Home_Noga_logRecordEntry fc">
+                              <span className="Home_Noga_logRecordLabel">
+                                Logout:
+                              </span>
+                              <span className="Home_Noga_logRecordValue">
+                                {loggedOutAt
+                                  ? `${loggedOutAt.toLocaleDateString(
+                                      undefined,
+                                      {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                      },
+                                    )} ${loggedOutAt.toLocaleTimeString(
+                                      undefined,
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                      },
+                                    )}`
+                                  : "Still active"}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="Home_Noga_logRecordArrow"
+                            onClick={() =>
+                              setLoginLogIndex((currentIndex) =>
+                                Math.min(
+                                  currentIndex + 1,
+                                  loginRecords.length - 1,
+                                ),
+                              )
+                            }
+                            disabled={loginLogIndex === loginRecords.length - 1}
+                            aria-label="Show older login record"
+                            title="Show older login record"
+                          >
+                            <i className="fas fa-angle-down"></i>
+                          </button>
+                        </li>
+                      );
+                    })()
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {isVisitLogOwner ? (
               <div className="fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard">
                 <div className="Home_Noga_gallery_Header_wrapper fr">
-                  <h3>Log Record: Date and Time</h3>
+                  <h3>Visit Log: App Entries</h3>
                   <div className="Home_Noga_gallery_Header_wrapperActions fr">
                     <button
                       type="button"
                       className="Home_Noga_reportDeleteButton"
-                      onClick={clearLoginLog}
-                      disabled={isLoginLogDeleting}
-                      aria-label="Delete all login log entries"
-                      title="Delete all login log entries"
+                      onClick={clearVisitLog}
+                      disabled={isVisitLogDeleting}
+                      aria-label="Delete all visit log entries"
+                      title="Delete all visit log entries"
                     >
                       <i className="fas fa-trash-alt"></i>
                     </button>
                     <button
                       type="button"
                       className="Home_Noga_reportToggleButton"
-                      onClick={() => toggleReportSection("loginLog")}
-                      aria-label="Toggle login log"
-                      aria-expanded={isReportSectionOpen("loginLog")}
-                      title="Toggle login log"
+                      onClick={() => toggleReportSection("visitLog")}
+                      aria-label="Toggle visit log"
+                      aria-expanded={isReportSectionOpen("visitLog")}
+                      title="Toggle visit log"
                     >
                       <i
-                        className={`fas ${isReportSectionOpen("loginLog") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                        className={`fas ${isReportSectionOpen("visitLog") ? "fa-chevron-up" : "fa-chevron-down"}`}
                       ></i>
                     </button>
                   </div>
                 </div>
                 <div
-                  className={`Home_Noga_reportBody fc${isReportSectionOpen("loginLog") ? " isOpen" : ""}`}
+                  className={`Home_Noga_reportBody fc${isReportSectionOpen("visitLog") ? " isOpen" : ""}`}
                 >
                   <ul className="fc Home_Noga_studySessions_area">
-                    {loginLogError ? (
-                      <div>{loginLogError}</div>
-                    ) : activeLoginRecord === null ? (
-                      <div>No login records to show yet</div>
+                    {isVisitLogLoading ? (
+                      <div>Loading visit log...</div>
+                    ) : visitLogError ? (
+                      <div>{visitLogError}</div>
+                    ) : activeVisitLogRecord === null ? (
+                      <div>No visit records to show yet</div>
                     ) : (
                       (() => {
-                        const loggedInAt = new Date(
-                          activeLoginRecord.loggedInAt,
+                        const visitedAt = new Date(
+                          activeVisitLogRecord.visitedAt,
                         );
-                        const loggedOutAt = activeLoginRecord.loggedOutAt
-                          ? new Date(activeLoginRecord.loggedOutAt)
-                          : null;
 
                         return (
                           <li
-                            key={
-                              activeLoginRecord._id ||
-                              activeLoginRecord.loggedInAt ||
-                              loginLogIndex
-                            }
+                            key={`${activeVisitLogRecord._id || activeVisitLogRecord.ip || "visit"}-${activeVisitLogRecord.visitedAt || visitLogIndex}`}
                             className="Home_Noga_logRecordViewer"
                           >
                             <button
                               type="button"
                               className="Home_Noga_logRecordArrow"
                               onClick={() =>
-                                setLoginLogIndex((currentIndex) =>
+                                setVisitLogIndex((currentIndex) =>
                                   Math.max(currentIndex - 1, 0),
                                 )
                               }
-                              disabled={loginLogIndex === 0}
-                              aria-label="Show newer login record"
-                              title="Show newer login record"
+                              disabled={visitLogIndex === 0}
+                              aria-label="Show newer visit record"
+                              title="Show newer visit record"
                             >
                               <i className="fas fa-angle-up"></i>
                             </button>
-                            <div className="Home_Noga_logRecordCard">
+                            <div className="Home_Noga_logRecordCard Home_Noga_logRecordCard--stacked">
                               <div className="Home_Noga_logRecordEntry fc">
                                 <span className="Home_Noga_logRecordLabel">
-                                  Login:
+                                  IP:
                                 </span>
                                 <span className="Home_Noga_logRecordValue">
-                                  {loggedInAt.toLocaleDateString(undefined, {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  })}{" "}
-                                  {loggedInAt.toLocaleTimeString(undefined, {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second: "2-digit",
-                                  })}
+                                  {`${activeVisitLogRecord.ip || "Unknown IP"} (${activeVisitLogRecord.country || "Unknown"})`}
                                 </span>
                               </div>
                               <div className="Home_Noga_logRecordEntry fc">
                                 <span className="Home_Noga_logRecordLabel">
-                                  Logout:
+                                  Visited:
                                 </span>
                                 <span className="Home_Noga_logRecordValue">
-                                  {loggedOutAt
-                                    ? `${loggedOutAt.toLocaleDateString(
-                                        undefined,
-                                        {
-                                          year: "numeric",
-                                          month: "long",
-                                          day: "numeric",
-                                        },
-                                      )} ${loggedOutAt.toLocaleTimeString(
-                                        undefined,
-                                        {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                          second: "2-digit",
-                                        },
-                                      )}`
-                                    : "Still active"}
+                                  {visitedAt.toLocaleDateString(undefined, {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}{" "}
+                                  {visitedAt.toLocaleTimeString(undefined, {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
                                 </span>
                               </div>
                             </div>
@@ -5182,18 +7808,18 @@ function HomeNoga(props) {
                               type="button"
                               className="Home_Noga_logRecordArrow"
                               onClick={() =>
-                                setLoginLogIndex((currentIndex) =>
+                                setVisitLogIndex((currentIndex) =>
                                   Math.min(
                                     currentIndex + 1,
-                                    loginRecords.length - 1,
+                                    visitLogEntries.length - 1,
                                   ),
                                 )
                               }
                               disabled={
-                                loginLogIndex === loginRecords.length - 1
+                                visitLogIndex === visitLogEntries.length - 1
                               }
-                              aria-label="Show older login record"
-                              title="Show older login record"
+                              aria-label="Show older visit record"
+                              title="Show older visit record"
                             >
                               <i className="fas fa-angle-down"></i>
                             </button>
@@ -5204,332 +7830,221 @@ function HomeNoga(props) {
                   </ul>
                 </div>
               </div>
+            ) : null}
 
-              {isVisitLogOwner ? (
-                <div className="fc Home_Noga_preStart_reportCard Home_Noga_preStart_reportsCard">
-                  <div className="Home_Noga_gallery_Header_wrapper fr">
-                    <h3>Visit Log: App Entries</h3>
-                    <div className="Home_Noga_gallery_Header_wrapperActions fr">
-                      <button
-                        type="button"
-                        className="Home_Noga_reportDeleteButton"
-                        onClick={clearVisitLog}
-                        disabled={isVisitLogDeleting}
-                        aria-label="Delete all visit log entries"
-                        title="Delete all visit log entries"
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="Home_Noga_reportToggleButton"
-                        onClick={() => toggleReportSection("visitLog")}
-                        aria-label="Toggle visit log"
-                        aria-expanded={isReportSectionOpen("visitLog")}
-                        title="Toggle visit log"
-                      >
-                        <i
-                          className={`fas ${isReportSectionOpen("visitLog") ? "fa-chevron-up" : "fa-chevron-down"}`}
-                        ></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div
-                    className={`Home_Noga_reportBody fc${isReportSectionOpen("visitLog") ? " isOpen" : ""}`}
-                  >
-                    <ul className="fc Home_Noga_studySessions_area">
-                      {isVisitLogLoading ? (
-                        <div>Loading visit log...</div>
-                      ) : visitLogError ? (
-                        <div>{visitLogError}</div>
-                      ) : activeVisitLogRecord === null ? (
-                        <div>No visit records to show yet</div>
-                      ) : (
-                        (() => {
-                          const visitedAt = new Date(
-                            activeVisitLogRecord.visitedAt,
-                          );
-
-                          return (
-                            <li
-                              key={`${activeVisitLogRecord._id || activeVisitLogRecord.ip || "visit"}-${activeVisitLogRecord.visitedAt || visitLogIndex}`}
-                              className="Home_Noga_logRecordViewer"
-                            >
-                              <button
-                                type="button"
-                                className="Home_Noga_logRecordArrow"
-                                onClick={() =>
-                                  setVisitLogIndex((currentIndex) =>
-                                    Math.max(currentIndex - 1, 0),
-                                  )
-                                }
-                                disabled={visitLogIndex === 0}
-                                aria-label="Show newer visit record"
-                                title="Show newer visit record"
-                              >
-                                <i className="fas fa-angle-up"></i>
-                              </button>
-                              <div className="Home_Noga_logRecordCard Home_Noga_logRecordCard--stacked">
-                                <div className="Home_Noga_logRecordEntry fc">
-                                  <span className="Home_Noga_logRecordLabel">
-                                    IP:
-                                  </span>
-                                  <span className="Home_Noga_logRecordValue">
-                                    {`${activeVisitLogRecord.ip || "Unknown IP"} (${activeVisitLogRecord.country || "Unknown"})`}
-                                  </span>
-                                </div>
-                                <div className="Home_Noga_logRecordEntry fc">
-                                  <span className="Home_Noga_logRecordLabel">
-                                    Visited:
-                                  </span>
-                                  <span className="Home_Noga_logRecordValue">
-                                    {visitedAt.toLocaleDateString(undefined, {
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    })}{" "}
-                                    {visitedAt.toLocaleTimeString(undefined, {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      second: "2-digit",
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                className="Home_Noga_logRecordArrow"
-                                onClick={() =>
-                                  setVisitLogIndex((currentIndex) =>
-                                    Math.min(
-                                      currentIndex + 1,
-                                      visitLogEntries.length - 1,
-                                    ),
-                                  )
-                                }
-                                disabled={
-                                  visitLogIndex === visitLogEntries.length - 1
-                                }
-                                aria-label="Show older visit record"
-                                title="Show older visit record"
-                              >
-                                <i className="fas fa-angle-down"></i>
-                              </button>
-                            </li>
-                          );
-                        })()
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              ) : null}
-
-              {isVisitLogOwner ? (
-                <div className="fc Home_Noga_preStart_reportsCard">
-                  <div className="Home_Noga_gallery_Header_wrapper fr">
-                    <h3>naghamtrkmani course letter</h3>
-                    <button
-                      type="button"
-                      className="Home_Noga_reportToggleButton"
-                      onClick={() => toggleReportSection("naghamLetter")}
-                      aria-label="Toggle Nagham course letter"
-                      aria-expanded={isReportSectionOpen("naghamLetter")}
-                      title="Toggle Nagham course letter"
-                    >
-                      <i
-                        className={`fas ${isReportSectionOpen("naghamLetter") ? "fa-chevron-up" : "fa-chevron-down"}`}
-                      ></i>
-                    </button>
-                  </div>
-                  <div
-                    className={`Home_Noga_reportBody fc${isReportSectionOpen("naghamLetter") ? " isOpen" : ""}`}
-                  >
-                    <div id="Home_Noga_naghamCourseLetter_div" className="fc">
-                      <select
-                        id="Home_Noga_naghamCourseLetter_select"
-                        value={selectedNaghamCourseId}
-                        onChange={(event) => {
-                          const nextCourseId = event.target.value;
-                          setSelectedNaghamCourseId(nextCourseId);
-                          setNaghamCourseLetterInput(
-                            naghamCourseLetters[nextCourseId] ||
-                              DEFAULT_NAGHAM_COURSE_LETTER,
-                          );
-                          if (naghamCourseLetterFeedback) {
-                            setNaghamCourseLetterFeedback("");
-                          }
-                        }}
-                      >
-                        {naghamCourseOptions.length === 0 ? (
-                          <option value="">No Nagham courses found</option>
-                        ) : null}
-                        {naghamCourseOptions.map((course) => (
-                          <option key={course.id} value={course.id}>
-                            {course.name}
-                          </option>
-                        ))}
-                      </select>
-                      <textarea
-                        id="Home_Noga_naghamCourseLetter_textarea"
-                        value={naghamCourseLetterInput}
-                        onChange={(event) => {
-                          setNaghamCourseLetterInput(event.target.value);
-                          if (naghamCourseLetterFeedback) {
-                            setNaghamCourseLetterFeedback("");
-                          }
-                        }}
-                        placeholder="Write the printed letter for the selected Nagham course"
-                        rows={5}
-                      />
-                      <button
-                        type="button"
-                        className="Home_Noga_changePasswordSubmit"
-                        onClick={saveNaghamCourseLetter}
-                      >
-                        Save note
-                      </button>
-                      {naghamCourseLetterFeedback ? (
-                        <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
-                          {naghamCourseLetterFeedback}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
+            {isVisitLogOwner ? (
               <div className="fc Home_Noga_preStart_reportsCard">
                 <div className="Home_Noga_gallery_Header_wrapper fr">
-                  <h3>planner music playlist</h3>
+                  <h3>naghamtrkmani course letter</h3>
                   <button
                     type="button"
                     className="Home_Noga_reportToggleButton"
-                    onClick={() => toggleReportSection("musicPlaylist")}
-                    aria-label="Toggle planner music playlist"
-                    aria-expanded={isReportSectionOpen("musicPlaylist")}
-                    title="Toggle planner music playlist"
+                    onClick={() => toggleReportSection("naghamLetter")}
+                    aria-label="Toggle Nagham course letter"
+                    aria-expanded={isReportSectionOpen("naghamLetter")}
+                    title="Toggle Nagham course letter"
                   >
                     <i
-                      className={`fas ${isReportSectionOpen("musicPlaylist") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                      className={`fas ${isReportSectionOpen("naghamLetter") ? "fa-chevron-up" : "fa-chevron-down"}`}
                     ></i>
                   </button>
                 </div>
                 <div
-                  className={`Home_Noga_reportBody fc${isReportSectionOpen("musicPlaylist") ? " isOpen" : ""}`}
+                  className={`Home_Noga_reportBody fc${isReportSectionOpen("naghamLetter") ? " isOpen" : ""}`}
                 >
-                  <div id="Home_Noga_musicArchivePlaylist_div" className="fc">
-                    <div className="Home_Noga_musicLibraryCompact fc">
-                      <div className="Home_Noga_musicApiHeader fr">
-                        <strong>Music library</strong>
-                        <span>One compact place for all music sources</span>
+                  <div id="Home_Noga_naghamCourseLetter_div" className="fc">
+                    <select
+                      id="Home_Noga_naghamCourseLetter_select"
+                      value={selectedNaghamCourseId}
+                      onChange={(event) => {
+                        const nextCourseId = event.target.value;
+                        setSelectedNaghamCourseId(nextCourseId);
+                        setNaghamCourseLetterInput(
+                          naghamCourseLetters[nextCourseId] ||
+                            DEFAULT_NAGHAM_COURSE_LETTER,
+                        );
+                        if (naghamCourseLetterFeedback) {
+                          setNaghamCourseLetterFeedback("");
+                        }
+                      }}
+                    >
+                      {naghamCourseOptions.length === 0 ? (
+                        <option value="">No Nagham courses found</option>
+                      ) : null}
+                      {naghamCourseOptions.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.name}
+                        </option>
+                      ))}
+                    </select>
+                    <textarea
+                      id="Home_Noga_naghamCourseLetter_textarea"
+                      value={naghamCourseLetterInput}
+                      onChange={(event) => {
+                        setNaghamCourseLetterInput(event.target.value);
+                        if (naghamCourseLetterFeedback) {
+                          setNaghamCourseLetterFeedback("");
+                        }
+                      }}
+                      placeholder="Write the printed letter for the selected Nagham course"
+                      rows={5}
+                    />
+                    <button
+                      type="button"
+                      className="Home_Noga_changePasswordSubmit"
+                      onClick={saveNaghamCourseLetter}
+                    >
+                      Save note
+                    </button>
+                    {naghamCourseLetterFeedback ? (
+                      <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
+                        {naghamCourseLetterFeedback}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="fc Home_Noga_preStart_reportsCard">
+              <div className="Home_Noga_gallery_Header_wrapper fr">
+                <h3>planner music playlist</h3>
+                <button
+                  type="button"
+                  className="Home_Noga_reportToggleButton"
+                  onClick={() => toggleReportSection("musicPlaylist")}
+                  aria-label="Toggle planner music playlist"
+                  aria-expanded={isReportSectionOpen("musicPlaylist")}
+                  title="Toggle planner music playlist"
+                >
+                  <i
+                    className={`fas ${isReportSectionOpen("musicPlaylist") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                  ></i>
+                </button>
+              </div>
+              <div
+                className={`Home_Noga_reportBody fc${isReportSectionOpen("musicPlaylist") ? " isOpen" : ""}`}
+              >
+                <div id="Home_Noga_musicArchivePlaylist_div" className="fc">
+                  <div className="Home_Noga_musicLibraryCompact fc">
+                    <div className="Home_Noga_musicApiHeader fr">
+                      <strong>Music library</strong>
+                      <span>One compact place for all music sources</span>
+                    </div>
+
+                    <div className="Home_Noga_musicLibraryMainRow fr">
+                      <div className="Home_Noga_musicLibraryUnifiedSearch fc">
+                        <div className="Home_Noga_musicLibraryUnifiedSearchContent fc">
+                          <div className="Home_Noga_musicArchiveSearch_row fr">
+                            <input
+                              id="Home_Noga_musicLibrarySongSearch_input"
+                              type="search"
+                              value={musicLibrarySongQuery}
+                              onChange={(event) => {
+                                setMusicLibrarySongQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by song"
+                            />
+                            <input
+                              id="Home_Noga_musicLibraryArtistSearch_input"
+                              type="search"
+                              value={musicLibraryArtistQuery}
+                              onChange={(event) => {
+                                setMusicLibraryArtistQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by artist"
+                            />
+                            <button
+                              type="button"
+                              className="Home_Noga_changePasswordSubmit"
+                              onClick={searchAllMusicLibrarySources}
+                              disabled={isMusicLibrarySearching}
+                            >
+                              {isMusicLibrarySearching
+                                ? "Searching..."
+                                : "Search"}
+                            </button>
+                          </div>
+                          {musicLibrarySearchFeedback ? (
+                            <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
+                              {musicLibrarySearchFeedback}
+                            </p>
+                          ) : null}
+                        </div>
+                        <ul
+                          id="Home_Noga_musicLibraryPlaylist_ul"
+                          className="fc"
+                        >
+                          {musicLibraryPlaylistItems.length > 0 ? (
+                            musicLibraryPlaylistItems.map((item) => (
+                              <li
+                                key={item.id}
+                                className="Home_Noga_musicLibraryPlaylist_item fr"
+                              >
+                                <div className="Home_Noga_musicLibraryPlaylist_copy fc">
+                                  <strong>{item.label}</strong>
+                                  <div className="Home_Noga_musicArchiveSearch_meta fr">
+                                    <span>
+                                      {item.meta || "Added to playlist"}
+                                    </span>
+                                    <em className="Home_Noga_musicArchiveSearch_sourceTag">
+                                      {item.source}
+                                    </em>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="Home_Noga_musicLibraryPlaylist_delete"
+                                  onClick={() =>
+                                    removeMusicLibraryPlaylistItem(
+                                      item.provider,
+                                      item.value,
+                                    )
+                                  }
+                                  aria-label={`Delete ${item.label} from playlist`}
+                                  title="Delete from playlist"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="Home_Noga_musicLibraryPlaylist_empty">
+                              Added songs will appear here.
+                            </li>
+                          )}
+                        </ul>
                       </div>
 
-                      <div className="Home_Noga_musicLibraryMainRow fr">
-                        <div className="Home_Noga_musicLibraryUnifiedSearch fc">
-                          <div className="Home_Noga_musicLibraryUnifiedSearchContent fc">
-                            <div className="Home_Noga_musicArchiveSearch_row fr">
-                              <input
-                                id="Home_Noga_musicLibrarySongSearch_input"
-                                type="search"
-                                value={musicLibrarySongQuery}
-                                onChange={(event) => {
-                                  setMusicLibrarySongQuery(event.target.value);
-                                  if (musicLibrarySearchFeedback) {
-                                    setMusicLibrarySearchFeedback("");
-                                  }
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    searchAllMusicLibrarySources();
-                                  }
-                                }}
-                                placeholder="Search by song"
-                              />
-                              <input
-                                id="Home_Noga_musicLibraryArtistSearch_input"
-                                type="search"
-                                value={musicLibraryArtistQuery}
-                                onChange={(event) => {
-                                  setMusicLibraryArtistQuery(event.target.value);
-                                  if (musicLibrarySearchFeedback) {
-                                    setMusicLibrarySearchFeedback("");
-                                  }
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    searchAllMusicLibrarySources();
-                                  }
-                                }}
-                                placeholder="Search by artist"
-                              />
-                              <button
-                                type="button"
-                                className="Home_Noga_changePasswordSubmit"
-                                onClick={searchAllMusicLibrarySources}
-                                disabled={isMusicLibrarySearching}
-                              >
-                                {isMusicLibrarySearching ? "Searching..." : "Search"}
-                              </button>
-                            </div>
-                            {musicLibrarySearchFeedback ? (
-                              <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
-                                {musicLibrarySearchFeedback}
-                              </p>
-                            ) : null}
+                      <div className="Home_Noga_musicLibraryCompactSections fc">
+                        <section className="Home_Noga_musicLibrarySource fc">
+                          <div className="Home_Noga_musicLibrarySourceHeader fr">
+                            <strong>Search results</strong>
+                            <span>Song name | Artist name | Source</span>
                           </div>
-                          <ul
-                            id="Home_Noga_musicLibraryPlaylist_ul"
+                          <div
+                            id="Home_Noga_musicArchiveSearch_div"
                             className="fc"
                           >
-                            {musicLibraryPlaylistItems.length > 0 ? (
-                              musicLibraryPlaylistItems.map((item) => (
-                                <li
-                                  key={item.id}
-                                  className="Home_Noga_musicLibraryPlaylist_item fr"
-                                >
-                                  <div className="Home_Noga_musicLibraryPlaylist_copy fc">
-                                    <strong>{item.label}</strong>
-                                    <div className="Home_Noga_musicArchiveSearch_meta fr">
-                                      <span>{item.meta || "Added to playlist"}</span>
-                                      <em className="Home_Noga_musicArchiveSearch_sourceTag">
-                                        {item.source}
-                                      </em>
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="Home_Noga_musicLibraryPlaylist_delete"
-                                    onClick={() =>
-                                      removeMusicLibraryPlaylistItem(
-                                        item.provider,
-                                        item.value,
-                                      )
-                                    }
-                                    aria-label={`Delete ${item.label} from playlist`}
-                                    title="Delete from playlist"
-                                  >
-                                    <i className="fas fa-trash"></i>
-                                  </button>
-                                </li>
-                              ))
-                            ) : (
-                              <li className="Home_Noga_musicLibraryPlaylist_empty">
-                                Added songs will appear here.
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-
-                        <div className="Home_Noga_musicLibraryCompactSections fc">
-                          <section className="Home_Noga_musicLibrarySource fc">
-                            <div className="Home_Noga_musicLibrarySourceHeader fr">
-                              <strong>Search results</strong>
-                              <span>Song name | Artist name | Source</span>
-                            </div>
-                            <div id="Home_Noga_musicArchiveSearch_div" className="fc">
-                              {musicLibrarySearchResults.length > 0 ? (
+                            {musicLibrarySearchResults.length > 0 ? (
                               <ul
                                 id="Home_Noga_musicArchiveSearch_results"
                                 className="fc"
@@ -5541,7 +8056,9 @@ function HomeNoga(props) {
                                     onClick={() => {
                                       if (result.provider === "itunes") {
                                         addITunesSong(result.value);
-                                      } else if (result.provider === "musicBrainz") {
+                                      } else if (
+                                        result.provider === "musicBrainz"
+                                      ) {
                                         addMusicBrainzSong(result.value);
                                       } else {
                                         addMusicArchiveSong(result.value);
@@ -5569,407 +8086,402 @@ function HomeNoga(props) {
                                     title={`${result.title} | ${result.artist} | ${result.source}`}
                                   >
                                     <strong>
-                                      {result.title} | {result.artist} | {result.source}
+                                      {result.title} | {result.artist} |{" "}
+                                      {result.source}
                                     </strong>
                                   </li>
                                 ))}
                               </ul>
                             ) : null}
-                            </div>
-                          </section>
-                        </div>
+                          </div>
+                        </section>
                       </div>
                     </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="Home_Noga_changePasswordSubmit"
+                    onClick={saveMusicArchivePlaylist}
+                  >
+                    Save music API settings
+                  </button>
+                  {musicArchivePlaylistFeedback ? (
+                    <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
+                      {musicArchivePlaylistFeedback}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="fc Home_Noga_preStart_reportsCard">
+              <div className="Home_Noga_gallery_Header_wrapper fr">
+                <h3>schoolplanner telegram</h3>
+                <button
+                  type="button"
+                  className="Home_Noga_reportToggleButton"
+                  onClick={() => toggleReportSection("telegram")}
+                  aria-label="Toggle schoolplanner telegram"
+                  aria-expanded={isReportSectionOpen("telegram")}
+                  title="Toggle schoolplanner telegram"
+                >
+                  <i
+                    className={`fas ${isReportSectionOpen("telegram") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                  ></i>
+                </button>
+              </div>
+              <div
+                className={`Home_Noga_reportBody fc${isReportSectionOpen("telegram") ? " isOpen" : ""}`}
+              >
+                <div id="Home_Noga_schoolPlannerTelegram_div" className="fc">
+                  {schoolPlannerTelegramFeedback ? (
+                    <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
+                      {schoolPlannerTelegramFeedback}
+                    </p>
+                  ) : null}
+                  <div
+                    id="Home_Noga_schoolPlannerTelegram_adminDiv"
+                    className="fc"
+                  >
+                    <label className="Home_Noga_userMenu_title_label">
+                      telegram mtproto config
+                    </label>
+                    <p className="Home_Noga_schoolPlannerTelegram_adminStatus">
+                      {telegramConfigStatus.configured
+                        ? "Your Telegram connection is saved for this account."
+                        : "Your Telegram connection is not complete yet."}
+                    </p>
+                    <div className="Home_Noga_schoolPlannerTelegram_adminFlags fr">
+                      <span>
+                        API ID:{" "}
+                        {telegramConfigStatus.hasApiId ? "set" : "missing"}
+                      </span>
+                      <span>
+                        API Hash:{" "}
+                        {telegramConfigStatus.hasApiHash ? "set" : "missing"}
+                      </span>
+                      <span>
+                        Session:{" "}
+                        {telegramConfigStatus.hasStringSession
+                          ? "set"
+                          : "missing"}
+                      </span>
+                    </div>
+                    <input
+                      id="Home_Noga_schoolPlannerTelegram_apiId_input"
+                      type="text"
+                      value={telegramApiIdInput}
+                      onChange={(event) => {
+                        setTelegramApiIdInput(event.target.value);
+                        if (telegramConfigFeedback) {
+                          setTelegramConfigFeedback("");
+                        }
+                      }}
+                      placeholder="TELEGRAM_API_ID"
+                    />
+                    <input
+                      id="Home_Noga_schoolPlannerTelegram_apiHash_input"
+                      type="text"
+                      value={telegramApiHashInput}
+                      onChange={(event) => {
+                        setTelegramApiHashInput(event.target.value);
+                        if (telegramConfigFeedback) {
+                          setTelegramConfigFeedback("");
+                        }
+                      }}
+                      placeholder="TELEGRAM_API_HASH"
+                    />
+                    <input
+                      id="Home_Noga_schoolPlannerTelegram_phone_input"
+                      type="text"
+                      value={telegramPhoneNumberInput}
+                      onChange={(event) => {
+                        setTelegramPhoneNumberInput(event.target.value);
+                        if (telegramConfigFeedback) {
+                          setTelegramConfigFeedback("");
+                        }
+                      }}
+                      placeholder="Telegram phone number with country code"
+                    />
                     <button
                       type="button"
                       className="Home_Noga_changePasswordSubmit"
-                      onClick={saveMusicArchivePlaylist}
+                      onClick={startTelegramAuth}
                     >
-                      Save music API settings
+                      Send Telegram code
                     </button>
-                    {musicArchivePlaylistFeedback ? (
+                    {telegramAuthStage === "code" ||
+                    telegramAuthStage === "password" ||
+                    telegramAuthStage === "connected" ? (
+                      <>
+                        {/* Removed: Clear All Pending Uploads button and feedback (handler no longer exists) */}
+                        <input
+                          id="Home_Noga_schoolPlannerTelegram_code_input"
+                          type="text"
+                          value={telegramPhoneCodeInput}
+                          onChange={(event) => {
+                            setTelegramPhoneCodeInput(event.target.value);
+                            if (telegramConfigFeedback) {
+                              setTelegramConfigFeedback("");
+                            }
+                          }}
+                          placeholder="Telegram login code"
+                        />
+                        <button
+                          type="button"
+                          className="Home_Noga_changePasswordSubmit"
+                          onClick={verifyTelegramCode}
+                        >
+                          Verify code
+                        </button>
+                      </>
+                    ) : null}
+                    {telegramAuthStage === "password" ? (
+                      <>
+                        <input
+                          id="Home_Noga_schoolPlannerTelegram_password_input"
+                          type="password"
+                          value={telegramPasswordInput}
+                          onChange={(event) => {
+                            setTelegramPasswordInput(event.target.value);
+                            if (telegramConfigFeedback) {
+                              setTelegramConfigFeedback("");
+                            }
+                          }}
+                          placeholder="Telegram 2-step password if needed"
+                        />
+                        <button
+                          type="button"
+                          className="Home_Noga_changePasswordSubmit"
+                          onClick={verifyTelegramPassword}
+                        >
+                          Verify password
+                        </button>
+                      </>
+                    ) : null}
+                    <p className="Home_Noga_schoolPlannerTelegram_adminStatus">
+                      {telegramAuthStage === "password"
+                        ? "Telegram is asking for the 2-step verification password."
+                        : telegramAuthStage === "connected"
+                          ? "Telegram login is connected for this account."
+                          : "Start with API ID, API Hash, and phone number."}
+                    </p>
+                    {telegramConfigFeedback ? (
                       <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
-                        {musicArchivePlaylistFeedback}
+                        {telegramConfigFeedback}
                       </p>
                     ) : null}
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="fc Home_Noga_preStart_reportsCard">
+              <div className="Home_Noga_gallery_Header_wrapper fr">
+                <h3>Graphic Control</h3>
+                <button
+                  type="button"
+                  className="Home_Noga_reportToggleButton"
+                  onClick={() => toggleReportSection("graphicControl")}
+                  aria-label="Toggle graphic control"
+                  aria-expanded={isReportSectionOpen("graphicControl")}
+                  title="Toggle graphic control"
+                >
+                  <i
+                    className={`fas ${isReportSectionOpen("graphicControl") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                  ></i>
+                </button>
+              </div>
+              <div
+                className={`Home_Noga_reportBody fc${isReportSectionOpen("graphicControl") ? " isOpen" : ""}`}
+              >
+                <div className="fc Home_Noga_graphicControlCard">
+                  <label className="Home_Noga_preStart_toggleRow">
+                    <input
+                      type="checkbox"
+                      checked={schoolPlannerReducedMotion}
+                      onChange={(event) =>
+                        setSchoolPlannerReducedMotion(event.target.checked)
+                      }
+                    />
+                    <span>Reduce School Planner motion</span>
+                  </label>
+                  <label className="fc Home_Noga_graphicControlField">
+                    <span>PhenoMed Social chat background (Chat_messages)</span>
+                    <input
+                      type="text"
+                      value={phenomedSocialChatBackground}
+                      onChange={(event) =>
+                        setPhenomedSocialChatBackground(event.target.value)
+                      }
+                      placeholder="Image URL for chat panel background"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="Home_Noga_changePasswordToggle"
+                    onClick={() => setPhenomedSocialChatBackground("")}
+                  >
+                    Clear chat background
+                  </button>
+                </div>
+              </div>
+            </div>
 
-              <div className="fc Home_Noga_preStart_reportsCard">
-                <div className="Home_Noga_gallery_Header_wrapper fr">
-                  <h3>schoolplanner telegram</h3>
-                  <button
-                    type="button"
-                    className="Home_Noga_reportToggleButton"
-                    onClick={() => toggleReportSection("telegram")}
-                    aria-label="Toggle schoolplanner telegram"
-                    aria-expanded={isReportSectionOpen("telegram")}
-                    title="Toggle schoolplanner telegram"
-                  >
-                    <i
-                      className={`fas ${isReportSectionOpen("telegram") ? "fa-chevron-up" : "fa-chevron-down"}`}
-                    ></i>
-                  </button>
-                </div>
-                <div
-                  className={`Home_Noga_reportBody fc${isReportSectionOpen("telegram") ? " isOpen" : ""}`}
+            <div
+              className="fc Home_Noga_preStart_reportsCard"
+              id="Home_Noga_userMenu_panelCard"
+            >
+              <div className="Home_Noga_gallery_Header_wrapper fr">
+                <h3>Control Panel</h3>
+                <button
+                  type="button"
+                  className="Home_Noga_reportToggleButton"
+                  onClick={() => toggleReportSection("controlPanel")}
+                  aria-label="Toggle control panel"
+                  aria-expanded={isReportSectionOpen("controlPanel")}
+                  aria-controls="Home_Noga_userMenu_personalInfo_content_div"
+                  title="Toggle control panel"
                 >
-                  <div id="Home_Noga_schoolPlannerTelegram_div" className="fc">
-                    {schoolPlannerTelegramFeedback ? (
-                      <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
-                        {schoolPlannerTelegramFeedback}
-                      </p>
-                    ) : null}
-                    <div
-                      id="Home_Noga_schoolPlannerTelegram_adminDiv"
-                      className="fc"
-                    >
-                      <label className="Home_Noga_userMenu_title_label">
-                        telegram mtproto config
-                      </label>
-                      <p className="Home_Noga_schoolPlannerTelegram_adminStatus">
-                        {telegramConfigStatus.configured
-                          ? "Your Telegram connection is saved for this account."
-                          : "Your Telegram connection is not complete yet."}
-                      </p>
-                      <div className="Home_Noga_schoolPlannerTelegram_adminFlags fr">
-                        <span>
-                          API ID:{" "}
-                          {telegramConfigStatus.hasApiId ? "set" : "missing"}
-                        </span>
-                        <span>
-                          API Hash:{" "}
-                          {telegramConfigStatus.hasApiHash ? "set" : "missing"}
-                        </span>
-                        <span>
-                          Session:{" "}
-                          {telegramConfigStatus.hasStringSession
-                            ? "set"
-                            : "missing"}
-                        </span>
-                      </div>
-                      <input
-                        id="Home_Noga_schoolPlannerTelegram_apiId_input"
-                        type="text"
-                        value={telegramApiIdInput}
-                        onChange={(event) => {
-                          setTelegramApiIdInput(event.target.value);
-                          if (telegramConfigFeedback) {
-                            setTelegramConfigFeedback("");
-                          }
-                        }}
-                        placeholder="TELEGRAM_API_ID"
-                      />
-                      <input
-                        id="Home_Noga_schoolPlannerTelegram_apiHash_input"
-                        type="text"
-                        value={telegramApiHashInput}
-                        onChange={(event) => {
-                          setTelegramApiHashInput(event.target.value);
-                          if (telegramConfigFeedback) {
-                            setTelegramConfigFeedback("");
-                          }
-                        }}
-                        placeholder="TELEGRAM_API_HASH"
-                      />
-                      <input
-                        id="Home_Noga_schoolPlannerTelegram_phone_input"
-                        type="text"
-                        value={telegramPhoneNumberInput}
-                        onChange={(event) => {
-                          setTelegramPhoneNumberInput(event.target.value);
-                          if (telegramConfigFeedback) {
-                            setTelegramConfigFeedback("");
-                          }
-                        }}
-                        placeholder="Telegram phone number with country code"
-                      />
-                      <button
-                        type="button"
-                        className="Home_Noga_changePasswordSubmit"
-                        onClick={startTelegramAuth}
-                      >
-                        Send Telegram code
-                      </button>
-                      {telegramAuthStage === "code" ||
-                      telegramAuthStage === "password" ||
-                      telegramAuthStage === "connected" ? (
-                        <>
-                          {/* Removed: Clear All Pending Uploads button and feedback (handler no longer exists) */}
-                          <input
-                            id="Home_Noga_schoolPlannerTelegram_code_input"
-                            type="text"
-                            value={telegramPhoneCodeInput}
-                            onChange={(event) => {
-                              setTelegramPhoneCodeInput(event.target.value);
-                              if (telegramConfigFeedback) {
-                                setTelegramConfigFeedback("");
-                              }
-                            }}
-                            placeholder="Telegram login code"
-                          />
-                          <button
-                            type="button"
-                            className="Home_Noga_changePasswordSubmit"
-                            onClick={verifyTelegramCode}
-                          >
-                            Verify code
-                          </button>
-                        </>
-                      ) : null}
-                      {telegramAuthStage === "password" ? (
-                        <>
-                          <input
-                            id="Home_Noga_schoolPlannerTelegram_password_input"
-                            type="password"
-                            value={telegramPasswordInput}
-                            onChange={(event) => {
-                              setTelegramPasswordInput(event.target.value);
-                              if (telegramConfigFeedback) {
-                                setTelegramConfigFeedback("");
-                              }
-                            }}
-                            placeholder="Telegram 2-step password if needed"
-                          />
-                          <button
-                            type="button"
-                            className="Home_Noga_changePasswordSubmit"
-                            onClick={verifyTelegramPassword}
-                          >
-                            Verify password
-                          </button>
-                        </>
-                      ) : null}
-                      <p className="Home_Noga_schoolPlannerTelegram_adminStatus">
-                        {telegramAuthStage === "password"
-                          ? "Telegram is asking for the 2-step verification password."
-                          : telegramAuthStage === "connected"
-                            ? "Telegram login is connected for this account."
-                            : "Start with API ID, API Hash, and phone number."}
-                      </p>
-                      {telegramConfigFeedback ? (
-                        <p className="Home_Noga_passwordFeedback Home_Noga_passwordFeedback--success">
-                          {telegramConfigFeedback}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="fc Home_Noga_preStart_reportsCard">
-                <div className="Home_Noga_gallery_Header_wrapper fr">
-                  <h3>Graphic Control</h3>
-                  <button
-                    type="button"
-                    className="Home_Noga_reportToggleButton"
-                    onClick={() => toggleReportSection("graphicControl")}
-                    aria-label="Toggle graphic control"
-                    aria-expanded={isReportSectionOpen("graphicControl")}
-                    title="Toggle graphic control"
-                  >
-                    <i
-                      className={`fas ${isReportSectionOpen("graphicControl") ? "fa-chevron-up" : "fa-chevron-down"}`}
-                    ></i>
-                  </button>
-                </div>
-                <div
-                  className={`Home_Noga_reportBody fc${isReportSectionOpen("graphicControl") ? " isOpen" : ""}`}
-                >
-                  <div className="fc Home_Noga_graphicControlCard">
-                    <label className="Home_Noga_preStart_toggleRow">
-                      <input
-                        type="checkbox"
-                        checked={schoolPlannerReducedMotion}
-                        onChange={(event) =>
-                          setSchoolPlannerReducedMotion(event.target.checked)
-                        }
-                      />
-                      <span>Reduce School Planner motion</span>
-                    </label>
-                    <label className="fc Home_Noga_graphicControlField">
-                      <span>
-                        PhenoMed Social chat background (Chat_messages)
-                      </span>
-                      <input
-                        type="text"
-                        value={phenomedSocialChatBackground}
-                        onChange={(event) =>
-                          setPhenomedSocialChatBackground(event.target.value)
-                        }
-                        placeholder="Image URL for chat panel background"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="Home_Noga_changePasswordToggle"
-                      onClick={() => setPhenomedSocialChatBackground("")}
-                    >
-                      Clear chat background
-                    </button>
-                  </div>
-                </div>
+                  <i
+                    className={`fas ${isReportSectionOpen("controlPanel") ? "fa-chevron-up" : "fa-chevron-down"}`}
+                  ></i>
+                </button>
               </div>
 
               <div
-                className="fc Home_Noga_preStart_reportsCard"
-                id="Home_Noga_userMenu_panelCard"
+                id="Home_Noga_userMenu_personalInfo_content_div"
+                className={`fc Home_Noga_userMenu_panelBody${isReportSectionOpen("controlPanel") ? " isOpen" : ""}`}
               >
-                <div className="Home_Noga_gallery_Header_wrapper fr">
-                  <h3>Control Panel</h3>
+                {renderInlineInfoField("First name", "firstname")}
+                {renderInlineInfoField("Last name", "lastname")}
+                {renderInlineInfoField("Username", "username")}
+                {renderInlineInfoField("Program", "program")}
+                {renderInlineInfoField("University", "university")}
+                {renderInlineInfoField("Year", "studyYear")}
+                {renderInlineInfoField("Term", "term")}
+                <div className="fr Home_Noga_userMenu_contentDivs">
+                  <label>Password:</label>
                   <button
                     type="button"
-                    className="Home_Noga_reportToggleButton"
-                    onClick={() => toggleReportSection("controlPanel")}
-                    aria-label="Toggle control panel"
-                    aria-expanded={isReportSectionOpen("controlPanel")}
-                    aria-controls="Home_Noga_userMenu_personalInfo_content_div"
-                    title="Toggle control panel"
+                    className="Home_Noga_changePasswordToggle"
+                    onClick={() => setIsPasswordFormOpen((current) => !current)}
                   >
-                    <i
-                      className={`fas ${isReportSectionOpen("controlPanel") ? "fa-chevron-up" : "fa-chevron-down"}`}
-                    ></i>
+                    {isPasswordFormOpen ? "Close" : "Change password"}
+                  </button>
+                </div>
+                <div className="fr Home_Noga_userMenu_contentDivs">
+                  <label>Footer:</label>
+                  <button
+                    type="button"
+                    className="Home_Noga_changePasswordToggle"
+                    onClick={() =>
+                      props.setAppFooterHidden?.(!props.state?.hide_app_footer)
+                    }
+                  >
+                    {props.state?.hide_app_footer
+                      ? "Show footer"
+                      : "Hide footer"}
                   </button>
                 </div>
 
-                <div
-                  id="Home_Noga_userMenu_personalInfo_content_div"
-                  className={`fc Home_Noga_userMenu_panelBody${isReportSectionOpen("controlPanel") ? " isOpen" : ""}`}
-                >
-                  {renderInlineInfoField("First name", "firstname")}
-                  {renderInlineInfoField("Last name", "lastname")}
-                  {renderInlineInfoField("Username", "username")}
-                  {renderInlineInfoField("Program", "program")}
-                  {renderInlineInfoField("University", "university")}
-                  {renderInlineInfoField("Year", "studyYear")}
-                  {renderInlineInfoField("Term", "term")}
-                  <div className="fr Home_Noga_userMenu_contentDivs">
-                    <label>Password:</label>
+                {academicInfoFeedback.message ? (
+                  <p
+                    className={`Home_Noga_passwordFeedback Home_Noga_passwordFeedback--${academicInfoFeedback.tone || "info"}`}
+                  >
+                    {academicInfoFeedback.message}
+                  </p>
+                ) : null}
+                {isAcademicInfoEditing ? (
+                  <form
+                    id="Home_Noga_editAcademicInfo_form"
+                    className="fc"
+                    onSubmit={handleAcademicInfoSave}
+                  >
+                    <input
+                      type="text"
+                      name="program"
+                      placeholder="Program"
+                      value={academicInfoFields.program}
+                      onChange={updateAcademicInfoField}
+                    />
+                    <input
+                      type="text"
+                      name="university"
+                      placeholder="University"
+                      value={academicInfoFields.university}
+                      onChange={updateAcademicInfoField}
+                    />
+                    <input
+                      type="text"
+                      name="studyYear"
+                      placeholder="Year"
+                      value={academicInfoFields.studyYear}
+                      onChange={updateAcademicInfoField}
+                    />
+                    <input
+                      type="text"
+                      name="term"
+                      placeholder="Term"
+                      value={academicInfoFields.term}
+                      onChange={updateAcademicInfoField}
+                    />
                     <button
-                      type="button"
-                      className="Home_Noga_changePasswordToggle"
-                      onClick={() =>
-                        setIsPasswordFormOpen((current) => !current)
-                      }
+                      type="submit"
+                      className="Home_Noga_changePasswordSubmit"
+                      disabled={isAcademicInfoSubmitting}
                     >
-                      {isPasswordFormOpen ? "Close" : "Change password"}
+                      {isAcademicInfoSubmitting ? "Saving..." : "Save"}
                     </button>
-                  </div>
-                  <div className="fr Home_Noga_userMenu_contentDivs">
-                    <label>Footer:</label>
+                  </form>
+                ) : null}
+                {passwordFeedback.message ? (
+                  <p
+                    className={`Home_Noga_passwordFeedback Home_Noga_passwordFeedback--${passwordFeedback.tone || "info"}`}
+                  >
+                    {passwordFeedback.message}
+                  </p>
+                ) : null}
+                {isPasswordFormOpen ? (
+                  <form
+                    id="Home_Noga_changePassword_form"
+                    className="fc"
+                    onSubmit={handlePasswordChange}
+                  >
+                    <input
+                      type="password"
+                      name="currentPassword"
+                      placeholder="Current password"
+                      value={passwordFields.currentPassword}
+                      onChange={updatePasswordField}
+                      autoComplete="current-password"
+                    />
+                    <input
+                      type="password"
+                      name="newPassword"
+                      placeholder="New password"
+                      value={passwordFields.newPassword}
+                      onChange={updatePasswordField}
+                      autoComplete="new-password"
+                    />
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      placeholder="Confirm new password"
+                      value={passwordFields.confirmPassword}
+                      onChange={updatePasswordField}
+                      autoComplete="new-password"
+                    />
                     <button
-                      type="button"
-                      className="Home_Noga_changePasswordToggle"
-                      onClick={() =>
-                        props.setAppFooterHidden?.(
-                          !props.state?.hide_app_footer,
-                        )
-                      }
+                      type="submit"
+                      className="Home_Noga_changePasswordSubmit"
+                      disabled={isPasswordSubmitting}
                     >
-                      {props.state?.hide_app_footer
-                        ? "Show footer"
-                        : "Hide footer"}
+                      {isPasswordSubmitting ? "Saving..." : "Save password"}
                     </button>
-                  </div>
-
-                  {academicInfoFeedback.message ? (
-                    <p
-                      className={`Home_Noga_passwordFeedback Home_Noga_passwordFeedback--${academicInfoFeedback.tone || "info"}`}
-                    >
-                      {academicInfoFeedback.message}
-                    </p>
-                  ) : null}
-                  {isAcademicInfoEditing ? (
-                    <form
-                      id="Home_Noga_editAcademicInfo_form"
-                      className="fc"
-                      onSubmit={handleAcademicInfoSave}
-                    >
-                      <input
-                        type="text"
-                        name="program"
-                        placeholder="Program"
-                        value={academicInfoFields.program}
-                        onChange={updateAcademicInfoField}
-                      />
-                      <input
-                        type="text"
-                        name="university"
-                        placeholder="University"
-                        value={academicInfoFields.university}
-                        onChange={updateAcademicInfoField}
-                      />
-                      <input
-                        type="text"
-                        name="studyYear"
-                        placeholder="Year"
-                        value={academicInfoFields.studyYear}
-                        onChange={updateAcademicInfoField}
-                      />
-                      <input
-                        type="text"
-                        name="term"
-                        placeholder="Term"
-                        value={academicInfoFields.term}
-                        onChange={updateAcademicInfoField}
-                      />
-                      <button
-                        type="submit"
-                        className="Home_Noga_changePasswordSubmit"
-                        disabled={isAcademicInfoSubmitting}
-                      >
-                        {isAcademicInfoSubmitting ? "Saving..." : "Save"}
-                      </button>
-                    </form>
-                  ) : null}
-                  {passwordFeedback.message ? (
-                    <p
-                      className={`Home_Noga_passwordFeedback Home_Noga_passwordFeedback--${passwordFeedback.tone || "info"}`}
-                    >
-                      {passwordFeedback.message}
-                    </p>
-                  ) : null}
-                  {isPasswordFormOpen ? (
-                    <form
-                      id="Home_Noga_changePassword_form"
-                      className="fc"
-                      onSubmit={handlePasswordChange}
-                    >
-                      <input
-                        type="password"
-                        name="currentPassword"
-                        placeholder="Current password"
-                        value={passwordFields.currentPassword}
-                        onChange={updatePasswordField}
-                        autoComplete="current-password"
-                      />
-                      <input
-                        type="password"
-                        name="newPassword"
-                        placeholder="New password"
-                        value={passwordFields.newPassword}
-                        onChange={updatePasswordField}
-                        autoComplete="new-password"
-                      />
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        placeholder="Confirm new password"
-                        value={passwordFields.confirmPassword}
-                        onChange={updatePasswordField}
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="submit"
-                        className="Home_Noga_changePasswordSubmit"
-                        disabled={isPasswordSubmitting}
-                      >
-                        {isPasswordSubmitting ? "Saving..." : "Save password"}
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
-                </div>
+                  </form>
+                ) : null}
+              </div>
+            </div>
           </div>
         </section>
         <ImageViewerModal
@@ -5982,6 +8494,19 @@ function HomeNoga(props) {
             activeGalleryImage
               ? String(activeGalleryImage.publicId || "Image viewer")
               : "Image viewer"
+          }
+        />
+        <VideoViewerModal
+          isOpen={isVideoViewerOpen}
+          video={activeGalleryVideo}
+          onClose={() => {
+            setIsVideoViewerOpen(false);
+            setActiveGalleryVideo(null);
+          }}
+          title={
+            activeGalleryVideo
+              ? String(activeGalleryVideo.publicId || "Video player")
+              : "Video player"
           }
         />
       </article>
