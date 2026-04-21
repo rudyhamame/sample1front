@@ -2566,14 +2566,19 @@ body.dark #Main_article,
 .Home_Noga_galleryItem {
   gap: 10px;
   padding: 3px;
+  min-width: 0;
   border-radius: 14px;
   border: 1px solid rgba(124, 157, 165, 0.16);
   background: rgba(252, 253, 253, 0.88);
 }
 
 .Home_Noga_galleryThumbButton {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   border: 0;
   padding: 0;
@@ -2584,6 +2589,10 @@ body.dark #Main_article,
 
 .Home_Noga_galleryThumbWrap {
   position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+  min-width: 0;
 }
 
 .Home_Noga_galleryThumb {
