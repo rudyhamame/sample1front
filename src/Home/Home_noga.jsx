@@ -7027,7 +7027,7 @@ function HomeNoga(props) {
                 {renderHomeDrawingVisibilityCanvas("leftColumn")}
                 <div
                   id="Home_Noga_bioWrapper"
-                  className="Home_Noga_bioWrapper fc"
+                  className="Home_Noga_bioWrapper"
                   style={bioWrapperStyle}
                 >
                   {renderHomeDrawingVisibilityCanvas("bio")}

@@ -257,6 +257,7 @@ body.dark #Main_article,
   --home-bio-wallpaper-size: 520px auto;
   --home-bio-wallpaper-repeat: repeat;
   display: flex;
+  flex-wrap: nowrap;
   margin-bottom: 0;
   flex-direction: row;
   align-items: stretch;
@@ -2174,13 +2175,25 @@ body.dark #Main_article,
 
 .Home_Noga_friendsEventsWrapper {
   width: 100%;
-  display: grid;
-  grid-template-columns: 2fr 1fr;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   flex-grow: 1;
   min-width: 0;
   position: relative;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
+.Home_Noga_friendsEventsWrapper > .Home_Noga_friendsEvents {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+.Home_Noga_friendsEventsWrapper > .Home_Noga_socialFriendsPanel {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 .Home_Noga_friendsEvents {
   display: flex;
@@ -2599,6 +2612,10 @@ body.dark #Main_article,
 .Home_Noga_galleryThumb {
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -3163,6 +3180,10 @@ body.dark #Main_article,
 .Home_Noga_socialFriendAvatarImage {
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -5949,7 +5970,14 @@ input[type="file"] {
 }
 
 .custom-file-upload_profilePic {
-  width: 100px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
 }
 
 #profile_pic_button {
