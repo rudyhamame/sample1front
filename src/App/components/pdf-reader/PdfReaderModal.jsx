@@ -1326,40 +1326,23 @@ const PdfReaderModal = ({
         deltaUnitMultiplier *
         horizontalBoost;
 
-      if (!wheelAnimationFrameRef.current) {
-        wheelTargetRef.current = {
-          top: wrapElement.scrollTop,
-          left: wrapElement.scrollLeft,
-        };
+      if (wheelAnimationFrameRef.current) {
+        window.cancelAnimationFrame(wheelAnimationFrameRef.current);
+        wheelAnimationFrameRef.current = null;
       }
 
-      const maxTop = Math.max(
-        0,
-        wrapElement.scrollHeight - wrapElement.clientHeight,
-      );
-      const maxLeft = Math.max(
-        0,
-        wrapElement.scrollWidth - wrapElement.clientWidth,
-      );
+      wrapElement.scrollBy({
+        top: nextDeltaY,
+        left: nextDeltaX,
+        behavior: "auto",
+      });
 
       wheelTargetRef.current = {
-        top: Math.min(
-          maxTop,
-          Math.max(0, wheelTargetRef.current.top + nextDeltaY),
-        ),
-        left: Math.min(
-          maxLeft,
-          Math.max(0, wheelTargetRef.current.left + nextDeltaX),
-        ),
+        top: wrapElement.scrollTop,
+        left: wrapElement.scrollLeft,
       };
-
-      if (!wheelAnimationFrameRef.current) {
-        wheelAnimationFrameRef.current = window.requestAnimationFrame(
-          animateCanvasWheelScroll,
-        );
-      }
     },
-    [animateCanvasWheelScroll, scrollSpeedFactor],
+    [scrollSpeedFactor],
   );
 
   const getTouchDistance = useCallback((firstTouch, secondTouch) => {

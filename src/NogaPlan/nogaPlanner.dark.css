@@ -55,7 +55,6 @@ body.dark #nogaPlanner_article,
   --nogaPlanner-overlay: var(--nogaPlanner-dark-overlay);
   --nogaPlanner-bg-overlay-start: rgba(9, 26, 33, 0.54);
   --nogaPlanner-bg-overlay-end: rgba(11, 31, 39, 0.5);
-  --nogaPlanner-bg-image: url("/img/NogaPlannerBG.png");
   background-color: var(--nogaPlanner-page-bg-mid);
   background-image:
     linear-gradient(rgba(7, 17, 21, 0.74), rgba(7, 17, 21, 0.74)),
