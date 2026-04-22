@@ -159,6 +159,9 @@ class App extends React.Component {
   realtimeSocket = null;
   backendHealthPollInterval = null;
   sessionHeartbeatInterval = null;
+  isUnmounted = false;
+  backendHealthAbortController = null;
+  userInfoAbortController = null;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -167,8 +170,9 @@ class App extends React.Component {
   };
   /////////////////////////////////////////////////////Lifecycle//////////////////////////
   componentDidMount() {
+    this.isUnmounted = false;
     const storedSession = readStoredSession() || {};
-    this.setState({
+    this.safeSetState({
       my_id: storedSession.my_id || null,
       username: storedSession.username || "",
       firstname: storedSession.firstname || "",
@@ -249,6 +253,7 @@ class App extends React.Component {
     }
   }
   componentWillUnmount() {
+    this.isUnmounted = true;
     window.removeEventListener(
       "planner-music-session-change",
       this.handlePlannerMusicSessionChange,
@@ -275,15 +280,31 @@ class App extends React.Component {
       window.clearInterval(this.sessionHeartbeatInterval);
       this.sessionHeartbeatInterval = null;
     }
+    if (this.backendHealthAbortController) {
+      this.backendHealthAbortController.abort();
+      this.backendHealthAbortController = null;
+    }
+    if (this.userInfoAbortController) {
+      this.userInfoAbortController.abort();
+      this.userInfoAbortController = null;
+    }
     // if (this.props.path === "/") {
     //   this.availableToChat(false);
     // }
   }
 
+  safeSetState = (updater, callback) => {
+    if (this.isUnmounted) {
+      return;
+    }
+
+    this.setState(updater, callback);
+  };
+
   handlePlannerMusicSessionChange = (event) => {
     const nextSnapshot = event?.detail || getPlannerMusicSnapshot();
 
-    this.setState((currentState) => {
+    this.safeSetState((currentState) => {
       const currentSnapshot = currentState.planner_music || {};
 
       if (
@@ -350,6 +371,12 @@ class App extends React.Component {
   };
 
   pollBackendHealth = () => {
+    if (this.backendHealthAbortController) {
+      this.backendHealthAbortController.abort();
+    }
+
+    this.backendHealthAbortController = new AbortController();
+
     fetch(apiUrl("/api/health"), {
       method: "GET",
       headers: this.state.token
@@ -357,6 +384,7 @@ class App extends React.Component {
             Authorization: `Bearer ${this.state.token}`,
           }
         : undefined,
+      signal: this.backendHealthAbortController.signal,
     })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}));
@@ -368,7 +396,7 @@ class App extends React.Component {
           throw new Error(nextStatus || "offline");
         }
 
-        this.setState({
+        this.safeSetState({
           backend_health_status: nextStatus || "healthy",
           ai_connection_statuses: {
             openai: String(payload?.ai?.openai || "offline")
@@ -389,8 +417,12 @@ class App extends React.Component {
           },
         });
       })
-      .catch(() => {
-        this.setState({
+      .catch((error) => {
+        if (error?.name === "AbortError") {
+          return;
+        }
+
+        this.safeSetState({
           backend_health_status: "offline",
           ai_connection_statuses: {
             openai: "offline",
@@ -424,7 +456,7 @@ class App extends React.Component {
           return;
         }
 
-        this.setState((prevState) => ({
+        this.safeSetState((prevState) => ({
           friendChatPresence: {
             ...prevState.friendChatPresence,
             [userId]: Boolean(isChatting),
@@ -436,7 +468,7 @@ class App extends React.Component {
           return;
         }
 
-        this.setState((prevState) => ({
+        this.safeSetState((prevState) => ({
           friendTypingPresence: {
             ...prevState.friendTypingPresence,
             [userId]: Boolean(isTyping),
@@ -448,7 +480,7 @@ class App extends React.Component {
           return;
         }
 
-        this.setState({
+        this.safeSetState({
           visitLogRefreshToken: Date.now(),
         });
 
@@ -536,7 +568,7 @@ class App extends React.Component {
       return;
     }
 
-    this.setState((prevState) => ({
+    this.safeSetState((prevState) => ({
       chat: (Array.isArray(prevState.chat) ? prevState.chat : []).map(
         (message) => {
           if (
@@ -567,7 +599,7 @@ class App extends React.Component {
       return;
     }
 
-    this.setState({
+    this.safeSetState({
       global_call_request: {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         friendId: normalizedFriendId,
@@ -578,7 +610,7 @@ class App extends React.Component {
   };
 
   handleGlobalCallRequestHandled = (requestId) => {
-    this.setState((currentState) => {
+    this.safeSetState((currentState) => {
       if (currentState.global_call_request?.id !== requestId) {
         return null;
       }
@@ -590,7 +622,7 @@ class App extends React.Component {
   };
 
   handleGlobalCallSessionChange = (session) => {
-    this.setState({
+    this.safeSetState({
       global_call_session:
         session && typeof session === "object" ? session : null,
     });
@@ -1221,7 +1253,7 @@ class App extends React.Component {
         }),
       };
       let req = new Request(url, options);
-      this.setState({
+      this.safeSetState({
         isSendingMessage: true,
       });
       return fetch(req)
@@ -1232,7 +1264,7 @@ class App extends React.Component {
               textarea.style.height = "42px";
               textarea.focus();
             }
-            this.setState((prevState) => ({
+            this.safeSetState((prevState) => ({
               chat: [
                 ...(Array.isArray(prevState.chat) ? prevState.chat : []),
                 {
@@ -1255,7 +1287,7 @@ class App extends React.Component {
           return false;
         })
         .finally(() => {
-          this.setState({
+          this.safeSetState({
             isSendingMessage: false,
           });
         });
@@ -1268,7 +1300,7 @@ class App extends React.Component {
   ////////////////////////ACCEPT FRIEND/////////////////////////////////////////////
 
   markFriendRequestReadLocally = (requestId) => {
-    this.setState((prevState) => ({
+    this.safeSetState((prevState) => ({
       friend_requests: (prevState.friend_requests || []).map((request) =>
         String(request?._id || "") === String(requestId) ||
         String(request?.id || "") === String(requestId)
@@ -1378,7 +1410,7 @@ class App extends React.Component {
     )
       .then((response) => {
         if (response.ok) {
-          this.setState((prevState) => ({
+          this.safeSetState((prevState) => ({
             sent_friend_requests: (
               Array.isArray(prevState.sent_friend_requests)
                 ? prevState.sent_friend_requests
@@ -1538,7 +1570,7 @@ class App extends React.Component {
 
     fetch(new Request(url, options)).then((response) => {
       if (response.ok) {
-        this.setState((currentState) => ({
+        this.safeSetState((currentState) => ({
           friends: (currentState.friends || []).filter(
             (friend) => friend?._id !== friendId,
           ),
@@ -1573,10 +1605,17 @@ class App extends React.Component {
       return;
     }
 
+    if (this.userInfoAbortController) {
+      this.userInfoAbortController.abort();
+    }
+
+    this.userInfoAbortController = new AbortController();
+
     let url = apiUrl("/api/user/update/") + this.state.my_id;
     let req = new Request(url, {
       method: "GET",
       mode: "cors",
+      signal: this.userInfoAbortController.signal,
     });
     fetch(req)
       .then((response) => {
@@ -1628,7 +1667,7 @@ class App extends React.Component {
           (currentAppliedCount > 0 || currentTextCount > 0)
             ? currentHomeDrawing
             : fetchedHomeDrawing;
-        this.setState({
+        this.safeSetState({
           username:
             normalizedPayload?.identity?.atSignup?.username ||
             this.state.username,
@@ -1681,6 +1720,10 @@ class App extends React.Component {
         this.memory.courses = normalizedPayload.memory.courses;
       })
       .catch((err) => {
+        if (err?.name === "AbortError") {
+          return;
+        }
+
         if (err.message === "Cannot read property 'credentials' of null")
           console.log("Error", err.message);
       });
@@ -1978,7 +2021,7 @@ class App extends React.Component {
       window.clearTimeout(this.serverReplyTimeout);
     }
 
-    this.setState({
+    this.safeSetState({
       server_answer: nextAnswer,
       has_active_server_reply: isActiveReply,
     });
@@ -1989,7 +2032,7 @@ class App extends React.Component {
 
     this.serverReplyTimeout = window.setTimeout(
       () => {
-        this.setState({
+        this.safeSetState({
           server_answer: "NO NEW SERVER REPLY",
           has_active_server_reply: false,
         });

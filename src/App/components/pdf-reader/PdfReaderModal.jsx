@@ -1300,49 +1300,9 @@ const PdfReaderModal = ({
       if (event.ctrlKey) {
         return;
       }
-
-      const wrapElement = canvasWrapRef.current;
-
-      if (!wrapElement) {
-        return;
-      }
-
-      event.preventDefault();
-
-      const deltaUnitMultiplier =
-        event.deltaMode === 1
-          ? 34
-          : event.deltaMode === 2
-            ? wrapElement.clientHeight * 0.92
-            : 1;
-      const verticalBoost = scrollSpeedFactor;
-      const horizontalBoost = Math.max(1, scrollSpeedFactor - 0.3);
-      const nextDeltaY =
-        (event.shiftKey ? event.deltaX || event.deltaY : event.deltaY) *
-        deltaUnitMultiplier *
-        verticalBoost;
-      const nextDeltaX =
-        (!event.shiftKey ? event.deltaX : 0) *
-        deltaUnitMultiplier *
-        horizontalBoost;
-
-      if (wheelAnimationFrameRef.current) {
-        window.cancelAnimationFrame(wheelAnimationFrameRef.current);
-        wheelAnimationFrameRef.current = null;
-      }
-
-      wrapElement.scrollBy({
-        top: nextDeltaY,
-        left: nextDeltaX,
-        behavior: "auto",
-      });
-
-      wheelTargetRef.current = {
-        top: wrapElement.scrollTop,
-        left: wrapElement.scrollLeft,
-      };
+      return;
     },
-    [scrollSpeedFactor],
+    [],
   );
 
   const getTouchDistance = useCallback((firstTouch, secondTouch) => {
