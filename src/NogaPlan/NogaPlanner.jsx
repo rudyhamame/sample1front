@@ -3715,6 +3715,7 @@ export default class NogaPlanner extends Component {
 
   render() {
     const wrapperTab = this.state.wrapperTab === "exams" ? "exams" : "courses";
+    const plannerBackgroundUrl = `${import.meta.env.BASE_URL}img/NogaPlannerBG.png`;
 
     return (
       <React.Fragment>
@@ -3726,6 +3727,10 @@ export default class NogaPlanner extends Component {
           lang={this.isArabic() ? "ar" : "en"}
           data-locale={this.isArabic() ? "ar" : "en"}
           data-swipe-view={this.state.planner_swipeView}
+          style={{
+            "--nogaPlanner-day-bg-image": `url("${plannerBackgroundUrl}")`,
+            "--nogaPlanner-bg-image": `url("${plannerBackgroundUrl}")`,
+          }}
         >
           <div className="fc" id="nogaPlanner_coursesLectures_wrapper">
             <div className="nogaPlanner_wrapperTabs">

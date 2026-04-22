@@ -56,11 +56,17 @@
 
 .pdfReader_shell {
   max-height: 94vh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   color: var(--pdf-reader-day-text);
   background-color: var(--white);
+}
+
+.pdfReader_overlay .pdfReader_shell {
+  width: min(1560px, 100%);
+  height: min(94vh, calc(100dvh - 32px));
 }
 
 .pdfReader_inlineMount .pdfReader_shell {
@@ -435,6 +441,7 @@
   min-height: 0;
   height: 100%;
   flex: 1 1 auto;
+  overflow: hidden;
   direction: ltr;
   position: relative;
   gap: 14px;
@@ -869,6 +876,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: linear-gradient(
     180deg,
     rgba(23, 58, 66, 0.98),

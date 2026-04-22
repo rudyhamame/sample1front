@@ -2622,7 +2622,7 @@ body.dark #Main_article,
 .Home_Noga_galleryThumbWrap {
   position: relative;
   aspect-ratio: 1 / 1;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 10px;
   min-width: 0;
 }
