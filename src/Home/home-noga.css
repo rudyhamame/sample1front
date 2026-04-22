@@ -1544,6 +1544,38 @@ body.dark #Main_article,
   color: rgba(120, 59, 75, 0.68);
 }
 
+.Home_Noga_compactBioHeadingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.Home_Noga_compactBioHeadingRow .Home_Noga_compactBioEyebrow {
+  margin: 0;
+}
+
+.Home_Noga_compactBioEditButton {
+  width: 24px;
+  height: 24px;
+}
+
+.Home_Noga_compactBioEditor {
+  width: 100%;
+  gap: 8px;
+}
+
+.Home_Noga_compactBioTextarea {
+  width: 100%;
+  min-height: 104px;
+  resize: vertical;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.Home_Noga_compactBioEditorActions {
+  gap: 8px;
+}
+
 
 .Home_Noga_profileInfoColumn {
   min-width: 0;

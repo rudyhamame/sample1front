@@ -6519,6 +6519,7 @@ function HomeNoga(props) {
       firstname: String(props.state?.firstname || "").trim(),
       lastname: String(props.state?.lastname || "").trim(),
       username: String(props.state?.username || "").trim(),
+      bio: String(props.state?.bio || "").trim(),
       program: String(props.state?.program || "").trim(),
       university: String(props.state?.university || "").trim(),
       studyYear: String(props.state?.studyYear || "").trim(),
@@ -6569,6 +6570,7 @@ function HomeNoga(props) {
         firstname: nextInfo?.firstname || payloadBody.firstname,
         lastname: nextInfo?.lastname || payloadBody.lastname,
         username: nextInfo?.username || payloadBody.username,
+        bio: nextInfo?.bio || payloadBody.bio,
         program: nextInfo?.program || payloadBody.program,
         university: nextInfo?.university || payloadBody.university,
         studyYear: nextInfo?.studyYear || payloadBody.studyYear,
@@ -6599,6 +6601,13 @@ function HomeNoga(props) {
 
   const handleInlinePersonalInfoKeyDown = (event) => {
     if (event.key === "Enter") {
+      if (
+        activePersonalInfoField === "bio" &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        return;
+      }
       event.preventDefault();
       submitInlinePersonalInfoEdit();
       return;
@@ -6797,6 +6806,7 @@ function HomeNoga(props) {
     profileState.username ? `@${profileState.username}` : "",
   );
   const compactBio = formatProfileValue(profileState.bio);
+  const isEditingCompactBio = activePersonalInfoField === "bio";
   const bioWrapperStyle = {
     "--home-bio-wallpaper-image": currentBioWallpaperUrl
       ? `url("${currentBioWallpaperUrl.replace(/"/g, '\\"')}")`
@@ -7096,10 +7106,59 @@ function HomeNoga(props) {
                           </p>
                         </div>
                         <div className="Home_Noga_compactBioSummary">
-                          <p className="Home_Noga_compactBioEyebrow">Bio</p>
-                          <p className="Home_Noga_compactBioText">
-                            {compactBio}
-                          </p>
+                          <div className="Home_Noga_compactBioHeadingRow">
+                            <p className="Home_Noga_compactBioEyebrow">Bio</p>
+                            <button
+                              type="button"
+                              className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
+                              onClick={() => startInlinePersonalInfoEdit("bio")}
+                              aria-label="Edit bio"
+                              title="Edit bio"
+                              disabled={isPersonalInfoInlineSubmitting}
+                            >
+                              <i className="fas fa-pen"></i>
+                            </button>
+                          </div>
+                          {isEditingCompactBio ? (
+                            <div className="Home_Noga_compactBioEditor fc">
+                              <textarea
+                                className="Home_Noga_userMenu_inlineInput Home_Noga_compactBioTextarea"
+                                value={personalInfoInputValue}
+                                onChange={(event) =>
+                                  setPersonalInfoInputValue(event.target.value)
+                                }
+                                onKeyDown={handleInlinePersonalInfoKeyDown}
+                                autoFocus
+                                rows={5}
+                                disabled={isPersonalInfoInlineSubmitting}
+                              />
+                              <div className="Home_Noga_compactBioEditorActions fr">
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton"
+                                  onClick={submitInlinePersonalInfoEdit}
+                                  disabled={isPersonalInfoInlineSubmitting}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton"
+                                  onClick={() => {
+                                    setActivePersonalInfoField("");
+                                    setPersonalInfoInputValue("");
+                                  }}
+                                  disabled={isPersonalInfoInlineSubmitting}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="Home_Noga_compactBioText">
+                              {compactBio}
+                            </p>
+                          )}
                           <button
                             type="button"
                             className="Home_Noga_aboutButton"
