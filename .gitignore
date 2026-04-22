@@ -21,6 +21,8 @@
 # Ignore videos in public
 /public/vid
 /public/img
+!/public/img/
+!/public/img/NogaPlannerBG.png
 
 npm-debug.log*
 yarn-debug.log*
