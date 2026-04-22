@@ -1744,6 +1744,10 @@ class App extends React.Component {
   setUserAcademicInfo = (nextInfo = {}) => {
     this.setState(
       (currentState) => ({
+        bio:
+          nextInfo?.bio !== undefined
+            ? String(nextInfo?.bio || "").trim()
+            : currentState.bio,
         firstname:
           nextInfo?.firstname !== undefined
             ? String(nextInfo?.firstname || "").trim()
@@ -1772,6 +1776,7 @@ class App extends React.Component {
       }),
       () => {
         this.persistStoredSession({
+          bio: this.state.bio,
           firstname: this.state.firstname,
           lastname: this.state.lastname,
           username: this.state.username,

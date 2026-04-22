@@ -1144,6 +1144,14 @@ const PdfReaderModal = ({
         return;
       }
 
+      if (typeof event.currentTarget?.setPointerCapture === "function") {
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch (error) {
+          // Ignore pointer capture failures and keep native scrolling available.
+        }
+      }
+
       panSessionRef.current = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -1300,9 +1308,58 @@ const PdfReaderModal = ({
       if (event.ctrlKey) {
         return;
       }
-      return;
+
+      const wrapElement = canvasWrapRef.current;
+
+      if (!wrapElement) {
+        return;
+      }
+
+      const deltaModeScale =
+        event.deltaMode === 1 ? 18 : event.deltaMode === 2 ? wrapElement.clientHeight : 1;
+      const rawDeltaX = Number(event.deltaX || 0) * deltaModeScale;
+      const rawDeltaY = Number(event.deltaY || 0) * deltaModeScale;
+      const nextDeltaX =
+        (event.shiftKey && rawDeltaX === 0 ? rawDeltaY : rawDeltaX) *
+        scrollSpeedFactor;
+      const nextDeltaY =
+        (event.shiftKey && rawDeltaX === 0 ? 0 : rawDeltaY) * scrollSpeedFactor;
+
+      const maxTop = Math.max(
+        0,
+        wrapElement.scrollHeight - wrapElement.clientHeight,
+      );
+      const maxLeft = Math.max(
+        0,
+        wrapElement.scrollWidth - wrapElement.clientWidth,
+      );
+
+      wheelTargetRef.current = {
+        top: Math.min(Math.max(wrapElement.scrollTop + nextDeltaY, 0), maxTop),
+        left: Math.min(
+          Math.max(wrapElement.scrollLeft + nextDeltaX, 0),
+          maxLeft,
+        ),
+      };
+
+      event.preventDefault();
+
+      if (wheelAnimationFrameRef.current) {
+        window.cancelAnimationFrame(wheelAnimationFrameRef.current);
+      }
+
+      if (scrollTransitionAmount <= 0) {
+        wrapElement.scrollTop = wheelTargetRef.current.top;
+        wrapElement.scrollLeft = wheelTargetRef.current.left;
+        wheelAnimationFrameRef.current = null;
+        return;
+      }
+
+      wheelAnimationFrameRef.current = window.requestAnimationFrame(
+        animateCanvasWheelScroll,
+      );
     },
-    [],
+    [animateCanvasWheelScroll, scrollSpeedFactor, scrollTransitionAmount],
   );
 
   const getTouchDistance = useCallback((firstTouch, secondTouch) => {
@@ -2475,6 +2532,7 @@ const PdfReaderModal = ({
                         }
                         onPointerUp={finalizeDraft}
                         onPointerLeave={finalizeDraft}
+                        onPointerCancel={finalizeDraft}
                         style={{
                           "--pdf-page-width": pageSize.width
                             ? `${pageSize.width}px`

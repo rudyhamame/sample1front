@@ -908,7 +908,7 @@
   max-height: 100%;
   min-width: 0;
   box-sizing: border-box;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
@@ -961,7 +961,7 @@
 
 .pdfReader_annotationLayer {
   position: relative;
-  touch-action: none;
+  touch-action: pan-x pan-y;
   cursor: crosshair;
   width: var(--pdf-page-width);
   height: var(--pdf-page-height);
@@ -1050,10 +1050,12 @@
 }
 
 .pdfReader_annotationLayer--erase {
+  touch-action: none;
   cursor: cell;
 }
 
 .pdfReader_annotationLayer--hand {
+  touch-action: none;
   cursor: grab;
 }
 
