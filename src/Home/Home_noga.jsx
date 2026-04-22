@@ -27,8 +27,6 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
-const HOME_GALLERY_PATTERNS_STORAGE_KEY = "home_gallery_pattern_public_ids";
-const DEFAULT_HOME_BIO_WALLPAPER_URL = "/img/schoolplanner-floral.avif";
 const DEFAULT_HOME_BIO_WALLPAPER_SIZE = 520;
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 const DEFAULT_NAGHAM_COURSE_LETTER =
@@ -63,6 +61,24 @@ const BLOCKED_LIST_GROUP_META = {
   pending: { label: "Pending", iconClass: "fa-user-clock" },
   blocked: { label: "Blocked", iconClass: "fa-user-slash" },
   friends: { label: "Friends", iconClass: "fa-user-check" },
+};
+
+const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
+  images: {
+    accept: "image/*",
+    resourceType: "image",
+    label: "image",
+  },
+  patterns: {
+    accept: "image/*",
+    resourceType: "pattern",
+    label: "pattern",
+  },
+  videos: {
+    accept: "video/*",
+    resourceType: "video",
+    label: "video",
+  },
 };
 
 const HOME_DRAWING_ALLOWLIST_ZONES = [
@@ -1617,23 +1633,9 @@ function HomeNoga(props) {
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   // Gallery tab state: 'images' | 'patterns' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
-  const [galleryPatternIds, setGalleryPatternIds] = useState(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    try {
-      const rawValue = window.localStorage.getItem(
-        HOME_GALLERY_PATTERNS_STORAGE_KEY,
-      );
-      const parsedValue = JSON.parse(rawValue || "[]");
-      return Array.isArray(parsedValue)
-        ? parsedValue.map((value) => String(value || "").trim()).filter(Boolean)
-        : [];
-    } catch {
-      return [];
-    }
-  });
+  const activeGalleryUploadConfig =
+    HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab] ||
+    HOME_GALLERY_TAB_UPLOAD_CONFIG.images;
   const [isImageGalleryDeletingPublicId, setIsImageGalleryDeletingPublicId] =
     useState("");
   const [
@@ -2593,45 +2595,6 @@ function HomeNoga(props) {
       setIsHomeDrawingVisibilityMenuOpen(false);
     }
   }, [isHomeDrawingAllowListEnabled, isHomeDrawingModeEnabled]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined" || !mainWrapperRef.current) {
-      return undefined;
-    }
-
-    const wrapperNode = mainWrapperRef.current;
-    const bioWrapperNode = wrapperNode.querySelector("#Home_Noga_bioWrapper");
-    const rightColumnNode = wrapperNode.querySelector(
-      "#Home_Noga_rightColumn_wrapper",
-    );
-
-    if (!(bioWrapperNode instanceof HTMLElement)) {
-      return undefined;
-    }
-
-    const syncGalleryHeaderHeight = () => {
-      const nextHeight = Math.max(
-        0,
-        Math.round(bioWrapperNode.getBoundingClientRect().height),
-      );
-
-      if (rightColumnNode instanceof HTMLElement) {
-        rightColumnNode.style.setProperty(
-          "--home-bio-wrapper-height",
-          `${nextHeight}px`,
-        );
-      }
-    };
-
-    syncGalleryHeaderHeight();
-
-    const observer = new ResizeObserver(() => {
-      syncGalleryHeaderHeight();
-    });
-
-    observer.observe(bioWrapperNode);
-    return () => observer.disconnect();
-  }, []);
 
   const beginHomeDrawingStroke = React.useCallback(
     (event) => {
@@ -4379,7 +4342,7 @@ function HomeNoga(props) {
       renderBlockedUserListItem,
     ],
   );
-  const openProfilePicturePicker = () => {
+  const openGalleryUploadPicker = () => {
     galleryUploadInputRef.current?.click();
   };
 
@@ -4613,8 +4576,28 @@ function HomeNoga(props) {
     });
   };
 
+  const defaultPatternWallpaperUrl = React.useMemo(() => {
+    if (!Array.isArray(imageGallery)) {
+      return "";
+    }
+
+    const firstPatternImage = imageGallery.find((image) => {
+      if (isVideoGalleryItem(image)) {
+        return false;
+      }
+
+      return (
+        String(image?.resourceType || image?.resource_type || "")
+          .trim()
+          .toLowerCase() === "pattern"
+      );
+    });
+
+    return String(firstPatternImage?.url || "").trim();
+  }, [imageGallery]);
+
   const currentBioWallpaperUrl = String(
-    props.state?.bioWrapperWallpaper || DEFAULT_HOME_BIO_WALLPAPER_URL,
+    props.state?.bioWrapperWallpaper || defaultPatternWallpaperUrl,
   ).trim();
   const currentBioWallpaperSize = Math.min(
     Math.max(
@@ -4689,11 +4672,11 @@ function HomeNoga(props) {
 
   const resetBioWallpaperToDefault = React.useCallback(() => {
     updateBioWallpaperState({
-      bioWrapperWallpaper: DEFAULT_HOME_BIO_WALLPAPER_URL,
+      bioWrapperWallpaper: defaultPatternWallpaperUrl,
       bioWrapperWallpaperSize: DEFAULT_HOME_BIO_WALLPAPER_SIZE,
       bioWrapperWallpaperRepeat: true,
     });
-  }, [updateBioWallpaperState]);
+  }, [defaultPatternWallpaperUrl, updateBioWallpaperState]);
 
   const clearBioWallpaper = React.useCallback(() => {
     updateBioWallpaperState({
@@ -4769,20 +4752,6 @@ function HomeNoga(props) {
     );
   };
 
-  const toggleGalleryPattern = React.useCallback((publicId) => {
-    const nextPublicId = String(publicId || "").trim();
-
-    if (!nextPublicId) {
-      return;
-    }
-
-    setGalleryPatternIds((currentIds) =>
-      currentIds.includes(nextPublicId)
-        ? currentIds.filter((itemId) => itemId !== nextPublicId)
-        : [...currentIds, nextPublicId],
-    );
-  }, []);
-
   const uploadGalleryImage = async (selectedFile, options = {}) => {
     if (!selectedFile || !props.state?.token) {
       return;
@@ -4790,7 +4759,23 @@ function HomeNoga(props) {
 
     const maxVideoSizeBytes = 100 * 1024 * 1024;
     const preCheckMimeType = String(selectedFile?.type || "").trim();
+    const targetResourceType = String(
+      options?.resourceType ||
+        HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab]?.resourceType ||
+        "",
+    ).trim() || "image";
     const isVideoFilePre = preCheckMimeType.toLowerCase().startsWith("video/");
+    const expectsVideoUpload = targetResourceType === "video";
+
+    if (expectsVideoUpload && !isVideoFilePre) {
+      sendCloudinaryReply("Please choose a video file for the Videos tab.");
+      return;
+    }
+
+    if (!expectsVideoUpload && isVideoFilePre) {
+      sendCloudinaryReply("Please choose an image file for this gallery tab.");
+      return;
+    }
 
     // If video and >=100MB, send to backend for compression/upload
     if (isVideoFilePre && selectedFile.size >= maxVideoSizeBytes) {
@@ -4871,7 +4856,9 @@ function HomeNoga(props) {
     ).trim();
     const isVideoFile = mimeType.toLowerCase().startsWith("video/");
     const resourceType =
-      existingUploadTask?.resourceType || (isVideoFile ? "video" : "image");
+      existingUploadTask?.resourceType ||
+      targetResourceType ||
+      (isVideoFile ? "video" : "image");
     const publicId =
       String(existingUploadTask?.publicId || "").trim() ||
       sanitizeGalleryFileName(fileName);
@@ -5159,30 +5146,6 @@ function HomeNoga(props) {
       setActiveGalleryImageIndex(imageOnlyGallery.length - 1);
     }
   }, [activeGalleryImageIndex, imageOnlyGallery.length, isImageViewerOpen]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(
-      HOME_GALLERY_PATTERNS_STORAGE_KEY,
-      JSON.stringify(galleryPatternIds),
-    );
-  }, [galleryPatternIds]);
-
-  React.useEffect(() => {
-    const validPublicIds = new Set(
-      imageOnlyGallery
-        .map((item) => String(item?.publicId || "").trim())
-        .filter(Boolean),
-    );
-
-    setGalleryPatternIds((currentIds) => {
-      const nextIds = currentIds.filter((itemId) => validPublicIds.has(itemId));
-      return nextIds.length === currentIds.length ? currentIds : nextIds;
-    });
-  }, [imageOnlyGallery]);
 
   React.useEffect(() => {
     if (!activeGalleryActionsPublicId) {
@@ -7109,9 +7072,10 @@ function HomeNoga(props) {
                       <i className="fas fa-user" aria-hidden="true"></i>
                     )}
                     <input
+                      key={galleryTab}
                       ref={galleryUploadInputRef}
                       type="file"
-                      accept="image/*,video/*"
+                      accept={activeGalleryUploadConfig.accept}
                       className="Home_Noga_hiddenFileInput"
                       onChange={handleProfilePictureSelected}
                     />
@@ -7198,7 +7162,7 @@ function HomeNoga(props) {
                                   className="Home_Noga_aboutButton Home_Noga_wallpaperAction"
                                   onClick={resetBioWallpaperToDefault}
                                 >
-                                  Use Floral
+                                  Use Pattern
                                 </button>
                                 <button
                                   type="button"
@@ -7259,21 +7223,28 @@ function HomeNoga(props) {
                         <button
                           type="button"
                           className="Home_Noga_changePasswordSubmit Home_Noga_galleryUploadButton Home_Noga_friendsGalleryUploadButton"
-                          onClick={openProfilePicturePicker}
+                          onClick={openGalleryUploadPicker}
                           disabled={isImageGalleryUploading}
                           aria-label={
                             isImageGalleryUploading
-                              ? "Uploading gallery item"
-                              : "Upload gallery item"
+                              ? `Uploading ${activeGalleryUploadConfig.label}`
+                              : `Upload ${activeGalleryUploadConfig.label}`
                           }
                           title={
-                            isImageGalleryUploading ? "Uploading..." : "Upload"
+                            isImageGalleryUploading
+                              ? "Uploading..."
+                              : `Upload ${activeGalleryUploadConfig.label}`
                           }
                         >
                           <i
                             className={`fi ${isImageGalleryUploading ? "fi-rr-spinner" : "fi-rr-cloud-upload-alt"}`}
                             aria-hidden="true"
                           ></i>
+                          <span>
+                            {isImageGalleryUploading
+                              ? `Uploading ${activeGalleryUploadConfig.label}`
+                              : `Upload ${activeGalleryUploadConfig.label}`}
+                          </span>
                         </button>
                       </div>
                       <div className="Home_Noga_friendsGalleryHeaderControls">
@@ -7284,11 +7255,13 @@ function HomeNoga(props) {
                             onClick={() => setGalleryTab("images")}
                             aria-label="Images"
                             title="Images"
+                            aria-pressed={galleryTab === "images"}
                           >
                             <i
                               className="fi fi-rr-copy-image"
                               aria-hidden="true"
                             ></i>
+                            <span>Images</span>
                           </button>
                           <button
                             type="button"
@@ -7296,8 +7269,10 @@ function HomeNoga(props) {
                             onClick={() => setGalleryTab("patterns")}
                             aria-label="Patterns"
                             title="Patterns"
+                            aria-pressed={galleryTab === "patterns"}
                           >
                             <i className="fas fa-shapes" aria-hidden="true"></i>
+                            <span>Patterns</span>
                           </button>
                           <button
                             type="button"
@@ -7305,8 +7280,10 @@ function HomeNoga(props) {
                             onClick={() => setGalleryTab("videos")}
                             aria-label="Videos"
                             title="Videos"
+                            aria-pressed={galleryTab === "videos"}
                           >
                             <i className="fi fi-rr-film" aria-hidden="true"></i>
+                            <span>Videos</span>
                           </button>
                         </div>
                       </div>
@@ -7316,20 +7293,25 @@ function HomeNoga(props) {
                         {imageGallery
                           .filter((image) =>
                             galleryTab === "images"
-                              ? !isVideoGalleryItem(image)
+                              ? !isVideoGalleryItem(image) &&
+                                String(
+                                  image?.resourceType || image?.resource_type || "",
+                                )
+                                  .trim()
+                                  .toLowerCase() !== "pattern"
                               : galleryTab === "patterns"
-                                ? !isVideoGalleryItem(image) &&
-                                  galleryPatternIds.includes(
-                                    String(image?.publicId || "").trim(),
+                                ? String(
+                                    image?.resourceType ||
+                                      image?.resource_type ||
+                                      "",
                                   )
+                                    .trim()
+                                    .toLowerCase() === "pattern"
                                 : isVideoGalleryItem(image),
                           )
                           .map((image) => {
                             const imagePublicId = String(image?.publicId || "");
                             const isVideoItem = isVideoGalleryItem(image);
-                            const isPatternItem =
-                              !isVideoItem &&
-                              galleryPatternIds.includes(imagePublicId);
                             const isActionsOpen =
                               imagePublicId === activeGalleryActionsPublicId;
                             const isCurrentProfilePicture =
@@ -7434,32 +7416,6 @@ function HomeNoga(props) {
                                       type="button"
                                       className="Home_Noga_editPicButton"
                                       onClick={() =>
-                                        toggleGalleryPattern(image.publicId)
-                                      }
-                                      disabled={isVideoItem}
-                                      aria-label={
-                                        isVideoItem
-                                          ? "Only images can become patterns"
-                                          : isPatternItem
-                                            ? "Remove from patterns"
-                                            : "Add to patterns"
-                                      }
-                                      title={
-                                        isVideoItem
-                                          ? "Only images can become patterns"
-                                          : isPatternItem
-                                            ? "Remove from patterns"
-                                            : "Add to patterns"
-                                      }
-                                    >
-                                      <i
-                                        className={`fas ${isPatternItem ? "fa-shapes" : "fa-vector-square"}`}
-                                      ></i>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="Home_Noga_editPicButton"
-                                      onClick={() =>
                                         handleSetGalleryImageAsBioWallpaper(
                                           image,
                                         )
@@ -7530,57 +7486,55 @@ function HomeNoga(props) {
                 >
                   {activeFriendCard ? null : (
                     <div className="Home_Noga_gallery_Header_wrapper">
-                      <div className="Home_Noga_socialFriendsHeaderCopy">
-                        <div className="Home_Noga_socialFriendsHeaderTitleRow">
-                          <h3 className="Home_Noga_socialFriendsTitle">
-                            {isReportsWrapperOpen
-                              ? "Settings"
-                              : activeFriendsMiniTabMeta?.label || "Friends"}
-                          </h3>
-                          {isReportsWrapperOpen ? null : (
-                            <span className="Home_Noga_socialFriendsCount">
-                              {activeFriendsMiniTabMeta?.count || 0}
-                            </span>
-                          )}
-                        </div>
-                        {!isReportsWrapperOpen ? (
-                          <div
-                            className="Home_Noga_socialFriendsMiniNav"
-                            style={{
-                              "--home-friends-tab-count": 3,
-                              "--home-friends-tab-index": Math.max(
-                                0,
-                                Math.min(activeFriendsMiniTabIndex, 2),
-                              ),
-                            }}
-                          >
-                            <div className="Home_Noga_socialFriendsMiniNavRail">
-                              <span
-                                className="Home_Noga_socialFriendsMiniNavSelector"
-                                aria-hidden="true"
-                              ></span>
-                              {friendsMiniTabs.map((tab) => (
-                                <button
-                                  key={tab.id}
-                                  type="button"
-                                  className={`Home_Noga_socialFriendsMiniNavButton${
-                                    activeFriendsMiniTab === tab.id
-                                      ? " isActive"
-                                      : ""
-                                  }`}
-                                  onClick={() =>
-                                    handleSelectFriendsMiniTab(tab.id)
-                                  }
-                                  aria-label={tab.label}
-                                  title={tab.label}
-                                >
-                                  <i className={tab.iconClass}></i>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
+                      <div className="Home_Noga_socialFriendsHeaderTitleRow">
+                        <h3 className="Home_Noga_socialFriendsTitle">
+                          {isReportsWrapperOpen
+                            ? "Settings"
+                            : activeFriendsMiniTabMeta?.label || "Friends"}
+                        </h3>
+                        {isReportsWrapperOpen ? null : (
+                          <span className="Home_Noga_socialFriendsCount">
+                            {activeFriendsMiniTabMeta?.count || 0}
+                          </span>
+                        )}
                       </div>
+                      {!isReportsWrapperOpen ? (
+                        <div
+                          className="Home_Noga_socialFriendsMiniNav"
+                          style={{
+                            "--home-friends-tab-count": 3,
+                            "--home-friends-tab-index": Math.max(
+                              0,
+                              Math.min(activeFriendsMiniTabIndex, 2),
+                            ),
+                          }}
+                        >
+                          <div className="Home_Noga_socialFriendsMiniNavRail">
+                            <span
+                              className="Home_Noga_socialFriendsMiniNavSelector"
+                              aria-hidden="true"
+                            ></span>
+                            {friendsMiniTabs.map((tab) => (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                className={`Home_Noga_socialFriendsMiniNavButton${
+                                  activeFriendsMiniTab === tab.id
+                                    ? " isActive"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  handleSelectFriendsMiniTab(tab.id)
+                                }
+                                aria-label={tab.label}
+                                title={tab.label}
+                              >
+                                <i className={tab.iconClass}></i>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {isReportsWrapperOpen ? null : (

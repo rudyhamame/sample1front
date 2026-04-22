@@ -12,10 +12,6 @@ const START_WINDOWS = {
   },
 };
 
-const START_FLYOUT_WIDTH = 240;
-const START_FLYOUT_HEIGHT = 58;
-const START_FLYOUT_ROW_HEIGHT = 50;
-const START_VIEWPORT_EDGE_GAP = 8;
 const START_MENU_LAYOUT_STORAGE_KEY = "SubApps.startMenuLayout";
 const START_MENU_LISTS = ["main", "settings"];
 
@@ -83,37 +79,6 @@ const getDefaultStartWindowPosition = (windowId) => {
   };
 };
 
-const getStartFlyoutPosition = (sourceElement, childCount = 1) => {
-  if (!sourceElement || typeof window === "undefined") {
-    return { x: 120, y: 120 };
-  }
-
-  const sourceRect = sourceElement.getBoundingClientRect();
-  const flyoutHeight = Math.max(
-    START_FLYOUT_HEIGHT,
-    Math.max(1, childCount) * START_FLYOUT_ROW_HEIGHT,
-  );
-  const spaceAbove = sourceRect.bottom - START_VIEWPORT_EDGE_GAP;
-  const spaceBelow = window.innerHeight - sourceRect.top - START_VIEWPORT_EDGE_GAP;
-  const opensLeft = sourceRect.right + START_FLYOUT_WIDTH > window.innerWidth;
-  const opensUp = flyoutHeight > spaceBelow && spaceAbove > spaceBelow;
-  const downwardY = sourceRect.top;
-  const upwardY = sourceRect.bottom - flyoutHeight;
-
-  return {
-    x: opensLeft
-      ? Math.max(START_VIEWPORT_EDGE_GAP, sourceRect.left - START_FLYOUT_WIDTH)
-      : sourceRect.right,
-    y: Math.min(
-      Math.max(START_VIEWPORT_EDGE_GAP, opensUp ? upwardY : downwardY),
-      Math.max(
-        START_VIEWPORT_EDGE_GAP,
-        window.innerHeight - flyoutHeight - START_VIEWPORT_EDGE_GAP,
-      ),
-    ),
-  };
-};
-
 const clampStartWindowPosition = (position, windowId) => {
   const windowMeta = START_WINDOWS[windowId] || START_WINDOWS.appHealth;
   if (typeof window === "undefined") {
@@ -132,7 +97,6 @@ const clampStartWindowPosition = (position, windowId) => {
 const SubApps = (props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsFlyoutPosition, setSettingsFlyoutPosition] = useState(null);
   const [startWindows, setStartWindows] = useState({});
   const [startMenuLayout, setStartMenuLayout] = useState(() =>
     normalizeStartMenuLayout(readStoredStartMenuLayout(), []),
@@ -178,12 +142,6 @@ const SubApps = (props) => {
 
   function toggleSettings(event) {
     event.stopPropagation();
-    setSettingsFlyoutPosition(
-      getStartFlyoutPosition(
-        settingsButtonRef.current,
-        (startMenuLayout.settings || []).length,
-      ),
-    );
     setIsSettingsOpen((prev) => !prev);
   }
 
@@ -355,7 +313,10 @@ const SubApps = (props) => {
 
   useEffect(() => {
     setStartMenuLayout((currentLayout) =>
-      normalizeStartMenuLayout(currentLayout, [...appItemIds, ...actionItemIds]),
+      normalizeStartMenuLayout(currentLayout, [
+        ...appItemIds,
+        ...actionItemIds,
+      ]),
     );
   }, [appLayoutKey, actionLayoutKey]);
 
@@ -379,10 +340,10 @@ const SubApps = (props) => {
           return;
         }
 
-        const serverLayout = normalizeStartMenuLayout(
-          data.startMenuLayout,
-          [...appItemIds, ...actionItemIds],
-        );
+        const serverLayout = normalizeStartMenuLayout(data.startMenuLayout, [
+          ...appItemIds,
+          ...actionItemIds,
+        ]);
         lastSavedStartMenuLayoutRef.current = JSON.stringify(serverLayout);
         setStartMenuLayout(serverLayout);
       })
@@ -410,7 +371,11 @@ const SubApps = (props) => {
   }, [startMenuLayout]);
 
   useEffect(() => {
-    if (!authToken || !isStartMenuReady || !hasLoadedStartMenuLayoutRef.current) {
+    if (
+      !authToken ||
+      !isStartMenuReady ||
+      !hasLoadedStartMenuLayoutRef.current
+    ) {
       return undefined;
     }
 
@@ -460,12 +425,6 @@ const SubApps = (props) => {
   function allowSettingsButtonDrop(event) {
     allowStartMenuDrop(event);
     if (!isSettingsOpen) {
-      setSettingsFlyoutPosition(
-        getStartFlyoutPosition(
-          settingsButtonRef.current,
-          (startMenuLayout.settings || []).length + 1,
-        ),
-      );
       setIsSettingsOpen(true);
     }
   }
@@ -580,16 +539,6 @@ const SubApps = (props) => {
   const mainStartItems = startMenuLayout.main || [];
   const settingsStartItems = startMenuLayout.settings || [];
 
-  useEffect(() => {
-    if (!isSettingsOpen) {
-      return;
-    }
-
-    setSettingsFlyoutPosition(
-      getStartFlyoutPosition(settingsButtonRef.current, settingsStartItems.length),
-    );
-  }, [isSettingsOpen, settingsStartItems.length]);
-
   return (
     <section
       id="SubApps_article"
@@ -616,7 +565,7 @@ const SubApps = (props) => {
           ) : (
             mainStartItems.map((itemId) => renderStartMenuItem(itemId, "main"))
           )}
-          <li className="SubApps_settingsItem">
+          <li className="SubApps_menuItem SubApps_settingsItem">
             <button
               ref={settingsButtonRef}
               type="button"
@@ -628,30 +577,26 @@ const SubApps = (props) => {
             >
               <i className="fas fa-cog"></i>
               <span>Settings</span>
-              <i className="fas fa-chevron-right SubApps_rowCaret"></i>
+              <i className="fas fa-chevron-up SubApps_rowCaret"></i>
             </button>
+            {isSettingsOpen ? (
+              <div
+                className="SubApps_settingsInlineList fc"
+                onDragOver={allowStartMenuDrop}
+                onDrop={(event) => dropStartMenuItem(event, "settings")}
+              >
+                {settingsStartItems.length === 0 ? (
+                  <div id="SubApps_settingsEmptyState">Drop buttons here</div>
+                ) : (
+                  settingsStartItems.map((itemId) =>
+                    renderStartMenuItem(itemId, "settings"),
+                  )
+                )}
+              </div>
+            ) : null}
           </li>
         </ul>
       </section>
-      <ul
-        className={`SubApps_settingsFlyout fc${isSettingsOpen ? " is-open" : ""}`}
-        style={
-          settingsFlyoutPosition
-            ? {
-                left: `${settingsFlyoutPosition.x}px`,
-                top: `${settingsFlyoutPosition.y - 1}px`,
-              }
-            : undefined
-        }
-      >
-        {settingsStartItems.length === 0 ? (
-          <li id="SubApps_settingsEmptyState">Drop buttons here</li>
-        ) : (
-          settingsStartItems.map((itemId) =>
-            renderStartMenuItem(itemId, "settings"),
-          )
-        )}
-      </ul>
       {minimizedStartWindows.length ? (
         <div className="SubApps_minimizedWindows fr">
           {minimizedStartWindows.map(([windowId]) => (

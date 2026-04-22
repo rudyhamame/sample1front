@@ -2359,16 +2359,11 @@ export default class NogaPlanner extends Component {
     const item = this.getSelectedTabItem();
     if (!item) {
       return (
-        <section
-          id="nogaPlanner_lectures_section"
-          className="nogaPlanner_homeSoulPanel nogaPlanner_homeSoulPanel--monitor"
-        >
-          <div className="nogaPlanner_monitorEmpty">
-            {this.isArabic()
-              ? "اختر مقرراً أو محاضرة من القائمة لعرض التفاصيل."
-              : "Select a course or lecture from the list to view details."}
-          </div>
-        </section>
+        <div className="nogaPlanner_monitorEmpty">
+          {this.isArabic()
+            ? "اختر مقرراً أو محاضرة من القائمة لعرض التفاصيل."
+            : "Select a course or lecture from the list to view details."}
+        </div>
       );
     }
     if (plannerTab === "courses") {

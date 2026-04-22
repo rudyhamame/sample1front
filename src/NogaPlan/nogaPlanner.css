@@ -74,10 +74,16 @@
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--nogaPlanner-page-bg-mid);
-  background-image: var(--nogaPlanner-bg-image);
-  background-size: 420px 420px;
-  background-position: center;
-  background-repeat: repeat;
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--nogaPlanner-bg-overlay-start),
+      var(--nogaPlanner-bg-overlay-end)
+    ),
+    var(--nogaPlanner-bg-image);
+  background-position: center, center;
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 420px auto;
   color: var(--nogaPlanner-ink);
   isolation: isolate;
 }
@@ -212,6 +218,9 @@
   overflow: hidden;
   align-items: center;
   padding: 10px;
+}
+#nogaPlanner_homeSoulPanel{
+
 }
 
 #nogaPlanner_coursesLectures_wrapper > * {
@@ -571,6 +580,7 @@
 }
 
 .nogaPlanner_coursesTitleRow {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -709,8 +719,8 @@
 }
 
 #nogaPlanner_savedCoursesColumn {
+  display: flex;
   flex-grow: 1;
-  align-self: flex-start;
   max-height: 100%;
   min-height: 0;
   padding: 14px;
@@ -718,6 +728,8 @@
 }
 
 .nogaPlanner_savedCoursesColumnHeader {
+  display: flex;
+  flex-direction: column;
   gap: 5px;
   width: 100%;
   min-width: 0;
