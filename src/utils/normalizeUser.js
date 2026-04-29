@@ -48,8 +48,7 @@ const isProfileCompleted = (rawUser = {}) => {
     String(profile.lastname || "").trim() &&
     String(profile.email || "").trim() &&
     String(profile.phone || "").trim() &&
-    Boolean(profile.dob) &&
-    String(profile.bio || "").trim();
+    Boolean(profile.dob);
 
   if (!hasCorePersonalFields) {
     return false;

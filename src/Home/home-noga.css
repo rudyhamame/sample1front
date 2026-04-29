@@ -283,7 +283,7 @@ body.dark #Main_article,
   gap:20px;
 }
 
-.Home_Noga_bioWrapper::before {
+/* .Home_Noga_bioWrapper::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -294,7 +294,7 @@ body.dark #Main_article,
       var(--home-bio-wallpaper-repeat);
   transform: scale(1.04);
   transform-origin: center;
-}
+} */
 
 /* .Home_Noga_bioWrapper::after {
   content: "";
@@ -337,7 +337,7 @@ body.dark #Main_article,
   border-bottom-color: rgba(112, 188, 179, 0.16);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_bioWrapper::before {
+/* #Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_bioWrapper::before {
   background:
     var(--home-bio-wallpaper-image) center / var(--home-bio-wallpaper-size)
       var(--home-bio-wallpaper-repeat),
@@ -352,7 +352,7 @@ body.dark #Main_article,
       var(--home-dark-bio-glow-b, rgba(200, 231, 236, 0.04)) 34%,
       var(--home-dark-bio-glow-c, rgba(200, 231, 236, 0)) 62%
     );
-}
+} */
 
 .Home_Noga_bioWrapper > * {
   position: relative;
@@ -1234,6 +1234,21 @@ body.dark #Main_article,
   align-self: flex-start;
   min-width: var(--home-profile-size);
   min-height: var(--home-profile-size);
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+#Home_Noga_preStart_profileWrapper::before {
+  content: none;
+}
+
+.Home_Noga_preStart_profileViewportFrame {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(205, 107, 106, 0.22);
@@ -1246,14 +1261,9 @@ body.dark #Main_article,
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 4px 18px rgba(205, 107, 106, 0.1),
     0 1.5px 6px rgba(0, 0, 0, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  touch-action: none;
 }
 
-#Home_Noga_preStart_profileWrapper::before {
+.Home_Noga_preStart_profileViewportFrame::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1304,6 +1314,43 @@ body.dark #Main_article,
 
 .Home_Noga_hiddenFileInput {
   display: none;
+}
+
+.Home_Noga_profileViewportApplyButton {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 110px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid rgba(205, 107, 106, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(247, 229, 223, 0.94)
+  );
+  color: rgba(126, 55, 55, 0.92);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 10px 18px rgba(133, 70, 70, 0.12);
+  white-space: nowrap;
+  z-index: 4;
+  cursor: pointer;
+}
+
+.Home_Noga_profileViewportApplyButton:hover:not(:disabled) {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.Home_Noga_profileViewportApplyButton:disabled {
+  opacity: 0.64;
+  cursor: wait;
 }
 
 .Home_Noga_galleryShowButton {
@@ -1381,6 +1428,13 @@ body.dark #Main_article,
 }
 
 #Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_profileWrapper {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_profileViewportFrame {
   background: linear-gradient(
     180deg,
     rgba(13, 35, 41, 0.62),
@@ -1392,7 +1446,8 @@ body.dark #Main_article,
     0 12px 24px rgba(0, 0, 0, 0.22);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark #Home_Noga_preStart_profileWrapper::before {
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_preStart_profileViewportFrame::before {
   background: linear-gradient(
     135deg,
     rgba(200, 231, 236, 0.2) 0%,
@@ -1400,6 +1455,20 @@ body.dark #Main_article,
     rgba(200, 231, 236, 0) 62%
   );
   opacity: 0.8;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_profileViewportApplyButton {
+  border-color: rgba(110, 168, 180, 0.26);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 39, 46, 0.96),
+    rgba(9, 28, 35, 0.94)
+  );
+  color: rgba(232, 246, 248, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.24);
 }
 
 #Home_Noga_preStart_eyebrow {
@@ -1535,6 +1604,18 @@ body.dark #Main_article,
   text-align: left;
 }
 
+.Home_Noga_compactBioText--ltr,
+.Home_Noga_compactBioTextarea--ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.Home_Noga_compactBioText--rtl,
+.Home_Noga_compactBioTextarea--rtl {
+  direction: rtl;
+  text-align: right;
+}
+
 .Home_Noga_compactBioEyebrow {
   margin: 0 0 4px;
   font-size: 0.58rem;
@@ -1578,12 +1659,22 @@ body.dark #Main_article,
 
 
 .Home_Noga_profileInfoColumn {
+  display: flex;
+  gap:5px;
+  flex-direction: column;
   min-width: 0;
-  gap: 6px;
   padding: 8px;
   border-radius: 10px;
   border: 1px solid rgba(124, 157, 165, 0.2);
-  background: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 246, 246, 0.34) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 8px 18px rgba(205, 107, 106, 0.08);
 }
 
 #Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_profileInfoColumn {
@@ -1737,6 +1828,25 @@ body.dark #Main_article,
   background: rgba(255, 255, 255, 0.82);
 }
 
+.Home_Noga_aboutToggle {
+  border-color: rgba(205, 107, 106, 0.18);
+  background: rgba(255, 255, 255, 0.36);
+  color: rgba(120, 51, 62, 0.76);
+  padding: 4px 10px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  box-shadow: none;
+  backdrop-filter: blur(4px);
+}
+
+.Home_Noga_aboutToggle:hover {
+  background: rgba(255, 255, 255, 0.52);
+  border-color: rgba(205, 107, 106, 0.24);
+  color: rgba(120, 51, 62, 0.88);
+}
+
 .Home_Noga_wallpaperButton {
   margin-top: 2px;
 }
@@ -1830,6 +1940,18 @@ body.dark #Main_article,
   border-color: var(--home-dark-border);
   background: rgba(13, 35, 41, 0.5);
   color: rgba(232, 246, 248, 0.94);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_aboutToggle {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(13, 35, 41, 0.34);
+  color: rgba(216, 232, 237, 0.78);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_aboutToggle:hover {
+  border-color: rgba(110, 168, 180, 0.26);
+  background: rgba(13, 35, 41, 0.5);
+  color: rgba(232, 246, 248, 0.9);
 }
 
 #Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendsList {
@@ -2198,6 +2320,7 @@ body.dark #Main_article,
   flex-direction: column;
   align-items: flex-start;
   min-width: var(--home-left-column-min-width);
+  min-height: 0;
   background: linear-gradient(
     180deg,
     rgba(255, 238, 236, 0.293) 1%,
@@ -2226,26 +2349,32 @@ body.dark #Main_article,
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   align-items: stretch;
-  flex-grow: 1;
+  flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
+  height: 0;
   position: relative;
   flex-wrap: nowrap;
 }
 
 .Home_Noga_friendsEventsWrapper > .Home_Noga_friendsEvents {
-  flex: 2 1 0;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
 .Home_Noga_friendsEventsWrapper > .Home_Noga_socialFriendsPanel {
-  flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
 .Home_Noga_friendsEvents {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   gap: 10px;
   padding: 14px;
   background: rgba(255, 246, 246, 0.42);
@@ -2256,26 +2385,14 @@ body.dark #Main_article,
 .Home_Noga_aboutPanel {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 12px;
   width: 100%;
-  overflow: scroll;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.Home_Noga_aboutPanel .Home_Noga_profileInfoColumn {
-  gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(205, 107, 106, 0.2);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.5) 0%,
-      rgba(255, 246, 246, 0.34) 100%
-    );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 8px 18px rgba(205, 107, 106, 0.08);
-}
 
 .Home_Noga_aboutPanel .Home_Noga_profileInfoColumnTitle {
   font-size: 0.7rem;
@@ -2385,6 +2502,7 @@ body.dark #Main_article,
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 8px 18px rgba(154, 82, 94, 0.12);
+  font-size: 0.62rem;
 }
 
 .Home_Noga_friendsGalleryHeader > .Home_Noga_galleryTabs,
@@ -2433,12 +2551,16 @@ body.dark #Main_article,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   min-width: 32px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
   color: rgba(120, 51, 62, 0.68);
+  font-size: 0.62rem;
+  line-height: 1.05;
+  letter-spacing: 0.05em;
   box-shadow: none;
   transition:
     background 0.18s ease,
@@ -2446,6 +2568,17 @@ body.dark #Main_article,
     color 0.18s ease,
     box-shadow 0.18s ease,
     transform 0.18s ease;
+}
+
+.Home_Noga_galleryTabButton i {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.Home_Noga_galleryTabButton span {
+  font-size: 0.58rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
 }
 
 .Home_Noga_galleryTabButton:hover,
@@ -2999,17 +3132,26 @@ body.dark #Main_article,
   flex-direction: column;
   flex: 1 1 0%;
   align-self: stretch;
+  width: 100%;
   height: 100%;
   min-height: 0;
+  box-sizing: border-box;
   gap: 12px;
   overflow-y: auto;
   overflow-x: hidden;
-    background: rgba(255, 246, 246, 0.42);
+  scrollbar-gutter: stable;
+  background: rgba(255, 246, 246, 0.42);
   box-shadow:
     0 4px 18px 0 rgba(205, 107, 106, 0.1),
     0 1.5px 6px 0 rgba(0, 0, 0, 0.06);
+  border-radius: 0 0 inherit inherit;
   border-bottom-left-radius: inherit;
   border-bottom-right-radius: inherit;
+}
+
+.Home_Noga_socialFriendsList.Home_Noga_socialDirectoryResults {
+  padding: 5px;
+  overflow: scroll;
 }
 
 .Home_Noga_socialRequestActions {
@@ -3019,23 +3161,26 @@ body.dark #Main_article,
   gap: 8px;
 }
 
-.Home_Noga_socialRequestSearchRow {
+.Home_Noga_socialDirectoryHeader {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 12px;
- 
- 
+  padding: 0;
 }
 
 .Home_Noga_socialFriendsSearchAndBlocked {
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
-
+  padding: 12px;
+  box-sizing: border-box;
 }
 
-.Home_Noga_socialRequestSearchWrap {
+.Home_Noga_socialFriendsSearchAndBlocked > * {
+  padding: 0;
+}
+
+.Home_Noga_socialDirectorySearch {
   display: flex;
   width: 100%;
   align-items: center;
@@ -3050,13 +3195,13 @@ body.dark #Main_article,
     0 4px 12px rgba(154, 82, 94, 0.06);
 }
 
-.Home_Noga_socialRequestSearchWrap i {
+.Home_Noga_socialDirectorySearch i {
   color: rgba(158, 68, 78, 0.82);
   font-size: 0.78rem;
   flex: 0 0 auto;
 }
 
-.Home_Noga_socialRequestSearchWrap input {
+.Home_Noga_socialDirectorySearch input {
   width: 100%;
   border: none;
   background: transparent;
@@ -3067,11 +3212,11 @@ body.dark #Main_article,
   outline: none;
 }
 
-.Home_Noga_socialRequestSearchWrap input::placeholder {
+.Home_Noga_socialDirectorySearch input::placeholder {
   color: rgba(145, 62, 71, 0.54);
 }
 
-.Home_Noga_socialRequestSearchFeedback {
+.Home_Noga_socialDirectoryStatus {
   margin: 0;
   color: rgba(145, 62, 71, 0.84);
   font-size: 0.58rem;
@@ -3096,6 +3241,17 @@ body.dark #Main_article,
 
 .Home_Noga_socialRequestButton--dismiss {
   color: rgba(123, 82, 78, 0.9);
+}
+
+.Home_Noga_socialRequestButton--action {
+  width: auto;
+  min-width: 34px;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.Home_Noga_socialRequestButton--action span {
+  white-space: nowrap;
 }
 
 .Home_Noga_socialRequestButton--sent {
@@ -3141,15 +3297,10 @@ body.dark #Main_article,
   align-items: stretch;
   justify-content: flex-start;
   flex-direction: row;
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid rgba(184, 103, 117, 0.16);
-  background:
-    linear-gradient(135deg, rgba(255, 249, 250, 0.94), rgba(255, 229, 234, 0.76));
-  border-bottom: 2px solid rgba(205, 107, 106, 0.24);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 8px 18px rgba(154, 74, 82, 0.08);
+  gap: 0;
+  padding: 5px;  
+  border-bottom: 1px solid rgba(205, 107, 106, 0.24);
+ 
   overflow: hidden;
 }
 
@@ -3172,7 +3323,7 @@ body.dark #Main_article,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -3201,16 +3352,18 @@ body.dark #Main_article,
 }
 
 .Home_Noga_socialFriendIdentity {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .Home_Noga_socialFriendAvatar {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3252,15 +3405,16 @@ body.dark #Main_article,
 
 .Home_Noga_socialFriendCopy {
   display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
-  gap: 3px;
+  gap: 2px;
 }
 
 .Home_Noga_socialFriendName {
   display: block;
   color: rgba(24, 79, 88, 0.95);
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
   overflow: hidden;
@@ -3286,9 +3440,8 @@ body.dark #Main_article,
   display: inline-flex;
   flex: 0 0 auto;
   justify-content: center;
-  min-width: center;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .Home_Noga_socialFriendInlineCallActionsSlot {
@@ -4053,51 +4206,101 @@ body.dark #Main_article,
 }
 
 .Home_Noga_socialFriendsEmptyState {
-    min-height: 120px;
-    min-width: 0;
+  min-height: 120px;
+  min-width: 0;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.4;
   color: rgba(26, 59, 67, 0.9);
 }
 
-.Home_Noga_socialBlockedPanel,
-.Home_Noga_socialRequestsPanel {
-  width: 100%;
-  min-width: 0;
-  flex-grow: 1;
-  padding: 10px 12px;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
-
-
-.Home_Noga_socialBlockedTabs,
-.Home_Noga_socialRequestTabs {
+.Home_Noga_socialDirectoryTabs {
   display: flex;
   width: 100%;
   min-width: 0;
-  gap: 0.35rem;
-  background: rgba(255, 247, 249, 0.5);
+  gap: 0.3rem;
+  padding: 0.25rem;
+ 
 }
 
-.Home_Noga_socialBlockedTab,
-.Home_Noga_socialRequestTab {
+.Home_Noga_socialDirectoryTabGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 250, 0.92),
+    rgba(250, 236, 240, 0.72)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 8px 18px rgba(154, 82, 94, 0.08);
+}
+
+.Home_Noga_socialDirectoryTab {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
-  color: inherit;
+  color: rgba(120, 51, 62, 0.74);
   font: inherit;
-  padding: 0.45rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  padding: 0.52rem 0.6rem;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
-.Home_Noga_socialBlockedTab.isActive,
-.Home_Noga_socialRequestTab.isActive {
-  background: rgba(255, 255, 255, 0.74);
-  color: rgba(112, 47, 39, 0.94);
+.Home_Noga_socialDirectoryTab--hasMarker {
+  padding-right: 1.28rem;
+}
+
+.Home_Noga_socialDirectoryTabMarker {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: linear-gradient(180deg, #ef8a8a, #cf5e6f);
+  box-shadow:
+    0 0 0 2px rgba(255, 248, 250, 0.92),
+    0 0 10px rgba(207, 94, 111, 0.28);
+}
+
+.Home_Noga_socialDirectoryTab:hover {
+  color: rgba(104, 43, 51, 0.92);
+  background: rgba(255, 255, 255, 0.56);
+  border-color: rgba(205, 107, 106, 0.14);
+}
+
+.Home_Noga_socialDirectoryTab.isActive {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(255, 243, 246, 0.92)
+  );
+  color: rgba(112, 47, 39, 0.96);
+  border-color: rgba(205, 107, 106, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 6px 14px rgba(154, 82, 94, 0.1);
 }
 
 .Home_Noga_graphicControlField {
@@ -4302,7 +4505,7 @@ body.dark #Main_article,
   color: #f5fcfc;
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestSearchRow {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryHeader {
   border-color: rgba(110, 168, 180, 0.18);
   background: linear-gradient(
     180deg,
@@ -4314,7 +4517,7 @@ body.dark #Main_article,
     0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestSearchWrap {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectorySearch {
   border-color: rgba(110, 168, 180, 0.2);
   background: rgba(13, 35, 41, 0.92);
   box-shadow:
@@ -4322,60 +4525,80 @@ body.dark #Main_article,
     0 6px 14px rgba(0, 0, 0, 0.12);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestSearchWrap i {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectorySearch i {
   color: rgba(156, 218, 226, 0.78);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestSearchWrap input {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectorySearch input {
   color: rgba(236, 245, 247, 0.92);
 }
 
 #Home_Noga_studysessions_article.Home_Noga_themeDark
-  .Home_Noga_socialRequestSearchWrap
+  .Home_Noga_socialDirectorySearch
   input::placeholder {
   color: rgba(198, 224, 229, 0.5);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestSearchFeedback {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryStatus {
   color: rgba(198, 224, 229, 0.68);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialBlockedTabs,
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestTabs {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryTabs {
   border-color: rgba(110, 168, 180, 0.18);
-  background: rgba(10, 31, 38, 0.66);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 31, 38, 0.82),
+    rgba(9, 24, 31, 0.74)
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 8px 16px rgba(0, 0, 0, 0.14);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialBlockedTab,
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestTab {
-  color: rgba(198, 224, 229, 0.72);
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryTabGroup {
+  gap: 0;
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialBlockedTab:hover,
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestTab:hover {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryTab {
+  color: rgba(198, 224, 229, 0.72);
+  border-color: transparent;
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark
+  .Home_Noga_socialDirectoryTabMarker {
+  background: linear-gradient(180deg, #78ddd5, #3eb1bd);
+  box-shadow:
+    0 0 0 2px rgba(10, 31, 38, 0.82),
+    0 0 12px rgba(62, 177, 189, 0.32);
+}
+
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryTab:hover {
   color: rgba(238, 249, 251, 0.94);
   background: rgba(18, 55, 63, 0.5);
+  border-color: rgba(110, 168, 180, 0.16);
 }
 
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialBlockedTab.isActive,
-#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialRequestTab.isActive {
+#Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialDirectoryTab.isActive {
   color: rgba(238, 249, 251, 0.96);
+  border-color: rgba(110, 168, 180, 0.2);
   background: linear-gradient(
     180deg,
     rgba(18, 55, 63, 0.98),
     rgba(13, 40, 47, 0.96)
   );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.16);
 }
 
 #Home_Noga_studysessions_article.Home_Noga_themeDark .Home_Noga_socialFriendItem {
   border-color: rgba(110, 168, 180, 0.16);
   border-bottom-color: rgba(205, 107, 106, 0.3);
-  background:
-    linear-gradient(135deg, rgba(42, 23, 31, 0.94), rgba(76, 35, 42, 0.76));
+  background: linear-gradient(
+    135deg,
+    rgba(43, 24, 31, 0.96) 0%,
+    rgba(71, 35, 42, 0.84) 100%
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 10px 20px rgba(0, 0, 0, 0.18);

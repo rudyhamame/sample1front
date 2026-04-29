@@ -9,8 +9,8 @@
 }
 
 #SubApps_icon_container {
-  font-size: 1.5rem;
-  padding: 10px;
+  font-size: 1.25rem;
+  padding: 7px 8px;
   position: relative;
   display: flex;
   align-items: center;
@@ -86,12 +86,14 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 
 #SubApps_content_container {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
   z-index: 10020;
   overflow: visible;
+  font-size: 0.72rem;
+  line-height: 1.3;
 }
 
 #SubApps_article.SubApps_article--footer #SubApps_content_container {
@@ -107,7 +109,6 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   margin: 0;
   padding: 0;
   gap: 0;
- 
   align-items: flex-start;
   text-align: left;
   font-size: inherit;
@@ -118,6 +119,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 
 #SubApps_dropMenu_container.is-open {
   display: flex;
+  flex-direction: column;
 }
 
 #SubApps_dropMenu_container li {
@@ -137,8 +139,6 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 .SubApps_menuItem {
   cursor: grab;
   background-color: #f4d1ca;
-  border-top: 1px solid rgba(118, 151, 160, 0.14);
-    border-left: 1px solid rgba(118, 151, 160, 0.14);
 }
 
 .SubApps_menuItem:active {
@@ -251,15 +251,12 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 .SubApps_settingsInlineList {
   display: flex;
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% - 1px);
+  left: 100%;
+  right: auto;
   width: max-content;
   min-width: 100%;
   margin: 0;
-  border-bottom: 1px solid rgba(118, 151, 160, 0.14);
   overflow: hidden;
-  z-index: 2;
 }
 
 .SubApps_settingsInlineList.is-open {
@@ -269,6 +266,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 .SubApps_healthPanel {
   position: fixed;
   display: none;
+  flex-direction: column;
   width: min(320px, 72vw);
   max-height: min(420px, 70vh);
   padding: 12px;
@@ -293,6 +291,8 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 
 .SubApps_healthMiniBar {
   width: 100%;
+  flex-direction: row;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -353,7 +353,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   justify-content: center;
   gap: 6px;
   height: 100%;
-  min-height: 28px;
+  min-height: 24px;
   padding: 0 5px;
   appearance: none;
   border-right: 1px solid rgba(118, 151, 160, 0.336);
@@ -381,6 +381,8 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 }
 
 .SubApps_healthRow {
+  display: flex;
+  flex-direction: row;
   width: 100%;
   align-items: center;
   justify-content: space-between;

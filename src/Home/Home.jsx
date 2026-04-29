@@ -1,19 +1,7 @@
 import { Link, useHistory } from "react-router-dom";
 import "./home.css";
 import Nav from "../Nav/Nav";
-import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
-const socketRef = typeof window !== "undefined" ? { current: null } : null;
-
-function getUserIdFromToken(token) {
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.userId || payload.id || null;
-  } catch {
-    return null;
-  }
-}
+import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../config/api";
 import {
   drawHomeLedRopePath,
@@ -23,8 +11,12 @@ import {
   smoothHomeDrawingPoints,
 } from "../utils/homeDrawingRope";
 import { getHomeSubApps } from "../utils/homeSubApps";
+import compressImageUpload, {
+  canCompressImageUpload,
+} from "../utils/compressImageUpload";
 import FriendChat from "../HomeChat/FriendChat";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
+import io from "socket.io-client";
 
 const NAGHAM_COURSE_LETTERS_STORAGE_KEY = "schoolPlanner_nagham_course_letters";
 const NAGHAM_COURSE_LIST_STORAGE_KEY = "schoolPlanner_nagham_course_list";
@@ -38,6 +30,7 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
   "phenomedSocial_chat_messages_background";
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
+const DEFAULT_HOME_BIO_WALLPAPER_SIZE = 520;
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
@@ -68,10 +61,87 @@ const BLOCKED_LIST_USER_MODE_ORDER = [
 ];
 const BLOCKED_LIST_GROUP_ORDER = ["friends", "pending", "blocked"];
 const BLOCKED_LIST_GROUP_META = {
-  pending: { label: "Pending", iconClass: "fa-user-clock" },
+  pending: { label: "Requests", iconClass: "fa-user-clock" },
   blocked: { label: "Blocked", iconClass: "fa-user-slash" },
   friends: { label: "Friends", iconClass: "fa-user-check" },
 };
+const ARABIC_TEXT_PATTERN =
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
+  images: {
+    accept: "image/*",
+    resourceType: "image",
+    label: "image",
+  },
+  patterns: {
+    accept: "image/*",
+    resourceType: "pattern",
+    label: "pattern",
+  },
+  videos: {
+    accept: "video/*",
+    resourceType: "video",
+    label: "video",
+  },
+};
+
+const HOME_DRAWING_ALLOWLIST_ZONES = [
+  { id: "canvas", label: "Canvas", selector: "#Home_main_wrapper" },
+  {
+    id: "leftColumn",
+    label: "Left column",
+    selector: "#Home_main_leftColumn_wrapper",
+  },
+  {
+    id: "rightColumn",
+    label: "Right column",
+    selector: "#Home_rightColumn_wrapper",
+  },
+  {
+    id: "bio",
+    label: "Bio",
+    selector: "#Home_bioWrapper",
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    selector: "#Home_preStart_reportsWrapper",
+  },
+];
+
+const HOME_DRAWING_VISIBILITY_WRAPPERS = [
+  {
+    id: "leftColumn",
+    label: "Left column",
+    selector: "#Home_main_leftColumn_wrapper",
+  },
+  {
+    id: "bio",
+    label: "Bio wrapper",
+    selector: "#Home_bioWrapper",
+  },
+  {
+    id: "profile",
+    label: "Profile picture",
+    selector: "#Home_preStart_profileWrapper",
+  },
+  {
+    id: "bioText",
+    label: "Bio text",
+    selector: "#Home_preStart_personalBio",
+  },
+  {
+    id: "rightColumn",
+    label: "Right column",
+    selector: "#Home_rightColumn_wrapper",
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    selector: "#Home_preStart_reportsWrapper",
+  },
+];
 
 const FRIEND_USER_MODE_META = {
   blocked: {
@@ -146,7 +216,10 @@ const normalizeFriendUserMode = (value) => {
 const getBlockedListGroupIdForMode = (value) => {
   const normalizedValue = normalizeFriendUserMode(value);
 
-  if (normalizedValue === "requestsent" || normalizedValue === "requestreceived") {
+  if (
+    normalizedValue === "requestsent" ||
+    normalizedValue === "requestreceived"
+  ) {
     return "pending";
   }
 
@@ -170,6 +243,8 @@ const sanitizeGalleryFileName = (value) =>
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80) || `gallery-${Date.now()}`;
+
+const isArabicText = (value) => ARABIC_TEXT_PATTERN.test(String(value || ""));
 
 const VIDEO_FORMATS = new Set([
   "mp4",
@@ -208,8 +283,6 @@ const isVideoGalleryItem = (item) => {
     .toLowerCase();
   return url.includes("/video/upload/");
 };
-
-// ...existing code...
 
 const buildMusicSearchTerms = (searchFields) => ({
   song: String(searchFields?.song || "").trim(),
@@ -273,6 +346,20 @@ const buildMusicLibraryLineLabel = (title, artist, fallbackValue = "") => {
   }
 
   return String(fallbackValue || "").trim();
+};
+
+const getMusicProviderLabel = (provider) => {
+  const normalizedProvider = String(provider || "").trim();
+
+  if (normalizedProvider === "itunes") {
+    return "iTunes";
+  }
+
+  if (normalizedProvider === "musicBrainz") {
+    return "MusicBrainz";
+  }
+
+  return "Internet Archive";
 };
 
 const normalizeStoredMusicLibraryItem = (rawItem) => {
@@ -601,34 +688,113 @@ const ImageViewerModal = ({
       aria-modal="true"
       aria-label={String(title || activeImageLabel || "Image viewer")}
       onClick={() => onClose?.()}
-      className="Home_imageViewerOverlay"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        background:
+          "linear-gradient(180deg, rgba(6, 16, 20, 0.92), rgba(7, 19, 24, 0.96))",
+        backdropFilter: "blur(12px)",
+      }}
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="Home_imageViewerCard"
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px",
+          width: "min(92vw, 980px)",
+          maxHeight: "92vh",
+          padding: "18px",
+          borderRadius: "24px",
+          border: "1px solid rgba(125, 175, 186, 0.24)",
+          background:
+            "linear-gradient(180deg, rgba(10, 29, 36, 0.96), rgba(9, 24, 30, 0.98))",
+          boxShadow: "0 24px 60px rgba(0, 0, 0, 0.36)",
+        }}
       >
-        <div className="Home_imageViewerHeader">
-          <strong className="Home_imageViewerTitle">{activeImageLabel}</strong>
-          <span className="Home_imageViewerCount">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            color: "rgba(231, 244, 247, 0.96)",
+          }}
+        >
+          <strong
+            style={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              fontSize: "0.95rem",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {activeImageLabel}
+          </strong>
+          <span
+            style={{
+              fontSize: "0.8rem",
+              color: "rgba(192, 221, 227, 0.78)",
+            }}
+          >
             {hasImages ? `${boundedIndex + 1} / ${safeImages.length}` : "0 / 0"}
           </span>
           <button
             type="button"
             onClick={() => onClose?.()}
-            className="Home_imageViewerCloseButton"
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "999px",
+              border: "1px solid rgba(125, 175, 186, 0.26)",
+              background: "rgba(255, 255, 255, 0.06)",
+              color: "rgba(240, 248, 250, 0.96)",
+            }}
           >
             x
           </button>
         </div>
-        <div className="Home_imageViewerStage">
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "280px",
+            borderRadius: "18px",
+            overflow: "hidden",
+            background:
+              "radial-gradient(circle at top, rgba(36, 85, 97, 0.32), rgba(7, 18, 24, 0.98))",
+          }}
+        >
           {hasImages && activeImageUrl ? (
             <img
               src={activeImageUrl}
               alt={activeImageLabel}
-              className="Home_imageViewerImage"
+              style={{
+                display: "block",
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: "14px",
+              }}
             />
           ) : (
-            <p className="Home_imageViewerEmpty">No image available.</p>
+            <p
+              style={{
+                color: "rgba(214, 231, 236, 0.82)",
+                fontSize: "0.9rem",
+              }}
+            >
+              No image available.
+            </p>
           )}
           {safeImages.length > 1 ? (
             <>
@@ -640,9 +806,20 @@ const ImageViewerModal = ({
                     (boundedIndex - 1 + safeImages.length) % safeImages.length,
                   )
                 }
-                className="Home_imageViewerNavButton Home_imageViewerNavButton--prev"
+                style={{
+                  position: "absolute",
+                  left: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(125, 175, 186, 0.26)",
+                  background: "rgba(7, 22, 27, 0.72)",
+                  color: "rgba(242, 249, 250, 0.98)",
+                }}
               >
-                {"<"}
+                â€¹
               </button>
               <button
                 type="button"
@@ -650,9 +827,20 @@ const ImageViewerModal = ({
                 onClick={() =>
                   onChangeIndex?.((boundedIndex + 1) % safeImages.length)
                 }
-                className="Home_imageViewerNavButton Home_imageViewerNavButton--next"
+                style={{
+                  position: "absolute",
+                  right: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(125, 175, 186, 0.26)",
+                  background: "rgba(7, 22, 27, 0.72)",
+                  color: "rgba(242, 249, 250, 0.98)",
+                }}
               >
-                {">"}
+                â€º
               </button>
             </>
           ) : null}
@@ -662,23 +850,566 @@ const ImageViewerModal = ({
   );
 };
 
+const clampVideoViewerWindowRect = (rect) => {
+  if (typeof window === "undefined") {
+    return rect;
+  }
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const minWidth = 360;
+  const minHeight = 240;
+  const safeGap = 8;
+  const nextWidth = Math.min(
+    Math.max(Number(rect?.width) || minWidth, minWidth),
+    Math.max(minWidth, viewportWidth - safeGap * 2),
+  );
+  const nextHeight = Math.min(
+    Math.max(Number(rect?.height) || minHeight, minHeight),
+    Math.max(minHeight, viewportHeight - safeGap * 2),
+  );
+  const nextX = Math.min(
+    Math.max(Number(rect?.x) || safeGap, safeGap),
+    Math.max(safeGap, viewportWidth - nextWidth - safeGap),
+  );
+  const nextY = Math.min(
+    Math.max(Number(rect?.y) || safeGap, safeGap),
+    Math.max(safeGap, viewportHeight - nextHeight - safeGap),
+  );
+
+  return {
+    x: nextX,
+    y: nextY,
+    width: nextWidth,
+    height: nextHeight,
+  };
+};
+
+const getDefaultVideoViewerWindowRect = () => {
+  if (typeof window === "undefined") {
+    return { x: 48, y: 48, width: 720, height: 440 };
+  }
+
+  const width = Math.min(Math.max(window.innerWidth * 0.68, 420), 960);
+  const height = Math.min(Math.max(window.innerHeight * 0.56, 280), 640);
+
+  return clampVideoViewerWindowRect({
+    x: (window.innerWidth - width) / 2,
+    y: Math.max(18, (window.innerHeight - height) / 2),
+    width,
+    height,
+  });
+};
+
+const getVideoViewerWindowRectForAspectRatio = (aspectRatio) => {
+  if (typeof window === "undefined") {
+    return getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 20;
+  const maxWidth = Math.max(360, window.innerWidth - safeGap * 2);
+  const maxHeight = Math.max(220, window.innerHeight - safeGap * 2);
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+
+  let width = Math.min(maxWidth, maxHeight * normalizedAspectRatio);
+  let height = width / normalizedAspectRatio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * normalizedAspectRatio;
+  }
+
+  return {
+    x: Math.max(safeGap, (window.innerWidth - width) / 2),
+    y: Math.max(safeGap, (window.innerHeight - height) / 2),
+    width,
+    height,
+  };
+};
+
+const getVideoViewerWindowRectAtPositionForAspectRatio = (
+  rect,
+  aspectRatio,
+) => {
+  if (typeof window === "undefined") {
+    return rect || getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 8;
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const maxWidth = Math.max(220, window.innerWidth - safeGap * 2);
+  const maxHeight = Math.max(160, window.innerHeight - safeGap * 2);
+  let width = Math.min(Math.max(Number(rect?.width) || 420, 220), maxWidth);
+  let height = width / normalizedAspectRatio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * normalizedAspectRatio;
+  }
+
+  return clampVideoViewerWindowPosition({
+    x: Number(rect?.x) || safeGap,
+    y: Number(rect?.y) || safeGap,
+    width,
+    height,
+  });
+};
+
+const clampVideoViewerWindowPosition = (rect) => {
+  if (typeof window === "undefined") {
+    return rect;
+  }
+
+  const safeGap = 8;
+  const width = Number(rect?.width) || 360;
+  const height = Number(rect?.height) || 240;
+
+  return {
+    ...rect,
+    x: Math.min(
+      Math.max(Number(rect?.x) || safeGap, safeGap),
+      Math.max(safeGap, window.innerWidth - width - safeGap),
+    ),
+    y: Math.min(
+      Math.max(Number(rect?.y) || safeGap, safeGap),
+      Math.max(safeGap, window.innerHeight - height - safeGap),
+    ),
+  };
+};
+
+const getAspectLockedVideoViewerResizeRect = ({
+  startRect,
+  direction,
+  deltaX,
+  deltaY,
+  aspectRatio,
+}) => {
+  if (!startRect) {
+    return getDefaultVideoViewerWindowRect();
+  }
+
+  const safeGap = 8;
+  const viewportWidth =
+    typeof window !== "undefined" ? window.innerWidth : startRect.width + 16;
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : startRect.height + 16;
+  const normalizedAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const minWidth = Math.min(
+    Math.max(220, 180 * normalizedAspectRatio),
+    Math.max(220, viewportWidth - safeGap * 2),
+  );
+  const minHeight = minWidth / normalizedAspectRatio;
+  const startWidth = Math.max(startRect.width, minWidth);
+  const startHeight = startWidth / normalizedAspectRatio;
+  const right = startRect.x + startWidth;
+  const bottom = startRect.y + startHeight;
+  const centerX = startRect.x + startWidth / 2;
+  const centerY = startRect.y + startHeight / 2;
+  let nextWidth = startWidth;
+
+  if (direction.includes("e")) {
+    nextWidth = startWidth + deltaX;
+  } else if (direction.includes("w")) {
+    nextWidth = startWidth - deltaX;
+  } else if (direction.includes("s")) {
+    nextWidth = (startHeight + deltaY) * normalizedAspectRatio;
+  } else if (direction.includes("n")) {
+    nextWidth = (startHeight - deltaY) * normalizedAspectRatio;
+  }
+
+  if (
+    (direction.length === 2 && Math.abs(deltaY) > Math.abs(deltaX)) ||
+    (!direction.includes("e") && !direction.includes("w"))
+  ) {
+    if (direction.includes("s")) {
+      nextWidth = (startHeight + deltaY) * normalizedAspectRatio;
+    } else if (direction.includes("n")) {
+      nextWidth = (startHeight - deltaY) * normalizedAspectRatio;
+    }
+  }
+
+  const maxWidthByViewport = viewportWidth - safeGap * 2;
+  nextWidth = Math.min(Math.max(nextWidth, minWidth), maxWidthByViewport);
+  let nextHeight = nextWidth / normalizedAspectRatio;
+
+  if (nextHeight > viewportHeight - safeGap * 2) {
+    nextHeight = viewportHeight - safeGap * 2;
+    nextWidth = nextHeight * normalizedAspectRatio;
+  }
+
+  let nextX = startRect.x;
+  let nextY = startRect.y;
+
+  if (direction.includes("w")) {
+    nextX = right - nextWidth;
+  } else if (!direction.includes("e")) {
+    nextX = centerX - nextWidth / 2;
+  }
+
+  if (direction.includes("n")) {
+    nextY = bottom - nextHeight;
+  } else if (!direction.includes("s")) {
+    nextY = centerY - nextHeight / 2;
+  }
+
+  nextX = Math.min(
+    Math.max(nextX, safeGap),
+    Math.max(safeGap, viewportWidth - nextWidth - safeGap),
+  );
+  nextY = Math.min(
+    Math.max(nextY, safeGap),
+    Math.max(safeGap, viewportHeight - nextHeight - safeGap),
+  );
+
+  return {
+    x: nextX,
+    y: nextY,
+    width: nextWidth,
+    height: nextHeight,
+  };
+};
+
+const VIDEO_VIEWER_RESIZE_DIRECTIONS = [
+  "n",
+  "s",
+  "e",
+  "w",
+  "ne",
+  "nw",
+  "se",
+  "sw",
+];
+
+const HOME_VIDEO_VIEWER_STATE_PREFIX = "homeVideoViewerWindow:";
+
+const getVideoViewerStorageKey = (videoKey = "") =>
+  `${HOME_VIDEO_VIEWER_STATE_PREFIX}${String(videoKey || "default").trim() || "default"}`;
+
+const getSavedVideoViewerWindowState = (videoKey = "") => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const parsedState = JSON.parse(
+      window.localStorage.getItem(getVideoViewerStorageKey(videoKey)) || "null",
+    );
+    const rect = parsedState?.rect;
+    const aspectRatio = Number(parsedState?.aspectRatio || 0);
+
+    if (
+      !rect ||
+      !Number.isFinite(Number(rect?.width)) ||
+      !Number.isFinite(Number(rect?.height))
+    ) {
+      return null;
+    }
+
+    return {
+      rect: clampVideoViewerWindowPosition({
+        x: Number(rect.x) || 8,
+        y: Number(rect.y) || 8,
+        width: Number(rect.width) || 420,
+        height: Number(rect.height) || 240,
+      }),
+      aspectRatio:
+        Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const saveVideoViewerWindowState = (videoKey = "", rect, aspectRatio) => {
+  if (typeof window === "undefined" || !rect) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      getVideoViewerStorageKey(videoKey),
+      JSON.stringify({
+        rect,
+        aspectRatio:
+          Number.isFinite(Number(aspectRatio)) && Number(aspectRatio) > 0
+            ? Number(aspectRatio)
+            : null,
+      }),
+    );
+  } catch {}
+};
+
 const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
+  const videoKey = React.useMemo(
+    () =>
+      String(
+        video?.publicId || video?.url || video?.fileName || title || "",
+      ).trim(),
+    [title, video?.fileName, video?.publicId, video?.url],
+  );
+  const [windowRect, setWindowRect] = React.useState(
+    () =>
+      getSavedVideoViewerWindowState(videoKey)?.rect ||
+      getDefaultVideoViewerWindowRect(),
+  );
+  const [videoAspectRatio, setVideoAspectRatio] = React.useState(
+    () => getSavedVideoViewerWindowState(videoKey)?.aspectRatio || 16 / 9,
+  );
+  const [isWindowMinimized, setIsWindowMinimized] = React.useState(false);
+  const [isWindowMaximized, setIsWindowMaximized] = React.useState(false);
+  const dragStateRef = React.useRef(null);
+  const hasAppliedVideoRatioRef = React.useRef(false);
+  const hasUserPositionedWindowRef = React.useRef(false);
+  const restoredWindowRectRef = React.useRef(null);
+
+  const closeVideoWindow = React.useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-closed"));
+    }
+    onClose?.();
+  }, [onClose]);
+
+  const stopWindowInteraction = React.useCallback(() => {
+    dragStateRef.current = null;
+    window.removeEventListener("pointermove", handleWindowPointerMove);
+    window.removeEventListener("pointerup", stopWindowInteraction);
+    window.removeEventListener("pointercancel", stopWindowInteraction);
+  }, []);
+
+  function handleWindowPointerMove(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+
+    if (dragState.mode === "move") {
+      hasUserPositionedWindowRef.current = true;
+      setWindowRect(
+        clampVideoViewerWindowPosition({
+          ...dragState.startRect,
+          x: dragState.startRect.x + deltaX,
+          y: dragState.startRect.y + deltaY,
+        }),
+      );
+      return;
+    }
+
+    const direction = String(dragState.direction || "");
+    hasUserPositionedWindowRef.current = true;
+    setWindowRect(
+      getAspectLockedVideoViewerResizeRect({
+        startRect: dragState.startRect,
+        direction,
+        deltaX,
+        deltaY,
+        aspectRatio: videoAspectRatio,
+      }),
+    );
+  }
+
+  const beginWindowMove = React.useCallback(
+    (event) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      if (!event.target?.closest(".Home_videoViewerWindowDragButton")) {
+        return;
+      }
+
+      dragStateRef.current = {
+        mode: "move",
+        startX: event.clientX,
+        startY: event.clientY,
+        startRect: windowRect,
+      };
+      hasUserPositionedWindowRef.current = true;
+      window.addEventListener("pointermove", handleWindowPointerMove);
+      window.addEventListener("pointerup", stopWindowInteraction);
+      window.addEventListener("pointercancel", stopWindowInteraction);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [stopWindowInteraction, windowRect],
+  );
+
+  const toggleWindowSize = React.useCallback(
+    (event) => {
+      event.stopPropagation();
+
+      if (isWindowMinimized) {
+        setIsWindowMinimized(false);
+        setWindowRect(getVideoViewerWindowRectForAspectRatio(videoAspectRatio));
+        setIsWindowMaximized(true);
+        return;
+      }
+
+      if (!isWindowMaximized) {
+        restoredWindowRectRef.current = windowRect;
+        setIsWindowMinimized(true);
+        setIsWindowMaximized(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("home-noga-video-window-minimized"),
+          );
+        }
+        return;
+      }
+
+      if (isWindowMaximized) {
+        restoredWindowRectRef.current =
+          restoredWindowRectRef.current || windowRect;
+        setIsWindowMinimized(true);
+        setIsWindowMaximized(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("home-noga-video-window-minimized"),
+          );
+        }
+        return;
+      }
+    },
+    [isWindowMaximized, isWindowMinimized, videoAspectRatio, windowRect],
+  );
+
+  const beginWindowResize = React.useCallback(
+    (event, direction) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      dragStateRef.current = {
+        mode: "resize",
+        direction,
+        startX: event.clientX,
+        startY: event.clientY,
+        startRect: windowRect,
+      };
+      hasUserPositionedWindowRef.current = true;
+      window.addEventListener("pointermove", handleWindowPointerMove);
+      window.addEventListener("pointerup", stopWindowInteraction);
+      window.addEventListener("pointercancel", stopWindowInteraction);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [stopWindowInteraction, windowRect],
+  );
+
   React.useEffect(() => {
     if (!isOpen) {
+      stopWindowInteraction();
       return undefined;
     }
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
-        onClose?.();
+        closeVideoWindow();
       }
     };
 
+    const initialAspectRatio =
+      Number(video?.width || 0) / Number(video?.height || 0);
+    const savedWindowState = getSavedVideoViewerWindowState(videoKey);
+
+    hasAppliedVideoRatioRef.current = false;
+    restoredWindowRectRef.current = null;
+    hasUserPositionedWindowRef.current = false;
+    setIsWindowMinimized(false);
+    setIsWindowMaximized(false);
+
+    if (savedWindowState?.rect) {
+      const savedAspectRatio =
+        savedWindowState.aspectRatio ||
+        (Number.isFinite(initialAspectRatio) && initialAspectRatio > 0
+          ? initialAspectRatio
+          : 16 / 9);
+
+      hasAppliedVideoRatioRef.current = true;
+      setVideoAspectRatio(savedAspectRatio);
+      setWindowRect(savedWindowState.rect);
+    } else if (Number.isFinite(initialAspectRatio) && initialAspectRatio > 0) {
+      hasAppliedVideoRatioRef.current = true;
+      setVideoAspectRatio(initialAspectRatio);
+      setWindowRect(getVideoViewerWindowRectForAspectRatio(initialAspectRatio));
+    } else {
+      setVideoAspectRatio(16 / 9);
+      setWindowRect(getDefaultVideoViewerWindowRect());
+    }
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      stopWindowInteraction();
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [closeVideoWindow, isOpen, stopWindowInteraction, videoKey]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      setWindowRect((currentRect) =>
+        isWindowMaximized
+          ? getVideoViewerWindowRectForAspectRatio(videoAspectRatio)
+          : clampVideoViewerWindowPosition(currentRect),
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isOpen, isWindowMaximized, videoAspectRatio]);
+
+  React.useEffect(() => {
+    if (!isOpen || isWindowMinimized) {
+      return;
+    }
+
+    saveVideoViewerWindowState(videoKey, windowRect, videoAspectRatio);
+  }, [isOpen, isWindowMinimized, videoAspectRatio, videoKey, windowRect]);
+
+  React.useEffect(() => {
+    if (!isOpen && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-closed"));
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const restoreVideoWindow = () => {
+      setIsWindowMinimized(false);
+      setIsWindowMaximized(false);
+      setWindowRect(
+        clampVideoViewerWindowPosition(
+          restoredWindowRectRef.current ||
+            getVideoViewerWindowRectForAspectRatio(videoAspectRatio),
+        ),
+      );
+      window.dispatchEvent(new CustomEvent("home-noga-video-window-restored"));
+    };
+
+    window.addEventListener(
+      "home-noga-video-window-restore",
+      restoreVideoWindow,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "home-noga-video-window-restore",
+        restoreVideoWindow,
+      );
+    };
+  }, [isOpen, videoAspectRatio]);
 
   if (!isOpen) {
     return null;
@@ -689,27 +1420,75 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
     String(video?.publicId || video?.fileName || title || "Video").trim() ||
     "Video";
 
+  if (isWindowMinimized) {
+    return null;
+  }
+
   return (
     <div
       className="Home_videoViewerOverlay"
       role="dialog"
       aria-modal="true"
       aria-label={String(title || videoLabel || "Video player")}
-      onClick={() => onClose?.()}
     >
       <div
-        className="fc Home_preStart_reportCard Home_preStart_reportsCard Home_videoViewerCard"
+        className={`fc Home_preStart_reportCard Home_preStart_reportsCard Home_videoViewerCard${
+          isWindowMinimized ? " Home_videoViewerCard--minimized" : ""
+        }${isWindowMaximized ? " Home_videoViewerCard--maximized" : ""}`}
+        style={{
+          transform: `translate(${windowRect.x}px, ${windowRect.y}px)`,
+          width: isWindowMinimized ? "132px" : `${windowRect.width}px`,
+          height: isWindowMinimized ? "38px" : `${windowRect.height}px`,
+        }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="Home_gallery_Header_wrapper fr Home_videoViewerHeader">
-          <div className="fc Home_videoViewerTitleBlock">
-            <span className="Home_videoViewerEyebrow">App health style player</span>
-            <strong className="Home_videoViewerTitle">{videoLabel}</strong>
-          </div>
+        <div className="Home_videoViewerWindowControls">
           <button
             type="button"
-            onClick={() => onClose?.()}
-            className="Home_reportToggleButton Home_videoViewerCloseButton"
+            className="Home_videoViewerWindowButton Home_videoViewerWindowDragButton"
+            onPointerDown={beginWindowMove}
+            aria-label="Move video player"
+            title="Move"
+          >
+            <i className="fas fa-arrows-alt" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            className="Home_videoViewerWindowButton"
+            onClick={toggleWindowSize}
+            aria-label={
+              isWindowMinimized
+                ? "Maximize video player"
+                : isWindowMaximized
+                  ? "Minimize video player"
+                  : "Minimize video player"
+            }
+            title={
+              isWindowMinimized
+                ? "Maximize"
+                : isWindowMaximized
+                  ? "Minimize"
+                  : "Minimize"
+            }
+          >
+            <i
+              className={`fas ${
+                isWindowMinimized
+                  ? "fa-expand-alt"
+                  : isWindowMaximized
+                    ? "fa-minus"
+                    : "fa-minus"
+              }`}
+              aria-hidden="true"
+            ></i>
+          </button>
+          <button
+            type="button"
+            className="Home_videoViewerWindowButton Home_videoViewerWindowButton--close"
+            onClick={(event) => {
+              event.stopPropagation();
+              closeVideoWindow();
+            }}
             aria-label="Close video player"
             title="Close"
           >
@@ -717,7 +1496,10 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
           </button>
         </div>
         <div className="Home_reportBody Home_videoViewerBody isOpen">
-          <div className="Home_videoViewerFrame">
+          <div
+            className="Home_videoViewerFrame"
+            style={{ aspectRatio: String(videoAspectRatio) }}
+          >
             <video
               src={videoUrl}
               controls
@@ -725,70 +1507,81 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
               playsInline
               preload="metadata"
               className="Home_videoViewerMedia"
+              onLoadedMetadata={(event) => {
+                const nextAspectRatio =
+                  Number(event.currentTarget.videoWidth || 0) /
+                  Number(event.currentTarget.videoHeight || 0);
+
+                if (!Number.isFinite(nextAspectRatio) || nextAspectRatio <= 0) {
+                  return;
+                }
+
+                setVideoAspectRatio(nextAspectRatio);
+
+                if (!hasAppliedVideoRatioRef.current) {
+                  hasAppliedVideoRatioRef.current = true;
+                  setWindowRect((currentRect) =>
+                    hasUserPositionedWindowRef.current
+                      ? getVideoViewerWindowRectAtPositionForAspectRatio(
+                          currentRect,
+                          nextAspectRatio,
+                        )
+                      : getVideoViewerWindowRectForAspectRatio(nextAspectRatio),
+                  );
+                }
+              }}
             />
           </div>
         </div>
+        {VIDEO_VIEWER_RESIZE_DIRECTIONS.map((direction) => (
+          <span
+            key={direction}
+            className={`Home_videoViewerResizeHandle Home_videoViewerResizeHandle--${direction}`}
+            onPointerDown={(event) => beginWindowResize(event, direction)}
+            aria-hidden="true"
+          ></span>
+        ))}
       </div>
     </div>
   );
 };
 
 function Home(props) {
-  // --- Friends Info Fetch State ---
-  const [friendsInfo, setFriendsInfo] = useState([]);
-  const [friendsLoading, setFriendsLoading] = useState(false);
-  const [friendsError, setFriendsError] = useState(null);
-
-  // Fetch friends info for users that are already friends (page load)
-  useEffect(() => {
-    const fetchFriends = async () => {
-      if (!props.state?.token || !props.state?.my_id) return;
-      setFriendsLoading(true);
-      setFriendsError(null);
-      try {
-        const res = await fetch(
-          apiUrl(`/api/user/update/${props.state.my_id}`),
-          {
-            headers: { Authorization: `Bearer ${props.state.token}` },
-          },
-        );
-        if (!res.ok) throw new Error("Failed to fetch friends info");
-        const data = await res.json();
-        // Only keep friends with userMode accepted (already friends)
-        const acceptedFriends = Array.isArray(data.friends)
-          ? data.friends.filter((f) => f.userMode?.includes("accepted"))
-          : [];
-        setFriendsInfo(acceptedFriends);
-      } catch (err) {
-        setFriendsError(err.message || "Unknown error");
-        setFriendsInfo([]);
-      } finally {
-        setFriendsLoading(false);
-      }
-    };
-    fetchFriends();
-  }, [props.state?.token, props.state?.my_id]);
-
-  // Example: fetchFriendsByMode for requests/blocked/search (to be used on tab click/search)
-  const fetchFriendsByMode = async (mode) => {
-    if (!props.state?.token || !props.state?.my_id) return [];
-    try {
-      const res = await fetch(apiUrl(`/api/user/update/${props.state.my_id}`), {
-        headers: { Authorization: `Bearer ${props.state.token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch friends info");
-      const data = await res.json();
-      return Array.isArray(data.friends)
-        ? data.friends.filter((f) => f.userMode === mode)
-        : [];
-    } catch {
-      return [];
-    }
-  };
   const isNaghamtrkmani = false;
-  const homeThemeClassName = isNaghamtrkmani
-    ? "Home_themeNoga"
-    : "Home_themeGreen";
+  const homeThemeClassName = "Home_themeGreen";
+  const [isHomeDarkTheme, setIsHomeDarkTheme] = useState(() =>
+    typeof document !== "undefined"
+      ? document.body.classList.contains("dark")
+      : false,
+  );
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const syncTheme = () => {
+      setIsHomeDarkTheme(document.body.classList.contains("dark"));
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    const intervalId = window.setInterval(syncTheme, 800);
+    document.addEventListener("visibilitychange", syncTheme);
+    window.addEventListener("focus", syncTheme);
+
+    return () => {
+      observer.disconnect();
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", syncTheme);
+      window.removeEventListener("focus", syncTheme);
+    };
+  }, []);
   // Set background style for everyone except naghamtrkmani
   const baseUrl =
     typeof import.meta !== "undefined" &&
@@ -800,7 +1593,6 @@ function Home(props) {
   const homeBackgroundStyle = undefined;
   // State to track which friend's chat is open
   const [openChatFriendId, setOpenChatFriendId] = useState(null);
-  const [compressionProgress, setCompressionProgress] = useState(null);
   const homeMusicSignalRef = React.useRef(
     props.state?.planner_music?.audioSignal || {
       energy: 0,
@@ -814,7 +1606,11 @@ function Home(props) {
       updatedAt: 0,
     },
   );
+  const homeMusicIsPlayingRef = React.useRef(
+    Boolean(props.state?.planner_music?.isPlaying),
+  );
   const [inlineCallActionsTarget, setInlineCallActionsTarget] = useState(null);
+  const inlineCallActionsTargetNodeRef = React.useRef(null);
   const history = useHistory();
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
@@ -823,7 +1619,7 @@ function Home(props) {
   const drawingCanvasHostRef = React.useRef(null);
   const appliedDrawingCanvasRef = React.useRef(null);
   const appliedDrawingCanvasHostRef = React.useRef(null);
-  const friendsMiniNavRef = React.useRef(null);
+  const drawingVisibilityCanvasRefs = React.useRef(new Map());
   const drawingPathsRef = React.useRef([]);
   const drawingCurrentPathRef = React.useRef(null);
   const isDrawingPointerActiveRef = React.useRef(false);
@@ -840,8 +1636,11 @@ function Home(props) {
   });
   // (Fixed: removed misplaced JSX here)
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
-  // Gallery tab state: 'images' or 'videos'
+  // Gallery tab state: 'images' | 'patterns' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
+  const activeGalleryUploadConfig =
+    HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab] ||
+    HOME_GALLERY_TAB_UPLOAD_CONFIG.images;
   const [isImageGalleryDeletingPublicId, setIsImageGalleryDeletingPublicId] =
     useState("");
   const [
@@ -850,9 +1649,9 @@ function Home(props) {
   ] = useState("");
   const [clearPendingFeedback, setClearPendingFeedback] = useState("");
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
   const [isVideoViewerOpen, setIsVideoViewerOpen] = useState(false);
   const [activeGalleryVideo, setActiveGalleryVideo] = useState(null);
-  const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
   const [activeGalleryActionsPublicId, setActiveGalleryActionsPublicId] =
     useState("");
   const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
@@ -952,6 +1751,58 @@ function Home(props) {
   );
   const [itunesSearchResults, setItunesSearchResults] = useState([]);
   const [musicBrainzSearchResults, setMusicBrainzSearchResults] = useState([]);
+  const musicLibraryPlaylistItems = [
+    ...parsePlaylistLines(musicArchivePlaylistInput).map((line) => ({
+      id: `archive-${line}`,
+      label: line.replace(/[-_]+/g, " "),
+      meta: line,
+      source: "Internet Archive",
+      provider: "internetArchive",
+      value: line,
+    })),
+    ...parsePlaylistLines(itunesPlaylistInput).map((line) => ({
+      id: `itunes-${line}`,
+      label: line,
+      meta: "",
+      source: "iTunes",
+      provider: "itunes",
+      value: line,
+    })),
+    ...parsePlaylistLines(musicBrainzPlaylistInput).map((line) => ({
+      id: `musicbrainz-${line}`,
+      label: line,
+      meta: "",
+      source: "MusicBrainz",
+      provider: "musicBrainz",
+      value: line,
+    })),
+  ];
+  const musicLibrarySearchResults = [
+    ...musicArchiveSearchResults.map((result) => ({
+      id: `archive-${result.identifier}`,
+      title: result.title || result.identifier,
+      artist: result.creator || "Internet Archive",
+      source: "Internet Archive",
+      provider: "internetArchive",
+      value: result.identifier,
+    })),
+    ...itunesSearchResults.map((result) => ({
+      id: `itunes-${result.identifier || result.queryLabel}`,
+      title: result.title || result.queryLabel,
+      artist: result.creator || "iTunes",
+      source: "iTunes",
+      provider: "itunes",
+      value: result.queryLabel,
+    })),
+    ...musicBrainzSearchResults.map((result) => ({
+      id: `musicbrainz-${result.identifier || result.queryLabel}`,
+      title: result.title || result.queryLabel,
+      artist: result.creator || "MusicBrainz",
+      source: "MusicBrainz",
+      provider: "musicBrainz",
+      value: result.queryLabel,
+    })),
+  ];
   const [schoolPlannerTelegramFeedback, setSchoolPlannerTelegramFeedback] =
     useState("");
   const [phenomedSocialChatBackground, setPhenomedSocialChatBackground] =
@@ -999,6 +1850,7 @@ function Home(props) {
   const [isReportsWrapperOpen, setIsReportsWrapperOpen] = useState(false);
   const [showGalleryInRightColumn, setShowGalleryInRightColumn] =
     useState(false);
+  // --- Friends/Requests/Blocked/Chat logic from Home.jsx (full clone) ---
   const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
   const [activeBlockedListTab, setActiveBlockedListTab] = useState(
     DEFAULT_BLOCKED_LIST_USER_MODE,
@@ -1014,8 +1866,22 @@ function Home(props) {
   const [friendSearchFeedback, setFriendSearchFeedback] = useState("");
   const [sendingFriendRequestUsername, setSendingFriendRequestUsername] =
     useState("");
+  // Add any additional refs or state from Home.jsx friends logic here as needed
+
+  // (Insert all memoized selectors, effects, callbacks, and renderers for friends, search, requests, blocked, and chat from Home.jsx here)
+  // ...existing code...
   const [isHomeDrawingModeEnabled, setIsHomeDrawingModeEnabled] =
     useState(false);
+  const [isHomeDrawingAllowListEnabled, setIsHomeDrawingAllowListEnabled] =
+    useState(false);
+  const [activeHomeDrawingAllowZoneId, setActiveHomeDrawingAllowZoneId] =
+    useState(HOME_DRAWING_ALLOWLIST_ZONES[0]?.id || "canvas");
+  const [isHomeDrawingAllowZoneMenuOpen, setIsHomeDrawingAllowZoneMenuOpen] =
+    useState(false);
+  const [isHomeDrawingVisibilityMenuOpen, setIsHomeDrawingVisibilityMenuOpen] =
+    useState(false);
+  const [homeDrawingVisibleWrapperIds, setHomeDrawingVisibleWrapperIds] =
+    useState(() => ["bio"]);
   const [isHomeDrawingAutoGlueEnabled, setIsHomeDrawingAutoGlueEnabled] =
     useState(true);
   const [isHomeDrawingStartingFresh, setIsHomeDrawingStartingFresh] =
@@ -1030,6 +1896,8 @@ function Home(props) {
   const latestHomeDrawingSaveRequestIdRef = React.useRef(0);
   const pendingHomeDrawingSyncRef = React.useRef(false);
   const [isGalleryTopRowVisible, setIsGalleryTopRowVisible] = useState(false);
+  const [isBioWallpaperControlsOpen, setIsBioWallpaperControlsOpen] =
+    useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
   const hasHydratedProfilePictureViewportRef = React.useRef(true);
@@ -1073,264 +1941,9 @@ function Home(props) {
     }));
   };
 
-  const introWrapRef = React.useRef(null);
-  const separatorDraggingRef = React.useRef(false);
-  const separatorStartXRef = React.useRef(0);
-  const separatorStartWidthRef = React.useRef(0);
-  const [leftColumnWidthPercent, setLeftColumnWidthPercent] = useState(66);
-  const friendsEventsWrapperRef = React.useRef(null);
-  const friendsEventsHandleDraggingRef = React.useRef(false);
-  const friendsEventsHandleStartXRef = React.useRef(0);
-  const friendsEventsHandleStartWidthRef = React.useRef(75);
-  const [friendsEventsWidthPercent, setFriendsEventsWidthPercent] =
-    useState(75);
-  const HOME_INTRO_SEPARATOR_WIDTH = 38;
-  const HOME_LEFT_COLUMN_MIN_WIDTH = 520;
-  const HOME_RIGHT_COLUMN_MIN_WIDTH = 300;
-  const HOME_LEFT_COLUMN_MAX_WIDTH_RATIO = 0.82;
-
-  const touchMoveOptions = React.useMemo(() => ({ passive: false }), []);
-
-  useEffect(() => {
-    if (!props.state?.token) {
-      return undefined;
-    }
-
-    const userId = getUserIdFromToken(props.state.token);
-    if (!userId) {
-      return undefined;
-    }
-
-    if (!socketRef.current) {
-      socketRef.current = io({ transports: ["websocket"] });
-    }
-
-    const socket = socketRef.current;
-    const handleCompressionProgress = (data) => {
-      setCompressionProgress(data.percent);
-      if (data.done) {
-        setTimeout(() => setCompressionProgress(null), 1200);
-      }
-    };
-
-    socket.emit("join", userId.toString());
-    socket.on("compression-progress", handleCompressionProgress);
-
-    return () => {
-      socket.off("compression-progress", handleCompressionProgress);
-    };
-  }, [props.state?.token]);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const HOME_DRAWING_PATH_FILL = "rgba(118, 233, 247, 0.08)";
   const HOME_DRAWING_PATH_GLOW = "rgba(118, 233, 247, 0.16)";
-
-  const clampLeftColumnWidthPercent = React.useCallback((nextWidthPercent) => {
-    const containerWidth =
-      introWrapRef.current?.getBoundingClientRect().width || 1;
-    const availableWidth = Math.max(
-      containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
-      1,
-    );
-    const minWidthPercent = (HOME_LEFT_COLUMN_MIN_WIDTH / availableWidth) * 100;
-    const maxWidthPercent = Math.min(
-      ((availableWidth - HOME_RIGHT_COLUMN_MIN_WIDTH) / availableWidth) * 100,
-      HOME_LEFT_COLUMN_MAX_WIDTH_RATIO * 100,
-    );
-    const nextWidth = Math.min(
-      maxWidthPercent,
-      Math.max(minWidthPercent, nextWidthPercent),
-    );
-    return Number.isFinite(nextWidth) ? nextWidth : 66;
-  }, []);
-
-  const handlePointerMove = React.useCallback(
-    (event) => {
-      if (!separatorDraggingRef.current) {
-        return;
-      }
-
-      const pageX =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      const containerWidth =
-        introWrapRef.current?.getBoundingClientRect().width || 1;
-      const availableWidth = Math.max(
-        containerWidth - HOME_INTRO_SEPARATOR_WIDTH,
-        1,
-      );
-      const deltaPercent =
-        ((pageX - separatorStartXRef.current) / availableWidth) * 100;
-
-      setLeftColumnWidthPercent(
-        clampLeftColumnWidthPercent(
-          separatorStartWidthRef.current + deltaPercent,
-        ),
-      );
-      event.preventDefault();
-    },
-    [clampLeftColumnWidthPercent],
-  );
-
-  const handlePointerUp = React.useCallback(() => {
-    if (!separatorDraggingRef.current) {
-      return;
-    }
-    separatorDraggingRef.current = false;
-    document.removeEventListener("mousemove", handlePointerMove);
-    document.removeEventListener(
-      "touchmove",
-      handlePointerMove,
-      touchMoveOptions,
-    );
-    document.removeEventListener("mouseup", handlePointerUp);
-    document.removeEventListener("touchend", handlePointerUp);
-    document.removeEventListener("touchcancel", handlePointerUp);
-  }, [handlePointerMove]);
-
-  const startSeparatorDrag = React.useCallback(
-    (event) => {
-      event.preventDefault();
-      separatorDraggingRef.current = true;
-      separatorStartXRef.current =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      separatorStartWidthRef.current = leftColumnWidthPercent;
-      document.addEventListener("mousemove", handlePointerMove);
-      document.addEventListener(
-        "touchmove",
-        handlePointerMove,
-        touchMoveOptions,
-      );
-      document.addEventListener("mouseup", handlePointerUp);
-      document.addEventListener("touchend", handlePointerUp);
-      document.addEventListener("touchcancel", handlePointerUp);
-    },
-    [handlePointerMove, handlePointerUp, leftColumnWidthPercent],
-  );
-
-  React.useEffect(() => {
-    return () => {
-      document.removeEventListener("mousemove", handlePointerMove);
-      document.removeEventListener(
-        "touchmove",
-        handlePointerMove,
-        touchMoveOptions,
-      );
-      document.removeEventListener("mouseup", handlePointerUp);
-      document.removeEventListener("touchend", handlePointerUp);
-      document.removeEventListener("touchcancel", handlePointerUp);
-    };
-  }, [handlePointerMove, handlePointerUp, touchMoveOptions]);
-
-  const clampFriendsEventsWidthPercent = React.useCallback((nextWidth) => {
-    const clampedWidth = Math.min(86, Math.max(44, nextWidth));
-    return Number.isFinite(clampedWidth) ? clampedWidth : 75;
-  }, []);
-
-  const handleFriendsEventsHandleMove = React.useCallback(
-    (event) => {
-      if (!friendsEventsHandleDraggingRef.current) {
-        return;
-      }
-
-      const pageX =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      const wrapperWidth =
-        friendsEventsWrapperRef.current?.getBoundingClientRect().width || 1;
-      const deltaPercent =
-        ((pageX - friendsEventsHandleStartXRef.current) / wrapperWidth) * 100;
-
-      setFriendsEventsWidthPercent(
-        clampFriendsEventsWidthPercent(
-          friendsEventsHandleStartWidthRef.current + deltaPercent,
-        ),
-      );
-      event.preventDefault();
-    },
-    [clampFriendsEventsWidthPercent],
-  );
-
-  const stopFriendsEventsHandleDrag = React.useCallback(() => {
-    if (!friendsEventsHandleDraggingRef.current) {
-      return;
-    }
-
-    friendsEventsHandleDraggingRef.current = false;
-    document.removeEventListener("mousemove", handleFriendsEventsHandleMove);
-    document.removeEventListener(
-      "touchmove",
-      handleFriendsEventsHandleMove,
-      touchMoveOptions,
-    );
-    document.removeEventListener("mouseup", stopFriendsEventsHandleDrag);
-    document.removeEventListener("touchend", stopFriendsEventsHandleDrag);
-    document.removeEventListener("touchcancel", stopFriendsEventsHandleDrag);
-  }, [handleFriendsEventsHandleMove, touchMoveOptions]);
-
-  const startFriendsEventsHandleDrag = React.useCallback(
-    (event) => {
-      event.preventDefault();
-      friendsEventsHandleDraggingRef.current = true;
-      friendsEventsHandleStartXRef.current =
-        (event.touches && event.touches[0] && event.touches[0].pageX) ||
-        event.pageX;
-      friendsEventsHandleStartWidthRef.current = friendsEventsWidthPercent;
-      document.addEventListener("mousemove", handleFriendsEventsHandleMove);
-      document.addEventListener(
-        "touchmove",
-        handleFriendsEventsHandleMove,
-        touchMoveOptions,
-      );
-      document.addEventListener("mouseup", stopFriendsEventsHandleDrag);
-      document.addEventListener("touchend", stopFriendsEventsHandleDrag);
-      document.addEventListener("touchcancel", stopFriendsEventsHandleDrag);
-    },
-    [
-      friendsEventsWidthPercent,
-      handleFriendsEventsHandleMove,
-      stopFriendsEventsHandleDrag,
-      touchMoveOptions,
-    ],
-  );
-
-  React.useEffect(() => {
-    return () => {
-      document.removeEventListener("mousemove", handleFriendsEventsHandleMove);
-      document.removeEventListener(
-        "touchmove",
-        handleFriendsEventsHandleMove,
-        touchMoveOptions,
-      );
-      document.removeEventListener("mouseup", stopFriendsEventsHandleDrag);
-      document.removeEventListener("touchend", stopFriendsEventsHandleDrag);
-      document.removeEventListener("touchcancel", stopFriendsEventsHandleDrag);
-    };
-  }, [
-    handleFriendsEventsHandleMove,
-    stopFriendsEventsHandleDrag,
-    touchMoveOptions,
-  ]);
-
-  React.useEffect(() => {
-    setLeftColumnWidthPercent((currentWidth) =>
-      clampLeftColumnWidthPercent(currentWidth),
-    );
-  }, [clampLeftColumnWidthPercent]);
-
-  React.useEffect(() => {
-    if (!introWrapRef.current) {
-      return;
-    }
-
-    introWrapRef.current.style.setProperty(
-      "--home-left-column-width",
-      `${leftColumnWidthPercent}%`,
-    );
-    introWrapRef.current.style.setProperty(
-      "--home-right-column-width",
-      `calc(${100 - leftColumnWidthPercent}% - ${HOME_INTRO_SEPARATOR_WIDTH}px)`,
-    );
-  }, [HOME_INTRO_SEPARATOR_WIDTH, leftColumnWidthPercent]);
 
   const getNavChildForbiddenRects = React.useCallback(() => {
     if (!mainWrapperRef.current) {
@@ -1341,7 +1954,7 @@ function Home(props) {
     const navChildSelectors = [
       "#Home_navWrap .Nav_actionButton",
       "#Home_navWrap #SubApps_icon_container",
-      // Removed notification icons container
+      "#Home_navWrap #Notification_icons_container",
       "#Home_navWrap #Dim_article",
       "#Home_navWrap #Logout_article",
       "#Home_navWrap #Refresh_article",
@@ -1384,7 +1997,7 @@ function Home(props) {
       "#Home_userMenuCluster",
       "#Home_navWrap .Nav_actionButton",
       "#Home_navWrap #SubApps_icon_container",
-      // Removed notification icons container
+      "#Home_navWrap #Notification_icons_container",
       "#Home_navWrap #Dim_article",
       "#Home_navWrap #Logout_article",
       "#Home_navWrap #Refresh_article",
@@ -1436,6 +2049,128 @@ function Home(props) {
         };
       });
   }, []);
+
+  const getHomeDrawingAllowListRects = React.useCallback(() => {
+    if (!mainWrapperRef.current) {
+      return [];
+    }
+
+    const activeZone = HOME_DRAWING_ALLOWLIST_ZONES.find(
+      (zone) => zone.id === activeHomeDrawingAllowZoneId,
+    );
+
+    if (!activeZone?.selector) {
+      return [];
+    }
+
+    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+
+    return Array.from(
+      mainWrapperRef.current.querySelectorAll(activeZone.selector),
+    )
+      .filter((element) => {
+        if (!(element instanceof HTMLElement)) {
+          return false;
+        }
+
+        const elementRect = element.getBoundingClientRect();
+        return elementRect.width > 0 && elementRect.height > 0;
+      })
+      .map((element) => {
+        const elementRect = element.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(element);
+        const topLeftRadius = Number.parseFloat(
+          computedStyle.borderTopLeftRadius || "0",
+        );
+        const topRightRadius = Number.parseFloat(
+          computedStyle.borderTopRightRadius || "0",
+        );
+        const bottomRightRadius = Number.parseFloat(
+          computedStyle.borderBottomRightRadius || "0",
+        );
+        const bottomLeftRadius = Number.parseFloat(
+          computedStyle.borderBottomLeftRadius || "0",
+        );
+
+        return {
+          left: elementRect.left - wrapperRect.left,
+          top: elementRect.top - wrapperRect.top,
+          right: elementRect.right - wrapperRect.left,
+          bottom: elementRect.bottom - wrapperRect.top,
+          radii: {
+            topLeft: Number.isFinite(topLeftRadius) ? topLeftRadius : 0,
+            topRight: Number.isFinite(topRightRadius) ? topRightRadius : 0,
+            bottomRight: Number.isFinite(bottomRightRadius)
+              ? bottomRightRadius
+              : 0,
+            bottomLeft: Number.isFinite(bottomLeftRadius)
+              ? bottomLeftRadius
+              : 0,
+          },
+        };
+      });
+  }, [activeHomeDrawingAllowZoneId]);
+
+  const isPointInsideAllowedZone = React.useCallback(
+    (point) => {
+      if (!isHomeDrawingAllowListEnabled) {
+        return true;
+      }
+
+      const allowListRects = getHomeDrawingAllowListRects();
+
+      if (!Array.isArray(allowListRects) || allowListRects.length === 0) {
+        return false;
+      }
+
+      return allowListRects.some(
+        (rect) =>
+          point.x >= rect.left &&
+          point.x <= rect.right &&
+          point.y >= rect.top &&
+          point.y <= rect.bottom,
+      );
+    },
+    [getHomeDrawingAllowListRects, isHomeDrawingAllowListEnabled],
+  );
+
+  const setHomeDrawingVisibilityCanvasRef = React.useCallback(
+    (wrapperId, canvasNode) => {
+      if (canvasNode) {
+        drawingVisibilityCanvasRefs.current.set(wrapperId, canvasNode);
+        return;
+      }
+
+      drawingVisibilityCanvasRefs.current.delete(wrapperId);
+    },
+    [],
+  );
+
+  const toggleHomeDrawingVisibleWrapper = React.useCallback((wrapperId) => {
+    setHomeDrawingVisibleWrapperIds((currentIds) => {
+      const normalizedIds = Array.isArray(currentIds) ? currentIds : [];
+
+      if (normalizedIds.includes(wrapperId)) {
+        return normalizedIds.filter((currentId) => currentId !== wrapperId);
+      }
+
+      return [...normalizedIds, wrapperId];
+    });
+  }, []);
+
+  const renderHomeDrawingVisibilityCanvas = React.useCallback(
+    (wrapperId) =>
+      homeDrawingVisibleWrapperIds.includes(wrapperId) ? (
+        <canvas
+          ref={(canvasNode) =>
+            setHomeDrawingVisibilityCanvasRef(wrapperId, canvasNode)
+          }
+          className="Home_drawingVisibilityCanvas"
+          aria-hidden="true"
+        />
+      ) : null,
+    [homeDrawingVisibleWrapperIds, setHomeDrawingVisibilityCanvasRef],
+  );
 
   const redrawHomeDrawingCanvas = React.useCallback(() => {
     const appliedCanvas = appliedDrawingCanvasRef.current;
@@ -1497,6 +2232,60 @@ function Home(props) {
       draftContext.fillRect(0, 0, width, height);
     }
 
+    const nowSeconds =
+      typeof performance !== "undefined"
+        ? performance.now() / 1000
+        : Date.now() / 1000;
+    const homeMusicSignal = homeMusicSignalRef.current || {};
+    const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
+    const signalAgeMs =
+      signalUpdatedAt > 0
+        ? Math.max(0, Date.now() - signalUpdatedAt)
+        : Number.POSITIVE_INFINITY;
+    const hasFreshSignal = signalAgeMs < 1400;
+    const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
+    const isHomeMusicPlaying =
+      Boolean(props.state?.planner_music?.isPlaying) ||
+      Boolean(homeMusicIsPlayingRef.current);
+    const effectiveMusicSignal = isHomeMusicPlaying
+      ? {
+          energy: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
+            0.2 + fallbackBeat * 0.18,
+          ),
+          bass: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
+            0.24 + fallbackBeat * 0.22,
+          ),
+          mid: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
+            0.16 + fallbackBeat * 0.14,
+          ),
+          treble: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
+            0.12 + fallbackBeat * 0.12,
+          ),
+          pitch: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
+            0.18 + fallbackBeat * 0.16,
+          ),
+          tempo: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
+            0.24 + fallbackBeat * 0.12,
+          ),
+          pulse: Math.max(
+            hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
+            0.3 + fallbackBeat * 0.32,
+          ),
+          fallbackTime:
+            hasFreshSignal &&
+            Number.isFinite(Number(homeMusicSignal.fallbackTime))
+              ? Number(homeMusicSignal.fallbackTime)
+              : nowSeconds,
+          updatedAt: signalUpdatedAt || Date.now(),
+        }
+      : null;
+
     homeDrawing.appliedPaths.forEach((segment) => {
       const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
       if (rawPoints.length < 2) {
@@ -1505,59 +2294,10 @@ function Home(props) {
 
       const palette = resolveHomeDrawingPalette(segment);
       const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
-      const nowSeconds =
-        typeof performance !== "undefined"
-          ? performance.now() / 1000
-          : Date.now() / 1000;
-      const homeMusicSignal = homeMusicSignalRef.current || {};
-      const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
-      const signalAgeMs =
-        signalUpdatedAt > 0
-          ? Math.max(0, Date.now() - signalUpdatedAt)
-          : Number.POSITIVE_INFINITY;
-      const hasFreshSignal = signalAgeMs < 1400;
-      const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
-      const effectiveMusicSignal = props.state?.planner_music?.isPlaying
-        ? {
-            energy: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
-              0.2 + fallbackBeat * 0.18,
-            ),
-            bass: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
-              0.24 + fallbackBeat * 0.22,
-            ),
-            mid: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
-              0.16 + fallbackBeat * 0.14,
-            ),
-            treble: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
-              0.12 + fallbackBeat * 0.12,
-            ),
-            pitch: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
-              0.18 + fallbackBeat * 0.16,
-            ),
-            tempo: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
-              0.24 + fallbackBeat * 0.12,
-            ),
-            pulse: Math.max(
-              hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
-              0.3 + fallbackBeat * 0.32,
-            ),
-            fallbackTime:
-              hasFreshSignal &&
-              Number.isFinite(Number(homeMusicSignal.fallbackTime))
-                ? Number(homeMusicSignal.fallbackTime)
-                : nowSeconds,
-            updatedAt: signalUpdatedAt || Date.now(),
-          }
-        : null;
 
       drawHomeLedRopePath(appliedContext, smoothedPoints, palette, {
         musicSignal: effectiveMusicSignal,
+        animateBulbs: Boolean(effectiveMusicSignal),
       });
     });
 
@@ -1572,12 +2312,12 @@ function Home(props) {
       drawHomeSketchPath(draftContext, rawPoints, palette);
     });
 
-    getHomeDrawingMaskedRects().forEach((rect) => {
+    const appendRoundedRectPath = (context, rect) => {
       const bleed = 0;
       const left = Math.max(0, rect.left - bleed);
       const top = Math.max(0, rect.top - bleed);
-      const width = Math.max(0, rect.right - rect.left + bleed * 2);
-      const height = Math.max(0, rect.bottom - rect.top + bleed * 2);
+      const rectWidth = Math.max(0, rect.right - rect.left + bleed * 2);
+      const rectHeight = Math.max(0, rect.bottom - rect.top + bleed * 2);
       const safeRadius = {
         topLeft: Math.max(0, Number(rect?.radii?.topLeft || 0)),
         topRight: Math.max(0, Number(rect?.radii?.topRight || 0)),
@@ -1585,61 +2325,231 @@ function Home(props) {
         bottomLeft: Math.max(0, Number(rect?.radii?.bottomLeft || 0)),
       };
 
-      [draftContext].forEach((context) => {
-        context.save();
-        context.globalCompositeOperation = "destination-out";
-        context.beginPath();
+      if (rectWidth <= 0 || rectHeight <= 0) {
+        return;
+      }
 
-        if (typeof context.roundRect === "function") {
-          context.roundRect(left, top, width, height, [
-            safeRadius.topLeft,
-            safeRadius.topRight,
-            safeRadius.bottomRight,
-            safeRadius.bottomLeft,
-          ]);
-        } else {
-          const maxRadius = Math.min(width, height) / 2;
-          const topLeft = Math.min(safeRadius.topLeft, maxRadius);
-          const topRight = Math.min(safeRadius.topRight, maxRadius);
-          const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
-          const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
+      if (typeof context.roundRect === "function") {
+        context.roundRect(left, top, rectWidth, rectHeight, [
+          safeRadius.topLeft,
+          safeRadius.topRight,
+          safeRadius.bottomRight,
+          safeRadius.bottomLeft,
+        ]);
+        return;
+      }
 
-          context.moveTo(left + topLeft, top);
-          context.lineTo(left + width - topRight, top);
-          context.quadraticCurveTo(
-            left + width,
-            top,
-            left + width,
-            top + topRight,
-          );
-          context.lineTo(left + width, top + height - bottomRight);
-          context.quadraticCurveTo(
-            left + width,
-            top + height,
-            left + width - bottomRight,
-            top + height,
-          );
-          context.lineTo(left + bottomLeft, top + height);
-          context.quadraticCurveTo(
-            left,
-            top + height,
-            left,
-            top + height - bottomLeft,
-          );
-          context.lineTo(left, top + topLeft);
-          context.quadraticCurveTo(left, top, left + topLeft, top);
+      const maxRadius = Math.min(rectWidth, rectHeight) / 2;
+      const topLeft = Math.min(safeRadius.topLeft, maxRadius);
+      const topRight = Math.min(safeRadius.topRight, maxRadius);
+      const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
+      const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
+
+      context.moveTo(left + topLeft, top);
+      context.lineTo(left + rectWidth - topRight, top);
+      context.quadraticCurveTo(
+        left + rectWidth,
+        top,
+        left + rectWidth,
+        top + topRight,
+      );
+      context.lineTo(left + rectWidth, top + rectHeight - bottomRight);
+      context.quadraticCurveTo(
+        left + rectWidth,
+        top + rectHeight,
+        left + rectWidth - bottomRight,
+        top + rectHeight,
+      );
+      context.lineTo(left + bottomLeft, top + rectHeight);
+      context.quadraticCurveTo(
+        left,
+        top + rectHeight,
+        left,
+        top + rectHeight - bottomLeft,
+      );
+      context.lineTo(left, top + topLeft);
+      context.quadraticCurveTo(left, top, left + topLeft, top);
+      context.closePath();
+    };
+
+    const applyCanvasRectMask = (context, rects, operation) => {
+      if (!Array.isArray(rects) || rects.length === 0) {
+        return;
+      }
+
+      context.save();
+      context.globalCompositeOperation = operation;
+      context.beginPath();
+      rects.forEach((rect) => appendRoundedRectPath(context, rect));
+      context.fill();
+      context.restore();
+    };
+
+    const getElementCanvasRect = (element) => {
+      if (!(element instanceof HTMLElement)) {
+        return null;
+      }
+
+      const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      if (elementRect.width <= 0 || elementRect.height <= 0) {
+        return null;
+      }
+
+      const computedStyle = window.getComputedStyle(element);
+
+      return {
+        left: elementRect.left - wrapperRect.left,
+        top: elementRect.top - wrapperRect.top,
+        right: elementRect.right - wrapperRect.left,
+        bottom: elementRect.bottom - wrapperRect.top,
+        radii: {
+          topLeft: Number.parseFloat(computedStyle.borderTopLeftRadius || "0"),
+          topRight: Number.parseFloat(
+            computedStyle.borderTopRightRadius || "0",
+          ),
+          bottomRight: Number.parseFloat(
+            computedStyle.borderBottomRightRadius || "0",
+          ),
+          bottomLeft: Number.parseFloat(
+            computedStyle.borderBottomLeftRadius || "0",
+          ),
+        },
+      };
+    };
+
+    const visibleWrapperRects = HOME_DRAWING_VISIBILITY_WRAPPERS.map(
+      (wrapper) => {
+        const wrapperElement = mainWrapperRef.current.querySelector(
+          wrapper.selector,
+        );
+        const wrapperCanvas = drawingVisibilityCanvasRefs.current.get(
+          wrapper.id,
+        );
+        const wrapperRect = getElementCanvasRect(wrapperElement);
+
+        if (!wrapperCanvas || !wrapperElement || !wrapperRect) {
+          return null;
         }
 
-        context.closePath();
-        context.fill();
-        context.restore();
-      });
-    });
+        const wrapperContext = wrapperCanvas.getContext("2d");
+        const wrapperWidth = Math.max(
+          1,
+          Math.round(wrapperRect.right - wrapperRect.left),
+        );
+        const wrapperHeight = Math.max(
+          1,
+          Math.round(wrapperRect.bottom - wrapperRect.top),
+        );
+
+        if (!wrapperContext) {
+          return wrapperRect;
+        }
+
+        if (
+          wrapperCanvas.width !== Math.round(wrapperWidth * devicePixelRatio) ||
+          wrapperCanvas.height !== Math.round(wrapperHeight * devicePixelRatio)
+        ) {
+          wrapperCanvas.width = Math.round(wrapperWidth * devicePixelRatio);
+          wrapperCanvas.height = Math.round(wrapperHeight * devicePixelRatio);
+          wrapperCanvas.style.width = `${wrapperWidth}px`;
+          wrapperCanvas.style.height = `${wrapperHeight}px`;
+        }
+
+        wrapperContext.setTransform(
+          devicePixelRatio,
+          0,
+          0,
+          devicePixelRatio,
+          0,
+          0,
+        );
+        wrapperContext.clearRect(0, 0, wrapperWidth, wrapperHeight);
+
+        homeDrawing.appliedPaths.forEach((segment) => {
+          const rawPoints = Array.isArray(segment?.points)
+            ? segment.points
+            : [];
+
+          if (rawPoints.length < 2) {
+            return;
+          }
+
+          const shiftedPoints = smoothHomeDrawingPoints(rawPoints).map(
+            (point) => ({
+              x: point.x - wrapperRect.left,
+              y: point.y - wrapperRect.top,
+            }),
+          );
+
+          drawHomeLedRopePath(
+            wrapperContext,
+            shiftedPoints,
+            resolveHomeDrawingPalette(segment),
+            {
+              musicSignal: effectiveMusicSignal,
+              animateBulbs: Boolean(effectiveMusicSignal),
+            },
+          );
+        });
+
+        homeDrawing.draftPaths.forEach((segment) => {
+          const rawPoints = Array.isArray(segment?.points)
+            ? segment.points
+            : [];
+
+          if (rawPoints.length < 2) {
+            return;
+          }
+
+          drawHomeSketchPath(
+            wrapperContext,
+            rawPoints.map((point) => ({
+              x: point.x - wrapperRect.left,
+              y: point.y - wrapperRect.top,
+            })),
+            resolveHomeDrawingPalette(segment),
+          );
+        });
+
+        return wrapperRect;
+      },
+    ).filter(Boolean);
+
+    if (isHomeDrawingAllowListEnabled) {
+      const allowListRects = getHomeDrawingAllowListRects();
+
+      if (allowListRects.length === 0) {
+        draftContext.clearRect(0, 0, width, height);
+      } else {
+        applyCanvasRectMask(draftContext, allowListRects, "destination-in");
+      }
+
+      applyCanvasRectMask(
+        draftContext,
+        getNavChildForbiddenRects(),
+        "destination-out",
+      );
+
+      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
+    } else {
+      applyCanvasRectMask(
+        draftContext,
+        getHomeDrawingMaskedRects(),
+        "destination-out",
+      );
+      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
+    }
   }, [
     HOME_DRAWING_PATH_FILL,
+    getHomeDrawingAllowListRects,
     getHomeDrawingMaskedRects,
+    getNavChildForbiddenRects,
+    homeDrawingVisibleWrapperIds,
     homeDrawing.appliedPaths,
     homeDrawing.draftPaths,
+    isHomeDrawingAllowListEnabled,
     isHomeDrawingModeEnabled,
     props.state?.planner_music?.isPlaying,
   ]);
@@ -1675,6 +2585,22 @@ function Home(props) {
     drawingPathsRef.current = homeDrawing.draftPaths;
   }, [homeDrawing.draftPaths]);
 
+  React.useEffect(() => {
+    homeMusicIsPlayingRef.current = Boolean(
+      props.state?.planner_music?.isPlaying,
+    );
+  }, [props.state?.planner_music?.isPlaying]);
+
+  React.useEffect(() => {
+    if (!isHomeDrawingAllowListEnabled || !isHomeDrawingModeEnabled) {
+      setIsHomeDrawingAllowZoneMenuOpen(false);
+    }
+
+    if (!isHomeDrawingModeEnabled) {
+      setIsHomeDrawingVisibilityMenuOpen(false);
+    }
+  }, [isHomeDrawingAllowListEnabled, isHomeDrawingModeEnabled]);
+
   const beginHomeDrawingStroke = React.useCallback(
     (event) => {
       if (!isHomeDrawingModeEnabled) {
@@ -1683,7 +2609,11 @@ function Home(props) {
 
       const point = getCanvasPointFromEvent(event);
 
-      if (!point || isPointInsideNavChildCard(point)) {
+      if (
+        !point ||
+        isPointInsideNavChildCard(point) ||
+        !isPointInsideAllowedZone(point)
+      ) {
         drawingCurrentPathRef.current = null;
         isDrawingPointerActiveRef.current = true;
         return;
@@ -1713,6 +2643,7 @@ function Home(props) {
       activeHomeDrawingPaletteId,
       getCanvasPointFromEvent,
       isHomeDrawingModeEnabled,
+      isPointInsideAllowedZone,
       isPointInsideNavChildCard,
     ],
   );
@@ -1731,7 +2662,10 @@ function Home(props) {
 
       event.preventDefault();
 
-      if (isPointInsideNavChildCard(point)) {
+      if (
+        isPointInsideNavChildCard(point) ||
+        !isPointInsideAllowedZone(point)
+      ) {
         drawingCurrentPathRef.current = null;
         return;
       }
@@ -1766,6 +2700,7 @@ function Home(props) {
       activeHomeDrawingPaletteId,
       getCanvasPointFromEvent,
       isHomeDrawingModeEnabled,
+      isPointInsideAllowedZone,
       isPointInsideNavChildCard,
     ],
   );
@@ -2010,10 +2945,32 @@ function Home(props) {
       return undefined;
     }
 
+    window.addEventListener(
+      "home-noga-toggle-drawing",
+      handleToggleHomeDrawingMode,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "home-noga-toggle-drawing",
+        handleToggleHomeDrawingMode,
+      );
+    };
+  }, [handleToggleHomeDrawingMode]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
     const handlePlannerMusicSignalChange = (event) => {
       const nextAudioSignal = event?.detail?.audioSignal;
+      if (typeof event?.detail?.isPlaying === "boolean") {
+        homeMusicIsPlayingRef.current = event.detail.isPlaying;
+      }
 
       if (!nextAudioSignal) {
+        redrawHomeDrawingCanvas();
         return;
       }
 
@@ -2051,7 +3008,6 @@ function Home(props) {
   }, [
     activeFriendsMiniTab,
     isReportsWrapperOpen,
-    leftColumnWidthPercent,
     openChatFriendId,
     redrawHomeDrawingCanvas,
     showGalleryInRightColumn,
@@ -2139,19 +3095,17 @@ function Home(props) {
     const globalActiveChatFriendId = String(
       props.state?.activeChatFriendId || "",
     ).trim();
-
     if (!globalActiveChatFriendId) {
       setOpenChatFriendId((currentFriendId) =>
         currentFriendId ? null : currentFriendId,
       );
       return;
     }
-
-    setOpenChatFriendId((currentFriendId) =>
-      currentFriendId === globalActiveChatFriendId
+    setOpenChatFriendId((currentFriendId) => {
+      return currentFriendId === globalActiveChatFriendId
         ? currentFriendId
-        : globalActiveChatFriendId,
-    );
+        : globalActiveChatFriendId;
+    });
   }, [props.state?.activeChatFriendId]);
 
   React.useEffect(() => {
@@ -2173,17 +3127,35 @@ function Home(props) {
     );
   }, [profilePictureViewport]);
 
+  const handleInlineCallActionsTargetRef = React.useCallback((node) => {
+    if (inlineCallActionsTargetNodeRef.current === node) {
+      return;
+    }
+
+    inlineCallActionsTargetNodeRef.current = node;
+    setInlineCallActionsTarget(node);
+  }, []);
+
   const toggleGalleryTopRow = () => {
     setIsGalleryTopRowVisible((value) => !value);
   };
 
   React.useEffect(() => {
-    setAcademicInfoFields({
+    const nextAcademicInfoFields = {
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
       studyYear: String(props.state?.studyYear || ""),
       term: String(props.state?.term || ""),
-    });
+    };
+
+    setAcademicInfoFields((currentFields) =>
+      currentFields.program === nextAcademicInfoFields.program &&
+      currentFields.university === nextAcademicInfoFields.university &&
+      currentFields.studyYear === nextAcademicInfoFields.studyYear &&
+      currentFields.term === nextAcademicInfoFields.term
+        ? currentFields
+        : nextAcademicInfoFields,
+    );
   }, [
     props.state?.program,
     props.state?.university,
@@ -2192,8 +3164,14 @@ function Home(props) {
   ]);
 
   React.useEffect(() => {
-    setLoginLogEntries(
-      Array.isArray(props.state?.login_record) ? props.state.login_record : [],
+    const nextLoginLogEntries = Array.isArray(props.state?.login_record)
+      ? props.state.login_record
+      : [];
+
+    setLoginLogEntries((currentEntries) =>
+      JSON.stringify(currentEntries) === JSON.stringify(nextLoginLogEntries)
+        ? currentEntries
+        : nextLoginLogEntries,
     );
   }, [props.state?.login_record]);
 
@@ -2227,127 +3205,92 @@ function Home(props) {
   );
   const profilePictureSrc = String(props.state?.profilePicture || "").trim();
   const activeGalleryImage = imageOnlyGallery[activeGalleryImageIndex] || null;
-  const socialFriends = React.useMemo(
-    () =>
-      Array.isArray(props.state?.friends)
-        ? [...props.state.friends]
-            .filter((friend) => friend && typeof friend === "object")
-            .filter((friend) => {
-              const userMode = normalizeFriendUserMode(
-                friend?.userMode || friend?.mode || friend?.relationship?.userMode,
-              );
-              return userMode === "friend";
-            })
-            .map((friend) => {
-              const firstName = String(
-                friend.info?.firstname ||
-                  friend.identity?.personal?.firstname ||
-                  "",
-              ).trim();
-              const lastName = String(
-                friend.info?.lastname ||
-                  friend.identity?.personal?.lastname ||
-                  "",
-              ).trim();
-              const username = String(
-                friend.info?.username ||
-                  friend.identity?.atSignup?.username ||
-                  "",
-              ).trim();
-              const displayName =
-                `${firstName} ${lastName}`.trim() || username || "Doctor";
-              const initials =
-                `${firstName.charAt(0) || displayName.charAt(0) || "D"}${
-                  lastName.charAt(0) || username.charAt(0) || ""
-                }`.toUpperCase();
-
-              return {
-                id: String(friend._id || username || displayName).trim(),
-                chatId: String(friend._id || "").trim(),
-                displayName,
-                initials: initials || "D",
-                username,
-                avatarUrl: String(
-                  friend?.media?.profilePicture?.url ||
-                    friend?.profilePicture ||
-                    friend?.info?.profilePicture ||
-                    friend?.identity?.personal?.profilePicture?.picture?.url ||
-                    "",
-                ).trim(),
-                isConnected: Boolean(
-                  friend.status?.isConnected ??
-                  friend.identity?.status?.isLoggedIn,
-                ),
-              };
-            })
-            .sort((firstFriend, secondFriend) => {
-              if (firstFriend.isConnected !== secondFriend.isConnected) {
-                return (
-                  Number(secondFriend.isConnected) -
-                  Number(firstFriend.isConnected)
-                );
-              }
-
-              return firstFriend.displayName.localeCompare(
-                secondFriend.displayName,
-              );
-            })
-        : [],
-    [props.state?.friends],
-  );
-
-  const unreadChatCountsByFriendId = React.useMemo(() => {
-    const notifications = Array.isArray(props.state?.notifications)
-      ? props.state.notifications
+  const socialFriends = React.useMemo(() => {
+    const rawFriends = Array.isArray(props.state?.friends)
+      ? props.state.friends
       : [];
 
-    return notifications.reduce((counts, notification) => {
-      if (
-        notification?.type !== "chat_message" ||
-        notification?.status === "read"
-      ) {
-        return counts;
-      }
+    return rawFriends
+      .filter((friend) => friend && typeof friend === "object")
+      .filter((friend) => {
+        const userMode = String(
+          friend?.userMode ||
+            friend?.mode ||
+            friend?.relationship?.userMode ||
+            "",
+        )
+          .trim()
+          .toLowerCase();
 
-      const friendId = String(notification.id || "").trim();
+        return userMode === "friend";
+      })
+      .map((friend, index) => {
+        const info =
+          friend?.info ||
+          friend?.user?.info ||
+          friend?.user ||
+          friend?.id?.info ||
+          friend;
+        const firstName = String(info?.firstname || "").trim();
+        const lastName = String(info?.lastname || "").trim();
+        const username = String(
+          info?.username || friend?.username || "",
+        ).trim();
+        const displayName =
+          `${firstName} ${lastName}`.trim() || username || "Friend";
+        const initials =
+          `${firstName.charAt(0) || displayName.charAt(0) || "F"}${
+            lastName.charAt(0) || username.charAt(0) || ""
+          }`.toUpperCase() || "F";
+        const avatarUrl = String(
+          friend?.media?.profilePicture?.url ||
+            info?.profilePicture?.url ||
+            info?.profilePicture ||
+            friend?.profilePicture ||
+            "",
+        ).trim();
+        const chatId = String(
+          friend?.chatId ||
+            friend?.friendId ||
+            friend?._id ||
+            friend?.id ||
+            info?._id ||
+            username ||
+            index,
+        ).trim();
 
-      if (!friendId) {
-        return counts;
-      }
+        return {
+          id: String(friend?._id || friend?.id || chatId || index),
+          chatId,
+          username,
+          displayName,
+          initials,
+          avatarUrl,
+          isConnected: Boolean(
+            friend?.isConnected || props.state?.friendChatPresence?.[chatId],
+          ),
+        };
+      })
+      .filter((friend) => friend.chatId);
+  }, [props.state?.friendChatPresence, props.state?.friends]);
 
-      const nextCount = Number(notification.count);
-      counts[friendId] = Number.isFinite(nextCount)
-        ? Math.max(0, nextCount)
-        : 1;
-      return counts;
-    }, {});
-  }, [props.state?.notifications]);
+  // TODO: Refactor unreadChatCountsByFriendId to use chat state or friends[].userMode if needed
+  const unreadChatCountsByFriendId = React.useMemo(() => ({}), []);
 
-  const friendRequestNotifications = React.useMemo(() => {
-    const friendRequests = Array.isArray(props.state?.friend_requests)
-      ? props.state.friend_requests
-      : [];
+  // TODO: Refactor friendRequestNotifications to use friends[].userMode if needed
+  const friendRequestNotifications = React.useMemo(() => [], []);
 
-    return friendRequests
-      .map((request) => ({
-        type: "friend_request",
-        ...request,
-      }))
-      .filter(
-        (notification) =>
-          notification?.type === "friend_request" &&
-          notification?.status !== "read",
-      )
-      .filter(
-        (notification, index, allNotifications) =>
-          allNotifications.findIndex(
-            (candidate) =>
-              String(candidate?._id || candidate?.id || "") ===
-              String(notification?._id || notification?.id || ""),
-          ) === index,
-      );
-  }, [props.state?.friend_requests]);
+  React.useEffect(() => {
+    if (activeFriendsMiniTab === "search") {
+      setActiveFriendsMiniTab("friends");
+    }
+  }, [activeFriendsMiniTab]);
 
+  React.useEffect(() => {
+    if (activeFriendsMiniTab === "requests") {
+      props.updateUserInfo?.();
+    }
+  }, [activeFriendsMiniTab, props.updateUserInfo]);
 
   const incomingFriendRequestIds = React.useMemo(
     () =>
@@ -2457,9 +3400,7 @@ function Home(props) {
   React.useEffect(() => {
     const normalizedQuery = String(friendSearchQuery || "").trim();
     if (!normalizedQuery) {
-      setFriendSearchResults((currentResults) =>
-        currentResults.length ? [] : currentResults,
-      );
+      setFriendSearchResults([]);
       setFriendSearchFeedback("");
       setIsFriendSearchLoading(false);
       return;
@@ -2494,23 +3435,30 @@ function Home(props) {
               const identity = user?.identity || {};
               const personal = identity?.personal || {};
               const atSignup = identity?.atSignup || {};
-              const id = String(user?._id || info?._id || "").trim();
+              const profile = user?.profile || {};
+              const auth = user?.auth || {};
+              const id = String(user?._id || info?._id || profile?._id || "").trim();
               const username = String(
-                info?.username || atSignup?.username || user?.username || "",
+                info?.username ||
+                  atSignup?.username ||
+                  auth?.username ||
+                  user?.username ||
+                  "",
               )
                 .trim()
                 .toLowerCase();
               const firstname = String(
-                info?.firstname || personal?.firstname || "",
+                info?.firstname || personal?.firstname || profile?.firstname || "",
               ).trim();
               const lastname = String(
-                info?.lastname || personal?.lastname || "",
+                info?.lastname || personal?.lastname || profile?.lastname || "",
               ).trim();
               const displayName =
                 `${firstname} ${lastname}`.trim() || username || "User";
               const profilePicture =
                 personal?.profilePicture?.picture ||
                 personal?.profilePicture ||
+                profile?.picture?.profilePic?.index ||
                 user?.profilePicture ||
                 {};
               const avatarUrl = String(
@@ -2563,12 +3511,7 @@ function Home(props) {
       isCancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [
-    deriveSearchUserMode,
-    friendSearchQuery,
-    props.state?.my_id,
-    props.state?.username,
-  ]);
+  }, [friendSearchQuery, props.state?.my_id, props.state?.username]);
 
   // All non-stranger friends (pending, accepted, blocked, refused, etc)
   const relationshipEntries = React.useMemo(() => {
@@ -2630,8 +3573,9 @@ function Home(props) {
       BLOCKED_LIST_USER_MODE_ORDER.map((mode) => {
         const entries = blockedRelationshipEntries.filter(
           (entry) =>
-            normalizeFriendUserMode(entry?.userMode || DEFAULT_BLOCKED_LIST_USER_MODE) ===
-            mode,
+            String(entry?.userMode || DEFAULT_BLOCKED_LIST_USER_MODE)
+              .trim()
+              .toLowerCase() === mode,
         );
         const meta = getFriendUserModeMeta(mode);
         return {
@@ -2809,11 +3753,7 @@ function Home(props) {
       };
     }
 
-    return {
-      iconClass: "fa-user-plus",
-      label: "Not connected",
-      modifierClass: "Home_socialFriendStatus--offline",
-    };
+    return null;
   }, []);
 
   const handleToggleInlineFriendChat = React.useCallback(
@@ -2838,6 +3778,7 @@ function Home(props) {
 
   const handleSelectFriendsMiniTab = React.useCallback(
     (nextTab) => {
+      // If leaving 'friends' tab, clear search query/results
       if (activeFriendsMiniTab === "friends" && nextTab !== "friends") {
         setFriendSearchQuery("");
         setFriendSearchResults([]);
@@ -2885,15 +3826,17 @@ function Home(props) {
         >
           <button
             type="button"
-            className="Home_socialFriendSummary fr"
+            className="Home_socialFriendSummary"
             onClick={() => handleToggleInlineFriendChat(friend)}
             aria-expanded={isFriendChatOpen}
             aria-controls={
-              friend.chatId ? `Home_friendChat_${friend.chatId}` : undefined
+              friend.chatId
+                ? `Home_friendChat_${friend.chatId}`
+                : undefined
             }
             disabled={!friend.chatId}
           >
-            <div className="Home_socialFriendIdentity fr">
+            <div className="Home_socialFriendIdentity">
               <div className="Home_socialFriendAvatar">
                 {friend.avatarUrl ? (
                   <img
@@ -2902,10 +3845,10 @@ function Home(props) {
                     className="Home_socialFriendAvatarImage"
                   />
                 ) : (
-                  <i className="fas fa-user-circle" aria-hidden="true"></i>
+                  <span aria-hidden="true">{friend.initials}</span>
                 )}
               </div>
-              <div className="Home_socialFriendCopy fc">
+              <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">
                   {friend.displayName}
                 </span>
@@ -2929,24 +3872,20 @@ function Home(props) {
               {isFriendChatOpen ? (
                 <div
                   className="Home_socialFriendInlineCallActionsSlot"
-                  ref={(node) => {
-                    setInlineCallActionsTarget((currentTarget) =>
-                      currentTarget === node ? currentTarget : node,
-                    );
-                  }}
+                  ref={handleInlineCallActionsTargetRef}
                 />
               ) : null}
             </div>
           </button>
           {isIncomingCallForFriend ? (
-            <div className="Home_socialFriendIncomingCall fc">
-              <div className="Home_socialFriendIncomingCallCopy fc">
+            <div className="Home_socialFriendIncomingCall">
+              <div className="Home_socialFriendIncomingCallCopy">
                 <strong>Incoming {incomingCallMode} call</strong>
                 <span>
                   {friend.displayName || "Your friend"} is calling you.
                 </span>
               </div>
-              <div className="Home_socialFriendIncomingCallActions fr">
+              <div className="Home_socialFriendIncomingCallActions">
                 <button
                   type="button"
                   className="Home_socialFriendCallButton Home_socialFriendCallButton--accept"
@@ -3016,53 +3955,42 @@ function Home(props) {
         notification?._id || notification?.id || "",
       ).trim();
       const requesterId = String(notification?.id || "").trim();
-
-      // Try to get user info from notification or fallback
-      const profilePicture =
-        notification?.info?.profilePicture ||
-        notification?.profilePicture ||
-        notification?.identity?.personal?.profilePicture?.picture?.url ||
-        "";
-      const firstname =
-        notification?.info?.firstname ||
-        notification?.identity?.personal?.firstname ||
-        "";
-      const lastname =
-        notification?.info?.lastname ||
-        notification?.identity?.personal?.lastname ||
-        "";
-      const username =
-        notification?.info?.username ||
-        notification?.identity?.atSignup?.username ||
-        notification?.username ||
-        "";
+      const requesterFirstName = String(
+        notification?.info?.firstname || notification?.firstname || "",
+      ).trim();
+      const requesterLastName = String(
+        notification?.info?.lastname || notification?.lastname || "",
+      ).trim();
+      const requesterUsername = String(
+        notification?.info?.username || notification?.username || "",
+      ).trim();
+      const senderFromMessage = String(notification?.message || "")
+        .replace(/\s*sent\s+you\s+a\s+friend\s+request\s*$/i, "")
+        .trim();
+      const requestLabel =
+        `${requesterFirstName} ${requesterLastName}`.trim() ||
+        senderFromMessage ||
+        requesterUsername ||
+        "Friend request";
 
       return (
-        <li key={requestId || requesterId} className="Home_socialFriendItem fc">
-          <div className="Home_socialFriendSummary fr">
-            <div className="Home_socialFriendIdentity fr">
-              <div className="Home_socialFriendAvatar">
-                {profilePicture ? (
-                  <img
-                    src={profilePicture}
-                    alt={firstname || username || "User"}
-                    className="Home_socialFriendAvatarImg"
-                  />
-                ) : (
-                  <i className="fas fa-user-clock" aria-hidden="true"></i>
-                )}
+        <li
+          key={requestId || requesterId}
+          className="Home_socialFriendItem Home_socialFriendItem--request"
+        >
+          <div className="Home_socialFriendSummary">
+            <div className="Home_socialFriendIdentity">
+              <div className="Home_socialFriendAvatar Home_socialFriendAvatar--request">
+                <i className="fas fa-user-clock" aria-hidden="true"></i>
               </div>
-              <div className="Home_socialFriendCopy fc">
+              <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">
-                  {[firstname, lastname].filter(Boolean).join(" ") ||
-                    username ||
-                    "User"}
+                  {requestLabel}
                 </span>
-                <span className="Home_socialFriendUsername">@{username}</span>
               </div>
             </div>
           </div>
-          <div className="Home_socialRequestActions fr">
+          <div className="Home_socialRequestActions">
             <button
               type="button"
               className="Home_socialRequestButton Home_socialRequestButton--accept"
@@ -3131,12 +4059,20 @@ function Home(props) {
         )
         .then(() => {
           setFriendSearchResults((currentResults) =>
-            currentResults.filter((entry) => entry.username !== username),
+            currentResults.map((entry) =>
+              String(entry?.username || "").trim().toLowerCase() === username
+                ? { ...entry, userMode: "requestSent" }
+                : entry,
+            ),
           );
           setFriendSearchFeedback("Friend request sent.");
+          props.updateUserInfo?.();
           props.serverReply?.("Friend request sent!");
         })
         .catch(() => {
+          setFriendSearchResults((currentResults) =>
+            currentResults.length === 0 ? currentResults : [],
+          );
           setFriendSearchFeedback("Unable to send friend request.");
           props.serverReply?.("Unable to send friend request.");
         })
@@ -3151,7 +4087,79 @@ function Home(props) {
       props.state?.my_id,
       props.state?.token,
       props.state?.username,
+      props.updateUserInfo,
     ],
+  );
+
+  const handleAcceptSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.acceptFriend?.(`accept_icon${candidateId}`)).then(
+        (didAccept) => {
+          if (!didAccept) {
+            return;
+          }
+
+          setFriendSearchResults((currentResults) =>
+            currentResults.map((entry) =>
+              String(entry?.id || "").trim() === candidateId
+                ? { ...entry, userMode: "friend" }
+                : entry,
+            ),
+          );
+        },
+      );
+    },
+    [props],
+  );
+
+  const handleRemoveSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.removeFriend?.(candidateId)).then((didRemove) => {
+        if (!didRemove) {
+          return;
+        }
+
+        setFriendSearchResults((currentResults) =>
+          currentResults.map((entry) =>
+            String(entry?.id || "").trim() === candidateId
+              ? { ...entry, userMode: "stranger" }
+              : entry,
+          ),
+        );
+      });
+    },
+    [props],
+  );
+
+  const handleUnblockSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.unblockFriend?.(candidateId)).then((didUnblock) => {
+        if (!didUnblock) {
+          return;
+        }
+
+        setFriendSearchResults((currentResults) =>
+          currentResults.map((entry) =>
+            String(entry?.id || "").trim() === candidateId
+              ? { ...entry, userMode: "stranger" }
+              : entry,
+          ),
+        );
+      });
+    },
+    [props],
   );
 
   const renderSearchedUserListItem = React.useCallback(
@@ -3163,14 +4171,13 @@ function Home(props) {
         .trim()
         .toLowerCase();
       const canSendRequest = candidateMode === "stranger";
-      const canCancelRequest = candidateMode === "requestsent";
-      const canAcceptRequest =
-        candidateMode === "requestreceived";
-      const canRemoveFriend = candidateMode === "friend";
+      const canAcceptRequest = candidateMode === "requestreceived";
+      const canUnfriend = candidateMode === "friend";
+      const canUnblock = candidateMode === "blocked";
       return (
-        <li key={candidate.id} className="Home_socialFriendItem fc">
-          <div className="Home_socialFriendSummary fr">
-            <div className="Home_socialFriendIdentity fr">
+        <li key={candidate.id} className="Home_socialFriendItem">
+          <div className="Home_socialFriendSummary">
+            <div className="Home_socialFriendIdentity">
               <div className="Home_socialFriendAvatar">
                 {candidate.avatarUrl ? (
                   <img
@@ -3182,7 +4189,7 @@ function Home(props) {
                   <span aria-hidden="true">{candidate.initials}</span>
                 )}
               </div>
-              <div className="Home_socialFriendCopy fc">
+              <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">
                   {candidate.displayName}
                 </span>
@@ -3191,15 +4198,17 @@ function Home(props) {
                 </span>
               </div>
             </div>
-            <div className="Home_socialFriendPresence">
-              <span
-                className={`Home_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
-              >
-                <i className={`fas ${candidateUserModeMeta.iconClass}`}></i>
-                <span>{candidateUserModeMeta.label}</span>
-              </span>
-            </div>
-            <div className="Home_socialRequestActions fr">
+            {candidateUserModeMeta ? (
+              <div className="Home_socialFriendPresence">
+                <span
+                  className={`Home_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
+                >
+                  <i className={`fas ${candidateUserModeMeta.iconClass}`}></i>
+                  <span>{candidateUserModeMeta.label}</span>
+                </span>
+              </div>
+            ) : null}
+            <div className="Home_socialRequestActions">
               {canSendRequest ? (
                 <button
                   type="button"
@@ -3212,26 +4221,11 @@ function Home(props) {
                   <i className="fas fa-user-plus"></i>
                 </button>
               ) : null}
-              {canCancelRequest ? (
-                <button
-                  type="button"
-                  className="Home_socialRequestButton Home_socialRequestButton--dismiss"
-                  onClick={() => props.cancelSentFriendRequest?.(candidateId)}
-                  disabled={!candidateId}
-                  aria-label="Cancel friend request"
-                  title="Cancel friend request"
-                >
-                  <i className="fas fa-ban"></i>
-                </button>
-              ) : null}
               {canAcceptRequest ? (
                 <button
                   type="button"
                   className="Home_socialRequestButton Home_socialRequestButton--accept"
-                  onClick={() =>
-                    candidateId &&
-                    props.acceptFriend?.(`accept_icon${candidateId}`)
-                  }
+                  onClick={() => handleAcceptSearchCandidate(candidateId)}
                   disabled={!candidateId}
                   aria-label="Accept friend request"
                   title="Accept friend request"
@@ -3239,28 +4233,28 @@ function Home(props) {
                   <i className="fas fa-user-check"></i>
                 </button>
               ) : null}
-              {canAcceptRequest ? (
+              {canUnfriend ? (
                 <button
                   type="button"
                   className="Home_socialRequestButton Home_socialRequestButton--dismiss"
-                  onClick={() => props.dismissFriendRequest?.(candidateId)}
+                  onClick={() => handleRemoveSearchCandidate(candidateId)}
                   disabled={!candidateId}
-                  aria-label="Dismiss friend request"
-                  title="Dismiss friend request"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              ) : null}
-              {canRemoveFriend ? (
-                <button
-                  type="button"
-                  className="Home_socialRequestButton Home_socialRequestButton--dismiss"
-                  onClick={() => props.removeFriend?.(candidateId)}
-                  disabled={!candidateId}
-                  aria-label="Remove friend"
-                  title="Remove friend"
+                  aria-label="Unfriend"
+                  title="Unfriend"
                 >
                   <i className="fas fa-user-minus"></i>
+                </button>
+              ) : null}
+              {canUnblock ? (
+                <button
+                  type="button"
+                  className="Home_socialRequestButton Home_socialRequestButton--dismiss"
+                  onClick={() => handleUnblockSearchCandidate(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Unblock user"
+                  title="Unblock user"
+                >
+                  <i className="fas fa-user-slash"></i>
                 </button>
               ) : null}
             </div>
@@ -3270,16 +4264,49 @@ function Home(props) {
     },
     [
       getSearchCandidateUserModeMeta,
+      handleAcceptSearchCandidate,
+      handleRemoveSearchCandidate,
+      handleUnblockSearchCandidate,
       props,
       sendFriendRequestToUser,
       sendingFriendRequestUsername,
     ],
   );
 
+  const renderDirectoryTabs = React.useCallback(
+    ({ tabs, activeId, onChange }) =>
+      tabs?.length ? (
+        <div className="Home_socialDirectoryTabs">
+          {tabs.map((tab) => {
+            const hasRequestMarker = tab.id === "pending" && tab.count > 0;
+            return (
+            <button
+              key={tab.id}
+              type="button"
+              className={`Home_socialDirectoryTab${
+                activeId === tab.id ? " isActive" : ""
+              }${hasRequestMarker ? " Home_socialDirectoryTab--hasMarker" : ""}`}
+              onClick={() => onChange(tab.id)}
+            >
+              {tab.label} ({tab.count})
+              {hasRequestMarker ? (
+                <span
+                  className="Home_socialDirectoryTabMarker"
+                  aria-hidden="true"
+                ></span>
+              ) : null}
+            </button>
+            );
+          })}
+        </div>
+      ) : null,
+    [],
+  );
+
   const renderConnectionSearchPanel = React.useCallback(
-    ({ value, onChange, placeholder, ariaLabel }) => (
-      <div className="Home_socialRequestSearchRow">
-        <div className="Home_socialRequestSearchWrap fr">
+    ({ value, onChange, placeholder, ariaLabel, controls = null }) => (
+      <div className="Home_socialDirectoryHeader">
+        <div className="Home_socialDirectorySearch">
           <i className="fas fa-search" aria-hidden="true"></i>
           <input
             type="text"
@@ -3292,6 +4319,7 @@ function Home(props) {
             aria-label={ariaLabel}
           />
         </div>
+        {controls}
       </div>
     ),
     [],
@@ -3304,8 +4332,43 @@ function Home(props) {
         onChange: setFriendSearchQuery,
         placeholder: "Search friends",
         ariaLabel: "Search friends",
+        controls: (
+          <div className="Home_socialDirectoryTabGroup">
+            {renderDirectoryTabs({
+              tabs: blockedListGroups,
+              activeId: activeBlockedListGroup,
+              onChange: (nextGroupId) => {
+                if (hasActiveFriendSearchQuery) {
+                  return;
+                }
+                setActiveBlockedListGroup(nextGroupId);
+              },
+            })}
+            {activeBlockedListGroupMeta.tabs.length > 1
+              ? renderDirectoryTabs({
+                  tabs: activeBlockedListGroupMeta.tabs,
+                  activeId: activeBlockedListTab,
+                  onChange: (nextTabId) => {
+                    if (hasActiveFriendSearchQuery) {
+                      return;
+                    }
+                    setActiveBlockedListTab(nextTabId);
+                  },
+                })
+              : null}
+          </div>
+        ),
       }),
-    [friendSearchQuery, renderConnectionSearchPanel],
+    [
+      activeBlockedListGroup,
+      activeBlockedListGroupMeta.tabs,
+      activeBlockedListTab,
+      blockedListGroups,
+      friendSearchQuery,
+      hasActiveFriendSearchQuery,
+      renderConnectionSearchPanel,
+      renderDirectoryTabs,
+    ],
   );
 
   const renderPageSearchPanel = React.useCallback(
@@ -3331,11 +4394,10 @@ function Home(props) {
   );
 
   const renderBlockedUserListItem = React.useCallback((user) => {
-    const userModeMeta = getFriendUserModeMeta(user?.userMode);
     return (
-      <li key={user.id} className="Home_socialFriendItem fc">
-        <div className="Home_socialFriendSummary fr">
-          <div className="Home_socialFriendIdentity fr">
+      <li key={user.id} className="Home_socialFriendItem">
+        <div className="Home_socialFriendSummary">
+          <div className="Home_socialFriendIdentity">
             <div className="Home_socialFriendAvatar">
               {user.avatarUrl ? (
                 <img
@@ -3347,78 +4409,21 @@ function Home(props) {
                 <span aria-hidden="true">{user.initials}</span>
               )}
             </div>
-            <div className="Home_socialFriendCopy fc">
-              <span className="Home_socialFriendName">{user.displayName}</span>
+            <div className="Home_socialFriendCopy">
+              <span className="Home_socialFriendName">
+                {user.displayName}
+              </span>
               <span className="Home_socialFriendUsername">
                 {user.username || "Blocked user"}
               </span>
             </div>
-          </div>
-          <div className="Home_socialFriendPresence">
-            <span className="Home_socialFriendStatus Home_socialFriendStatus--offline">
-              <i className={`fas ${userModeMeta.iconClass}`}></i>
-              <span>{userModeMeta.label}</span>
-            </span>
           </div>
         </div>
       </li>
     );
   }, []);
 
-  const renderBlockedListPanel = React.useCallback(
-    () => (
-      <div className="Home_socialBlockedPanel fc">
-        <div className="Home_socialBlockedTabs fr">
-          {blockedListGroups.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              className={`Home_socialBlockedTab${
-                activeBlockedListGroup === group.id ? " isActive" : ""
-              }`}
-              onClick={() => setActiveBlockedListGroup(group.id)}
-            >
-              {group.label} ({group.count})
-            </button>
-          ))}
-        </div>
-        {activeBlockedListGroupMeta.tabs.length > 1 ? (
-          <div className="Home_socialBlockedTabs fr">
-            {activeBlockedListGroupMeta.tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`Home_socialBlockedTab${
-                  activeBlockedListTab === tab.id ? " isActive" : ""
-                }`}
-                onClick={() => setActiveBlockedListTab(tab.id)}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <ul className="Home_socialFriendsList">
-          {activeBlockedListTabMeta.entries.length === 0 ? (
-            <li className="Home_socialFriendsEmptyState">
-              {activeBlockedListTabMeta.emptyLabel}
-            </li>
-          ) : (
-            activeBlockedListTabMeta.entries.map(renderBlockedUserListItem)
-          )}
-        </ul>
-      </div>
-    ),
-    [
-      activeBlockedListGroup,
-      activeBlockedListGroupMeta,
-      activeBlockedListTab,
-      activeBlockedListTabMeta,
-      blockedListGroups,
-      renderBlockedUserListItem,
-    ],
-  );
-  const openProfilePicturePicker = () => {
+  const openGalleryUploadPicker = () => {
     galleryUploadInputRef.current?.click();
   };
 
@@ -3652,6 +4657,114 @@ function Home(props) {
     });
   };
 
+  const defaultPatternWallpaperUrl = React.useMemo(() => {
+    if (!Array.isArray(imageGallery)) {
+      return "";
+    }
+
+    const firstPatternImage = imageGallery.find((image) => {
+      if (isVideoGalleryItem(image)) {
+        return false;
+      }
+
+      return (
+        String(image?.resourceType || image?.resource_type || "")
+          .trim()
+          .toLowerCase() === "pattern"
+      );
+    });
+
+    return String(firstPatternImage?.url || "").trim();
+  }, [imageGallery]);
+
+  const currentBioWallpaperUrl = String(
+    props.state?.bioWrapperWallpaper || defaultPatternWallpaperUrl,
+  ).trim();
+  const currentBioWallpaperSize = Math.min(
+    Math.max(
+      Number(props.state?.bioWrapperWallpaperSize) ||
+        DEFAULT_HOME_BIO_WALLPAPER_SIZE,
+      180,
+    ),
+    1400,
+  );
+  const currentBioWallpaperRepeat =
+    props.state?.bioWrapperWallpaperRepeat !== undefined
+      ? Boolean(props.state.bioWrapperWallpaperRepeat)
+      : true;
+
+  const updateBioWallpaperState = React.useCallback(
+    (nextWallpaper = {}) => {
+      props.setUserMediaInfo?.({
+        profilePicture: String(props.state?.profilePicture || "").trim(),
+        profilePictureViewport: props.state?.profilePictureViewport || {
+          scale: 1,
+          offsetX: 0,
+          offsetY: 0,
+        },
+        homeDrawing:
+          props.state?.homeDrawing &&
+          typeof props.state.homeDrawing === "object"
+            ? props.state.homeDrawing
+            : { draftPaths: [], appliedPaths: [], textItems: [] },
+        imageGallery: Array.isArray(props.state?.imageGallery)
+          ? props.state.imageGallery
+          : [],
+        bioWrapperWallpaper:
+          nextWallpaper.bioWrapperWallpaper !== undefined
+            ? nextWallpaper.bioWrapperWallpaper
+            : currentBioWallpaperUrl,
+        bioWrapperWallpaperSize:
+          nextWallpaper.bioWrapperWallpaperSize !== undefined
+            ? nextWallpaper.bioWrapperWallpaperSize
+            : currentBioWallpaperSize,
+        bioWrapperWallpaperRepeat:
+          nextWallpaper.bioWrapperWallpaperRepeat !== undefined
+            ? nextWallpaper.bioWrapperWallpaperRepeat
+            : currentBioWallpaperRepeat,
+      });
+    },
+    [
+      currentBioWallpaperRepeat,
+      currentBioWallpaperSize,
+      currentBioWallpaperUrl,
+      props.setUserMediaInfo,
+      props.state?.homeDrawing,
+      props.state?.imageGallery,
+      props.state?.profilePicture,
+      props.state?.profilePictureViewport,
+    ],
+  );
+
+  const handleSetGalleryImageAsBioWallpaper = React.useCallback(
+    (image) => {
+      if (!image || isVideoGalleryItem(image)) {
+        return;
+      }
+
+      updateBioWallpaperState({
+        bioWrapperWallpaper: String(image?.url || "").trim(),
+      });
+      setActiveGalleryActionsPublicId("");
+      setIsBioWallpaperControlsOpen(true);
+    },
+    [updateBioWallpaperState],
+  );
+
+  const resetBioWallpaperToDefault = React.useCallback(() => {
+    updateBioWallpaperState({
+      bioWrapperWallpaper: defaultPatternWallpaperUrl,
+      bioWrapperWallpaperSize: DEFAULT_HOME_BIO_WALLPAPER_SIZE,
+      bioWrapperWallpaperRepeat: true,
+    });
+  }, [defaultPatternWallpaperUrl, updateBioWallpaperState]);
+
+  const clearBioWallpaper = React.useCallback(() => {
+    updateBioWallpaperState({
+      bioWrapperWallpaper: "",
+    });
+  }, [updateBioWallpaperState]);
+
   const loadImageGalleryOnMount = React.useCallback(async () => {
     if (!props.state?.token) {
       return;
@@ -3725,9 +4838,26 @@ function Home(props) {
       return;
     }
 
+    const maxImageSizeBytes = 8 * 1024 * 1024;
     const maxVideoSizeBytes = 100 * 1024 * 1024;
     const preCheckMimeType = String(selectedFile?.type || "").trim();
+    const targetResourceType = String(
+      options?.resourceType ||
+        HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab]?.resourceType ||
+        "",
+    ).trim() || "image";
     const isVideoFilePre = preCheckMimeType.toLowerCase().startsWith("video/");
+    const expectsVideoUpload = targetResourceType === "video";
+
+    if (expectsVideoUpload && !isVideoFilePre) {
+      sendCloudinaryReply("Please choose a video file for the Videos tab.");
+      return;
+    }
+
+    if (!expectsVideoUpload && isVideoFilePre) {
+      sendCloudinaryReply("Please choose an image file for this gallery tab.");
+      return;
+    }
 
     // If video and >=100MB, send to backend for compression/upload
     if (isVideoFilePre && selectedFile.size >= maxVideoSizeBytes) {
@@ -3778,7 +4908,9 @@ function Home(props) {
 
         if (!galleryResponse.ok) {
           throw new Error(
-            galleryPayload?.message || uploadResult?.message || "Unable to refresh media gallery.",
+            galleryPayload?.message ||
+              uploadResult?.message ||
+              "Unable to refresh media gallery.",
           );
         }
 
@@ -3806,7 +4938,9 @@ function Home(props) {
     ).trim();
     const isVideoFile = mimeType.toLowerCase().startsWith("video/");
     const resourceType =
-      existingUploadTask?.resourceType || (isVideoFile ? "video" : "image");
+      existingUploadTask?.resourceType ||
+      targetResourceType ||
+      (isVideoFile ? "video" : "image");
     const publicId =
       String(existingUploadTask?.publicId || "").trim() ||
       sanitizeGalleryFileName(fileName);
@@ -3829,6 +4963,35 @@ function Home(props) {
     setIsImageGalleryUploading(true);
     let triedCompression = false;
     let fileToUpload = selectedFile;
+    let currentMimeType = mimeType;
+
+    if (
+      !isVideoFile &&
+      canCompressImageUpload(fileToUpload) &&
+      fileToUpload.size >= maxImageSizeBytes
+    ) {
+      try {
+        sendCloudinaryReply(
+          `Large image detected (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing before upload...`,
+        );
+        const compressedImage = await compressImageUpload(fileToUpload, {
+          maxBytes: maxImageSizeBytes,
+        });
+
+        if (compressedImage !== fileToUpload) {
+          fileToUpload = compressedImage;
+          currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+          triedCompression = true;
+          sendCloudinaryReply(
+            `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Starting upload...`,
+          );
+        }
+      } catch (compressionError) {
+        sendCloudinaryReply(
+          `Image compression skipped: ${compressionError?.message || "Unknown error."}`,
+        );
+      }
+    }
 
     while (true) {
       try {
@@ -3901,6 +5064,38 @@ function Home(props) {
               );
             }
           }
+          if (
+            !isVideoFile &&
+            !triedCompression &&
+            canCompressImageUpload(fileToUpload) &&
+            (status === 413 ||
+              status === 403 ||
+              /file too large|413|too large|exceeds|limit/i.test(errorMsg))
+          ) {
+            sendCloudinaryReply(
+              `Image too large (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing and retrying upload...`,
+            );
+            try {
+              const compressedImage = await compressImageUpload(fileToUpload, {
+                maxBytes: maxImageSizeBytes,
+              });
+              if (compressedImage === fileToUpload) {
+                throw new Error("Compression did not reduce image size.");
+              }
+              fileToUpload = compressedImage;
+              currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+              triedCompression = true;
+              sendCloudinaryReply(
+                `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
+              );
+              continue;
+            } catch (compressionError) {
+              throw new Error(
+                "Image compression failed: " +
+                  (compressionError?.message || "Unknown error."),
+              );
+            }
+          }
           sendCloudinaryReply(
             `Upload failed with status ${status}: ${errorMsg}`,
           );
@@ -3919,7 +5114,7 @@ function Home(props) {
             assetId: cloudinaryPayload.asset_id,
             folder: cloudinaryPayload.folder,
             resourceType: cloudinaryPayload.resource_type || resourceType,
-            mimeType,
+            mimeType: currentMimeType,
             width: cloudinaryPayload.width,
             height: cloudinaryPayload.height,
             format: cloudinaryPayload.format,
@@ -3964,6 +5159,38 @@ function Home(props) {
           } catch (compressionError) {
             sendCloudinaryReply(
               "Video compression failed: " +
+                (compressionError?.message || "Unknown error."),
+            );
+            break;
+          }
+        } else if (
+          !isVideoFile &&
+          !triedCompression &&
+          canCompressImageUpload(fileToUpload) &&
+          /413|file too large|too large|exceeds|limit/i.test(
+            error?.message || "",
+          )
+        ) {
+          sendCloudinaryReply(
+            `Image too large (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing and retrying upload...`,
+          );
+          try {
+            const compressedImage = await compressImageUpload(fileToUpload, {
+              maxBytes: maxImageSizeBytes,
+            });
+            if (compressedImage === fileToUpload) {
+              throw new Error("Compression did not reduce image size.");
+            }
+            fileToUpload = compressedImage;
+            currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+            triedCompression = true;
+            sendCloudinaryReply(
+              `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
+            );
+            continue;
+          } catch (compressionError) {
+            sendCloudinaryReply(
+              "Image compression failed: " +
                 (compressionError?.message || "Unknown error."),
             );
             break;
@@ -4019,9 +5246,7 @@ function Home(props) {
       }
 
       syncUserMediaState(payload);
-      sendCloudinaryReply(
-        payload?.message || "Media deleted from gallery.",
-      );
+      sendCloudinaryReply(payload?.message || "Media deleted from gallery.");
       if (isImageViewerOpen) {
         setIsImageViewerOpen(false);
       }
@@ -4111,13 +5336,14 @@ function Home(props) {
     }
   }, [activeGalleryActionsPublicId, imageGallery]);
 
-
   React.useEffect(() => {
     if (!isVideoViewerOpen || !activeGalleryVideo) {
       return;
     }
 
-    const activeVideoPublicId = String(activeGalleryVideo?.publicId || "").trim();
+    const activeVideoPublicId = String(
+      activeGalleryVideo?.publicId || "",
+    ).trim();
     const nextActiveVideo =
       imageGallery.find(
         (image) => String(image?.publicId || "").trim() === activeVideoPublicId,
@@ -4322,7 +5548,11 @@ function Home(props) {
 
       return normalizedViewport;
     });
-  }, [props.state?.profilePictureViewport]);
+  }, [
+    props.state?.profilePictureViewport?.scale,
+    props.state?.profilePictureViewport?.offsetX,
+    props.state?.profilePictureViewport?.offsetY,
+  ]);
 
   React.useEffect(() => {
     const normalizedDrawing = normalizeHomeDrawingPayload(
@@ -4354,7 +5584,9 @@ function Home(props) {
   }, [
     homeDrawing.draftPaths.length,
     isHomeDrawingModeEnabled,
-    props.state?.homeDrawing,
+    props.state?.homeDrawing?.draftPaths,
+    props.state?.homeDrawing?.appliedPaths,
+    props.state?.homeDrawing?.textItems,
   ]);
 
   React.useEffect(() => {
@@ -4417,6 +5649,18 @@ function Home(props) {
       return;
     }
 
+    const stateViewport = normalizeProfilePictureViewport(
+      props.state?.profilePictureViewport,
+    );
+
+    if (
+      stateViewport.scale === profilePictureViewport.scale &&
+      stateViewport.offsetX === profilePictureViewport.offsetX &&
+      stateViewport.offsetY === profilePictureViewport.offsetY
+    ) {
+      return;
+    }
+
     const saveTimeout = window.setTimeout(async () => {
       try {
         const response = await fetch(apiUrl("/api/user/profile"), {
@@ -4461,6 +5705,7 @@ function Home(props) {
     props.setUserMediaInfo,
     props.state?.imageGallery,
     props.state?.profilePicture,
+    props.state?.profilePictureViewport,
     props.state?.token,
   ]);
 
@@ -4504,13 +5749,13 @@ function Home(props) {
     };
   }, [
     isHomeDrawingModeEnabled,
-    homeDrawing,
+    homeDrawing.appliedPaths,
+    homeDrawing.draftPaths.length,
+    homeDrawing.textItems,
     persistHomeDrawing,
-    props.setUserMediaInfo,
-    props.state?.imageGallery,
-    props.state?.homeDrawing,
-    props.state?.profilePicture,
-    props.state?.profilePictureViewport,
+    props.state?.homeDrawing?.draftPaths,
+    props.state?.homeDrawing?.appliedPaths,
+    props.state?.homeDrawing?.textItems,
     props.state?.token,
   ]);
 
@@ -5094,6 +6339,39 @@ function Home(props) {
     setMusicArchivePlaylistFeedback("Song added to the playlist.");
   };
 
+  const removeMusicLibraryPlaylistItem = (provider, valueToRemove) => {
+    const normalizedProvider = String(provider || "").trim();
+    const normalizedValue = String(valueToRemove || "").trim();
+
+    if (!normalizedValue) {
+      return;
+    }
+
+    if (normalizedProvider === "itunes") {
+      setItunesPlaylistInput(
+        parsePlaylistLines(itunesPlaylistInput)
+          .filter((line) => line !== normalizedValue)
+          .join("\n"),
+      );
+    } else if (normalizedProvider === "musicBrainz") {
+      setMusicBrainzPlaylistInput(
+        parsePlaylistLines(musicBrainzPlaylistInput)
+          .filter((line) => line !== normalizedValue)
+          .join("\n"),
+      );
+    } else {
+      setMusicArchivePlaylistInput(
+        parsePlaylistLines(musicArchivePlaylistInput)
+          .filter((line) => line !== normalizedValue)
+          .join("\n"),
+      );
+    }
+
+    setMusicArchivePlaylistFeedback(
+      `${getMusicProviderLabel(normalizedProvider)} song removed from the playlist.`,
+    );
+  };
+
   const saveSchoolPlannerTelegramSettings = () => {
     if (!props.state?.token) {
       return;
@@ -5416,6 +6694,7 @@ function Home(props) {
       firstname: String(props.state?.firstname || "").trim(),
       lastname: String(props.state?.lastname || "").trim(),
       username: String(props.state?.username || "").trim(),
+      bio: String(props.state?.bio || "").trim(),
       program: String(props.state?.program || "").trim(),
       university: String(props.state?.university || "").trim(),
       studyYear: String(props.state?.studyYear || "").trim(),
@@ -5466,6 +6745,7 @@ function Home(props) {
         firstname: nextInfo?.firstname || payloadBody.firstname,
         lastname: nextInfo?.lastname || payloadBody.lastname,
         username: nextInfo?.username || payloadBody.username,
+        bio: nextInfo?.bio || payloadBody.bio,
         program: nextInfo?.program || payloadBody.program,
         university: nextInfo?.university || payloadBody.university,
         studyYear: nextInfo?.studyYear || payloadBody.studyYear,
@@ -5496,6 +6776,13 @@ function Home(props) {
 
   const handleInlinePersonalInfoKeyDown = (event) => {
     if (event.key === "Enter") {
+      if (
+        activePersonalInfoField === "bio" &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        return;
+      }
       event.preventDefault();
       submitInlinePersonalInfoEdit();
       return;
@@ -5540,126 +6827,367 @@ function Home(props) {
       </div>
     );
   };
+
+  const profileState =
+    props.state && typeof props.state === "object" ? props.state : {};
+  const profileStudying =
+    profileState.studying && typeof profileState.studying === "object"
+      ? profileState.studying
+      : {};
+  const profileWorking =
+    profileState.working && typeof profileState.working === "object"
+      ? profileState.working
+      : {};
+  const profileHometown =
+    profileState.hometown && typeof profileState.hometown === "object"
+      ? profileState.hometown
+      : {};
+  const profileStudyingTime =
+    profileStudying.time && typeof profileStudying.time === "object"
+      ? profileStudying.time
+      : {};
+  const profileStudyingStartDate =
+    profileStudyingTime.startDate &&
+    typeof profileStudyingTime.startDate === "object"
+      ? profileStudyingTime.startDate
+      : {};
+  const profileStudyingCurrentDate =
+    profileStudyingTime.currentDate &&
+    typeof profileStudyingTime.currentDate === "object"
+      ? profileStudyingTime.currentDate
+      : {};
+  const formatProfileValue = (value) => {
+    const normalized = String(value ?? "").trim();
+    return normalized || "-";
+  };
+  const formattedDob = (() => {
+    if (!profileState.dob) {
+      return "-";
+    }
+    const parsedDate = new Date(profileState.dob);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return formatProfileValue(profileState.dob);
+    }
+    return parsedDate.toLocaleDateString();
+  })();
+  const profileColumns = [
+    {
+      title: "User Info",
+      rows: [
+        {
+          label: "First name",
+          value: formatProfileValue(profileState.firstname),
+        },
+        {
+          label: "Last name",
+          value: formatProfileValue(profileState.lastname),
+        },
+        {
+          label: "Username",
+          value: formatProfileValue(profileState.username),
+        },
+        {
+          label: "DOB",
+          value: formattedDob,
+        },
+      ],
+    },
+    {
+      title: "Study",
+      rows: [
+        {
+          label: "University",
+          value: formatProfileValue(
+            profileStudying.university || profileState.university,
+          ),
+        },
+        {
+          label: "Program",
+          value: formatProfileValue(
+            profileStudying.program || profileState.program,
+          ),
+        },
+        {
+          label: "Faculty",
+          value: formatProfileValue(
+            profileStudying.faculty || profileState.faculty,
+          ),
+        },
+        {
+          label: "Current year",
+          value: formatProfileValue(profileStudyingCurrentDate.year),
+        },
+        {
+          label: "Current term",
+          value: formatProfileValue(
+            profileStudyingCurrentDate.term ||
+              profileStudying.term ||
+              profileState.term,
+          ),
+        },
+        {
+          label: "Academic year",
+          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
+        },
+        {
+          label: "Language",
+          value: formatProfileValue(profileStudying.language),
+        },
+      ],
+    },
+    {
+      title: "Work",
+      rows: [
+        {
+          label: "Company",
+          value: formatProfileValue(profileWorking.company),
+        },
+        {
+          label: "Position",
+          value: formatProfileValue(profileWorking.position),
+        },
+      ],
+    },
+    {
+      title: "Contact",
+      rows: [
+        {
+          label: "Email",
+          value: formatProfileValue(profileState.email),
+        },
+        {
+          label: "Phone",
+          value: formatProfileValue(profileState.phone),
+        },
+        {
+          label: "Location",
+          value: formatProfileValue(
+            [profileHometown.Country, profileHometown.City]
+              .map((value) => String(value || "").trim())
+              .filter(Boolean)
+              .join(" / "),
+          ),
+        },
+      ],
+    },
+  ];
+  const compactDisplayName = formatProfileValue(
+    [profileState.firstname, profileState.lastname]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(" "),
+  );
+  const compactUsername = formatProfileValue(
+    profileState.username ? `@${profileState.username}` : "",
+  );
+  const compactBio = formatProfileValue(profileState.bio);
+  const isCompactBioArabic = isArabicText(compactBio);
+  const isEditingCompactBio = activePersonalInfoField === "bio";
+  const bioWrapperStyle = {
+    "--home-bio-wallpaper-image": currentBioWallpaperUrl
+      ? `url("${currentBioWallpaperUrl.replace(/"/g, '\\"')}")`
+      : "none",
+    "--home-bio-wallpaper-size": `${currentBioWallpaperSize}px auto`,
+    "--home-bio-wallpaper-repeat": currentBioWallpaperRepeat
+      ? "repeat"
+      : "no-repeat",
+  };
+  const drawingControlsPanel = (
+    <div className="Home_mainDrawingControls Home_mainDrawingControls--open">
+      <button
+        type="button"
+        className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+          isHomeDrawingStartingFresh ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingStartingFresh}
+        aria-label="Start a fresh unlinked line"
+        title="Start a fresh unlinked line"
+      >
+        <i className="fas fa-plus"></i>
+      </button>
+      <button
+        type="button"
+        className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+          isHomeDrawingAutoGlueEnabled ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingAutoGlueEnabled((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingAutoGlueEnabled}
+        aria-label={
+          isHomeDrawingAutoGlueEnabled
+            ? "Disable auto-gluing the line"
+            : "Enable auto-gluing the line"
+        }
+        title={isHomeDrawingAutoGlueEnabled ? "Auto-glue on" : "Auto-glue off"}
+      >
+        <i className="fas fa-link"></i>
+      </button>
+      <button
+        type="button"
+        className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
+          isHomeDrawingAllowListEnabled ? " isActive" : ""
+        }`}
+        onClick={() =>
+          setIsHomeDrawingAllowListEnabled((currentValue) => !currentValue)
+        }
+        aria-pressed={isHomeDrawingAllowListEnabled}
+        aria-label="Toggle allow-list drawing zones"
+        title={
+          isHomeDrawingAllowListEnabled
+            ? "Allow-list zones on"
+            : "Allow-list zones off"
+        }
+      >
+        <i className="fas fa-filter"></i>
+      </button>
+      {isHomeDrawingAllowListEnabled ? (
+        <div className="Home_mainDrawingAllowList Home_mainDrawingControls_panelItem">
+          <button
+            type="button"
+            className="Home_mainDrawingAllowSelect"
+            onClick={() =>
+              setIsHomeDrawingAllowZoneMenuOpen((currentValue) => !currentValue)
+            }
+            aria-haspopup="listbox"
+            aria-expanded={isHomeDrawingAllowZoneMenuOpen}
+            title="Select allow-list zone"
+          >
+            {HOME_DRAWING_ALLOWLIST_ZONES.find(
+              (zone) => zone.id === activeHomeDrawingAllowZoneId,
+            )?.label || "Canvas"}
+            <i className="fas fa-chevron-down" aria-hidden="true"></i>
+          </button>
+          {isHomeDrawingAllowZoneMenuOpen ? (
+            <div
+              className="Home_mainDrawingAllowMenu"
+              role="listbox"
+              aria-label="Allowed drawing zones"
+            >
+              {HOME_DRAWING_ALLOWLIST_ZONES.map((zone) => (
+                <button
+                  key={zone.id}
+                  type="button"
+                  className={`Home_mainDrawingAllowOption${
+                    activeHomeDrawingAllowZoneId === zone.id ? " isActive" : ""
+                  }`}
+                  onClick={() => {
+                    setActiveHomeDrawingAllowZoneId(zone.id);
+                    setIsHomeDrawingAllowZoneMenuOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={activeHomeDrawingAllowZoneId === zone.id}
+                >
+                  {zone.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="Home_mainDrawingAllowList Home_mainDrawingControls_panelItem">
+        <button
+          type="button"
+          className="Home_mainDrawingAllowSelect"
+          onClick={() =>
+            setIsHomeDrawingVisibilityMenuOpen((currentValue) => !currentValue)
+          }
+          aria-haspopup="listbox"
+          aria-expanded={isHomeDrawingVisibilityMenuOpen}
+          title="Choose wrappers where drawing stays visible under children"
+        >
+          Visible ({homeDrawingVisibleWrapperIds.length})
+          <i className="fas fa-eye" aria-hidden="true"></i>
+        </button>
+        {isHomeDrawingVisibilityMenuOpen ? (
+          <div
+            className="Home_mainDrawingAllowMenu Home_mainDrawingVisibilityMenu"
+            role="listbox"
+            aria-label="Drawing visibility wrappers"
+          >
+            {HOME_DRAWING_VISIBILITY_WRAPPERS.map((wrapper) => {
+              const isChecked = homeDrawingVisibleWrapperIds.includes(
+                wrapper.id,
+              );
+
+              return (
+                <button
+                  key={wrapper.id}
+                  type="button"
+                  className={`Home_mainDrawingAllowOption${
+                    isChecked ? " isActive" : ""
+                  }`}
+                  onClick={() => toggleHomeDrawingVisibleWrapper(wrapper.id)}
+                  role="option"
+                  aria-selected={isChecked}
+                >
+                  <span className="Home_mainDrawingVisibilityCheck">
+                    {isChecked ? "✓" : ""}
+                  </span>
+                  <span>{wrapper.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+      <div className="Home_mainDrawingPalette fr Home_mainDrawingControls_panelItem">
+        {HOME_DRAWING_PALETTES.map((palette) => (
+          <button
+            key={palette.id}
+            type="button"
+            className={`Home_mainDrawingPaletteButton${
+              activeHomeDrawingPaletteId === palette.id ? " isActive" : ""
+            }`}
+            onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
+            aria-label={`Use ${palette.label} rope light color`}
+            title={palette.label}
+            style={{
+              "--home-drawing-palette-stroke": palette.stroke,
+              "--home-drawing-palette-glow": palette.glow,
+            }}
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="Home_mainDrawingButton Home_mainDrawingControls_panelItem"
+        onClick={clearHomeDrawingCanvas}
+        aria-label="Clear glow lines"
+        title="Clear glow lines"
+      >
+        <i className="fas fa-eraser"></i>
+      </button>
+      <button
+        type="button"
+        className="Home_mainDrawingButton Home_mainDrawingControls_panelItem"
+        onClick={handleToggleHomeDrawingMode}
+        aria-label="Finish glow line drawing"
+        title="Finish glow line drawing"
+      >
+        <i className="fas fa-check"></i>
+      </button>
+    </div>
+  );
   return (
     <>
-      {compressionProgress !== null && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            background: "#1a2a2f",
-            color: "#fff",
-            textAlign: "center",
-            padding: "8px 0",
-          }}
-        >
-          Compressing video: {compressionProgress}%
-        </div>
-      )}
       <article
         id="Home_studysessions_article"
-        className={[homeThemeClassName, !isNaghamtrkmani ? "Home_root--bg" : ""]
+        className={[
+          homeThemeClassName,
+          isHomeDarkTheme ? "Home_themeDark" : "",
+          !isNaghamtrkmani ? "Home_root--bg" : "",
+        ]
           .filter(Boolean)
           .join(" ")}
       >
         <section id="Home_visible_wrapper" className="fc slide-top">
           <div id="Home_main_wrapper" className="fc" ref={mainWrapperRef}>
-            <div
-              className={`Home_mainDrawingControls fr${
-                isHomeDrawingModeEnabled
-                  ? " Home_mainDrawingControls--open"
-                  : " Home_mainDrawingControls--closed"
-              }`}
-            >
-              <button
-                type="button"
-                className={`Home_mainDrawingButton${
-                  isHomeDrawingModeEnabled ? " isActive" : ""
-                }`}
-                onClick={handleToggleHomeDrawingMode}
-                aria-pressed={isHomeDrawingModeEnabled}
-                aria-label={
-                  isHomeDrawingModeEnabled
-                    ? "Disable glow line drawing"
-                    : "Enable glow line drawing"
-                }
-                title={
-                  isHomeDrawingModeEnabled
-                    ? "Disable glow line drawing"
-                    : "Enable glow line drawing"
-                }
-              >
-                <i className="fas fa-pen-nib"></i>
-              </button>
-              <button
-                type="button"
-                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
-                  isHomeDrawingStartingFresh ? " isActive" : ""
-                }`}
-                onClick={() =>
-                  setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
-                }
-                aria-pressed={isHomeDrawingStartingFresh}
-                aria-label="Start a fresh unlinked line"
-                title="Start a fresh unlinked line"
-              >
-                <i className="fas fa-plus"></i>
-              </button>
-              <button
-                type="button"
-                className={`Home_mainDrawingButton Home_mainDrawingControls_panelItem${
-                  isHomeDrawingAutoGlueEnabled ? " isActive" : ""
-                }`}
-                onClick={() =>
-                  setIsHomeDrawingAutoGlueEnabled(
-                    (currentValue) => !currentValue,
-                  )
-                }
-                aria-pressed={isHomeDrawingAutoGlueEnabled}
-                aria-label={
-                  isHomeDrawingAutoGlueEnabled
-                    ? "Disable auto-gluing the line"
-                    : "Enable auto-gluing the line"
-                }
-                title={
-                  isHomeDrawingAutoGlueEnabled
-                    ? "Auto-glue on"
-                    : "Auto-glue off"
-                }
-              >
-                <i className="fas fa-link"></i>
-              </button>
-              <div className="Home_mainDrawingPalette fr Home_mainDrawingControls_panelItem">
-                {HOME_DRAWING_PALETTES.map((palette) => (
-                  <button
-                    key={palette.id}
-                    type="button"
-                    className={`Home_mainDrawingPaletteButton Home_mainDrawingPaletteButton--${palette.id}${
-                      activeHomeDrawingPaletteId === palette.id
-                        ? " isActive"
-                        : ""
-                    }`}
-                    onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
-                    aria-label={`Use ${palette.label} rope light color`}
-                    title={palette.label}
-                  >
-                    <span aria-hidden="true"></span>
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="Home_mainDrawingButton Home_mainDrawingControls_panelItem"
-                onClick={clearHomeDrawingCanvas}
-                aria-label="Clear glow lines"
-                title="Clear glow lines"
-              >
-                <i className="fas fa-eraser"></i>
-              </button>
-            </div>
             <div
               ref={appliedDrawingCanvasHostRef}
               className="Home_mainDrawingCanvasHost Home_mainDrawingCanvasHost--display"
@@ -5688,55 +7216,26 @@ function Home(props) {
                 onPointerCancel={endHomeDrawingStroke}
               />
             </div>
-            <div id="Home_topControls" className="fr">
-              <div id="Home_navWrap">
-                <Nav
-                  path="/"
-                  state={props.state}
-                  logOut={props.logOut}
-                  acceptFriend={props.acceptFriend}
-                  makeNotificationsRead={props.makeNotificationsRead}
-                  extraActions={[
-                    {
-                      id: "friends-list",
-                      label: "Friends",
-                      iconClass: "fas fa-user-friends",
-                      isActive: !isReportsWrapperOpen,
-                      onClick: () => {
-                        setIsReportsWrapperOpen(false);
-                        setShowGalleryInRightColumn(false);
-                        setOpenChatFriendId(null);
-                        props.closeActiveChat?.();
-                      },
-                    },
-                    {
-                      id: "reports-settings",
-                      label: isReportsWrapperOpen
-                        ? "Hide Reports"
-                        : "Open Reports",
-                      iconClass: "fas fa-cog",
-                      isActive: isReportsWrapperOpen,
-                      onClick: () =>
-                        setIsReportsWrapperOpen(
-                          (currentValue) => !currentValue,
-                        ),
-                    },
-                  ]}
-                  subApps={homeSubApps}
-                />
-              </div>
-            </div>
-            <div id="Home_preStart_introWrap" className="fr" ref={introWrapRef}>
+            {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
+            <div id="Home_preStart_introWrap" className="fr">
               {/* Removed Home_preStart_profileWrapper and its contents */}
               <div
                 id="Home_main_leftColumn_wrapper"
                 className="Home_main_leftColumn_wrapper"
               >
-                <div id="Home_bioWrapper" className="Home_bioWrapper fc">
+                {renderHomeDrawingVisibilityCanvas("leftColumn")}
+                <div
+                  id="Home_bioWrapper"
+                  className="Home_bioWrapper"
+                  style={bioWrapperStyle}
+                >
+                  {renderHomeDrawingVisibilityCanvas("bio")}
                   <div
                     id="Home_preStart_profileWrapper"
                     ref={profilePictureWrapperRef}
+                    style={{ position: "relative" }}
                   >
+                    {renderHomeDrawingVisibilityCanvas("profile")}
                     {profilePictureSrc ? (
                       <img
                         id="Home_preStart_profilePic"
@@ -5759,87 +7258,313 @@ function Home(props) {
                       <i className="fas fa-user" aria-hidden="true"></i>
                     )}
                     <input
+                      key={galleryTab}
                       ref={galleryUploadInputRef}
                       type="file"
-                      accept="image/*,video/*"
+                      accept={activeGalleryUploadConfig.accept}
                       className="Home_hiddenFileInput"
                       onChange={handleProfilePictureSelected}
                     />
                   </div>
                   <div id="Home_preStart_personalBio" className="fc">
-                    <div className="Home_preStart_bioFlexRow">
-                      <div className="Home_preStart_bioLeft fc">
-                        <span id="Home_preStart_bio_name">
-                          {props.state.firstname || "-"}{" "}
-                          {props.state.lastname || "-"}
-                        </span>
-                        <span id="Home_preStart_bio_username">
-                          ({props.state.username || "-"})
-                        </span>
-                      </div>
-                      <div className="Home_preStart_bioRight fc">
-                        <span id="Home_preStart_bio_study">
-                          Studying {props.state.program || "-"} at{" "}
-                          {props.state.university || "-"} University
-                        </span>
-                        <div id="Home_preStart_bio_yearTermRow">
-                          <span id="Home_preStart_bio_year">
-                            Year {props.state.studyYear || "-"}
-                          </span>
-                          <span id="Home_preStart_bio_term">
-                            Term {props.state.term || "-"}
-                          </span>
+                    {renderHomeDrawingVisibilityCanvas("bioText")}
+                    <div
+                      id="Home_preStart_personalInfoGrid"
+                      className="Home_preStart_personalInfoGrid--compact"
+                    >
+                      <div className="Home_compactBioCard">
+                        <div className="Home_compactBioIdentity">
+                          <h3 className="Home_compactBioName">
+                            {compactDisplayName}
+                          </h3>
+                          <p className="Home_compactBioUsername">
+                            {compactUsername}
+                          </p>
+                        </div>
+                        <div className="Home_compactBioSummary">
+                          <div className="Home_compactBioHeadingRow">
+                            <p className="Home_compactBioEyebrow">Bio</p>
+                            <button
+                              type="button"
+                              className="Home_userMenu_infoEditIcon Home_compactBioEditButton"
+                              onClick={() => startInlinePersonalInfoEdit("bio")}
+                              aria-label="Edit bio"
+                              title="Edit bio"
+                              disabled={isPersonalInfoInlineSubmitting}
+                            >
+                              <i className="fas fa-pen"></i>
+                            </button>
+                          </div>
+                          {isEditingCompactBio ? (
+                            <div className="Home_compactBioEditor fc">
+                              <textarea
+                                className={`Home_userMenu_inlineInput Home_compactBioTextarea ${
+                                  isArabicText(personalInfoInputValue)
+                                    ? "Home_compactBioTextarea--rtl"
+                                    : "Home_compactBioTextarea--ltr"
+                                }`}
+                                value={personalInfoInputValue}
+                                onChange={(event) =>
+                                  setPersonalInfoInputValue(event.target.value)
+                                }
+                                onKeyDown={handleInlinePersonalInfoKeyDown}
+                                autoFocus
+                                rows={5}
+                                dir={isArabicText(personalInfoInputValue) ? "rtl" : "ltr"}
+                                disabled={isPersonalInfoInlineSubmitting}
+                              />
+                              <div className="Home_compactBioEditorActions fr">
+                                <button
+                                  type="button"
+                                  className="Home_aboutButton"
+                                  onClick={submitInlinePersonalInfoEdit}
+                                  disabled={isPersonalInfoInlineSubmitting}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="Home_aboutButton"
+                                  onClick={() => {
+                                    setActivePersonalInfoField("");
+                                    setPersonalInfoInputValue("");
+                                  }}
+                                  disabled={isPersonalInfoInlineSubmitting}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p
+                              className={`Home_compactBioText ${
+                                isCompactBioArabic
+                                  ? "Home_compactBioText--rtl"
+                                  : "Home_compactBioText--ltr"
+                              }`}
+                              dir={isCompactBioArabic ? "rtl" : "ltr"}
+                            >
+                              {compactBio}
+                            </p>
+                          )}
+                          {/* <button
+                            type="button"
+                            className="Home_aboutButton Home_wallpaperButton"
+                            onClick={() =>
+                              setIsBioWallpaperControlsOpen(
+                                (currentValue) => !currentValue,
+                              )
+                            }
+                            aria-pressed={isBioWallpaperControlsOpen}
+                          >
+                            {isBioWallpaperControlsOpen
+                              ? "Close Wallpaper"
+                              : "Wallpaper"}
+                          </button>
+                          {isBioWallpaperControlsOpen ? (
+                            <div className="Home_bioWallpaperControls">
+                              <label className="Home_bioWallpaperControlRow">
+                                <span>Pattern size</span>
+                                <input
+                                  type="range"
+                                  min="180"
+                                  max="1400"
+                                  step="20"
+                                  value={currentBioWallpaperSize}
+                                  onChange={(event) =>
+                                    updateBioWallpaperState({
+                                      bioWrapperWallpaperSize: Number(
+                                        event.target.value,
+                                      ),
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="Home_bioWallpaperControlCheck">
+                                <input
+                                  type="checkbox"
+                                  checked={currentBioWallpaperRepeat}
+                                  onChange={(event) =>
+                                    updateBioWallpaperState({
+                                      bioWrapperWallpaperRepeat:
+                                        event.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>Repeat for denser motifs</span>
+                              </label>
+                              <div className="Home_bioWallpaperControlActions">
+                                <button
+                                  type="button"
+                                  className="Home_aboutButton Home_wallpaperAction"
+                                  onClick={resetBioWallpaperToDefault}
+                                >
+                                  Use Pattern
+                                </button>
+                                <button
+                                  type="button"
+                                  className="Home_aboutButton Home_wallpaperAction"
+                                  onClick={clearBioWallpaper}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            </div>
+                          ) : null} */}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="Home_friendsEventsWrapper fr">
-                  <div className="Home_friendsEvents fc">
-                    <div className="Home_friendsEventsHeader fr">
-                      <h3>Friends Events</h3>
-                    </div>
-                    <div className="Home_friendsEventsEmpty">
-                      There is no events to show.
-                    </div>
+                <div className="Home_friendsEventsWrapper">
+                  <div className="Home_friendsEvents">
+                    {isAboutOpen ? (
+                      <>
+                        <div className="Home_friendsEventsHeader">
+                          <h3>About Profile</h3>
+                          <button
+                            type="button"
+                            className="Home_aboutButton Home_aboutToggle"
+                            onClick={() =>
+                              setIsAboutOpen((currentValue) => !currentValue)
+                            }
+                            aria-pressed={isAboutOpen}
+                          >
+                            Close About
+                          </button>
+                        </div>
+                        <div className="Home_aboutPanel">
+                          {profileColumns.map((column) => (
+                            <section
+                              key={`about-${column.title}`}
+                              className="Home_profileInfoColumn"
+                            >
+                              <h4 className="Home_profileInfoColumnTitle">
+                                {column.title}
+                              </h4>
+                              {column.rows.map((row) => (
+                                <p key={`${column.title}-${row.label}`}>
+                                  <strong>{row.label}</strong>
+                                  <span>{row.value}</span>
+                                </p>
+                              ))}
+                            </section>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="Home_friendsEventsHeader">
+                          <h3>Friends Events</h3>
+                          <button
+                            type="button"
+                            className="Home_aboutButton Home_aboutToggle"
+                            onClick={() =>
+                              setIsAboutOpen((currentValue) => !currentValue)
+                            }
+                            aria-pressed={isAboutOpen}
+                          >
+                            About
+                          </button>
+                        </div>
+                        <div className="Home_friendsEventsEmpty">
+                          There is no events to show.
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="Home_friendsGallery fc">
-                    <div className="Home_friendsGalleryHeader fc">
-                      <h3>Gallery</h3>
-                      <div className="Home_friendsGalleryHeaderControls fr">
-                        <div className="Home_galleryTabs fr">
+                  <div className="Home_friendsGallery">
+                    <div className="Home_friendsGalleryHeader">
+                      <div className="Home_friendsGalleryHeaderTitleRow">
+                        <h3>Gallery</h3>
                         <button
                           type="button"
-                          className={`Home_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
-                          onClick={() => setGalleryTab("images")}
+                          className="Home_changePasswordSubmit Home_galleryUploadButton Home_friendsGalleryUploadButton"
+                          onClick={openGalleryUploadPicker}
+                          disabled={isImageGalleryUploading}
+                          aria-label={
+                            isImageGalleryUploading
+                              ? `Uploading ${activeGalleryUploadConfig.label}`
+                              : `Upload ${activeGalleryUploadConfig.label}`
+                          }
+                          title={
+                            isImageGalleryUploading
+                              ? "Uploading..."
+                              : `Upload ${activeGalleryUploadConfig.label}`
+                          }
                         >
-                          Images
-                        </button>
-                        <button
-                          type="button"
-                          className={`Home_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
-                          onClick={() => setGalleryTab("videos")}
-                        >
-                          Videos
+                          <i
+                            className={`fi ${isImageGalleryUploading ? "fi-rr-spinner" : "fi-rr-cloud-upload-alt"}`}
+                            aria-hidden="true"
+                          ></i>
+                          <span>
+                            {isImageGalleryUploading
+                              ? `Uploading ${activeGalleryUploadConfig.label}`
+                              : `Upload ${activeGalleryUploadConfig.label}`}
+                          </span>
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        className="Home_changePasswordSubmit Home_galleryUploadButton Home_friendsGalleryUploadButton"
-                        onClick={openProfilePicturePicker}
-                        disabled={isImageGalleryUploading}
-                      >
-                        {isImageGalleryUploading ? "Uploading..." : "Upload"}
-                      </button>
-                    </div>
+                      <div className="Home_friendsGalleryHeaderControls">
+                        <div className="Home_galleryTabs">
+                          <button
+                            type="button"
+                            className={`Home_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("images")}
+                            aria-label="Images"
+                            title="Images"
+                            aria-pressed={galleryTab === "images"}
+                          >
+                            <i
+                              className="fi fi-rr-copy-image"
+                              aria-hidden="true"
+                            ></i>
+                            <span>Images</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`Home_galleryTabButton${galleryTab === "patterns" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("patterns")}
+                            aria-label="Patterns"
+                            title="Patterns"
+                            aria-pressed={galleryTab === "patterns"}
+                          >
+                            <i className="fas fa-shapes" aria-hidden="true"></i>
+                            <span>Patterns</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`Home_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
+                            onClick={() => setGalleryTab("videos")}
+                            aria-label="Videos"
+                            title="Videos"
+                            aria-pressed={galleryTab === "videos"}
+                          >
+                            <i className="fi fi-rr-film" aria-hidden="true"></i>
+                            <span>Videos</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     {imageGallery.length ? (
                       <div className="Home_galleryGrid">
                         {imageGallery
                           .filter((image) =>
                             galleryTab === "images"
-                              ? !isVideoGalleryItem(image)
-                              : isVideoGalleryItem(image),
+                              ? !isVideoGalleryItem(image) &&
+                                String(
+                                  image?.resourceType || image?.resource_type || "",
+                                )
+                                  .trim()
+                                  .toLowerCase() !== "pattern"
+                              : galleryTab === "patterns"
+                                ? String(
+                                    image?.resourceType ||
+                                      image?.resource_type ||
+                                      "",
+                                  )
+                                    .trim()
+                                    .toLowerCase() === "pattern"
+                                : isVideoGalleryItem(image),
                           )
                           .map((image) => {
                             const imagePublicId = String(image?.publicId || "");
@@ -5852,7 +7577,7 @@ function Home(props) {
                             return (
                               <article
                                 key={image.publicId}
-                                className="Home_galleryItem fc"
+                                className="Home_galleryItem"
                               >
                                 <div className="Home_galleryThumbWrap">
                                   <button
@@ -5887,13 +7612,7 @@ function Home(props) {
                                       className="Home_editPicButton"
                                       onClick={() => {
                                         if (isVideoItem) {
-                                          if (typeof window !== "undefined") {
-                                            window.open(
-                                              image.url,
-                                              "_blank",
-                                              "noopener,noreferrer",
-                                            );
-                                          }
+                                          openGalleryVideoPlayer(image);
                                           return;
                                         }
                                         openGalleryViewer(image.publicId);
@@ -5950,6 +7669,28 @@ function Home(props) {
                                     >
                                       <i className="fas fa-user-check"></i>
                                     </button>
+                                    {/* <button
+                                      type="button"
+                                      className="Home_editPicButton"
+                                      onClick={() =>
+                                        handleSetGalleryImageAsBioWallpaper(
+                                          image,
+                                        )
+                                      }
+                                      disabled={isVideoItem}
+                                      aria-label={
+                                        isVideoItem
+                                          ? "Only images can be used as bio wallpaper"
+                                          : "Set as bio wallpaper"
+                                      }
+                                      title={
+                                        isVideoItem
+                                          ? "Only images can be used as bio wallpaper"
+                                          : "Set as bio wallpaper"
+                                      }
+                                    >
+                                      <i className="fas fa-panorama"></i>
+                                    </button> */}
                                     <button
                                       type="button"
                                       className="Home_editPicButton"
@@ -5983,89 +7724,108 @@ function Home(props) {
                       </div>
                     ) : (
                       <div className="Home_galleryEmptyState">
-                        No media uploaded yet.
+                        {galleryTab === "patterns"
+                          ? "No saved patterns yet."
+                          : "No media uploaded yet."}
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-              <div
-                className="Home_introSeparator"
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize home columns"
-                onMouseDown={startSeparatorDrag}
-                onTouchStart={startSeparatorDrag}
-              ></div>
               <section
                 id="Home_rightColumn_wrapper"
-                className="Home_socialFriendsPanel fc"
+                className="Home_socialFriendsPanel"
               >
+                {renderHomeDrawingVisibilityCanvas("rightColumn")}
                 <div
                   id="Home_friendsCard"
                   className={`Home_socialFriendsCard fc${activeFriendCard ? " Home_socialFriendsCard--chatMounted" : ""}`}
                 >
                   {activeFriendCard ? null : (
-                    <div className="Home_gallery_Header_wrapper fr">
-                      <div className="Home_socialFriendsHeaderCopy fc">
-                        <div className="Home_socialFriendsHeaderTitleRow fr">
-                          <h3 className="Home_socialFriendsTitle">
-                            {isReportsWrapperOpen ? "Settings" : "Friends"}
-                          </h3>
-                          {isReportsWrapperOpen ? null : (
-                            <span className="Home_socialFriendsCount">
-                              {activeFriendsMiniTabMeta?.count || 0}
-                            </span>
-                          )}
-                        </div>
-                        {!isReportsWrapperOpen ? (
-                          <div
-                            className="Home_socialFriendsMiniNav"
-                            ref={friendsMiniNavRef}
-                            style={{
-                              "--home-friends-tab-count": 3,
-                              "--home-friends-tab-index": Math.max(
-                                0,
-                                Math.min(activeFriendsMiniTabIndex, 2),
-                              ),
-                            }}
-                          >
-                            <div className="Home_socialFriendsMiniNavRail">
-                              <span
-                                className="Home_socialFriendsMiniNavSelector"
-                                aria-hidden="true"
-                              ></span>
-                              {friendsMiniTabs.map((tab) => (
-                                <button
-                                  key={tab.id}
-                                  type="button"
-                                  className={`Home_socialFriendsMiniNavButton${
-                                    activeFriendsMiniTab === tab.id
-                                      ? " isActive"
-                                      : ""
-                                  }`}
-                                  onClick={() =>
-                                    handleSelectFriendsMiniTab(tab.id)
-                                  }
-                                  aria-label={tab.label}
-                                  title={tab.label}
-                                >
-                                  <i className={tab.iconClass}></i>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
+                    <div className="Home_gallery_Header_wrapper">
+                      <div className="Home_socialFriendsHeaderTitleRow">
+                        <h3 className="Home_socialFriendsTitle">
+                          {isReportsWrapperOpen
+                            ? "Settings"
+                            : activeFriendsMiniTabMeta?.label || "Friends"}
+                        </h3>
+                        {isReportsWrapperOpen ? null : (
+                          <span className="Home_socialFriendsCount">
+                            {activeFriendsMiniTabMeta?.count || 0}
+                          </span>
+                        )}
                       </div>
+                      {!isReportsWrapperOpen ? (
+                        <div
+                          className="Home_socialFriendsMiniNav"
+                          style={{
+                            "--home-friends-tab-count": 3,
+                            "--home-friends-tab-index": Math.max(
+                              0,
+                              Math.min(activeFriendsMiniTabIndex, 2),
+                            ),
+                          }}
+                        >
+                          <div className="Home_socialFriendsMiniNavRail">
+                            <span
+                              className="Home_socialFriendsMiniNavSelector"
+                              aria-hidden="true"
+                            ></span>
+                            {friendsMiniTabs.map((tab) => (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                className={`Home_socialFriendsMiniNavButton${
+                                  activeFriendsMiniTab === tab.id
+                                    ? " isActive"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  handleSelectFriendsMiniTab(tab.id)
+                                }
+                                aria-label={tab.label}
+                                title={tab.label}
+                              >
+                                <i className={tab.iconClass}></i>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {isReportsWrapperOpen ? null : (
                     <>
                       {activeFriendsMiniTab === "friends" ? (
-                        <>
+                        <div className="Home_socialFriendsSearchAndBlocked">
                           {renderFriendSearchPanel()}
-                          {renderBlockedListPanel()}
-                        </>
+                          <ul className="Home_socialFriendsList Home_socialDirectoryResults">
+                            {hasActiveFriendSearchQuery ? (
+                              isFriendSearchLoading ? (
+                                <li className="Home_socialFriendsEmptyState">
+                                  Searching users...
+                                </li>
+                              ) : friendSearchResults.length > 0 ? (
+                                friendSearchResults.map(
+                                  renderSearchedUserListItem,
+                                )
+                              ) : (
+                                <li className="Home_socialFriendsEmptyState">
+                                  {friendSearchFeedback ||
+                                    "No users found. Try another name or username."}
+                                </li>
+                              )
+                            ) : activeBlockedListTabMeta.entries.length > 0 ? (
+                              activeBlockedListTabMeta.entries.map(
+                                renderBlockedUserListItem,
+                              )
+                            ) : (
+                              <li className="Home_socialFriendsEmptyState">
+                                {activeBlockedListTabMeta.emptyLabel}
+                              </li>
+                            )}
+                          </ul>
+                        </div>
                       ) : (
                         <>
                           {activeFriendsMiniTab === "pages"
@@ -6095,7 +7855,8 @@ function Home(props) {
             id="Home_preStart_reportsWrapper"
             className={`fc Home_preStart_reports${isReportsWrapperOpen ? "" : " Home_preStart_reportsWrapper--closed"}`}
           >
-            <div className="Home_settingsBackRow fr">
+            {renderHomeDrawingVisibilityCanvas("reports")}
+            <div className="Home_settingsBackRow">
               <button
                 type="button"
                 className="Home_settingsBackButton"
@@ -6108,9 +7869,9 @@ function Home(props) {
               </button>
             </div>
             <div className="fc Home_preStart_reportCard Home_preStart_reportsCard">
-              <div className="Home_gallery_Header_wrapper fr">
+              <div className="Home_gallery_Header_wrapper">
                 <h3>Log Record: Date and Time</h3>
-                <div className="Home_gallery_Header_wrapperActions fr">
+                <div className="Home_gallery_Header_wrapperActions">
                   <button
                     type="button"
                     className="Home_reportDeleteButton"
@@ -6174,7 +7935,7 @@ function Home(props) {
                             <i className="fas fa-angle-up"></i>
                           </button>
                           <div className="Home_logRecordCard">
-                            <div className="Home_logRecordEntry fc">
+                            <div className="Home_logRecordEntry">
                               <span className="Home_logRecordLabel">
                                 Login:
                               </span>
@@ -6191,7 +7952,7 @@ function Home(props) {
                                 })}
                               </span>
                             </div>
-                            <div className="Home_logRecordEntry fc">
+                            <div className="Home_logRecordEntry">
                               <span className="Home_logRecordLabel">
                                 Logout:
                               </span>
@@ -6243,9 +8004,9 @@ function Home(props) {
 
             {isVisitLogOwner ? (
               <div className="fc Home_preStart_reportCard Home_preStart_reportsCard">
-                <div className="Home_gallery_Header_wrapper fr">
+                <div className="Home_gallery_Header_wrapper">
                   <h3>Visit Log: App Entries</h3>
-                  <div className="Home_gallery_Header_wrapperActions fr">
+                  <div className="Home_gallery_Header_wrapperActions">
                     <button
                       type="button"
                       className="Home_reportDeleteButton"
@@ -6306,13 +8067,15 @@ function Home(props) {
                               <i className="fas fa-angle-up"></i>
                             </button>
                             <div className="Home_logRecordCard Home_logRecordCard--stacked">
-                              <div className="Home_logRecordEntry fc">
-                                <span className="Home_logRecordLabel">IP:</span>
+                              <div className="Home_logRecordEntry">
+                                <span className="Home_logRecordLabel">
+                                  IP:
+                                </span>
                                 <span className="Home_logRecordValue">
                                   {`${activeVisitLogRecord.ip || "Unknown IP"} (${activeVisitLogRecord.country || "Unknown"})`}
                                 </span>
                               </div>
-                              <div className="Home_logRecordEntry fc">
+                              <div className="Home_logRecordEntry">
                                 <span className="Home_logRecordLabel">
                                   Visited:
                                 </span>
@@ -6360,7 +8123,7 @@ function Home(props) {
 
             {isVisitLogOwner ? (
               <div className="fc Home_preStart_reportsCard">
-                <div className="Home_gallery_Header_wrapper fr">
+                <div className="Home_gallery_Header_wrapper">
                   <h3>naghamtrkmani course letter</h3>
                   <button
                     type="button"
@@ -6433,7 +8196,7 @@ function Home(props) {
             ) : null}
 
             <div className="fc Home_preStart_reportsCard">
-              <div className="Home_gallery_Header_wrapper fr">
+              <div className="Home_gallery_Header_wrapper">
                 <h3>planner music playlist</h3>
                 <button
                   type="button"
@@ -6452,197 +8215,169 @@ function Home(props) {
                 className={`Home_reportBody fc${isReportSectionOpen("musicPlaylist") ? " isOpen" : ""}`}
               >
                 <div id="Home_musicArchivePlaylist_div" className="fc">
-                  <div className="Home_musicLibraryCompact fc">
-                    <div className="Home_musicApiHeader fr">
+                  <div className="Home_musicLibraryCompact">
+                    <div className="Home_musicApiHeader">
                       <strong>Music library</strong>
                       <span>One compact place for all music sources</span>
                     </div>
 
-                    <div className="Home_musicLibraryMainRow fr">
-                      <div className="Home_musicLibraryUnifiedSearch fc">
-                        <div className="Home_musicArchiveSearch_row fr">
-                          <input
-                            id="Home_musicLibrarySongSearch_input"
-                            type="search"
-                            value={musicLibrarySongQuery}
-                            onChange={(event) => {
-                              setMusicLibrarySongQuery(event.target.value);
-                              if (musicLibrarySearchFeedback) {
-                                setMusicLibrarySearchFeedback("");
-                              }
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                searchAllMusicLibrarySources();
-                              }
-                            }}
-                            placeholder="Search by song"
-                          />
-                          <input
-                            id="Home_musicLibraryArtistSearch_input"
-                            type="search"
-                            value={musicLibraryArtistQuery}
-                            onChange={(event) => {
-                              setMusicLibraryArtistQuery(event.target.value);
-                              if (musicLibrarySearchFeedback) {
-                                setMusicLibrarySearchFeedback("");
-                              }
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                searchAllMusicLibrarySources();
-                              }
-                            }}
-                            placeholder="Search by artist"
-                          />
-                          <button
-                            type="button"
-                            className="Home_changePasswordSubmit"
-                            onClick={searchAllMusicLibrarySources}
-                            disabled={isMusicLibrarySearching}
-                          >
-                            {isMusicLibrarySearching
-                              ? "Searching..."
-                              : "Search"}
-                          </button>
+                    <div className="Home_musicLibraryMainRow">
+                      <div className="Home_musicLibraryUnifiedSearch">
+                        <div className="Home_musicLibraryUnifiedSearchContent">
+                          <div className="Home_musicArchiveSearch_row">
+                            <input
+                              id="Home_musicLibrarySongSearch_input"
+                              type="search"
+                              value={musicLibrarySongQuery}
+                              onChange={(event) => {
+                                setMusicLibrarySongQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by song"
+                            />
+                            <input
+                              id="Home_musicLibraryArtistSearch_input"
+                              type="search"
+                              value={musicLibraryArtistQuery}
+                              onChange={(event) => {
+                                setMusicLibraryArtistQuery(event.target.value);
+                                if (musicLibrarySearchFeedback) {
+                                  setMusicLibrarySearchFeedback("");
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  searchAllMusicLibrarySources();
+                                }
+                              }}
+                              placeholder="Search by artist"
+                            />
+                            <button
+                              type="button"
+                              className="Home_changePasswordSubmit"
+                              onClick={searchAllMusicLibrarySources}
+                              disabled={isMusicLibrarySearching}
+                            >
+                              {isMusicLibrarySearching
+                                ? "Searching..."
+                                : "Search"}
+                            </button>
+                          </div>
+                          {musicLibrarySearchFeedback ? (
+                            <p className="Home_passwordFeedback Home_passwordFeedback--success">
+                              {musicLibrarySearchFeedback}
+                            </p>
+                          ) : null}
                         </div>
-                        {musicLibrarySearchFeedback ? (
-                          <p className="Home_passwordFeedback Home_passwordFeedback--success">
-                            {musicLibrarySearchFeedback}
-                          </p>
-                        ) : null}
+                        <ul
+                          id="Home_musicLibraryPlaylist_ul"
+                          className="fc"
+                        >
+                          {musicLibraryPlaylistItems.length > 0 ? (
+                            musicLibraryPlaylistItems.map((item) => (
+                              <li
+                                key={item.id}
+                                className="Home_musicLibraryPlaylist_item"
+                              >
+                                <div className="Home_musicLibraryPlaylist_copy">
+                                  <strong>{item.label}</strong>
+                                  <div className="Home_musicArchiveSearch_meta">
+                                    <span>
+                                      {item.meta || "Added to playlist"}
+                                    </span>
+                                    <em className="Home_musicArchiveSearch_sourceTag">
+                                      {item.source}
+                                    </em>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="Home_musicLibraryPlaylist_delete"
+                                  onClick={() =>
+                                    removeMusicLibraryPlaylistItem(
+                                      item.provider,
+                                      item.value,
+                                    )
+                                  }
+                                  aria-label={`Delete ${item.label} from playlist`}
+                                  title="Delete from playlist"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="Home_musicLibraryPlaylist_empty">
+                              Added songs will appear here.
+                            </li>
+                          )}
+                        </ul>
                       </div>
 
-                      <div className="Home_musicLibraryCompactSections fc">
-                        <section className="Home_musicLibrarySource fc">
-                          <div className="Home_musicLibrarySourceHeader fr">
-                            <strong>Internet Archive</strong>
-                            <span>Direct archive identifiers and search</span>
+                      <div className="Home_musicLibraryCompactSections">
+                        <section className="Home_musicLibrarySource">
+                          <div className="Home_musicLibrarySourceHeader">
+                            <strong>Search results</strong>
+                            <span>Song name | Artist name | Source</span>
                           </div>
-                          <div id="Home_musicArchiveSearch_div" className="fc">
-                            {musicArchiveSearchResults.length > 0 ? (
+                          <div
+                            id="Home_musicArchiveSearch_div"
+                            className="fc"
+                          >
+                            {musicLibrarySearchResults.length > 0 ? (
                               <ul
                                 id="Home_musicArchiveSearch_results"
                                 className="fc"
                               >
-                                {musicArchiveSearchResults.map((result) => (
+                                {musicLibrarySearchResults.map((result) => (
                                   <li
-                                    key={result.identifier}
+                                    key={result.id}
                                     className="Home_musicArchiveSearch_result"
-                                    onClick={() =>
-                                      addMusicArchiveSong(result.identifier)
-                                    }
+                                    onClick={() => {
+                                      if (result.provider === "itunes") {
+                                        addITunesSong(result.value);
+                                      } else if (
+                                        result.provider === "musicBrainz"
+                                      ) {
+                                        addMusicBrainzSong(result.value);
+                                      } else {
+                                        addMusicArchiveSong(result.value);
+                                      }
+                                    }}
                                     onKeyDown={(event) => {
                                       if (
                                         event.key === "Enter" ||
                                         event.key === " "
                                       ) {
                                         event.preventDefault();
-                                        addMusicArchiveSong(result.identifier);
+                                        if (result.provider === "itunes") {
+                                          addITunesSong(result.value);
+                                        } else if (
+                                          result.provider === "musicBrainz"
+                                        ) {
+                                          addMusicBrainzSong(result.value);
+                                        } else {
+                                          addMusicArchiveSong(result.value);
+                                        }
                                       }
                                     }}
                                     role="button"
                                     tabIndex={0}
-                                    title={result.identifier}
+                                    title={`${result.title} | ${result.artist} | ${result.source}`}
                                   >
-                                    <strong>{result.title}</strong>
-                                    <div className="Home_musicArchiveSearch_meta fr">
-                                      <span>{result.creator}</span>
-                                      <em className="Home_musicArchiveSearch_sourceTag">
-                                        Internet Archive
-                                      </em>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </div>
-                        </section>
-
-                        <section className="Home_musicLibrarySource fc">
-                          <div className="Home_musicLibrarySourceHeader fr">
-                            <strong>iTunes Search API</strong>
-                            <span>Preview-based search results</span>
-                          </div>
-                          <div className="Home_musicArchiveSearch_div fc">
-                            {itunesSearchResults.length > 0 ? (
-                              <ul id="Home_itunesSearch_results" className="fc">
-                                {itunesSearchResults.map((result) => (
-                                  <li
-                                    key={result.identifier || result.queryLabel}
-                                    className="Home_musicArchiveSearch_result"
-                                    onClick={() =>
-                                      addITunesSong(result.queryLabel)
-                                    }
-                                    onKeyDown={(event) => {
-                                      if (
-                                        event.key === "Enter" ||
-                                        event.key === " "
-                                      ) {
-                                        event.preventDefault();
-                                        addITunesSong(result.queryLabel);
-                                      }
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    title={result.queryLabel}
-                                  >
-                                    <strong>{result.title}</strong>
-                                    <div className="Home_musicArchiveSearch_meta fr">
-                                      <span>{result.creator}</span>
-                                      <em className="Home_musicArchiveSearch_sourceTag">
-                                        iTunes
-                                      </em>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </div>
-                        </section>
-
-                        <section className="Home_musicLibrarySource fc">
-                          <div className="Home_musicLibrarySourceHeader fr">
-                            <strong>MusicBrainz</strong>
-                            <span>
-                              Metadata search that resolves to playable matches
-                            </span>
-                          </div>
-                          <div className="Home_musicArchiveSearch_div fc">
-                            {musicBrainzSearchResults.length > 0 ? (
-                              <ul
-                                id="Home_musicBrainzSearch_results"
-                                className="fc"
-                              >
-                                {musicBrainzSearchResults.map((result) => (
-                                  <li
-                                    key={result.identifier || result.queryLabel}
-                                    className="Home_musicArchiveSearch_result"
-                                    onClick={() =>
-                                      addMusicBrainzSong(result.queryLabel)
-                                    }
-                                    onKeyDown={(event) => {
-                                      if (
-                                        event.key === "Enter" ||
-                                        event.key === " "
-                                      ) {
-                                        event.preventDefault();
-                                        addMusicBrainzSong(result.queryLabel);
-                                      }
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    title={result.queryLabel}
-                                  >
-                                    <strong>{result.title}</strong>
-                                    <div className="Home_musicArchiveSearch_meta fr">
-                                      <span>{result.creator}</span>
-                                      <em className="Home_musicArchiveSearch_sourceTag">
-                                        MusicBrainz
-                                      </em>
-                                    </div>
+                                    <strong>
+                                      {result.title} | {result.artist} |{" "}
+                                      {result.source}
+                                    </strong>
                                   </li>
                                 ))}
                               </ul>
@@ -6669,7 +8404,7 @@ function Home(props) {
             </div>
 
             <div className="fc Home_preStart_reportsCard">
-              <div className="Home_gallery_Header_wrapper fr">
+              <div className="Home_gallery_Header_wrapper">
                 <h3>schoolplanner telegram</h3>
                 <button
                   type="button"
@@ -6693,7 +8428,10 @@ function Home(props) {
                       {schoolPlannerTelegramFeedback}
                     </p>
                   ) : null}
-                  <div id="Home_schoolPlannerTelegram_adminDiv" className="fc">
+                  <div
+                    id="Home_schoolPlannerTelegram_adminDiv"
+                    className="fc"
+                  >
                     <label className="Home_userMenu_title_label">
                       telegram mtproto config
                     </label>
@@ -6702,7 +8440,7 @@ function Home(props) {
                         ? "Your Telegram connection is saved for this account."
                         : "Your Telegram connection is not complete yet."}
                     </p>
-                    <div className="Home_schoolPlannerTelegram_adminFlags fr">
+                    <div className="Home_schoolPlannerTelegram_adminFlags">
                       <span>
                         API ID:{" "}
                         {telegramConfigStatus.hasApiId ? "set" : "missing"}
@@ -6827,7 +8565,7 @@ function Home(props) {
               </div>
             </div>
             <div className="fc Home_preStart_reportsCard">
-              <div className="Home_gallery_Header_wrapper fr">
+              <div className="Home_gallery_Header_wrapper">
                 <h3>Graphic Control</h3>
                 <button
                   type="button"
@@ -6882,7 +8620,7 @@ function Home(props) {
               className="fc Home_preStart_reportsCard"
               id="Home_userMenu_panelCard"
             >
-              <div className="Home_gallery_Header_wrapper fr">
+              <div className="Home_gallery_Header_wrapper">
                 <h3>Control Panel</h3>
                 <button
                   type="button"
@@ -7065,3 +8803,4 @@ function Home(props) {
   );
 }
 export default Home;
+

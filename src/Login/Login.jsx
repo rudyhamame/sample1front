@@ -240,11 +240,6 @@ const completeProfileCoreFields = [
     type: "select",
     options: [],
   },
-  {
-    key: "bio",
-    label: "Bio",
-    type: "textarea",
-  },
 ];
 
 const completeProfileStudentFields = [
@@ -1784,7 +1779,6 @@ const Login = ({ onLogin, onForceLogout }) => {
       phone,
       dob,
       hometown,
-      bio,
       studying,
       working,
     } = profileCompletionForm;
@@ -1797,8 +1791,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       !phone.trim() ||
       !dob.trim() ||
       !hometown.Country.trim() ||
-      !hometown.City.trim() ||
-      !bio.trim()
+      !hometown.City.trim()
     ) {
       setSignup_ok(false);
       setSignupMessage("Please complete all required personal information.");
@@ -1857,7 +1850,6 @@ const Login = ({ onLogin, onForceLogout }) => {
         phone,
         dob,
         hometown,
-        bio,
         studying: isStudying ? studying : undefined,
         working: isWorking ? working : undefined,
       }),
@@ -2029,7 +2021,6 @@ const Login = ({ onLogin, onForceLogout }) => {
         phone,
         dob,
         hometown,
-        bio,
         studying,
         working,
       } = profileCompletionForm;
@@ -2040,8 +2031,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         !phone.trim() ||
         !dob.trim() ||
         !hometown.Country.trim() ||
-        !hometown.City.trim() ||
-        !bio.trim()
+        !hometown.City.trim()
       ) {
         return true;
       }

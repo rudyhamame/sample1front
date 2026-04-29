@@ -577,7 +577,7 @@ const SubApps = (props) => {
             >
               <i className="fas fa-cog"></i>
               <span>Settings</span>
-              <i className="fas fa-chevron-up SubApps_rowCaret"></i>
+              <i className="fas fa-chevron-right SubApps_rowCaret"></i>
             </button>
             {isSettingsOpen ? (
               <div

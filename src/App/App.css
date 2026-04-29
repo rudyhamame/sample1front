@@ -64,11 +64,11 @@ body {
   min-height: 100vh;
   min-height: 100svh;
   min-height: 100dvh;
-  font-size: 75%;
+  font-size: 100%;
 }
 
 :root {
-  --server-answer-height: 28px;
+  --server-answer-height: 24px;
   --brightestWhite: #ffffff;
   --blue: #1877f2;
   --blue2: #6fa7dc;

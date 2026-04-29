@@ -11,6 +11,9 @@ import {
   smoothHomeDrawingPoints,
 } from "../utils/homeDrawingRope";
 import { getHomeSubApps } from "../utils/homeSubApps";
+import compressImageUpload, {
+  canCompressImageUpload,
+} from "../utils/compressImageUpload";
 import FriendChat from "../HomeChat/FriendChat";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 import io from "socket.io-client";
@@ -58,10 +61,12 @@ const BLOCKED_LIST_USER_MODE_ORDER = [
 ];
 const BLOCKED_LIST_GROUP_ORDER = ["friends", "pending", "blocked"];
 const BLOCKED_LIST_GROUP_META = {
-  pending: { label: "Pending", iconClass: "fa-user-clock" },
+  pending: { label: "Requests", iconClass: "fa-user-clock" },
   blocked: { label: "Blocked", iconClass: "fa-user-slash" },
   friends: { label: "Friends", iconClass: "fa-user-check" },
 };
+const ARABIC_TEXT_PATTERN =
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
   images: {
@@ -238,6 +243,8 @@ const sanitizeGalleryFileName = (value) =>
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80) || `gallery-${Date.now()}`;
+
+const isArabicText = (value) => ARABIC_TEXT_PATTERN.test(String(value || ""));
 
 const VIDEO_FORMATS = new Set([
   "mp4",
@@ -1895,6 +1902,8 @@ function HomeNoga(props) {
     useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
+  const [isApplyingProfilePictureViewport, setIsApplyingProfilePictureViewport] =
+    useState(false);
   const hasHydratedProfilePictureViewportRef = React.useRef(true);
   const [profilePictureViewport, setProfilePictureViewport] = useState(() => {
     const stateViewport = props.state?.profilePictureViewport;
@@ -3430,23 +3439,30 @@ function HomeNoga(props) {
               const identity = user?.identity || {};
               const personal = identity?.personal || {};
               const atSignup = identity?.atSignup || {};
-              const id = String(user?._id || info?._id || "").trim();
+              const profile = user?.profile || {};
+              const auth = user?.auth || {};
+              const id = String(user?._id || info?._id || profile?._id || "").trim();
               const username = String(
-                info?.username || atSignup?.username || user?.username || "",
+                info?.username ||
+                  atSignup?.username ||
+                  auth?.username ||
+                  user?.username ||
+                  "",
               )
                 .trim()
                 .toLowerCase();
               const firstname = String(
-                info?.firstname || personal?.firstname || "",
+                info?.firstname || personal?.firstname || profile?.firstname || "",
               ).trim();
               const lastname = String(
-                info?.lastname || personal?.lastname || "",
+                info?.lastname || personal?.lastname || profile?.lastname || "",
               ).trim();
               const displayName =
                 `${firstname} ${lastname}`.trim() || username || "User";
               const profilePicture =
                 personal?.profilePicture?.picture ||
                 personal?.profilePicture ||
+                profile?.picture?.profilePic?.index ||
                 user?.profilePicture ||
                 {};
               const avatarUrl = String(
@@ -3741,11 +3757,7 @@ function HomeNoga(props) {
       };
     }
 
-    return {
-      iconClass: "fa-user-plus",
-      label: "Not connected",
-      modifierClass: "Home_Noga_socialFriendStatus--offline",
-    };
+    return null;
   }, []);
 
   const handleToggleInlineFriendChat = React.useCallback(
@@ -4051,9 +4063,14 @@ function HomeNoga(props) {
         )
         .then(() => {
           setFriendSearchResults((currentResults) =>
-            currentResults.filter((entry) => entry.username !== username),
+            currentResults.map((entry) =>
+              String(entry?.username || "").trim().toLowerCase() === username
+                ? { ...entry, userMode: "requestSent" }
+                : entry,
+            ),
           );
           setFriendSearchFeedback("Friend request sent.");
+          props.updateUserInfo?.();
           props.serverReply?.("Friend request sent!");
         })
         .catch(() => {
@@ -4074,7 +4091,79 @@ function HomeNoga(props) {
       props.state?.my_id,
       props.state?.token,
       props.state?.username,
+      props.updateUserInfo,
     ],
+  );
+
+  const handleAcceptSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.acceptFriend?.(`accept_icon${candidateId}`)).then(
+        (didAccept) => {
+          if (!didAccept) {
+            return;
+          }
+
+          setFriendSearchResults((currentResults) =>
+            currentResults.map((entry) =>
+              String(entry?.id || "").trim() === candidateId
+                ? { ...entry, userMode: "friend" }
+                : entry,
+            ),
+          );
+        },
+      );
+    },
+    [props],
+  );
+
+  const handleRemoveSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.removeFriend?.(candidateId)).then((didRemove) => {
+        if (!didRemove) {
+          return;
+        }
+
+        setFriendSearchResults((currentResults) =>
+          currentResults.map((entry) =>
+            String(entry?.id || "").trim() === candidateId
+              ? { ...entry, userMode: "stranger" }
+              : entry,
+          ),
+        );
+      });
+    },
+    [props],
+  );
+
+  const handleUnblockSearchCandidate = React.useCallback(
+    (candidateId) => {
+      if (!candidateId) {
+        return;
+      }
+
+      Promise.resolve(props.unblockFriend?.(candidateId)).then((didUnblock) => {
+        if (!didUnblock) {
+          return;
+        }
+
+        setFriendSearchResults((currentResults) =>
+          currentResults.map((entry) =>
+            String(entry?.id || "").trim() === candidateId
+              ? { ...entry, userMode: "stranger" }
+              : entry,
+          ),
+        );
+      });
+    },
+    [props],
   );
 
   const renderSearchedUserListItem = React.useCallback(
@@ -4086,9 +4175,9 @@ function HomeNoga(props) {
         .trim()
         .toLowerCase();
       const canSendRequest = candidateMode === "stranger";
-      const canCancelRequest = candidateMode === "requestsent";
       const canAcceptRequest = candidateMode === "requestreceived";
-      const canRemoveFriend = candidateMode === "friend";
+      const canUnfriend = candidateMode === "friend";
+      const canUnblock = candidateMode === "blocked";
       return (
         <li key={candidate.id} className="Home_Noga_socialFriendItem">
           <div className="Home_Noga_socialFriendSummary">
@@ -4113,14 +4202,16 @@ function HomeNoga(props) {
                 </span>
               </div>
             </div>
-            <div className="Home_Noga_socialFriendPresence">
-              <span
-                className={`Home_Noga_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
-              >
-                <i className={`fas ${candidateUserModeMeta.iconClass}`}></i>
-                <span>{candidateUserModeMeta.label}</span>
-              </span>
-            </div>
+            {candidateUserModeMeta ? (
+              <div className="Home_Noga_socialFriendPresence">
+                <span
+                  className={`Home_Noga_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
+                >
+                  <i className={`fas ${candidateUserModeMeta.iconClass}`}></i>
+                  <span>{candidateUserModeMeta.label}</span>
+                </span>
+              </div>
+            ) : null}
             <div className="Home_Noga_socialRequestActions">
               {canSendRequest ? (
                 <button
@@ -4134,26 +4225,11 @@ function HomeNoga(props) {
                   <i className="fas fa-user-plus"></i>
                 </button>
               ) : null}
-              {canCancelRequest ? (
-                <button
-                  type="button"
-                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
-                  onClick={() => props.cancelSentFriendRequest?.(candidateId)}
-                  disabled={!candidateId}
-                  aria-label="Cancel friend request"
-                  title="Cancel friend request"
-                >
-                  <i className="fas fa-ban"></i>
-                </button>
-              ) : null}
               {canAcceptRequest ? (
                 <button
                   type="button"
                   className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
-                  onClick={() =>
-                    candidateId &&
-                    props.acceptFriend?.(`accept_icon${candidateId}`)
-                  }
+                  onClick={() => handleAcceptSearchCandidate(candidateId)}
                   disabled={!candidateId}
                   aria-label="Accept friend request"
                   title="Accept friend request"
@@ -4161,28 +4237,28 @@ function HomeNoga(props) {
                   <i className="fas fa-user-check"></i>
                 </button>
               ) : null}
-              {canAcceptRequest ? (
+              {canUnfriend ? (
                 <button
                   type="button"
                   className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
-                  onClick={() => props.dismissFriendRequest?.(candidateId)}
+                  onClick={() => handleRemoveSearchCandidate(candidateId)}
                   disabled={!candidateId}
-                  aria-label="Dismiss friend request"
-                  title="Dismiss friend request"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              ) : null}
-              {canRemoveFriend ? (
-                <button
-                  type="button"
-                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
-                  onClick={() => props.removeFriend?.(candidateId)}
-                  disabled={!candidateId}
-                  aria-label="Remove friend"
-                  title="Remove friend"
+                  aria-label="Unfriend"
+                  title="Unfriend"
                 >
                   <i className="fas fa-user-minus"></i>
+                </button>
+              ) : null}
+              {canUnblock ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                  onClick={() => handleUnblockSearchCandidate(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Unblock user"
+                  title="Unblock user"
+                >
+                  <i className="fas fa-user-slash"></i>
                 </button>
               ) : null}
             </div>
@@ -4192,16 +4268,53 @@ function HomeNoga(props) {
     },
     [
       getSearchCandidateUserModeMeta,
+      handleAcceptSearchCandidate,
+      handleRemoveSearchCandidate,
+      handleUnblockSearchCandidate,
       props,
       sendFriendRequestToUser,
       sendingFriendRequestUsername,
     ],
   );
 
+  const renderDirectoryTabs = React.useCallback(
+    ({ tabs, activeId, onChange }) =>
+      tabs?.length ? (
+        <div className="Home_Noga_socialDirectoryTabs">
+          {tabs.map((tab) => {
+            const hasRequestMarker = tab.id === "pending" && tab.count > 0;
+            return (
+            <button
+              key={tab.id}
+              type="button"
+              className={`Home_Noga_socialDirectoryTab${
+                activeId === tab.id ? " isActive" : ""
+              }${
+                hasRequestMarker
+                  ? " Home_Noga_socialDirectoryTab--hasMarker"
+                  : ""
+              }`}
+              onClick={() => onChange(tab.id)}
+            >
+              {tab.label} ({tab.count})
+              {hasRequestMarker ? (
+                <span
+                  className="Home_Noga_socialDirectoryTabMarker"
+                  aria-hidden="true"
+                ></span>
+              ) : null}
+            </button>
+            );
+          })}
+        </div>
+      ) : null,
+    [],
+  );
+
   const renderConnectionSearchPanel = React.useCallback(
-    ({ value, onChange, placeholder, ariaLabel }) => (
-      <div className="Home_Noga_socialRequestSearchRow">
-        <div className="Home_Noga_socialRequestSearchWrap">
+    ({ value, onChange, placeholder, ariaLabel, controls = null }) => (
+      <div className="Home_Noga_socialDirectoryHeader">
+        <div className="Home_Noga_socialDirectorySearch">
           <i className="fas fa-search" aria-hidden="true"></i>
           <input
             type="text"
@@ -4214,6 +4327,7 @@ function HomeNoga(props) {
             aria-label={ariaLabel}
           />
         </div>
+        {controls}
       </div>
     ),
     [],
@@ -4226,8 +4340,43 @@ function HomeNoga(props) {
         onChange: setFriendSearchQuery,
         placeholder: "Search friends",
         ariaLabel: "Search friends",
+        controls: (
+          <div className="Home_Noga_socialDirectoryTabGroup">
+            {renderDirectoryTabs({
+              tabs: blockedListGroups,
+              activeId: activeBlockedListGroup,
+              onChange: (nextGroupId) => {
+                if (hasActiveFriendSearchQuery) {
+                  return;
+                }
+                setActiveBlockedListGroup(nextGroupId);
+              },
+            })}
+            {activeBlockedListGroupMeta.tabs.length > 1
+              ? renderDirectoryTabs({
+                  tabs: activeBlockedListGroupMeta.tabs,
+                  activeId: activeBlockedListTab,
+                  onChange: (nextTabId) => {
+                    if (hasActiveFriendSearchQuery) {
+                      return;
+                    }
+                    setActiveBlockedListTab(nextTabId);
+                  },
+                })
+              : null}
+          </div>
+        ),
       }),
-    [friendSearchQuery, renderConnectionSearchPanel],
+    [
+      activeBlockedListGroup,
+      activeBlockedListGroupMeta.tabs,
+      activeBlockedListTab,
+      blockedListGroups,
+      friendSearchQuery,
+      hasActiveFriendSearchQuery,
+      renderConnectionSearchPanel,
+      renderDirectoryTabs,
+    ],
   );
 
   const renderPageSearchPanel = React.useCallback(
@@ -4253,7 +4402,6 @@ function HomeNoga(props) {
   );
 
   const renderBlockedUserListItem = React.useCallback((user) => {
-    const userModeMeta = getFriendUserModeMeta(user?.userMode);
     return (
       <li key={user.id} className="Home_Noga_socialFriendItem">
         <div className="Home_Noga_socialFriendSummary">
@@ -4278,70 +4426,11 @@ function HomeNoga(props) {
               </span>
             </div>
           </div>
-          <div className="Home_Noga_socialFriendPresence">
-            <span className="Home_Noga_socialFriendStatus Home_Noga_socialFriendStatus--offline">
-              <i className={`fas ${userModeMeta.iconClass}`}></i>
-              <span>{userModeMeta.label}</span>
-            </span>
-          </div>
         </div>
       </li>
     );
   }, []);
 
-  const renderBlockedListPanel = React.useCallback(
-    () => (
-      <div className="Home_Noga_socialBlockedPanel">
-        <div className="Home_Noga_socialBlockedTabs">
-          {blockedListGroups.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              className={`Home_Noga_socialBlockedTab${
-                activeBlockedListGroup === group.id ? " isActive" : ""
-              }`}
-              onClick={() => setActiveBlockedListGroup(group.id)}
-            >
-              {group.label} ({group.count})
-            </button>
-          ))}
-        </div>
-        {activeBlockedListGroupMeta.tabs.length > 1 ? (
-          <div className="Home_Noga_socialBlockedTabs">
-            {activeBlockedListGroupMeta.tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`Home_Noga_socialBlockedTab${
-                  activeBlockedListTab === tab.id ? " isActive" : ""
-                }`}
-                onClick={() => setActiveBlockedListTab(tab.id)}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <ul className="Home_Noga_socialFriendsList">
-          {activeBlockedListTabMeta.entries.length === 0 ? (
-            <li className="Home_Noga_socialFriendsEmptyState">
-              {activeBlockedListTabMeta.emptyLabel}
-            </li>
-          ) : (
-            activeBlockedListTabMeta.entries.map(renderBlockedUserListItem)
-          )}
-        </ul>
-      </div>
-    ),
-    [
-      activeBlockedListGroup,
-      activeBlockedListGroupMeta,
-      activeBlockedListTab,
-      activeBlockedListTabMeta,
-      blockedListGroups,
-      renderBlockedUserListItem,
-    ],
-  );
   const openGalleryUploadPicker = () => {
     galleryUploadInputRef.current?.click();
   };
@@ -4757,6 +4846,7 @@ function HomeNoga(props) {
       return;
     }
 
+    const maxImageSizeBytes = 8 * 1024 * 1024;
     const maxVideoSizeBytes = 100 * 1024 * 1024;
     const preCheckMimeType = String(selectedFile?.type || "").trim();
     const targetResourceType = String(
@@ -4881,6 +4971,35 @@ function HomeNoga(props) {
     setIsImageGalleryUploading(true);
     let triedCompression = false;
     let fileToUpload = selectedFile;
+    let currentMimeType = mimeType;
+
+    if (
+      !isVideoFile &&
+      canCompressImageUpload(fileToUpload) &&
+      fileToUpload.size >= maxImageSizeBytes
+    ) {
+      try {
+        sendCloudinaryReply(
+          `Large image detected (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing before upload...`,
+        );
+        const compressedImage = await compressImageUpload(fileToUpload, {
+          maxBytes: maxImageSizeBytes,
+        });
+
+        if (compressedImage !== fileToUpload) {
+          fileToUpload = compressedImage;
+          currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+          triedCompression = true;
+          sendCloudinaryReply(
+            `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Starting upload...`,
+          );
+        }
+      } catch (compressionError) {
+        sendCloudinaryReply(
+          `Image compression skipped: ${compressionError?.message || "Unknown error."}`,
+        );
+      }
+    }
 
     while (true) {
       try {
@@ -4953,6 +5072,38 @@ function HomeNoga(props) {
               );
             }
           }
+          if (
+            !isVideoFile &&
+            !triedCompression &&
+            canCompressImageUpload(fileToUpload) &&
+            (status === 413 ||
+              status === 403 ||
+              /file too large|413|too large|exceeds|limit/i.test(errorMsg))
+          ) {
+            sendCloudinaryReply(
+              `Image too large (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing and retrying upload...`,
+            );
+            try {
+              const compressedImage = await compressImageUpload(fileToUpload, {
+                maxBytes: maxImageSizeBytes,
+              });
+              if (compressedImage === fileToUpload) {
+                throw new Error("Compression did not reduce image size.");
+              }
+              fileToUpload = compressedImage;
+              currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+              triedCompression = true;
+              sendCloudinaryReply(
+                `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
+              );
+              continue;
+            } catch (compressionError) {
+              throw new Error(
+                "Image compression failed: " +
+                  (compressionError?.message || "Unknown error."),
+              );
+            }
+          }
           sendCloudinaryReply(
             `Upload failed with status ${status}: ${errorMsg}`,
           );
@@ -4971,7 +5122,7 @@ function HomeNoga(props) {
             assetId: cloudinaryPayload.asset_id,
             folder: cloudinaryPayload.folder,
             resourceType: cloudinaryPayload.resource_type || resourceType,
-            mimeType,
+            mimeType: currentMimeType,
             width: cloudinaryPayload.width,
             height: cloudinaryPayload.height,
             format: cloudinaryPayload.format,
@@ -5016,6 +5167,38 @@ function HomeNoga(props) {
           } catch (compressionError) {
             sendCloudinaryReply(
               "Video compression failed: " +
+                (compressionError?.message || "Unknown error."),
+            );
+            break;
+          }
+        } else if (
+          !isVideoFile &&
+          !triedCompression &&
+          canCompressImageUpload(fileToUpload) &&
+          /413|file too large|too large|exceeds|limit/i.test(
+            error?.message || "",
+          )
+        ) {
+          sendCloudinaryReply(
+            `Image too large (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing and retrying upload...`,
+          );
+          try {
+            const compressedImage = await compressImageUpload(fileToUpload, {
+              maxBytes: maxImageSizeBytes,
+            });
+            if (compressedImage === fileToUpload) {
+              throw new Error("Compression did not reduce image size.");
+            }
+            fileToUpload = compressedImage;
+            currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+            triedCompression = true;
+            sendCloudinaryReply(
+              `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
+            );
+            continue;
+          } catch (compressionError) {
+            sendCloudinaryReply(
+              "Image compression failed: " +
                 (compressionError?.message || "Unknown error."),
             );
             break;
@@ -5465,72 +5648,83 @@ function HomeNoga(props) {
     };
   }, [clampProfilePictureViewport, profilePictureSrc]);
 
-  React.useEffect(() => {
-    if (!props.state?.token || !profilePictureSrc) {
-      return;
-    }
+  const persistedProfilePictureViewport = React.useMemo(
+    () =>
+      normalizeProfilePictureViewport(props.state?.profilePictureViewport || {}),
+    [
+      props.state?.profilePictureViewport?.scale,
+      props.state?.profilePictureViewport?.offsetX,
+      props.state?.profilePictureViewport?.offsetY,
+    ],
+  );
 
-    if (!hasHydratedProfilePictureViewportRef.current) {
-      return;
-    }
+  const isProfilePictureViewportDirty =
+    hasHydratedProfilePictureViewportRef.current &&
+    profilePictureSrc &&
+    (persistedProfilePictureViewport.scale !== profilePictureViewport.scale ||
+      persistedProfilePictureViewport.offsetX !==
+        profilePictureViewport.offsetX ||
+      persistedProfilePictureViewport.offsetY !==
+        profilePictureViewport.offsetY);
 
-    const stateViewport = normalizeProfilePictureViewport(
-      props.state?.profilePictureViewport,
-    );
-
+  const applyProfilePictureViewportChange = React.useCallback(async () => {
     if (
-      stateViewport.scale === profilePictureViewport.scale &&
-      stateViewport.offsetX === profilePictureViewport.offsetX &&
-      stateViewport.offsetY === profilePictureViewport.offsetY
+      !props.state?.token ||
+      !profilePictureSrc ||
+      !isProfilePictureViewportDirty ||
+      isApplyingProfilePictureViewport
     ) {
       return;
     }
 
-    const saveTimeout = window.setTimeout(async () => {
-      try {
-        const response = await fetch(apiUrl("/api/user/profile"), {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${props.state.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            profilePictureViewport,
-          }),
-        });
+    setIsApplyingProfilePictureViewport(true);
 
-        const payload = await response.json().catch(() => ({}));
+    try {
+      const response = await fetch(apiUrl("/api/user/profile"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          profilePictureViewport,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(payload?.message || "Unable to save profile view.");
-        }
+      const payload = await response.json().catch(() => ({}));
 
-        const nextViewport = normalizeProfilePictureViewport(
-          payload?.media?.profilePictureViewport || profilePictureViewport,
-        );
-
-        props.setUserMediaInfo?.({
-          profilePicture: String(props.state?.profilePicture || "").trim(),
-          profilePictureViewport: nextViewport,
-          imageGallery: Array.isArray(props.state?.imageGallery)
-            ? props.state.imageGallery
-            : [],
-        });
-      } catch (error) {
-        // Keep local viewport state even if persistence fails.
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to save profile view.");
       }
-    }, 450);
 
-    return () => {
-      window.clearTimeout(saveTimeout);
-    };
+      const nextViewport = normalizeProfilePictureViewport(
+        payload?.media?.profilePictureViewport || profilePictureViewport,
+      );
+
+      props.setUserMediaInfo?.({
+        profilePicture: String(props.state?.profilePicture || "").trim(),
+        profilePictureViewport: nextViewport,
+        imageGallery: Array.isArray(props.state?.imageGallery)
+          ? props.state.imageGallery
+          : [],
+      });
+      props.serverReply?.("Profile picture view updated.");
+    } catch (error) {
+      props.serverReply?.(
+        error?.message || "Unable to save profile picture view.",
+      );
+    } finally {
+      setIsApplyingProfilePictureViewport(false);
+    }
   }, [
+    isApplyingProfilePictureViewport,
+    isProfilePictureViewportDirty,
     profilePictureSrc,
     profilePictureViewport,
+    props.serverReply,
     props.setUserMediaInfo,
     props.state?.imageGallery,
     props.state?.profilePicture,
-    props.state?.profilePictureViewport,
     props.state?.token,
   ]);
 
@@ -6806,6 +7000,7 @@ function HomeNoga(props) {
     profileState.username ? `@${profileState.username}` : "",
   );
   const compactBio = formatProfileValue(profileState.bio);
+  const isCompactBioArabic = isArabicText(compactBio);
   const isEditingCompactBio = activePersonalInfoField === "bio";
   const bioWrapperStyle = {
     "--home-bio-wallpaper-image": currentBioWallpaperUrl
@@ -7059,36 +7254,50 @@ function HomeNoga(props) {
                     ref={profilePictureWrapperRef}
                     style={{ position: "relative" }}
                   >
-                    {renderHomeDrawingVisibilityCanvas("profile")}
-                    {profilePictureSrc ? (
-                      <img
-                        id="Home_Noga_preStart_profilePic"
-                        ref={profilePictureImageRef}
-                        src={profilePictureSrc}
-                        alt={`${props.state.firstname} ${props.state.lastname}`}
-                        onDoubleClick={resetProfilePictureViewport}
-                        onTouchStart={handleProfilePictureTouchStart}
-                        onTouchMove={handleProfilePictureTouchMove}
-                        onTouchEnd={handleProfilePictureTouchEnd}
-                        onTouchCancel={handleProfilePictureTouchEnd}
-                        onPointerDown={handleProfilePicturePointerDown}
-                        onPointerMove={handleProfilePicturePointerMove}
-                        onPointerUp={handleProfilePicturePointerUp}
-                        onPointerCancel={handleProfilePicturePointerUp}
-                        onWheel={handleProfilePictureWheel}
-                        className={isProfilePictureDragging ? "isDragging" : ""}
+                    <div className="Home_Noga_preStart_profileViewportFrame">
+                      {renderHomeDrawingVisibilityCanvas("profile")}
+                      {profilePictureSrc ? (
+                        <img
+                          id="Home_Noga_preStart_profilePic"
+                          ref={profilePictureImageRef}
+                          src={profilePictureSrc}
+                          alt={`${props.state.firstname} ${props.state.lastname}`}
+                          onDoubleClick={resetProfilePictureViewport}
+                          onTouchStart={handleProfilePictureTouchStart}
+                          onTouchMove={handleProfilePictureTouchMove}
+                          onTouchEnd={handleProfilePictureTouchEnd}
+                          onTouchCancel={handleProfilePictureTouchEnd}
+                          onPointerDown={handleProfilePicturePointerDown}
+                          onPointerMove={handleProfilePicturePointerMove}
+                          onPointerUp={handleProfilePicturePointerUp}
+                          onPointerCancel={handleProfilePicturePointerUp}
+                          onWheel={handleProfilePictureWheel}
+                          className={isProfilePictureDragging ? "isDragging" : ""}
+                        />
+                      ) : (
+                        <i className="fas fa-user" aria-hidden="true"></i>
+                      )}
+                      <input
+                        key={galleryTab}
+                        ref={galleryUploadInputRef}
+                        type="file"
+                        accept={activeGalleryUploadConfig.accept}
+                        className="Home_Noga_hiddenFileInput"
+                        onChange={handleProfilePictureSelected}
                       />
-                    ) : (
-                      <i className="fas fa-user" aria-hidden="true"></i>
-                    )}
-                    <input
-                      key={galleryTab}
-                      ref={galleryUploadInputRef}
-                      type="file"
-                      accept={activeGalleryUploadConfig.accept}
-                      className="Home_Noga_hiddenFileInput"
-                      onChange={handleProfilePictureSelected}
-                    />
+                    </div>
+                    {isProfilePictureViewportDirty ? (
+                      <button
+                        type="button"
+                        className="Home_Noga_profileViewportApplyButton"
+                        onClick={applyProfilePictureViewportChange}
+                        disabled={isApplyingProfilePictureViewport}
+                      >
+                        {isApplyingProfilePictureViewport
+                          ? "Applying..."
+                          : "Apply Change"}
+                      </button>
+                    ) : null}
                   </div>
                   <div id="Home_Noga_preStart_personalBio" className="fc">
                     {renderHomeDrawingVisibilityCanvas("bioText")}
@@ -7122,7 +7331,11 @@ function HomeNoga(props) {
                           {isEditingCompactBio ? (
                             <div className="Home_Noga_compactBioEditor fc">
                               <textarea
-                                className="Home_Noga_userMenu_inlineInput Home_Noga_compactBioTextarea"
+                                className={`Home_Noga_userMenu_inlineInput Home_Noga_compactBioTextarea ${
+                                  isArabicText(personalInfoInputValue)
+                                    ? "Home_Noga_compactBioTextarea--rtl"
+                                    : "Home_Noga_compactBioTextarea--ltr"
+                                }`}
                                 value={personalInfoInputValue}
                                 onChange={(event) =>
                                   setPersonalInfoInputValue(event.target.value)
@@ -7130,6 +7343,7 @@ function HomeNoga(props) {
                                 onKeyDown={handleInlinePersonalInfoKeyDown}
                                 autoFocus
                                 rows={5}
+                                dir={isArabicText(personalInfoInputValue) ? "rtl" : "ltr"}
                                 disabled={isPersonalInfoInlineSubmitting}
                               />
                               <div className="Home_Noga_compactBioEditorActions fr">
@@ -7155,21 +7369,18 @@ function HomeNoga(props) {
                               </div>
                             </div>
                           ) : (
-                            <p className="Home_Noga_compactBioText">
+                            <p
+                              className={`Home_Noga_compactBioText ${
+                                isCompactBioArabic
+                                  ? "Home_Noga_compactBioText--rtl"
+                                  : "Home_Noga_compactBioText--ltr"
+                              }`}
+                              dir={isCompactBioArabic ? "rtl" : "ltr"}
+                            >
                               {compactBio}
                             </p>
                           )}
-                          <button
-                            type="button"
-                            className="Home_Noga_aboutButton"
-                            onClick={() =>
-                              setIsAboutOpen((currentValue) => !currentValue)
-                            }
-                            aria-pressed={isAboutOpen}
-                          >
-                            {isAboutOpen ? "Close About" : "About"}
-                          </button>
-                          <button
+                          {/* <button
                             type="button"
                             className="Home_Noga_aboutButton Home_Noga_wallpaperButton"
                             onClick={() =>
@@ -7232,7 +7443,7 @@ function HomeNoga(props) {
                                 </button>
                               </div>
                             </div>
-                          ) : null}
+                          ) : null} */}
                         </div>
                       </div>
                     </div>
@@ -7244,6 +7455,16 @@ function HomeNoga(props) {
                       <>
                         <div className="Home_Noga_friendsEventsHeader">
                           <h3>About Profile</h3>
+                          <button
+                            type="button"
+                            className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                            onClick={() =>
+                              setIsAboutOpen((currentValue) => !currentValue)
+                            }
+                            aria-pressed={isAboutOpen}
+                          >
+                            Close About
+                          </button>
                         </div>
                         <div className="Home_Noga_aboutPanel">
                           {profileColumns.map((column) => (
@@ -7268,6 +7489,16 @@ function HomeNoga(props) {
                       <>
                         <div className="Home_Noga_friendsEventsHeader">
                           <h3>Friends Events</h3>
+                          <button
+                            type="button"
+                            className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                            onClick={() =>
+                              setIsAboutOpen((currentValue) => !currentValue)
+                            }
+                            aria-pressed={isAboutOpen}
+                          >
+                            About
+                          </button>
                         </div>
                         <div className="Home_Noga_friendsEventsEmpty">
                           There is no events to show.
@@ -7471,7 +7702,7 @@ function HomeNoga(props) {
                                     >
                                       <i className="fas fa-user-check"></i>
                                     </button>
-                                    <button
+                                    {/* <button
                                       type="button"
                                       className="Home_Noga_editPicButton"
                                       onClick={() =>
@@ -7492,7 +7723,7 @@ function HomeNoga(props) {
                                       }
                                     >
                                       <i className="fas fa-panorama"></i>
-                                    </button>
+                                    </button> */}
                                     <button
                                       type="button"
                                       className="Home_Noga_editPicButton"
@@ -7601,7 +7832,32 @@ function HomeNoga(props) {
                       {activeFriendsMiniTab === "friends" ? (
                         <div className="Home_Noga_socialFriendsSearchAndBlocked">
                           {renderFriendSearchPanel()}
-                          {renderBlockedListPanel()}
+                          <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
+                            {hasActiveFriendSearchQuery ? (
+                              isFriendSearchLoading ? (
+                                <li className="Home_Noga_socialFriendsEmptyState">
+                                  Searching users...
+                                </li>
+                              ) : friendSearchResults.length > 0 ? (
+                                friendSearchResults.map(
+                                  renderSearchedUserListItem,
+                                )
+                              ) : (
+                                <li className="Home_Noga_socialFriendsEmptyState">
+                                  {friendSearchFeedback ||
+                                    "No users found. Try another name or username."}
+                                </li>
+                              )
+                            ) : activeBlockedListTabMeta.entries.length > 0 ? (
+                              activeBlockedListTabMeta.entries.map(
+                                renderBlockedUserListItem,
+                              )
+                            ) : (
+                              <li className="Home_Noga_socialFriendsEmptyState">
+                                {activeBlockedListTabMeta.emptyLabel}
+                              </li>
+                            )}
+                          </ul>
                         </div>
                       ) : (
                         <>

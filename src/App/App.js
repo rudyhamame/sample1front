@@ -1334,18 +1334,28 @@ class App extends React.Component {
       },
     };
     let req = new Request(url, options);
-    fetch(req).then((response) => {
-      if (response.status === 201) {
-        this.serverReply("You're now friends!");
-        this.markFriendRequestReadLocally(friend_trim);
-        this.updateUserInfo();
-      }
-      if (response.status === 409) {
-        this.markFriendRequestReadLocally(friend_trim);
-        this.serverReply("You're already friends!");
-        this.updateUserInfo();
-      }
-    });
+    return fetch(req)
+      .then((response) => {
+        if (response.status === 201) {
+          this.serverReply("You're now friends!");
+          this.markFriendRequestReadLocally(friend_trim);
+          this.updateUserInfo();
+          return true;
+        }
+        if (response.status === 409) {
+          this.markFriendRequestReadLocally(friend_trim);
+          this.serverReply("You're already friends!");
+          this.updateUserInfo();
+          return true;
+        }
+
+        this.serverReply("Unable to accept friend request.");
+        return false;
+      })
+      .catch(() => {
+        this.serverReply("Unable to accept friend request.");
+        return false;
+      });
   };
 
   dismissFriendRequest = (requestTarget) => {
@@ -1554,7 +1564,7 @@ class App extends React.Component {
 
   removeFriend = (friendId) => {
     if (!friendId) {
-      return;
+      return Promise.resolve(false);
     }
 
     const url =
@@ -1568,31 +1578,76 @@ class App extends React.Component {
       },
     };
 
-    fetch(new Request(url, options)).then((response) => {
-      if (response.ok) {
-        this.safeSetState((currentState) => ({
-          friends: (currentState.friends || []).filter(
-            (friend) => friend?._id !== friendId,
-          ),
-          activeChatFriendId:
-            currentState.activeChatFriendId === friendId
-              ? null
-              : currentState.activeChatFriendId,
-          activeChatFriendName:
-            currentState.activeChatFriendId === friendId
-              ? ""
-              : currentState.activeChatFriendName,
-          isChatting:
-            currentState.activeChatFriendId === friendId
-              ? false
-              : currentState.isChatting,
-        }));
-        this.serverReply("Friend removed.");
-        return;
-      }
+    return fetch(new Request(url, options))
+      .then((response) => {
+        if (response.ok) {
+          this.safeSetState((currentState) => ({
+            friends: (currentState.friends || []).filter(
+              (friend) => friend?._id !== friendId,
+            ),
+            activeChatFriendId:
+              currentState.activeChatFriendId === friendId
+                ? null
+                : currentState.activeChatFriendId,
+            activeChatFriendName:
+              currentState.activeChatFriendId === friendId
+                ? ""
+                : currentState.activeChatFriendName,
+            isChatting:
+              currentState.activeChatFriendId === friendId
+                ? false
+                : currentState.isChatting,
+          }));
+          this.updateUserInfo();
+          this.serverReply("Friend removed.");
+          return true;
+        }
 
-      this.serverReply("Unable to remove friend.");
-    });
+        this.serverReply("Unable to remove friend.");
+        return false;
+      })
+      .catch(() => {
+        this.serverReply("Unable to remove friend.");
+        return false;
+      });
+  };
+
+  unblockFriend = (friendId) => {
+    if (!friendId) {
+      return Promise.resolve(false);
+    }
+
+    const url =
+      apiUrl("/api/user/unblockFriend/") + this.state.my_id + "/" + friendId;
+    const options = {
+      method: "DELETE",
+      mode: "cors",
+      headers: {
+        Authorization: "Bearer " + this.state.token,
+        "Content-Type": "application/json",
+      },
+    };
+
+    return fetch(new Request(url, options))
+      .then((response) => {
+        if (response.ok) {
+          this.safeSetState((currentState) => ({
+            friends: (currentState.friends || []).filter(
+              (friend) => friend?._id !== friendId,
+            ),
+          }));
+          this.updateUserInfo();
+          this.serverReply("User unblocked.");
+          return true;
+        }
+
+        this.serverReply("Unable to unblock user.");
+        return false;
+      })
+      .catch(() => {
+        this.serverReply("Unable to unblock user.");
+        return false;
+      });
   };
 
   ///DeleteFriendPost
@@ -2350,6 +2405,7 @@ class App extends React.Component {
                 dismissFriendRequest={this.dismissFriendRequest}
                 cancelSentFriendRequest={this.cancelSentFriendRequest}
                 removeFriend={this.removeFriend}
+                unblockFriend={this.unblockFriend}
                 updateUserInfo={this.updateUserInfo}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
@@ -2382,6 +2438,7 @@ class App extends React.Component {
                 dismissFriendRequest={this.dismissFriendRequest}
                 cancelSentFriendRequest={this.cancelSentFriendRequest}
                 removeFriend={this.removeFriend}
+                unblockFriend={this.unblockFriend}
                 updateUserInfo={this.updateUserInfo}
                 selectFriendChat={this.get_current_friend_chat_id}
                 closeActiveChat={this.closeActiveChat}
