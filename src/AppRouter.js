@@ -175,9 +175,13 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
-          <Route path="/profile/:username">
+          <Route exact path={["/profile/:username", "/phenomed/:username"]}>
             {canAccessAuthenticatedRoutes ? (
-              <App key="app-profile" path="/profile" onLogout={handleLogout} />
+              <App
+                key="app-profile"
+                path="/phenomed/:username"
+                onLogout={handleLogout}
+              />
             ) : (
               <Redirect to="/" />
             )}

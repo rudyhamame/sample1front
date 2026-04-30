@@ -544,6 +544,8 @@ const TelegramControlPage = ({
   const [groupReference, setGroupReference] = React.useState("");
   const [migrationGroupTitle, setMigrationGroupTitle] =
     React.useState("Telegram Migration");
+  const [migrationMode, setMigrationMode] = React.useState("store");
+  const [storeMessagesMode, setStoreMessagesMode] = React.useState("all");
   const [migrationFromDate, setMigrationFromDate] = React.useState(
     getTodayDateInputValue(),
   );
@@ -556,7 +558,10 @@ const TelegramControlPage = ({
     top: 0,
   });
   const [feedback, setFeedback] = React.useState("");
+  const [telegramSyncSummary, setTelegramSyncSummary] = React.useState(null);
   const [storageFeedback, setStorageFeedback] = React.useState("");
+  const [telegramConfigFeedback, setTelegramConfigFeedback] =
+    React.useState("");
   const [messages, setMessages] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -628,6 +633,21 @@ const TelegramControlPage = ({
   const [activeLeftPanel, setActiveLeftPanel] = React.useState("migration");
   const [activePredictionTab, setActivePredictionTab] =
     React.useState("settings");
+  const [telegramConfigStatus, setTelegramConfigStatus] = React.useState({
+    configured: false,
+    hasApiId: false,
+    hasApiHash: false,
+    hasStringSession: false,
+    groupReference: "",
+  });
+  const [telegramAuthStage, setTelegramAuthStage] = React.useState("idle");
+  const [telegramApiIdInput, setTelegramApiIdInput] = React.useState("");
+  const [telegramApiHashInput, setTelegramApiHashInput] = React.useState("");
+  const [telegramPhoneNumberInput, setTelegramPhoneNumberInput] =
+    React.useState("");
+  const [telegramPhoneCodeInput, setTelegramPhoneCodeInput] =
+    React.useState("");
+  const [telegramPasswordInput, setTelegramPasswordInput] = React.useState("");
   const storedGroupOptionsRef = React.useRef([]);
   const telegramShellRef = React.useRef(null);
   const telegramGridRef = React.useRef(null);
@@ -930,6 +950,11 @@ const TelegramControlPage = ({
     }
 
     try {
+      let payload = {};
+      let nextGroups = [];
+      let nextCourses = [];
+      let nextImportantMessages = [];
+
       const response = await fetch(apiUrl("/api/telegram/storage/context"), {
         method: "GET",
         mode: "cors",
@@ -937,19 +962,41 @@ const TelegramControlPage = ({
           Authorization: `Bearer ${token}`,
         },
       });
-      const payload = await response.json().catch(() => ({}));
+      payload = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        throw new Error(payload?.message || "Unable to load Telegram storage.");
+      if (response.ok) {
+        nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
+        nextCourses = Array.isArray(payload?.courses) ? payload.courses : [];
+        nextImportantMessages = Array.isArray(payload?.importantMessages)
+          ? payload.importantMessages
+          : [];
+      } else {
+        const storedGroupsResponse = await fetch(
+          apiUrl("/api/telegram/stored-groups"),
+          {
+            method: "GET",
+            mode: "cors",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        const storedGroupsPayload = await storedGroupsResponse
+          .json()
+          .catch(() => ({}));
+
+        if (!storedGroupsResponse.ok) {
+          throw new Error(
+            payload?.message ||
+              storedGroupsPayload?.message ||
+              "Unable to load Telegram storage.",
+          );
+        }
+
+        nextGroups = Array.isArray(storedGroupsPayload?.groups)
+          ? storedGroupsPayload.groups
+          : [];
       }
-
-      const nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
-      const nextCourses = Array.isArray(payload?.courses)
-        ? payload.courses
-        : [];
-      const nextImportantMessages = Array.isArray(payload?.importantMessages)
-        ? payload.importantMessages
-        : [];
 
       setStoredGroupOptions(nextGroups);
       setCourses(nextCourses);
@@ -1022,6 +1069,22 @@ const TelegramControlPage = ({
       }
 
       const nextReference = String(payload?.groupReference || "");
+      setTelegramConfigStatus({
+        configured: Boolean(payload?.configured),
+        hasApiId: Boolean(payload?.hasApiId),
+        hasApiHash: Boolean(payload?.hasApiHash),
+        hasStringSession: Boolean(payload?.hasStringSession),
+        groupReference: nextReference,
+      });
+      setTelegramAuthStage(payload?.hasStringSession ? "connected" : "idle");
+      setMigrationMode(payload?.syncMode === "live" ? "sync" : "store");
+      setStoreMessagesMode(
+        payload?.syncMode === "live"
+          ? "all"
+          : payload?.historyStartDate || payload?.historyEndDate
+            ? "interval"
+            : "all",
+      );
       setGroupReference(nextReference);
       setGroupInput(nextReference);
       setMigrationFromDate(
@@ -1034,8 +1097,181 @@ const TelegramControlPage = ({
       setMigrationGroupTitle(nextReference || "Telegram Migration");
     } catch (nextError) {
       setError(nextError?.message || "Unable to load Telegram configuration.");
+      setTelegramConfigFeedback(
+        nextError?.message || "Unable to load Telegram config status.",
+      );
     }
   }, [token]);
+
+  const startTelegramAuth = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const apiId = String(telegramApiIdInput || "").trim();
+    const apiHash = String(telegramApiHashInput || "").trim();
+    const phoneNumber = String(telegramPhoneNumberInput || "").trim();
+
+    if (!apiId || !apiHash || !phoneNumber) {
+      setTelegramConfigFeedback(
+        "Please fill Telegram API ID, API Hash, and phone number.",
+      );
+      return;
+    }
+
+    try {
+      setTelegramAuthStage("idle");
+      setTelegramPhoneCodeInput("");
+      setTelegramPasswordInput("");
+      const response = await fetch(apiUrl("/api/telegram/auth/start"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          apiId,
+          apiHash,
+          phoneNumber,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error?.message ||
+            "Unable to start Telegram login.",
+        );
+      }
+
+      setTelegramAuthStage("code");
+      setTelegramConfigFeedback(
+        payload?.message || "Telegram login code sent.",
+      );
+    } catch (nextError) {
+      setTelegramAuthStage("idle");
+      setTelegramConfigFeedback(
+        nextError?.message || "Unable to start Telegram login.",
+      );
+    }
+  }, [telegramApiHashInput, telegramApiIdInput, telegramPhoneNumberInput, token]);
+
+  const verifyTelegramCode = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const phoneCode = String(telegramPhoneCodeInput || "").trim();
+
+    if (!phoneCode) {
+      setTelegramConfigFeedback("Please enter the Telegram login code.");
+      return;
+    }
+
+    try {
+      const response = await fetch(apiUrl("/api/telegram/auth/verify-code"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phoneCode,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error?.message ||
+            "Unable to verify Telegram code.",
+        );
+      }
+
+      if (payload?.requiresPassword) {
+        setTelegramAuthStage("password");
+      } else {
+        setTelegramAuthStage("connected");
+        setTelegramConfigStatus((currentStatus) => ({
+          ...currentStatus,
+          configured: Boolean(payload?.configured),
+          hasApiId: Boolean(payload?.hasApiId),
+          hasApiHash: Boolean(payload?.hasApiHash),
+          hasStringSession: Boolean(payload?.hasStringSession),
+        }));
+        fetchTelegramConfig();
+      }
+
+      setTelegramConfigFeedback(payload?.message || "Telegram code verified.");
+      setTelegramPhoneCodeInput("");
+    } catch (nextError) {
+      setTelegramAuthStage("code");
+      setTelegramConfigFeedback(
+        nextError?.message || "Unable to verify Telegram code.",
+      );
+    }
+  }, [fetchTelegramConfig, telegramPhoneCodeInput, token]);
+
+  const verifyTelegramPassword = React.useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const password = String(telegramPasswordInput || "");
+
+    if (!password.trim()) {
+      setTelegramConfigFeedback(
+        "Please enter the Telegram 2-step verification password.",
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/telegram/auth/verify-password"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            password,
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error?.message ||
+            "Unable to verify Telegram password.",
+        );
+      }
+
+      setTelegramAuthStage("connected");
+      setTelegramConfigStatus((currentStatus) => ({
+        ...currentStatus,
+        configured: Boolean(payload?.configured),
+        hasApiId: Boolean(payload?.hasApiId),
+        hasApiHash: Boolean(payload?.hasApiHash),
+        hasStringSession: Boolean(payload?.hasStringSession),
+      }));
+      setTelegramConfigFeedback(
+        payload?.message || "Telegram connected successfully.",
+      );
+      setTelegramPasswordInput("");
+      fetchTelegramConfig();
+    } catch (nextError) {
+      setTelegramAuthStage("password");
+      setTelegramConfigFeedback(
+        nextError?.message || "Unable to verify Telegram password.",
+      );
+    }
+  }, [fetchTelegramConfig, telegramPasswordInput, token]);
 
   React.useEffect(() => {
     fetchStorageContext();
@@ -1117,13 +1353,23 @@ const TelegramControlPage = ({
 
     const nextGroupReference = String(groupInput || "").trim();
     const nextHistoryStartDate =
-      String(migrationFromDate || "").trim() || getTodayDateInputValue();
-    const nextHistoryEndDate = isMigrationToPresent
-      ? ""
-      : String(migrationToDate || "").trim();
+      migrationMode === "sync"
+        ? new Date().toISOString()
+        : storeMessagesMode === "all"
+          ? ""
+        : String(migrationFromDate || "").trim() || getTodayDateInputValue();
+    const nextHistoryEndDate =
+      migrationMode === "sync"
+        ? ""
+        : storeMessagesMode === "all"
+          ? ""
+        : isMigrationToPresent
+          ? ""
+          : String(migrationToDate || "").trim();
 
     setIsSaving(true);
     setFeedback("");
+    setTelegramSyncSummary(null);
 
     try {
       const response = await fetch(apiUrl("/api/telegram/config"), {
@@ -1134,7 +1380,7 @@ const TelegramControlPage = ({
         },
         body: JSON.stringify({
           groupReference: nextGroupReference,
-          syncMode: "live",
+          syncMode: migrationMode === "sync" ? "live" : "one-time",
           historyStartDate: nextHistoryStartDate,
           historyEndDate: nextHistoryEndDate,
         }),
@@ -1143,13 +1389,35 @@ const TelegramControlPage = ({
 
       if (!response.ok) {
         throw new Error(
-          payload?.message || "Unable to save Telegram settings.",
+          payload?.message ||
+            payload?.error?.message ||
+            "Unable to save Telegram settings.",
         );
       }
 
       const nextReference = String(payload?.groupReference || "");
       setFeedback(payload?.message || "");
+      setTelegramSyncSummary(
+        Boolean(payload?.syncStarted)
+          ? {
+              started: Boolean(payload?.syncStarted),
+              succeeded: Boolean(payload?.syncSucceeded),
+              reason: String(payload?.syncReason || "").trim(),
+              importedCount: Number(payload?.importedCount || 0),
+              scannedCount: Number(payload?.scannedCount || 0),
+              storedCount: Number(payload?.storedCount || 0),
+            }
+          : null,
+      );
       setGroupReference(nextReference);
+      setMigrationMode(payload?.syncMode === "live" ? "sync" : "store");
+      setStoreMessagesMode(
+        payload?.syncMode === "live"
+          ? "all"
+          : payload?.historyStartDate || payload?.historyEndDate
+            ? "interval"
+            : "all",
+      );
       setGroupInput(nextReference);
       setMigrationFromDate(
         formatDateInputValue(payload?.historyStartDate) ||
@@ -1159,8 +1427,16 @@ const TelegramControlPage = ({
       setMigrationToDate(savedHistoryEndDate);
       setIsMigrationToPresent(!savedHistoryEndDate);
       setMigrationGroupTitle(nextReference || "Telegram Migration");
+      fetchStorageContext();
+      fetchTelegramGroups();
+      fetchTelegramConfig();
     } catch (nextError) {
-      setFeedback(nextError?.message || "Unable to save Telegram settings.");
+      setFeedback(
+        nextError?.message ||
+          nextError?.error?.message ||
+          "Unable to save Telegram settings.",
+      );
+      setTelegramSyncSummary(null);
     } finally {
       setIsSaving(false);
     }
@@ -2574,6 +2850,14 @@ const TelegramControlPage = ({
   );
 
   const migrationIntervalLabel = React.useMemo(() => {
+    if (migrationMode === "sync") {
+      return "Since now";
+    }
+
+    if (storeMessagesMode === "all") {
+      return "All messages";
+    }
+
     const fromValue = String(migrationFromDate || "").trim();
     const toValue = isMigrationToPresent
       ? ""
@@ -2594,7 +2878,14 @@ const TelegramControlPage = ({
     }
 
     return storageCopy.notSet;
-  }, [isMigrationToPresent, migrationFromDate, migrationToDate, storageCopy]);
+  }, [
+    isMigrationToPresent,
+    migrationFromDate,
+    migrationMode,
+    migrationToDate,
+    storeMessagesMode,
+    storageCopy,
+  ]);
 
   const handleScopeTableRowClick = React.useCallback(
     (event, groupReference) => {
@@ -2758,6 +3049,7 @@ const TelegramControlPage = ({
                       onChange={(event) => {
                         setGroupInput(String(event.target.value || ""));
                         setFeedback("");
+                        setTelegramSyncSummary(null);
                       }}
                       onFocus={fetchTelegramGroups}
                       className="telegramControlPage_input"
@@ -2820,51 +3112,136 @@ const TelegramControlPage = ({
                       )}
                     </select>
 
-                    <div className="telegramControlPage_dateGrid">
-                      <label className="telegramControlPage_dateField">
-                        <span className="telegramControlPage_label">
-                          From date
-                        </span>
-                        <input
-                          type="date"
-                          value={migrationFromDate}
-                          onChange={(event) =>
-                            setMigrationFromDate(event.target.value)
-                          }
-                          className="telegramControlPage_input"
-                        />
-                      </label>
-                      <label className="telegramControlPage_dateField">
-                        <span className="telegramControlPage_label">
-                          To date
-                        </span>
-                        <div className="telegramControlPage_dateFieldRow">
-                          <input
-                            type="date"
-                            value={migrationToDate}
-                            onChange={(event) => {
-                              setMigrationToDate(event.target.value);
-                              if (event.target.value) {
-                                setIsMigrationToPresent(false);
-                              }
-                            }}
-                            className="telegramControlPage_input"
-                            disabled={isMigrationToPresent}
-                          />
+                    <div className="telegramControlPage_migrationModeBlock">
+                      <span className="telegramControlPage_label">
+                        Migration mode
+                      </span>
+                      <div className="telegramControlPage_migrationModeTabs">
+                        <button
+                          type="button"
+                          className={`telegramControlPage_migrationModeButton${migrationMode === "store" ? " is-active" : ""}`}
+                          onClick={() => {
+                            setMigrationMode("store");
+                            setFeedback("");
+                            setTelegramSyncSummary(null);
+                          }}
+                        >
+                          Store messages
+                        </button>
+                        <button
+                          type="button"
+                          className={`telegramControlPage_migrationModeButton${migrationMode === "sync" ? " is-active" : ""}`}
+                          onClick={() => {
+                            setMigrationMode("sync");
+                            setFeedback("");
+                            setTelegramSyncSummary(null);
+                          }}
+                        >
+                          Sync group messages
+                        </button>
+                      </div>
+                      <p className="telegramControlPage_hint">
+                        {migrationMode === "sync"
+                          ? "Keep saving all new group messages starting now."
+                          : "Save this group's messages within a selected time interval."}
+                      </p>
+                      {migrationMode === "store" ? (
+                        <div className="telegramControlPage_storeModeTabs">
                           <button
                             type="button"
-                            className={`telegramControlPage_toggleButton${isMigrationToPresent ? " is-active" : ""}`}
+                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "all" ? " is-active" : ""}`}
                             onClick={() => {
-                              setIsMigrationToPresent(
-                                (currentValue) => !currentValue,
-                              );
+                              setStoreMessagesMode("all");
                               setFeedback("");
+                              setTelegramSyncSummary(null);
                             }}
                           >
-                            {storageCopy.present}
+                            All messages
+                          </button>
+                          <button
+                            type="button"
+                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "interval" ? " is-active" : ""}`}
+                            onClick={() => {
+                              setStoreMessagesMode("interval");
+                              setFeedback("");
+                              setTelegramSyncSummary(null);
+                            }}
+                          >
+                            Messages within interval
                           </button>
                         </div>
-                      </label>
+                      ) : null}
+                    </div>
+
+                    <div className="telegramControlPage_dateGrid">
+                      {migrationMode === "store" &&
+                      storeMessagesMode === "interval" ? (
+                        <>
+                          <label className="telegramControlPage_dateField">
+                            <span className="telegramControlPage_label">
+                              From date
+                            </span>
+                            <input
+                              type="date"
+                              value={migrationFromDate}
+                              onChange={(event) =>
+                                setMigrationFromDate(event.target.value)
+                              }
+                              className="telegramControlPage_input"
+                            />
+                          </label>
+                          <label className="telegramControlPage_dateField">
+                            <span className="telegramControlPage_label">
+                              To date
+                            </span>
+                            <div className="telegramControlPage_dateFieldRow">
+                              <input
+                                type="date"
+                                value={migrationToDate}
+                                onChange={(event) => {
+                                  setMigrationToDate(event.target.value);
+                                  if (event.target.value) {
+                                    setIsMigrationToPresent(false);
+                                  }
+                                }}
+                                className="telegramControlPage_input"
+                                disabled={isMigrationToPresent}
+                              />
+                              <button
+                                type="button"
+                                className={`telegramControlPage_toggleButton${isMigrationToPresent ? " is-active" : ""}`}
+                                onClick={() => {
+                                  setIsMigrationToPresent(
+                                    (currentValue) => !currentValue,
+                                  );
+                                  setFeedback("");
+                                }}
+                              >
+                                {storageCopy.present}
+                              </button>
+                            </div>
+                          </label>
+                        </>
+                      ) : migrationMode === "store" ? (
+                        <div className="telegramControlPage_syncModeNote">
+                          <span className="telegramControlPage_label">
+                            Store scope
+                          </span>
+                          <p className="telegramControlPage_status">
+                            All available messages from this group will be stored.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="telegramControlPage_syncModeNote">
+                          <span className="telegramControlPage_label">
+                            Sync window
+                          </span>
+                          <p className="telegramControlPage_status">
+                            All new messages from this group will be stored
+                            starting now.
+                          </p>
+                        </div>
+                      )}
                       <div className="telegramControlPage_actions telegramControlPage_actions--dateGrid">
                         <button
                           type="button"
@@ -2879,6 +3256,19 @@ const TelegramControlPage = ({
 
                     {feedback ? (
                       <p className="telegramControlPage_feedback">{feedback}</p>
+                    ) : null}
+                    {telegramSyncSummary?.started ? (
+                      <p className="telegramControlPage_status">
+                        Initial sync {telegramSyncSummary.succeeded ? "succeeded" : "failed"}.
+                        {" "}
+                        Imported {telegramSyncSummary.importedCount} message(s)
+                        after scanning {telegramSyncSummary.scannedCount}.
+                        {" "}
+                        Stored total: {telegramSyncSummary.storedCount}.
+                        {telegramSyncSummary.reason
+                          ? ` Reason: ${telegramSyncSummary.reason}.`
+                          : ""}
+                      </p>
                     ) : null}
                     <div className="telegramControlPage_scopeTableWrap">
                       <table className="telegramControlPage_scopeTable">
@@ -3004,6 +3394,132 @@ const TelegramControlPage = ({
 
                 {activePredictionTab === "settings" ? (
                   <div className="telegramControlPage_aiSection">
+                    <div className="telegramControlPage_connectionCard">
+                      <div className="telegramControlPage_connectionHeader">
+                        <div>
+                          <span className="telegramControlPage_label">
+                            Telegram login
+                          </span>
+                          <p className="telegramControlPage_status">
+                            {telegramAuthStage === "password"
+                              ? "Telegram is asking for the 2-step verification password."
+                              : telegramAuthStage === "connected"
+                                ? "Telegram login is connected for this account."
+                                : "Connect Telegram with API ID, API Hash, and phone number."}
+                          </p>
+                        </div>
+                        <div className="telegramControlPage_connectionBadges">
+                          <span className="telegramControlPage_connectionBadge">
+                            API ID: {telegramConfigStatus.hasApiId ? "Present" : "Missing"}
+                          </span>
+                          <span className="telegramControlPage_connectionBadge">
+                            API Hash: {telegramConfigStatus.hasApiHash ? "Present" : "Missing"}
+                          </span>
+                          <span className="telegramControlPage_connectionBadge">
+                            Session: {telegramConfigStatus.hasStringSession ? "Connected" : "Missing"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="telegramControlPage_connectionGrid">
+                        <input
+                          type="text"
+                          value={telegramApiIdInput}
+                          onChange={(event) => {
+                            setTelegramApiIdInput(event.target.value);
+                            if (telegramConfigFeedback) {
+                              setTelegramConfigFeedback("");
+                            }
+                          }}
+                          placeholder="TELEGRAM_API_ID"
+                          className="telegramControlPage_input"
+                        />
+                        <input
+                          type="text"
+                          value={telegramApiHashInput}
+                          onChange={(event) => {
+                            setTelegramApiHashInput(event.target.value);
+                            if (telegramConfigFeedback) {
+                              setTelegramConfigFeedback("");
+                            }
+                          }}
+                          placeholder="TELEGRAM_API_HASH"
+                          className="telegramControlPage_input"
+                        />
+                        <input
+                          type="text"
+                          value={telegramPhoneNumberInput}
+                          onChange={(event) => {
+                            setTelegramPhoneNumberInput(event.target.value);
+                            if (telegramConfigFeedback) {
+                              setTelegramConfigFeedback("");
+                            }
+                          }}
+                          placeholder="Telegram phone number with country code"
+                          className="telegramControlPage_input telegramControlPage_connectionField--full"
+                        />
+                        <button
+                          type="button"
+                          className="telegramControlPage_button telegramControlPage_button--primary telegramControlPage_connectionField--full"
+                          onClick={startTelegramAuth}
+                        >
+                          Send Telegram code
+                        </button>
+                        {telegramAuthStage === "code" ||
+                        telegramAuthStage === "password" ||
+                        telegramAuthStage === "connected" ? (
+                          <>
+                            <input
+                              type="text"
+                              value={telegramPhoneCodeInput}
+                              onChange={(event) => {
+                                setTelegramPhoneCodeInput(event.target.value);
+                                if (telegramConfigFeedback) {
+                                  setTelegramConfigFeedback("");
+                                }
+                              }}
+                              placeholder="Telegram login code"
+                              className="telegramControlPage_input"
+                            />
+                            <button
+                              type="button"
+                              className="telegramControlPage_button"
+                              onClick={verifyTelegramCode}
+                            >
+                              Verify code
+                            </button>
+                          </>
+                        ) : null}
+                        {telegramAuthStage === "password" ? (
+                          <>
+                            <input
+                              type="password"
+                              value={telegramPasswordInput}
+                              onChange={(event) => {
+                                setTelegramPasswordInput(event.target.value);
+                                if (telegramConfigFeedback) {
+                                  setTelegramConfigFeedback("");
+                                }
+                              }}
+                              placeholder="Telegram 2-step password if needed"
+                              className="telegramControlPage_input"
+                            />
+                            <button
+                              type="button"
+                              className="telegramControlPage_button"
+                              onClick={verifyTelegramPassword}
+                            >
+                              Verify password
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                      {telegramConfigFeedback ? (
+                        <p className="telegramControlPage_feedback">
+                          {telegramConfigFeedback}
+                        </p>
+                      ) : null}
+                    </div>
+
                     <label
                       htmlFor="telegramControlPage_predictionGroupScope"
                       className="telegramControlPage_label"

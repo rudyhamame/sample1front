@@ -1815,6 +1815,57 @@ class App extends React.Component {
           nextInfo?.username !== undefined
             ? String(nextInfo?.username || "").trim()
             : currentState.username,
+        studying: {
+          ...(currentState.studying && typeof currentState.studying === "object"
+            ? currentState.studying
+            : {}),
+          faculty:
+            nextInfo?.faculty !== undefined
+              ? String(nextInfo?.faculty || "").trim()
+              : String(currentState?.studying?.faculty || "").trim(),
+          program:
+            nextInfo?.program !== undefined
+              ? String(nextInfo?.program || "").trim()
+              : String(currentState?.studying?.program || "").trim(),
+          university:
+            nextInfo?.university !== undefined
+              ? String(nextInfo?.university || "").trim()
+              : String(currentState?.studying?.university || "").trim(),
+          time: {
+            ...(currentState?.studying?.time &&
+            typeof currentState.studying.time === "object"
+              ? currentState.studying.time
+              : {}),
+            currentAcademicYear:
+              nextInfo?.currentAcademicYear !== undefined &&
+              String(nextInfo?.currentAcademicYear || "").trim() !== ""
+                ? Number(nextInfo.currentAcademicYear)
+                : String(nextInfo?.currentAcademicYear || "").trim() === ""
+                  ? null
+                  : currentState?.studying?.time?.currentAcademicYear ?? null,
+            currentDate: {
+              ...(currentState?.studying?.time?.currentDate &&
+              typeof currentState.studying.time.currentDate === "object"
+                ? currentState.studying.time.currentDate
+                : {}),
+              year:
+                nextInfo?.studyYear !== undefined &&
+                String(nextInfo?.studyYear || "").trim() !== ""
+                  ? Number(nextInfo.studyYear)
+                  : String(nextInfo?.studyYear || "").trim() === ""
+                    ? null
+                    : currentState?.studying?.time?.currentDate?.year ?? null,
+              term:
+                nextInfo?.term !== undefined
+                  ? String(nextInfo?.term || "").trim()
+                  : String(currentState?.studying?.time?.currentDate?.term || "").trim(),
+            },
+          },
+        },
+        faculty:
+          nextInfo?.faculty !== undefined
+            ? String(nextInfo?.faculty || "").trim()
+            : currentState.faculty,
         program: String(nextInfo?.program || "").trim(),
         university: String(nextInfo?.university || "").trim(),
         studyYear: String(nextInfo?.studyYear || "").trim(),
@@ -1835,6 +1886,7 @@ class App extends React.Component {
           firstname: this.state.firstname,
           lastname: this.state.lastname,
           username: this.state.username,
+          studying: this.state.studying,
           faculty: this.state.faculty,
           program: this.state.program,
           university: this.state.university,
@@ -2628,9 +2680,11 @@ class App extends React.Component {
             ) : null}
           </article>
         </Route>
-        <Route path="/profile/:username">
+        <Route exact path={["/profile/:username", "/phenomed/:username"]}>
           <article id="app_page" className={appPageClassName}>
-            <Profile viewerState={this.state} logOut={this.logOut} />
+            <main id="Main_article" className="fr">
+              <Profile viewerState={this.state} logOut={this.logOut} />
+            </main>
             {showServerAnswerFooter ? (
               <Footer
                 appState={this.state}

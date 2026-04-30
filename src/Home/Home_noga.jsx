@@ -1669,8 +1669,10 @@ function HomeNoga(props) {
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [isAcademicInfoEditing, setIsAcademicInfoEditing] = useState(false);
   const [academicInfoFields, setAcademicInfoFields] = useState({
+    faculty: "",
     program: "",
     university: "",
+    currentAcademicYear: "",
     studyYear: "",
     term: "",
   });
@@ -1943,6 +1945,14 @@ function HomeNoga(props) {
       ...currentSections,
       [sectionKey]: !currentSections?.[sectionKey],
     }));
+  };
+
+  const openProfileEditor = () => {
+    setOpenReportSections((currentSections) => ({
+      ...currentSections,
+      controlPanel: true,
+    }));
+    setIsAcademicInfoEditing(true);
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -3146,23 +3156,33 @@ function HomeNoga(props) {
 
   React.useEffect(() => {
     const nextAcademicInfoFields = {
+      faculty: String(props.state?.faculty || props.state?.studying?.faculty || ""),
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
+      currentAcademicYear: String(
+        props.state?.studying?.time?.currentAcademicYear || "",
+      ),
       studyYear: String(props.state?.studyYear || ""),
       term: String(props.state?.term || ""),
     };
 
     setAcademicInfoFields((currentFields) =>
+      currentFields.faculty === nextAcademicInfoFields.faculty &&
       currentFields.program === nextAcademicInfoFields.program &&
       currentFields.university === nextAcademicInfoFields.university &&
+      currentFields.currentAcademicYear ===
+        nextAcademicInfoFields.currentAcademicYear &&
       currentFields.studyYear === nextAcademicInfoFields.studyYear &&
       currentFields.term === nextAcademicInfoFields.term
         ? currentFields
         : nextAcademicInfoFields,
     );
   }, [
+    props.state?.faculty,
+    props.state?.studying?.faculty,
     props.state?.program,
     props.state?.university,
+    props.state?.studying?.time?.currentAcademicYear,
     props.state?.studyYear,
     props.state?.term,
   ]);
@@ -3548,11 +3568,31 @@ function HomeNoga(props) {
         const initials =
           `${firstName.charAt(0) || displayName.charAt(0) || "U"}${lastName.charAt(0) || username.charAt(0) || ""}`.toUpperCase() ||
           "U";
+        const profile = entry?.profile && typeof entry.profile === "object"
+          ? entry.profile
+          : {};
+        const profileStudying =
+          profile?.studying && typeof profile.studying === "object"
+            ? profile.studying
+            : {};
+        const profileWorking =
+          profile?.working && typeof profile.working === "object"
+            ? profile.working
+            : {};
+        const profileHometown =
+          profile?.hometown && typeof profile.hometown === "object"
+            ? profile.hometown
+            : {};
         return {
           id: String(entry?._id || entry?.id || info?._id || username || index),
           displayName,
           username,
           initials,
+          isConnected: Boolean(
+            entry?.status?.isConnected ??
+              entry?.status?.isLoggedIn ??
+              entry?.identity?.status?.isLoggedIn,
+          ),
           userMode: normalizeFriendUserMode(
             entry?.userMode ||
               entry?.mode ||
@@ -3565,6 +3605,31 @@ function HomeNoga(props) {
               entry?.profilePicture ||
               "",
           ).trim(),
+          profileState: {
+            firstname: firstName,
+            lastname: lastName,
+            username,
+            email: String(profile?.email || "").trim(),
+            phone: String(profile?.phone || "").trim(),
+            bio: String(profile?.bio || "").trim(),
+            dob: profile?.dob || null,
+            faculty: String(profileStudying?.faculty || "").trim(),
+            program: String(profileStudying?.program || "").trim(),
+            university: String(profileStudying?.university || "").trim(),
+            studyYear: String(
+              profileStudying?.time?.currentDate?.year ||
+                profileStudying?.academicYear ||
+                "",
+            ).trim(),
+            term: String(
+              profileStudying?.time?.currentDate?.term ||
+                profileStudying?.term ||
+                "",
+            ).trim(),
+            hometown: profileHometown,
+            studying: profileStudying,
+            working: profileWorking,
+          },
         };
       })
       .filter((entry) => entry.id);
@@ -4401,35 +4466,113 @@ function HomeNoga(props) {
     [groupSearchQuery, renderConnectionSearchPanel],
   );
 
-  const renderBlockedUserListItem = React.useCallback((user) => {
-    return (
-      <li key={user.id} className="Home_Noga_socialFriendItem">
-        <div className="Home_Noga_socialFriendSummary">
-          <div className="Home_Noga_socialFriendIdentity">
-            <div className="Home_Noga_socialFriendAvatar">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={`${user.displayName} avatar`}
-                  className="Home_Noga_socialFriendAvatarImage"
-                />
-              ) : (
-                <span aria-hidden="true">{user.initials}</span>
-              )}
+  const renderBlockedUserListItem = React.useCallback(
+    (user) => {
+      const userId = String(user?.id || "").trim();
+      const username = String(user?.username || "").trim();
+      const userMode = normalizeFriendUserMode(user?.userMode);
+      const canAcceptRequest = userMode === "requestreceived";
+      const isSentRequest = userMode === "requestsent";
+      const showFriendPresence = userMode === "friend";
+      const friendPresenceState = showFriendPresence
+        ? user?.isConnected
+          ? {
+              modifierClass: "Home_Noga_socialFriendStatus--connected",
+              iconClass: "fa-circle",
+              label: "Online",
+            }
+          : {
+              modifierClass: "Home_Noga_socialFriendStatus--offline",
+              iconClass: "fa-circle",
+              label: "Offline",
+            }
+        : null;
+
+      return (
+        <li
+          key={user.id}
+          className="Home_Noga_socialFriendItem"
+          onClick={() => {
+            if (username) {
+              history.push(`/phenomed/${encodeURIComponent(username)}`, {
+                profileTheme: {
+                  variant: "noga",
+                  isDark: isHomeNogaDarkTheme,
+                  backPath: "/phenomed/home/noga",
+                },
+              });
+            }
+          }}
+        >
+          <div className="Home_Noga_socialFriendSummary">
+            <div className="Home_Noga_socialFriendIdentity">
+              <div className="Home_Noga_socialFriendAvatar">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={`${user.displayName} avatar`}
+                    className="Home_Noga_socialFriendAvatarImage"
+                  />
+                ) : (
+                  <span aria-hidden="true">{user.initials}</span>
+                )}
+              </div>
+              <div className="Home_Noga_socialFriendCopy">
+                <span className="Home_Noga_socialFriendName">
+                  {user.displayName}
+                </span>
+                <span className="Home_Noga_socialFriendUsername">
+                  {user.username || "Blocked user"}
+                </span>
+              </div>
             </div>
-            <div className="Home_Noga_socialFriendCopy">
-              <span className="Home_Noga_socialFriendName">
-                {user.displayName}
-              </span>
-              <span className="Home_Noga_socialFriendUsername">
-                {user.username || "Blocked user"}
-              </span>
-            </div>
+            {friendPresenceState ? (
+              <div className="Home_Noga_socialFriendPresence">
+                <span
+                  className={`Home_Noga_socialFriendStatus ${friendPresenceState.modifierClass}`}
+                >
+                  <i className={`fas ${friendPresenceState.iconClass}`}></i>
+                  <span>{friendPresenceState.label}</span>
+                </span>
+              </div>
+            ) : null}
+            {canAcceptRequest || isSentRequest ? (
+              <div className="Home_Noga_socialRequestActions">
+                {canAcceptRequest ? (
+                  <button
+                    type="button"
+                    className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      userId && props.acceptFriend?.(`accept_icon${userId}`);
+                    }}
+                    disabled={!userId}
+                    aria-label="Accept friend request"
+                    title="Accept friend request"
+                  >
+                    <i className="fas fa-user-check"></i>
+                  </button>
+                ) : null}
+                {isSentRequest ? (
+                  <button
+                    type="button"
+                    className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--pending"
+                    disabled
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label="Friend request pending"
+                    title="Friend request pending"
+                  >
+                    <i className="fas fa-hourglass-half"></i>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-        </div>
-      </li>
-    );
-  }, []);
+        </li>
+      );
+    },
+    [history, props],
+  );
 
   const openGalleryUploadPicker = () => {
     galleryUploadInputRef.current?.click();
@@ -6632,8 +6775,10 @@ function HomeNoga(props) {
           firstname: String(props.state?.firstname || "").trim(),
           lastname: String(props.state?.lastname || "").trim(),
           username: String(props.state?.username || "").trim(),
+          faculty: academicInfoFields.faculty,
           program: academicInfoFields.program,
           university: academicInfoFields.university,
+          currentAcademicYear: academicInfoFields.currentAcademicYear,
           studyYear: academicInfoFields.studyYear,
           term: academicInfoFields.term,
           aiProvider: String(props.state?.aiProvider || "openai").trim(),
@@ -6653,16 +6798,22 @@ function HomeNoga(props) {
         firstname: nextInfo?.firstname || props.state?.firstname || "",
         lastname: nextInfo?.lastname || props.state?.lastname || "",
         username: nextInfo?.username || props.state?.username || "",
+        faculty: nextInfo?.faculty || academicInfoFields.faculty,
         program: nextInfo?.program || academicInfoFields.program,
         university: nextInfo?.university || academicInfoFields.university,
+        currentAcademicYear:
+          nextInfo?.currentAcademicYear || academicInfoFields.currentAcademicYear,
         studyYear: nextInfo?.studyYear || academicInfoFields.studyYear,
         term: nextInfo?.term || academicInfoFields.term,
         aiProvider:
           nextInfo?.aiProvider || String(props.state?.aiProvider || "openai"),
       });
       setAcademicInfoFields({
+        faculty: nextInfo?.faculty || academicInfoFields.faculty,
         program: nextInfo?.program || academicInfoFields.program,
         university: nextInfo?.university || academicInfoFields.university,
+        currentAcademicYear:
+          nextInfo?.currentAcademicYear || academicInfoFields.currentAcademicYear,
         studyYear: nextInfo?.studyYear || academicInfoFields.studyYear,
         term: nextInfo?.term || academicInfoFields.term,
       });
@@ -6765,15 +6916,23 @@ function HomeNoga(props) {
         lastname: nextInfo?.lastname || payloadBody.lastname,
         username: nextInfo?.username || payloadBody.username,
         bio: nextInfo?.bio || payloadBody.bio,
+        faculty: nextInfo?.faculty || academicInfoFields.faculty,
         program: nextInfo?.program || payloadBody.program,
         university: nextInfo?.university || payloadBody.university,
+        currentAcademicYear:
+          nextInfo?.currentAcademicYear ||
+          String(props.state?.studying?.time?.currentAcademicYear || ""),
         studyYear: nextInfo?.studyYear || payloadBody.studyYear,
         term: nextInfo?.term || payloadBody.term,
         aiProvider: nextInfo?.aiProvider || payloadBody.aiProvider,
       });
       setAcademicInfoFields({
+        faculty: nextInfo?.faculty || academicInfoFields.faculty,
         program: nextInfo?.program || payloadBody.program,
         university: nextInfo?.university || payloadBody.university,
+        currentAcademicYear:
+          nextInfo?.currentAcademicYear ||
+          String(props.state?.studying?.time?.currentAcademicYear || ""),
         studyYear: nextInfo?.studyYear || payloadBody.studyYear,
         term: nextInfo?.term || payloadBody.term,
       });
@@ -6847,8 +7006,10 @@ function HomeNoga(props) {
     );
   };
 
-  const profileState =
+  const ownProfileState =
     props.state && typeof props.state === "object" ? props.state : {};
+  const isViewingExternalProfile = false;
+  const profileState = ownProfileState;
   const profileStudying =
     profileState.studying && typeof profileState.studying === "object"
       ? profileState.studying
@@ -7002,6 +7163,9 @@ function HomeNoga(props) {
   const compactBio = formatProfileValue(profileState.bio);
   const isCompactBioArabic = isArabicText(compactBio);
   const isEditingCompactBio = activePersonalInfoField === "bio";
+  const displayedProfilePictureSrc = String(
+    props.state?.profilePicture || "",
+  ).trim();
   const bioWrapperStyle = {
     "--home-bio-wallpaper-image": currentBioWallpaperUrl
       ? `url("${currentBioWallpaperUrl.replace(/"/g, '\\"')}")`
@@ -7256,23 +7420,67 @@ function HomeNoga(props) {
                   >
                     <div className="Home_Noga_preStart_profileViewportFrame">
                       {renderHomeDrawingVisibilityCanvas("profile")}
-                      {profilePictureSrc ? (
+                      {displayedProfilePictureSrc ? (
                         <img
                           id="Home_Noga_preStart_profilePic"
                           ref={profilePictureImageRef}
-                          src={profilePictureSrc}
-                          alt={`${props.state.firstname} ${props.state.lastname}`}
-                          onDoubleClick={resetProfilePictureViewport}
-                          onTouchStart={handleProfilePictureTouchStart}
-                          onTouchMove={handleProfilePictureTouchMove}
-                          onTouchEnd={handleProfilePictureTouchEnd}
-                          onTouchCancel={handleProfilePictureTouchEnd}
-                          onPointerDown={handleProfilePicturePointerDown}
-                          onPointerMove={handleProfilePicturePointerMove}
-                          onPointerUp={handleProfilePicturePointerUp}
-                          onPointerCancel={handleProfilePicturePointerUp}
-                          onWheel={handleProfilePictureWheel}
-                          className={isProfilePictureDragging ? "isDragging" : ""}
+                          src={displayedProfilePictureSrc}
+                          alt={compactDisplayName}
+                          onDoubleClick={
+                            isViewingExternalProfile
+                              ? undefined
+                              : resetProfilePictureViewport
+                          }
+                          onTouchStart={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePictureTouchStart
+                          }
+                          onTouchMove={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePictureTouchMove
+                          }
+                          onTouchEnd={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePictureTouchEnd
+                          }
+                          onTouchCancel={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePictureTouchEnd
+                          }
+                          onPointerDown={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePicturePointerDown
+                          }
+                          onPointerMove={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePicturePointerMove
+                          }
+                          onPointerUp={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePicturePointerUp
+                          }
+                          onPointerCancel={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePicturePointerUp
+                          }
+                          onWheel={
+                            isViewingExternalProfile
+                              ? undefined
+                              : handleProfilePictureWheel
+                          }
+                          className={
+                            !isViewingExternalProfile && isProfilePictureDragging
+                              ? "isDragging"
+                              : ""
+                          }
                         />
                       ) : (
                         <i className="fas fa-user" aria-hidden="true"></i>
@@ -7283,6 +7491,7 @@ function HomeNoga(props) {
                         type="file"
                         accept={activeGalleryUploadConfig.accept}
                         className="Home_Noga_hiddenFileInput"
+                        disabled={isViewingExternalProfile}
                         onChange={handleProfilePictureSelected}
                       />
                     </div>
@@ -7317,16 +7526,18 @@ function HomeNoga(props) {
                         <div className="Home_Noga_compactBioSummary">
                           <div className="Home_Noga_compactBioHeadingRow">
                             <p className="Home_Noga_compactBioEyebrow">Bio</p>
-                            <button
-                              type="button"
-                              className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
-                              onClick={() => startInlinePersonalInfoEdit("bio")}
-                              aria-label="Edit bio"
-                              title="Edit bio"
-                              disabled={isPersonalInfoInlineSubmitting}
-                            >
-                              <i className="fas fa-pen"></i>
-                            </button>
+                            {!isViewingExternalProfile ? (
+                              <button
+                                type="button"
+                                className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
+                                onClick={() => startInlinePersonalInfoEdit("bio")}
+                                aria-label="Edit bio"
+                                title="Edit bio"
+                                disabled={isPersonalInfoInlineSubmitting}
+                              >
+                                <i className="fas fa-pen"></i>
+                              </button>
+                            ) : null}
                           </div>
                           {isEditingCompactBio ? (
                             <div className="Home_Noga_compactBioEditor fc">
@@ -7455,16 +7666,25 @@ function HomeNoga(props) {
                       <>
                         <div className="Home_Noga_friendsEventsHeader">
                           <h3>About Profile</h3>
-                          <button
-                            type="button"
-                            className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                            onClick={() =>
-                              setIsAboutOpen((currentValue) => !currentValue)
-                            }
-                            aria-pressed={isAboutOpen}
-                          >
-                            Close About
-                          </button>
+                          <div className="Home_Noga_friendsEventsHeaderActions">
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton"
+                              onClick={openProfileEditor}
+                            >
+                              Edit Profile
+                            </button>
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                              onClick={() =>
+                                setIsAboutOpen((currentValue) => !currentValue)
+                              }
+                              aria-pressed={isAboutOpen}
+                            >
+                              Close About
+                            </button>
+                          </div>
                         </div>
                         <div className="Home_Noga_aboutPanel">
                           {profileColumns.map((column) => (
@@ -7514,7 +7734,9 @@ function HomeNoga(props) {
                           type="button"
                           className="Home_Noga_changePasswordSubmit Home_Noga_galleryUploadButton Home_Noga_friendsGalleryUploadButton"
                           onClick={openGalleryUploadPicker}
-                          disabled={isImageGalleryUploading}
+                          disabled={
+                            isImageGalleryUploading || isViewingExternalProfile
+                          }
                           aria-label={
                             isImageGalleryUploading
                               ? `Uploading ${activeGalleryUploadConfig.label}`
@@ -8721,6 +8943,13 @@ function HomeNoga(props) {
                   >
                     <input
                       type="text"
+                      name="faculty"
+                      placeholder="Faculty"
+                      value={academicInfoFields.faculty}
+                      onChange={updateAcademicInfoField}
+                    />
+                    <input
+                      type="text"
                       name="program"
                       placeholder="Program"
                       value={academicInfoFields.program}
@@ -8731,6 +8960,13 @@ function HomeNoga(props) {
                       name="university"
                       placeholder="University"
                       value={academicInfoFields.university}
+                      onChange={updateAcademicInfoField}
+                    />
+                    <input
+                      type="text"
+                      name="currentAcademicYear"
+                      placeholder="Current academic year number"
+                      value={academicInfoFields.currentAcademicYear}
                       onChange={updateAcademicInfoField}
                     />
                     <input

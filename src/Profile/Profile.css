@@ -1,0 +1,231 @@
+.Profile_pageShell {
+  min-height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: rgba(24, 84, 55, 0.92);
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(251, 236, 226, 0.86) 0%,
+      rgba(237, 247, 240, 0.92) 42%,
+      rgba(230, 243, 239, 0.96) 100%
+    );
+}
+
+.Profile_pageShell--home {
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(251, 236, 226, 0.86) 0%,
+      rgba(237, 247, 240, 0.92) 42%,
+      rgba(230, 243, 239, 0.96) 100%
+    );
+}
+
+.Profile_pageShell--noga {
+  color: rgba(105, 72, 71, 0.92);
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(255, 248, 239, 0.94) 0%,
+      rgba(240, 229, 215, 0.94) 44%,
+      rgba(230, 214, 198, 0.96) 100%
+    );
+}
+
+.Profile_pageFrame {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.Profile_pageFrame .Home_settingsBackRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.Profile_sectionTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.Profile_pageIntroWrap {
+  display: block;
+  min-height: 0;
+}
+
+.Profile_pageShell .Home_main_leftColumn_wrapper {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  border-radius: 24px;
+}
+
+.Profile_pageShell--noga .Home_main_leftColumn_wrapper {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 246, 238, 0.42) 1%,
+    rgba(235, 214, 197, 0.52) 54%,
+    rgba(214, 191, 176, 0.5) 100%
+  );
+}
+
+.Profile_pageShell #Home_bioWrapper {
+  width: 100%;
+}
+
+.Profile_pageShell #Home_preStart_profileWrapper {
+  cursor: default;
+  touch-action: auto;
+}
+
+.Profile_pageShell--noga #Home_preStart_profileWrapper,
+.Profile_pageShell--noga .Home_friendsEvents,
+.Profile_pageShell--noga .Home_aboutPanel .Home_profileInfoColumn,
+.Profile_pageShell--noga .Home_aboutPanel p,
+.Profile_pageShell--noga .Home_settingsBackButton {
+  border-color: rgba(126, 79, 76, 0.18);
+  background: rgba(255, 251, 246, 0.64);
+  color: rgba(105, 72, 71, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 10px 22px rgba(105, 72, 71, 0.08);
+}
+
+.Profile_pageShell--noga .Home_friendsEvents {
+  border-right: 0;
+}
+
+.Profile_pageShell--noga .Home_compactBioCard {
+  border-color: rgba(126, 79, 76, 0.22);
+  background: rgba(255, 244, 235, 0.72);
+}
+
+.Profile_pageShell--noga .Home_compactBioSummary {
+  border-left-color: rgba(126, 79, 76, 0.16);
+}
+
+.Profile_pageShell--noga .Home_compactBioName,
+.Profile_pageShell--noga .Home_friendsEventsHeader h3,
+.Profile_pageShell--noga .Home_aboutPanel p span {
+  color: rgba(105, 72, 71, 0.94);
+}
+
+.Profile_pageShell--noga .Home_compactBioUsername,
+.Profile_pageShell--noga .Home_compactBioEyebrow,
+.Profile_pageShell--noga .Home_aboutPanel .Home_profileInfoColumnTitle,
+.Profile_pageShell--noga .Home_aboutPanel p strong {
+  color: rgba(126, 79, 76, 0.72);
+}
+
+.Profile_pageShell #Home_preStart_profilePic {
+  cursor: default;
+}
+
+.Profile_pageAboutWrapper {
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.Profile_pageAboutWrapper .Home_friendsEvents {
+  border-right: 0;
+}
+
+.Profile_gallerySection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.Profile_gallerySection .Home_galleryThumbWrap {
+  overflow: hidden;
+}
+
+.Profile_gallerySection .Home_galleryThumb {
+  border-radius: 10px;
+}
+
+.Profile_pageShell--dark {
+  color: rgba(216, 232, 237, 0.88);
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(16, 31, 38, 0.94) 0%,
+      rgba(9, 24, 31, 0.98) 42%,
+      rgba(7, 18, 24, 1) 100%
+    );
+}
+
+.Profile_pageShell--dark .Home_main_leftColumn_wrapper {
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 31, 0.56) 0%,
+    rgba(12, 31, 39, 0.5) 52%,
+    rgba(15, 38, 46, 0.46) 100%
+  );
+}
+
+.Profile_pageShell--dark #Home_preStart_profileWrapper,
+.Profile_pageShell--dark .Home_friendsEvents,
+.Profile_pageShell--dark .Home_aboutPanel .Home_profileInfoColumn,
+.Profile_pageShell--dark .Home_aboutPanel p,
+.Profile_pageShell--dark .Home_settingsBackButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(236, 245, 247, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.2);
+}
+
+.Profile_pageShell--dark .Home_compactBioCard {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(9, 24, 31, 0.4);
+}
+
+.Profile_pageShell--dark .Home_compactBioSummary {
+  border-left-color: rgba(110, 168, 180, 0.24);
+}
+
+.Profile_pageShell--dark .Home_compactBioName,
+.Profile_pageShell--dark .Home_friendsEventsHeader h3,
+.Profile_pageShell--dark .Home_aboutPanel p span {
+  color: rgba(232, 246, 248, 0.94);
+}
+
+.Profile_pageShell--dark .Home_compactBioUsername,
+.Profile_pageShell--dark .Home_compactBioEyebrow,
+.Profile_pageShell--dark .Home_aboutPanel .Home_profileInfoColumnTitle,
+.Profile_pageShell--dark .Home_aboutPanel p strong {
+  color: rgba(173, 217, 226, 0.72);
+}
+
+@media (max-width: 720px) {
+  .Profile_pageFrame {
+    padding: 12px;
+  }
+
+  .Profile_pageShell .Home_main_leftColumn_wrapper {
+    border-radius: 18px;
+  }
+
+  .Profile_pageFrame .Home_settingsBackRow {
+    gap: 8px;
+  }
+
+  .Profile_sectionTabs {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
