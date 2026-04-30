@@ -1803,6 +1803,16 @@ class App extends React.Component {
           nextInfo?.bio !== undefined
             ? String(nextInfo?.bio || "").trim()
             : currentState.bio,
+        email:
+          nextInfo?.email !== undefined
+            ? String(nextInfo?.email || "").trim()
+            : currentState.email,
+        phone:
+          nextInfo?.phone !== undefined
+            ? String(nextInfo?.phone || "").trim()
+            : currentState.phone,
+        dob:
+          nextInfo?.dob !== undefined ? nextInfo?.dob || null : currentState.dob,
         firstname:
           nextInfo?.firstname !== undefined
             ? String(nextInfo?.firstname || "").trim()
@@ -1831,6 +1841,10 @@ class App extends React.Component {
             nextInfo?.university !== undefined
               ? String(nextInfo?.university || "").trim()
               : String(currentState?.studying?.university || "").trim(),
+          language:
+            nextInfo?.language !== undefined
+              ? String(nextInfo?.language || "").trim()
+              : String(currentState?.studying?.language || "").trim(),
           time: {
             ...(currentState?.studying?.time &&
             typeof currentState.studying.time === "object"
@@ -1862,6 +1876,32 @@ class App extends React.Component {
             },
           },
         },
+        working: {
+          ...(currentState.working && typeof currentState.working === "object"
+            ? currentState.working
+            : {}),
+          company:
+            nextInfo?.company !== undefined
+              ? String(nextInfo?.company || "").trim()
+              : String(currentState?.working?.company || "").trim(),
+          position:
+            nextInfo?.position !== undefined
+              ? String(nextInfo?.position || "").trim()
+              : String(currentState?.working?.position || "").trim(),
+        },
+        hometown: {
+          ...(currentState.hometown && typeof currentState.hometown === "object"
+            ? currentState.hometown
+            : {}),
+          Country:
+            nextInfo?.hometownCountry !== undefined
+              ? String(nextInfo?.hometownCountry || "").trim()
+              : String(currentState?.hometown?.Country || "").trim(),
+          City:
+            nextInfo?.hometownCity !== undefined
+              ? String(nextInfo?.hometownCity || "").trim()
+              : String(currentState?.hometown?.City || "").trim(),
+        },
         faculty:
           nextInfo?.faculty !== undefined
             ? String(nextInfo?.faculty || "").trim()
@@ -1883,9 +1923,14 @@ class App extends React.Component {
       () => {
         this.persistStoredSession({
           bio: this.state.bio,
+          email: this.state.email,
+          phone: this.state.phone,
+          dob: this.state.dob,
           firstname: this.state.firstname,
           lastname: this.state.lastname,
           username: this.state.username,
+          hometown: this.state.hometown,
+          working: this.state.working,
           studying: this.state.studying,
           faculty: this.state.faculty,
           program: this.state.program,

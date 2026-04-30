@@ -86,6 +86,17 @@ const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
   },
 };
 
+const HOME_GALLERY_VISIBILITY_FILTERS = [
+  { id: "public", label: "Public" },
+  { id: "me", label: "Private" },
+  { id: "hidden", label: "Hidden" },
+];
+
+const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
+  { length: 30 },
+  (_, index) => `${2000 + index}-${2001 + index}`,
+);
+
 const HOME_DRAWING_ALLOWLIST_ZONES = [
   { id: "canvas", label: "Canvas", selector: "#Home_Noga_main_wrapper" },
   {
@@ -1627,6 +1638,8 @@ function HomeNoga(props) {
   const isDrawingPointerActiveRef = React.useRef(false);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
+  const controlPanelCardRef = React.useRef(null);
+  const academicInfoFormRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
     mode: "idle",
     startX: 0,
@@ -1640,6 +1653,8 @@ function HomeNoga(props) {
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   // Gallery tab state: 'images' | 'patterns' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
+  const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
+    useState("public");
   const activeGalleryUploadConfig =
     HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab] ||
     HOME_GALLERY_TAB_UPLOAD_CONFIG.images;
@@ -1649,6 +1664,18 @@ function HomeNoga(props) {
     isImageGallerySettingProfilePublicId,
     setIsImageGallerySettingProfilePublicId,
   ] = useState("");
+  const [
+    isImageGalleryVisibilityUpdatingPublicId,
+    setIsImageGalleryVisibilityUpdatingPublicId,
+  ] = useState("");
+  const [isHiddenGalleryPasswordPromptOpen, setIsHiddenGalleryPasswordPromptOpen] =
+    useState(false);
+  const [hiddenGalleryPasswordInput, setHiddenGalleryPasswordInput] =
+    useState("");
+  const [hiddenGalleryPasswordFeedback, setHiddenGalleryPasswordFeedback] =
+    useState("");
+  const [isHiddenGalleryPasswordSubmitting, setIsHiddenGalleryPasswordSubmitting] =
+    useState(false);
   const [clearPendingFeedback, setClearPendingFeedback] = useState("");
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
@@ -1675,6 +1702,29 @@ function HomeNoga(props) {
     currentAcademicYear: "",
     studyYear: "",
     term: "",
+  });
+  const [isAboutProfileEditing, setIsAboutProfileEditing] = useState(false);
+  const [isAboutProfileSubmitting, setIsAboutProfileSubmitting] =
+    useState(false);
+  const [aboutProfileDraft, setAboutProfileDraft] = useState({
+    firstname: "",
+    lastname: "",
+    username: "",
+    dob: "",
+    university: "",
+    program: "",
+    faculty: "",
+    currentYear: "",
+    currentTerm: "",
+    currentAcademicYear: "",
+    language: "",
+    company: "",
+    position: "",
+    email: "",
+    phone: "",
+    hometownCountry: "",
+    hometownCity: "",
+    bio: "",
   });
   const [academicInfoFeedback, setAcademicInfoFeedback] = useState({
     tone: "",
@@ -1948,11 +1998,11 @@ function HomeNoga(props) {
   };
 
   const openProfileEditor = () => {
-    setOpenReportSections((currentSections) => ({
-      ...currentSections,
-      controlPanel: true,
-    }));
-    setIsAcademicInfoEditing(true);
+    setAcademicInfoFeedback({
+      tone: "",
+      message: "",
+    });
+    setIsAboutProfileEditing(true);
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -3188,6 +3238,70 @@ function HomeNoga(props) {
   ]);
 
   React.useEffect(() => {
+    const nextAboutProfileDraft = {
+      firstname: String(props.state?.firstname || ""),
+      lastname: String(props.state?.lastname || ""),
+      username: String(props.state?.username || ""),
+      dob: props.state?.dob
+        ? String(props.state.dob).slice(0, 10)
+        : "",
+      university: String(
+        props.state?.studying?.university || props.state?.university || "",
+      ),
+      program: String(
+        props.state?.studying?.program || props.state?.program || "",
+      ),
+      faculty: String(
+        props.state?.studying?.faculty || props.state?.faculty || "",
+      ),
+      currentYear: String(props.state?.studyYear || ""),
+      currentTerm: String(
+        props.state?.studying?.time?.currentDate?.term || props.state?.term || "",
+      ),
+      currentAcademicYear: String(
+        props.state?.studying?.time?.currentAcademicYear || "",
+      ),
+      language: String(props.state?.studying?.language || ""),
+      company: String(props.state?.working?.company || ""),
+      position: String(props.state?.working?.position || ""),
+      email: String(props.state?.email || ""),
+      phone: String(props.state?.phone || ""),
+      hometownCountry: String(props.state?.hometown?.Country || ""),
+      hometownCity: String(props.state?.hometown?.City || ""),
+      bio: String(props.state?.bio || ""),
+    };
+
+    setAboutProfileDraft((currentDraft) =>
+      JSON.stringify(currentDraft) === JSON.stringify(nextAboutProfileDraft)
+        ? currentDraft
+        : nextAboutProfileDraft,
+    );
+  }, [
+    props.state?.firstname,
+    props.state?.lastname,
+    props.state?.username,
+    props.state?.dob,
+    props.state?.studying?.university,
+    props.state?.university,
+    props.state?.studying?.program,
+    props.state?.program,
+    props.state?.studying?.faculty,
+    props.state?.faculty,
+    props.state?.studyYear,
+    props.state?.studying?.time?.currentDate?.term,
+    props.state?.term,
+    props.state?.studying?.time?.currentAcademicYear,
+    props.state?.studying?.language,
+    props.state?.working?.company,
+    props.state?.working?.position,
+    props.state?.email,
+    props.state?.phone,
+    props.state?.hometown?.Country,
+    props.state?.hometown?.City,
+    props.state?.bio,
+  ]);
+
+  React.useEffect(() => {
     const nextLoginLogEntries = Array.isArray(props.state?.login_record)
       ? props.state.login_record
       : [];
@@ -3229,6 +3343,50 @@ function HomeNoga(props) {
   );
   const profilePictureSrc = String(props.state?.profilePicture || "").trim();
   const activeGalleryImage = imageOnlyGallery[activeGalleryImageIndex] || null;
+  const normalizeGalleryVisibility = (visibility) => {
+    const normalizedVisibility = String(visibility || "")
+      .trim()
+      .toLowerCase();
+
+    if (normalizedVisibility === "private") {
+      return "me";
+    }
+
+    return ["public", "me", "hidden"].includes(normalizedVisibility)
+      ? normalizedVisibility
+      : "public";
+  };
+  const filteredGalleryItems = React.useMemo(
+    () =>
+      imageGallery.filter((image) => {
+        if (galleryTab === "images") {
+          if (
+            isVideoGalleryItem(image) ||
+            String(image?.resourceType || image?.resource_type || "")
+              .trim()
+              .toLowerCase() === "pattern"
+          ) {
+            return false;
+          }
+
+          return (
+            normalizeGalleryVisibility(image?.visibility) ===
+              galleryImageVisibilityTab
+          );
+        }
+
+        if (galleryTab === "patterns") {
+          return (
+            String(image?.resourceType || image?.resource_type || "")
+              .trim()
+              .toLowerCase() === "pattern"
+          );
+        }
+
+        return isVideoGalleryItem(image);
+      }),
+    [galleryImageVisibilityTab, galleryTab, imageGallery],
+  );
   const socialFriends = React.useMemo(() => {
     const rawFriends = Array.isArray(props.state?.friends)
       ? props.state.friends
@@ -5271,6 +5429,7 @@ function HomeNoga(props) {
             format: cloudinaryPayload.format,
             bytes: cloudinaryPayload.bytes,
             duration: cloudinaryPayload.duration,
+            visibility: "public",
             createdAt: new Date().toISOString(),
           }),
         });
@@ -6972,6 +7131,299 @@ function HomeNoga(props) {
     }
   };
 
+  const handleUpdateGalleryImageVisibility = async (publicId, visibility) => {
+    const nextPublicId = String(publicId || "").trim();
+    const nextVisibility = normalizeGalleryVisibility(visibility);
+
+    if (!nextPublicId || !props.state?.token) {
+      return;
+    }
+
+    const targetImage = imageGallery.find(
+      (image) => String(image?.publicId || "").trim() === nextPublicId,
+    );
+
+    if (!targetImage) {
+      return;
+    }
+
+    if (
+      normalizeGalleryVisibility(targetImage?.visibility) === nextVisibility
+    ) {
+      return;
+    }
+
+    setIsImageGalleryVisibilityUpdatingPublicId(nextPublicId);
+
+    try {
+      const response = await fetch(apiUrl("/api/user/image-gallery"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: targetImage?.url,
+          publicId: targetImage?.publicId,
+          assetId: targetImage?.assetId,
+          folder: targetImage?.folder,
+          resourceType:
+            targetImage?.resourceType || targetImage?.resource_type || "image",
+          mimeType: targetImage?.mimeType,
+          width: targetImage?.width,
+          height: targetImage?.height,
+          format: targetImage?.format,
+          bytes: targetImage?.bytes,
+          duration: targetImage?.duration,
+          visibility: nextVisibility,
+          createdAt: targetImage?.createdAt || new Date().toISOString(),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to update visibility.");
+      }
+
+      syncUserMediaState(payload, {
+        keepCurrentProfilePicture: true,
+      });
+      sendCloudinaryReply(payload?.message || "Visibility updated.");
+    } catch (error) {
+      sendCloudinaryReply(
+        error?.message || "Unable to update media visibility.",
+      );
+    } finally {
+      setIsImageGalleryVisibilityUpdatingPublicId("");
+    }
+  };
+
+  const handleSelectGalleryVisibilityTab = (nextTabId) => {
+    if (nextTabId !== "hidden") {
+      setGalleryImageVisibilityTab(nextTabId);
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      setIsHiddenGalleryPasswordSubmitting(false);
+      return;
+    }
+
+    if (galleryImageVisibilityTab === "hidden") {
+      setGalleryImageVisibilityTab("hidden");
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      return;
+    }
+
+    setIsHiddenGalleryPasswordPromptOpen(true);
+    setHiddenGalleryPasswordInput("");
+    setHiddenGalleryPasswordFeedback("");
+  };
+
+  const handleUnlockHiddenGallery = async () => {
+    if (!props.state?.token || isHiddenGalleryPasswordSubmitting) {
+      return;
+    }
+
+    const password = String(hiddenGalleryPasswordInput || "");
+
+    if (!password.trim()) {
+      setHiddenGalleryPasswordFeedback("Please enter your password.");
+      return;
+    }
+
+    setIsHiddenGalleryPasswordSubmitting(true);
+    setHiddenGalleryPasswordFeedback("");
+
+    try {
+      const response = await fetch(apiUrl("/api/user/verify-password"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to verify password.");
+      }
+
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      setGalleryImageVisibilityTab("hidden");
+    } catch (error) {
+      setHiddenGalleryPasswordFeedback(
+        error?.message || "Unable to verify password.",
+      );
+    } finally {
+      setIsHiddenGalleryPasswordSubmitting(false);
+    }
+  };
+
+  const updateAboutProfileField = (fieldName, nextValue) => {
+    setAboutProfileDraft((currentDraft) => ({
+      ...currentDraft,
+      [fieldName]: nextValue,
+    }));
+  };
+
+  const handleAboutProfileSave = async () => {
+    if (!props.state?.token || isAboutProfileSubmitting) {
+      return;
+    }
+
+    setIsAboutProfileSubmitting(true);
+    setAcademicInfoFeedback({
+      tone: "",
+      message: "",
+    });
+
+    try {
+      const response = await fetch(apiUrl("/api/user/profile"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstname: aboutProfileDraft.firstname,
+          lastname: aboutProfileDraft.lastname,
+          username: aboutProfileDraft.username,
+          dob: aboutProfileDraft.dob,
+          university: aboutProfileDraft.university,
+          program: aboutProfileDraft.program,
+          faculty: aboutProfileDraft.faculty,
+          studyYear: aboutProfileDraft.currentYear,
+          term: aboutProfileDraft.currentTerm,
+          currentAcademicYear: aboutProfileDraft.currentAcademicYear,
+          language: aboutProfileDraft.language,
+          company: aboutProfileDraft.company,
+          position: aboutProfileDraft.position,
+          email: aboutProfileDraft.email,
+          phone: aboutProfileDraft.phone,
+          hometownCountry: aboutProfileDraft.hometownCountry,
+          hometownCity: aboutProfileDraft.hometownCity,
+          bio: aboutProfileDraft.bio,
+          aiProvider: String(props.state?.aiProvider || "openai").trim(),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || "Unable to update profile information.",
+        );
+      }
+
+      const nextInfo = payload?.info || {};
+
+      props.setUserAcademicInfo?.({
+        firstname: nextInfo?.firstname ?? aboutProfileDraft.firstname,
+        lastname: nextInfo?.lastname ?? aboutProfileDraft.lastname,
+        username: nextInfo?.username ?? aboutProfileDraft.username,
+        dob: nextInfo?.dob ?? aboutProfileDraft.dob,
+        bio: nextInfo?.bio ?? aboutProfileDraft.bio,
+        faculty: nextInfo?.faculty ?? aboutProfileDraft.faculty,
+        program: nextInfo?.program ?? aboutProfileDraft.program,
+        university: nextInfo?.university ?? aboutProfileDraft.university,
+        currentAcademicYear:
+          nextInfo?.currentAcademicYear ?? aboutProfileDraft.currentAcademicYear,
+        studyYear: nextInfo?.studyYear ?? aboutProfileDraft.currentYear,
+        term: nextInfo?.term ?? aboutProfileDraft.currentTerm,
+        language: nextInfo?.language ?? aboutProfileDraft.language,
+        company: nextInfo?.company ?? aboutProfileDraft.company,
+        position: nextInfo?.position ?? aboutProfileDraft.position,
+        email: nextInfo?.email ?? aboutProfileDraft.email,
+        phone: nextInfo?.phone ?? aboutProfileDraft.phone,
+        hometownCountry:
+          nextInfo?.hometownCountry ?? aboutProfileDraft.hometownCountry,
+        hometownCity: nextInfo?.hometownCity ?? aboutProfileDraft.hometownCity,
+        aiProvider:
+          nextInfo?.aiProvider || String(props.state?.aiProvider || "openai"),
+      });
+
+      setIsAboutProfileEditing(false);
+      setAcademicInfoFeedback({
+        tone: "success",
+        message: payload?.message || "Profile information updated.",
+      });
+    } catch (error) {
+      setAcademicInfoFeedback({
+        tone: "error",
+        message: error?.message || "Unable to update profile information.",
+      });
+    } finally {
+      setIsAboutProfileSubmitting(false);
+    }
+  };
+
+  const renderAboutProfileField = (fieldConfig) => {
+    const {
+      label,
+      value,
+      fieldName,
+      inputType = "text",
+      options = [],
+      placeholder = "",
+    } = fieldConfig;
+
+    if (!isAboutProfileEditing || !fieldName) {
+      return (
+        <p key={label}>
+          <strong>{label}</strong>
+          <span>{value}</span>
+        </p>
+      );
+    }
+
+    const fieldValue = String(aboutProfileDraft?.[fieldName] ?? "");
+
+    return (
+      <div key={label} className="Home_Noga_aboutProfileEditField">
+        <strong>{label}</strong>
+        {inputType === "select" ? (
+          <select
+            value={fieldValue}
+            onChange={(event) =>
+              updateAboutProfileField(fieldName, event.target.value)
+            }
+          >
+            <option value="">{placeholder || label}</option>
+            {options.map((optionValue) => (
+              <option key={`${fieldName}-${optionValue}`} value={optionValue}>
+                {optionValue}
+              </option>
+            ))}
+          </select>
+        ) : inputType === "textarea" ? (
+          <textarea
+            value={fieldValue}
+            onChange={(event) =>
+              updateAboutProfileField(fieldName, event.target.value)
+            }
+            placeholder={placeholder || label}
+            rows={3}
+          />
+        ) : (
+          <input
+            type={inputType}
+            value={fieldValue}
+            onChange={(event) =>
+              updateAboutProfileField(fieldName, event.target.value)
+            }
+            placeholder={placeholder || label}
+          />
+        )}
+      </div>
+    );
+  };
+
   const renderInlineInfoField = (label, fieldName, fallback = "-") => {
     const isEditingThisField = activePersonalInfoField === fieldName;
     const displayValue = String(props.state?.[fieldName] || "").trim();
@@ -7057,18 +7509,23 @@ function HomeNoga(props) {
         {
           label: "First name",
           value: formatProfileValue(profileState.firstname),
+          fieldName: "firstname",
         },
         {
           label: "Last name",
           value: formatProfileValue(profileState.lastname),
+          fieldName: "lastname",
         },
         {
           label: "Username",
           value: formatProfileValue(profileState.username),
+          fieldName: "username",
         },
         {
           label: "DOB",
           value: formattedDob,
+          fieldName: "dob",
+          inputType: "date",
         },
       ],
     },
@@ -7080,22 +7537,28 @@ function HomeNoga(props) {
           value: formatProfileValue(
             profileStudying.university || profileState.university,
           ),
+          fieldName: "university",
         },
         {
           label: "Program",
           value: formatProfileValue(
             profileStudying.program || profileState.program,
           ),
+          fieldName: "program",
         },
         {
           label: "Faculty",
           value: formatProfileValue(
             profileStudying.faculty || profileState.faculty,
           ),
+          fieldName: "faculty",
         },
         {
-          label: "Current year",
-          value: formatProfileValue(profileStudyingCurrentDate.year),
+          label: "Current academic year",
+          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
+          fieldName: "currentAcademicYear",
+          inputType: "select",
+          options: HOME_ACADEMIC_YEAR_OPTIONS,
         },
         {
           label: "Current term",
@@ -7104,14 +7567,14 @@ function HomeNoga(props) {
               profileStudying.term ||
               profileState.term,
           ),
-        },
-        {
-          label: "Academic year",
-          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
+          fieldName: "currentTerm",
+          inputType: "select",
+          options: ["First", "Second", "Third"],
         },
         {
           label: "Language",
           value: formatProfileValue(profileStudying.language),
+          fieldName: "language",
         },
       ],
     },
@@ -7121,10 +7584,12 @@ function HomeNoga(props) {
         {
           label: "Company",
           value: formatProfileValue(profileWorking.company),
+          fieldName: "company",
         },
         {
           label: "Position",
           value: formatProfileValue(profileWorking.position),
+          fieldName: "position",
         },
       ],
     },
@@ -7134,19 +7599,34 @@ function HomeNoga(props) {
         {
           label: "Email",
           value: formatProfileValue(profileState.email),
+          fieldName: "email",
+          inputType: "email",
         },
         {
           label: "Phone",
           value: formatProfileValue(profileState.phone),
+          fieldName: "phone",
         },
         {
-          label: "Location",
-          value: formatProfileValue(
-            [profileHometown.Country, profileHometown.City]
-              .map((value) => String(value || "").trim())
-              .filter(Boolean)
-              .join(" / "),
-          ),
+          label: "Country",
+          value: formatProfileValue(profileHometown.Country),
+          fieldName: "hometownCountry",
+        },
+        {
+          label: "City",
+          value: formatProfileValue(profileHometown.City),
+          fieldName: "hometownCity",
+        },
+      ],
+    },
+    {
+      title: "Bio",
+      rows: [
+        {
+          label: "Bio",
+          value: formatProfileValue(profileState.bio),
+          fieldName: "bio",
+          inputType: "textarea",
         },
       ],
     },
@@ -7667,13 +8147,36 @@ function HomeNoga(props) {
                         <div className="Home_Noga_friendsEventsHeader">
                           <h3>About Profile</h3>
                           <div className="Home_Noga_friendsEventsHeaderActions">
-                            <button
-                              type="button"
-                              className="Home_Noga_aboutButton"
-                              onClick={openProfileEditor}
-                            >
-                              Edit Profile
-                            </button>
+                            {isAboutProfileEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton"
+                                  onClick={handleAboutProfileSave}
+                                  disabled={isAboutProfileSubmitting}
+                                >
+                                  {isAboutProfileSubmitting
+                                    ? "Saving..."
+                                    : "Save Profile"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                                  onClick={() => setIsAboutProfileEditing(false)}
+                                  disabled={isAboutProfileSubmitting}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="Home_Noga_aboutButton"
+                                onClick={openProfileEditor}
+                              >
+                                Edit Profile
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="Home_Noga_aboutButton Home_Noga_aboutToggle"
@@ -7695,12 +8198,7 @@ function HomeNoga(props) {
                               <h4 className="Home_Noga_profileInfoColumnTitle">
                                 {column.title}
                               </h4>
-                              {column.rows.map((row) => (
-                                <p key={`${column.title}-${row.label}`}>
-                                  <strong>{row.label}</strong>
-                                  <span>{row.value}</span>
-                                </p>
-                              ))}
+                              {column.rows.map(renderAboutProfileField)}
                             </section>
                           ))}
                         </div>
@@ -7798,43 +8296,99 @@ function HomeNoga(props) {
                             <span>Videos</span>
                           </button>
                         </div>
+                        {galleryTab === "images" ? (
+                          <div className="Home_Noga_galleryVisibilityTabs">
+                            {HOME_GALLERY_VISIBILITY_FILTERS.map((filter) => (
+                              <button
+                                key={filter.id}
+                                type="button"
+                                className={`Home_Noga_galleryVisibilityTabButton${
+                                  galleryImageVisibilityTab === filter.id
+                                    ? " isActive"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  handleSelectGalleryVisibilityTab(filter.id)
+                                }
+                                aria-label={filter.label}
+                                title={filter.label}
+                                aria-pressed={
+                                  galleryImageVisibilityTab === filter.id
+                                }
+                              >
+                                <span>{filter.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {galleryTab === "images" &&
+                        isHiddenGalleryPasswordPromptOpen ? (
+                          <div className="Home_Noga_galleryHiddenPasswordPrompt">
+                            <input
+                              type="password"
+                              value={hiddenGalleryPasswordInput}
+                              onChange={(event) => {
+                                setHiddenGalleryPasswordInput(
+                                  event.target.value,
+                                );
+                                if (hiddenGalleryPasswordFeedback) {
+                                  setHiddenGalleryPasswordFeedback("");
+                                }
+                              }}
+                              placeholder="Password for hidden images"
+                              className="Home_Noga_galleryHiddenPasswordInput"
+                              autoComplete="current-password"
+                            />
+                            <button
+                              type="button"
+                              className="Home_Noga_galleryHiddenPasswordButton"
+                              onClick={handleUnlockHiddenGallery}
+                              disabled={isHiddenGalleryPasswordSubmitting}
+                            >
+                              {isHiddenGalleryPasswordSubmitting
+                                ? "Checking..."
+                                : "Open Hidden"}
+                            </button>
+                            <button
+                              type="button"
+                              className="Home_Noga_galleryHiddenPasswordButton Home_Noga_galleryHiddenPasswordButton--ghost"
+                              onClick={() => {
+                                setIsHiddenGalleryPasswordPromptOpen(false);
+                                setHiddenGalleryPasswordInput("");
+                                setHiddenGalleryPasswordFeedback("");
+                              }}
+                              disabled={isHiddenGalleryPasswordSubmitting}
+                            >
+                              Cancel
+                            </button>
+                            {hiddenGalleryPasswordFeedback ? (
+                              <p className="Home_Noga_galleryHiddenPasswordFeedback">
+                                {hiddenGalleryPasswordFeedback}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                    {imageGallery.length ? (
+                    {filteredGalleryItems.length ? (
                       <div className="Home_Noga_galleryGrid">
-                        {imageGallery
-                          .filter((image) =>
-                            galleryTab === "images"
-                              ? !isVideoGalleryItem(image) &&
-                                String(
-                                  image?.resourceType || image?.resource_type || "",
-                                )
-                                  .trim()
-                                  .toLowerCase() !== "pattern"
-                              : galleryTab === "patterns"
-                                ? String(
-                                    image?.resourceType ||
-                                      image?.resource_type ||
-                                      "",
-                                  )
-                                    .trim()
-                                    .toLowerCase() === "pattern"
-                                : isVideoGalleryItem(image),
-                          )
-                          .map((image) => {
-                            const imagePublicId = String(image?.publicId || "");
-                            const isVideoItem = isVideoGalleryItem(image);
-                            const isActionsOpen =
-                              imagePublicId === activeGalleryActionsPublicId;
-                            const isCurrentProfilePicture =
-                              String(image?.url || "").trim() ===
-                              profilePictureSrc;
-                            return (
-                              <article
-                                key={image.publicId}
-                                className="Home_Noga_galleryItem"
-                              >
-                                <div className="Home_Noga_galleryThumbWrap">
+                        {filteredGalleryItems.map((image) => {
+                          const imagePublicId = String(image?.publicId || "");
+                          const isVideoItem = isVideoGalleryItem(image);
+                          const isActionsOpen =
+                            imagePublicId === activeGalleryActionsPublicId;
+                          const currentVisibility = normalizeGalleryVisibility(
+                            image?.visibility,
+                          );
+                          const isCurrentProfilePicture =
+                            String(image?.url || "").trim() ===
+                            profilePictureSrc;
+                          return (
+                            <article
+                              key={image.publicId}
+                              className="Home_Noga_galleryItem"
+                            >
+                              <div className="Home_Noga_galleryThumbWrap">
                                   <button
                                     type="button"
                                     className="Home_Noga_galleryThumbButton"
@@ -7924,6 +8478,62 @@ function HomeNoga(props) {
                                     >
                                       <i className="fas fa-user-check"></i>
                                     </button>
+                                    {isVideoItem ? null : (
+                                      <div
+                                        className="Home_Noga_galleryVisibilityGroup"
+                                        role="group"
+                                        aria-label="Image visibility"
+                                      >
+                                        {[
+                                          {
+                                            value: "public",
+                                            label: "Public",
+                                            iconClass: "fas fa-globe",
+                                          },
+                                          {
+                                            value: "me",
+                                            label: "Private",
+                                            iconClass: "fas fa-lock",
+                                          },
+                                          {
+                                            value: "hidden",
+                                            label: "Hidden",
+                                            iconClass: "fas fa-eye-slash",
+                                          },
+                                        ].map((option) => (
+                                          <button
+                                            key={option.value}
+                                            type="button"
+                                            className={`Home_Noga_galleryVisibilityButton${
+                                              currentVisibility === option.value
+                                                ? " isActive"
+                                                : ""
+                                            }`}
+                                            onClick={() =>
+                                              handleUpdateGalleryImageVisibility(
+                                                image.publicId,
+                                                option.value,
+                                              )
+                                            }
+                                            disabled={
+                                              isImageGalleryVisibilityUpdatingPublicId ===
+                                              image.publicId
+                                            }
+                                            aria-label={`${option.label} visibility`}
+                                            title={option.label}
+                                            aria-pressed={
+                                              currentVisibility === option.value
+                                            }
+                                          >
+                                            <i
+                                              className={option.iconClass}
+                                              aria-hidden="true"
+                                            ></i>
+                                            <span>{option.label}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                     {/* <button
                                       type="button"
                                       className="Home_Noga_editPicButton"
@@ -7972,16 +8582,18 @@ function HomeNoga(props) {
                                       <i className="fas fa-trash-alt"></i>
                                     </button>
                                   </div>
-                                </div>
-                              </article>
-                            );
-                          })}
+                              </div>
+                            </article>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="Home_Noga_galleryEmptyState">
                         {galleryTab === "patterns"
                           ? "No saved patterns yet."
-                          : "No media uploaded yet."}
+                          : galleryTab === "images"
+                            ? "No images found for this visibility."
+                            : "No media uploaded yet."}
                       </div>
                     )}
                   </div>
@@ -8874,6 +9486,7 @@ function HomeNoga(props) {
             <div
               className="fc Home_Noga_preStart_reportsCard"
               id="Home_Noga_userMenu_panelCard"
+              ref={controlPanelCardRef}
             >
               <div className="Home_Noga_gallery_Header_wrapper">
                 <h3>Control Panel</h3>
@@ -8940,6 +9553,7 @@ function HomeNoga(props) {
                     id="Home_Noga_editAcademicInfo_form"
                     className="fc"
                     onSubmit={handleAcademicInfoSave}
+                    ref={academicInfoFormRef}
                   >
                     <input
                       type="text"
@@ -8962,13 +9576,21 @@ function HomeNoga(props) {
                       value={academicInfoFields.university}
                       onChange={updateAcademicInfoField}
                     />
-                    <input
-                      type="text"
+                    <select
                       name="currentAcademicYear"
-                      placeholder="Current academic year number"
                       value={academicInfoFields.currentAcademicYear}
                       onChange={updateAcademicInfoField}
-                    />
+                    >
+                      <option value="">Current academic year</option>
+                      {HOME_ACADEMIC_YEAR_OPTIONS.map((optionValue) => (
+                        <option
+                          key={`academic-year-${optionValue}`}
+                          value={optionValue}
+                        >
+                          {optionValue}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       name="studyYear"

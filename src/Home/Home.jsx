@@ -86,6 +86,17 @@ const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
   },
 };
 
+const HOME_GALLERY_VISIBILITY_FILTERS = [
+  { id: "public", label: "Public" },
+  { id: "me", label: "Private" },
+  { id: "hidden", label: "Hidden" },
+];
+
+const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
+  { length: 30 },
+  (_, index) => `${2000 + index}-${2001 + index}`,
+);
+
 const HOME_DRAWING_ALLOWLIST_ZONES = [
   { id: "canvas", label: "Canvas", selector: "#Home_main_wrapper" },
   {
@@ -1638,6 +1649,8 @@ function Home(props) {
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   // Gallery tab state: 'images' | 'patterns' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
+  const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
+    useState("public");
   const activeGalleryUploadConfig =
     HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab] ||
     HOME_GALLERY_TAB_UPLOAD_CONFIG.images;
@@ -1647,6 +1660,18 @@ function Home(props) {
     isImageGallerySettingProfilePublicId,
     setIsImageGallerySettingProfilePublicId,
   ] = useState("");
+  const [
+    isImageGalleryVisibilityUpdatingPublicId,
+    setIsImageGalleryVisibilityUpdatingPublicId,
+  ] = useState("");
+  const [isHiddenGalleryPasswordPromptOpen, setIsHiddenGalleryPasswordPromptOpen] =
+    useState(false);
+  const [hiddenGalleryPasswordInput, setHiddenGalleryPasswordInput] =
+    useState("");
+  const [hiddenGalleryPasswordFeedback, setHiddenGalleryPasswordFeedback] =
+    useState("");
+  const [isHiddenGalleryPasswordSubmitting, setIsHiddenGalleryPasswordSubmitting] =
+    useState(false);
   const [clearPendingFeedback, setClearPendingFeedback] = useState("");
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
@@ -3205,6 +3230,50 @@ function Home(props) {
   );
   const profilePictureSrc = String(props.state?.profilePicture || "").trim();
   const activeGalleryImage = imageOnlyGallery[activeGalleryImageIndex] || null;
+  const normalizeGalleryVisibility = (visibility) => {
+    const normalizedVisibility = String(visibility || "")
+      .trim()
+      .toLowerCase();
+
+    if (normalizedVisibility === "private") {
+      return "me";
+    }
+
+    return ["public", "me", "hidden"].includes(normalizedVisibility)
+      ? normalizedVisibility
+      : "public";
+  };
+  const filteredGalleryItems = React.useMemo(
+    () =>
+      imageGallery.filter((image) => {
+        if (galleryTab === "images") {
+          if (
+            isVideoGalleryItem(image) ||
+            String(image?.resourceType || image?.resource_type || "")
+              .trim()
+              .toLowerCase() === "pattern"
+          ) {
+            return false;
+          }
+
+          return (
+            normalizeGalleryVisibility(image?.visibility) ===
+              galleryImageVisibilityTab
+          );
+        }
+
+        if (galleryTab === "patterns") {
+          return (
+            String(image?.resourceType || image?.resource_type || "")
+              .trim()
+              .toLowerCase() === "pattern"
+          );
+        }
+
+        return isVideoGalleryItem(image);
+      }),
+    [galleryImageVisibilityTab, galleryTab, imageGallery],
+  );
   const socialFriends = React.useMemo(() => {
     const rawFriends = Array.isArray(props.state?.friends)
       ? props.state.friends
@@ -5243,6 +5312,7 @@ function Home(props) {
             format: cloudinaryPayload.format,
             bytes: cloudinaryPayload.bytes,
             duration: cloudinaryPayload.duration,
+            visibility: "public",
             createdAt: new Date().toISOString(),
           }),
         });
@@ -5379,6 +5449,141 @@ function Home(props) {
       );
     } finally {
       setIsImageGalleryDeletingPublicId("");
+    }
+  };
+
+  const handleUpdateGalleryImageVisibility = async (publicId, visibility) => {
+    const nextPublicId = String(publicId || "").trim();
+    const nextVisibility = normalizeGalleryVisibility(visibility);
+
+    if (!nextPublicId || !props.state?.token) {
+      return;
+    }
+
+    const targetImage = imageGallery.find(
+      (image) => String(image?.publicId || "").trim() === nextPublicId,
+    );
+
+    if (!targetImage) {
+      return;
+    }
+
+    if (
+      normalizeGalleryVisibility(targetImage?.visibility) === nextVisibility
+    ) {
+      return;
+    }
+
+    setIsImageGalleryVisibilityUpdatingPublicId(nextPublicId);
+
+    try {
+      const response = await fetch(apiUrl("/api/user/image-gallery"), {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: targetImage?.url,
+          publicId: targetImage?.publicId,
+          assetId: targetImage?.assetId,
+          folder: targetImage?.folder,
+          resourceType:
+            targetImage?.resourceType || targetImage?.resource_type || "image",
+          mimeType: targetImage?.mimeType,
+          width: targetImage?.width,
+          height: targetImage?.height,
+          format: targetImage?.format,
+          bytes: targetImage?.bytes,
+          duration: targetImage?.duration,
+          visibility: nextVisibility,
+          createdAt: targetImage?.createdAt || new Date().toISOString(),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to update visibility.");
+      }
+
+      syncUserMediaState(payload, {
+        keepCurrentProfilePicture: true,
+      });
+      sendCloudinaryReply(payload?.message || "Visibility updated.");
+    } catch (error) {
+      sendCloudinaryReply(
+        error?.message || "Unable to update media visibility.",
+      );
+    } finally {
+      setIsImageGalleryVisibilityUpdatingPublicId("");
+    }
+  };
+
+  const handleSelectGalleryVisibilityTab = (nextTabId) => {
+    if (nextTabId !== "hidden") {
+      setGalleryImageVisibilityTab(nextTabId);
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      setIsHiddenGalleryPasswordSubmitting(false);
+      return;
+    }
+
+    if (galleryImageVisibilityTab === "hidden") {
+      setGalleryImageVisibilityTab("hidden");
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      return;
+    }
+
+    setIsHiddenGalleryPasswordPromptOpen(true);
+    setHiddenGalleryPasswordInput("");
+    setHiddenGalleryPasswordFeedback("");
+  };
+
+  const handleUnlockHiddenGallery = async () => {
+    if (!props.state?.token || isHiddenGalleryPasswordSubmitting) {
+      return;
+    }
+
+    const password = String(hiddenGalleryPasswordInput || "");
+
+    if (!password.trim()) {
+      setHiddenGalleryPasswordFeedback("Please enter your password.");
+      return;
+    }
+
+    setIsHiddenGalleryPasswordSubmitting(true);
+    setHiddenGalleryPasswordFeedback("");
+
+    try {
+      const response = await fetch(apiUrl("/api/user/verify-password"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${props.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to verify password.");
+      }
+
+      setIsHiddenGalleryPasswordPromptOpen(false);
+      setHiddenGalleryPasswordInput("");
+      setHiddenGalleryPasswordFeedback("");
+      setGalleryImageVisibilityTab("hidden");
+    } catch (error) {
+      setHiddenGalleryPasswordFeedback(
+        error?.message || "Unable to verify password.",
+      );
+    } finally {
+      setIsHiddenGalleryPasswordSubmitting(false);
     }
   };
 
@@ -7049,8 +7254,8 @@ function Home(props) {
           ),
         },
         {
-          label: "Current year",
-          value: formatProfileValue(profileStudyingCurrentDate.year),
+          label: "Current academic year",
+          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
         },
         {
           label: "Current term",
@@ -7059,10 +7264,6 @@ function Home(props) {
               profileStudying.term ||
               profileState.term,
           ),
-        },
-        {
-          label: "Academic year",
-          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
         },
         {
           label: "Language",
@@ -7730,43 +7931,99 @@ function Home(props) {
                             <span>Videos</span>
                           </button>
                         </div>
+                        {galleryTab === "images" ? (
+                          <div className="Home_galleryVisibilityTabs">
+                            {HOME_GALLERY_VISIBILITY_FILTERS.map((filter) => (
+                              <button
+                                key={filter.id}
+                                type="button"
+                                className={`Home_galleryVisibilityTabButton${
+                                  galleryImageVisibilityTab === filter.id
+                                    ? " isActive"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  handleSelectGalleryVisibilityTab(filter.id)
+                                }
+                                aria-label={filter.label}
+                                title={filter.label}
+                                aria-pressed={
+                                  galleryImageVisibilityTab === filter.id
+                                }
+                              >
+                                <span>{filter.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {galleryTab === "images" &&
+                        isHiddenGalleryPasswordPromptOpen ? (
+                          <div className="Home_galleryHiddenPasswordPrompt">
+                            <input
+                              type="password"
+                              value={hiddenGalleryPasswordInput}
+                              onChange={(event) => {
+                                setHiddenGalleryPasswordInput(
+                                  event.target.value,
+                                );
+                                if (hiddenGalleryPasswordFeedback) {
+                                  setHiddenGalleryPasswordFeedback("");
+                                }
+                              }}
+                              placeholder="Password for hidden images"
+                              className="Home_galleryHiddenPasswordInput"
+                              autoComplete="current-password"
+                            />
+                            <button
+                              type="button"
+                              className="Home_galleryHiddenPasswordButton"
+                              onClick={handleUnlockHiddenGallery}
+                              disabled={isHiddenGalleryPasswordSubmitting}
+                            >
+                              {isHiddenGalleryPasswordSubmitting
+                                ? "Checking..."
+                                : "Open Hidden"}
+                            </button>
+                            <button
+                              type="button"
+                              className="Home_galleryHiddenPasswordButton Home_galleryHiddenPasswordButton--ghost"
+                              onClick={() => {
+                                setIsHiddenGalleryPasswordPromptOpen(false);
+                                setHiddenGalleryPasswordInput("");
+                                setHiddenGalleryPasswordFeedback("");
+                              }}
+                              disabled={isHiddenGalleryPasswordSubmitting}
+                            >
+                              Cancel
+                            </button>
+                            {hiddenGalleryPasswordFeedback ? (
+                              <p className="Home_galleryHiddenPasswordFeedback">
+                                {hiddenGalleryPasswordFeedback}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                    {imageGallery.length ? (
+                    {filteredGalleryItems.length ? (
                       <div className="Home_galleryGrid">
-                        {imageGallery
-                          .filter((image) =>
-                            galleryTab === "images"
-                              ? !isVideoGalleryItem(image) &&
-                                String(
-                                  image?.resourceType || image?.resource_type || "",
-                                )
-                                  .trim()
-                                  .toLowerCase() !== "pattern"
-                              : galleryTab === "patterns"
-                                ? String(
-                                    image?.resourceType ||
-                                      image?.resource_type ||
-                                      "",
-                                  )
-                                    .trim()
-                                    .toLowerCase() === "pattern"
-                                : isVideoGalleryItem(image),
-                          )
-                          .map((image) => {
-                            const imagePublicId = String(image?.publicId || "");
-                            const isVideoItem = isVideoGalleryItem(image);
-                            const isActionsOpen =
-                              imagePublicId === activeGalleryActionsPublicId;
-                            const isCurrentProfilePicture =
-                              String(image?.url || "").trim() ===
-                              profilePictureSrc;
-                            return (
-                              <article
-                                key={image.publicId}
-                                className="Home_galleryItem"
-                              >
-                                <div className="Home_galleryThumbWrap">
+                        {filteredGalleryItems.map((image) => {
+                          const imagePublicId = String(image?.publicId || "");
+                          const isVideoItem = isVideoGalleryItem(image);
+                          const isActionsOpen =
+                            imagePublicId === activeGalleryActionsPublicId;
+                          const currentVisibility = normalizeGalleryVisibility(
+                            image?.visibility,
+                          );
+                          const isCurrentProfilePicture =
+                            String(image?.url || "").trim() ===
+                            profilePictureSrc;
+                          return (
+                            <article
+                              key={image.publicId}
+                              className="Home_galleryItem"
+                            >
+                              <div className="Home_galleryThumbWrap">
                                   <button
                                     type="button"
                                     className="Home_galleryThumbButton"
@@ -7856,6 +8113,62 @@ function Home(props) {
                                     >
                                       <i className="fas fa-user-check"></i>
                                     </button>
+                                    {isVideoItem ? null : (
+                                      <div
+                                        className="Home_galleryVisibilityGroup"
+                                        role="group"
+                                        aria-label="Image visibility"
+                                      >
+                                        {[
+                                          {
+                                            value: "public",
+                                            label: "Public",
+                                            iconClass: "fas fa-globe",
+                                          },
+                                          {
+                                            value: "me",
+                                            label: "Private",
+                                            iconClass: "fas fa-lock",
+                                          },
+                                          {
+                                            value: "hidden",
+                                            label: "Hidden",
+                                            iconClass: "fas fa-eye-slash",
+                                          },
+                                        ].map((option) => (
+                                          <button
+                                            key={option.value}
+                                            type="button"
+                                            className={`Home_galleryVisibilityButton${
+                                              currentVisibility === option.value
+                                                ? " isActive"
+                                                : ""
+                                            }`}
+                                            onClick={() =>
+                                              handleUpdateGalleryImageVisibility(
+                                                image.publicId,
+                                                option.value,
+                                              )
+                                            }
+                                            disabled={
+                                              isImageGalleryVisibilityUpdatingPublicId ===
+                                              image.publicId
+                                            }
+                                            aria-label={`${option.label} visibility`}
+                                            title={option.label}
+                                            aria-pressed={
+                                              currentVisibility === option.value
+                                            }
+                                          >
+                                            <i
+                                              className={option.iconClass}
+                                              aria-hidden="true"
+                                            ></i>
+                                            <span>{option.label}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                     {/* <button
                                       type="button"
                                       className="Home_editPicButton"
@@ -7904,16 +8217,18 @@ function Home(props) {
                                       <i className="fas fa-trash-alt"></i>
                                     </button>
                                   </div>
-                                </div>
-                              </article>
-                            );
-                          })}
+                              </div>
+                            </article>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="Home_galleryEmptyState">
                         {galleryTab === "patterns"
                           ? "No saved patterns yet."
-                          : "No media uploaded yet."}
+                          : galleryTab === "images"
+                            ? "No images found for this visibility."
+                            : "No media uploaded yet."}
                       </div>
                     )}
                   </div>

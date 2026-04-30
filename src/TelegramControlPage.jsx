@@ -1,7 +1,5 @@
 import React from "react";
-import Nav from "./Nav/Nav";
 import { apiUrl } from "./config/api";
-import { getHomeSubApps } from "./utils/homeSubApps";
 import "./telegramControlPage.css";
 
 const DEFAULT_DEPENDENCY_KEYS = [
@@ -535,11 +533,7 @@ const buildObjectKeyTree = (
     });
 };
 
-const TelegramControlPage = ({
-  state,
-  logOut,
-  acceptFriend,
-}) => {
+const TelegramControlPage = ({ state }) => {
   const [groupInput, setGroupInput] = React.useState("");
   const [groupReference, setGroupReference] = React.useState("");
   const [migrationGroupTitle, setMigrationGroupTitle] =
@@ -659,15 +653,10 @@ const TelegramControlPage = ({
     left: 320,
     center: 480,
   });
-  const [isGridStacked, setIsGridStacked] = React.useState(false);
   const [activeGridResizer, setActiveGridResizer] = React.useState("");
 
   const token = String(state?.token || "").trim();
   const storageCopy = STORAGE_COPY[storageLanguage] || STORAGE_COPY.en;
-  const subApps = React.useMemo(
-    () => getHomeSubApps(state?.username),
-    [state?.username],
-  );
 
   React.useEffect(() => {
     storedGroupOptionsRef.current = Array.isArray(storedGroupOptions)
@@ -747,25 +736,6 @@ const TelegramControlPage = ({
         }
         element.classList.remove("is-shrinking");
       });
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (typeof ResizeObserver === "undefined" || !telegramGridRef.current) {
-      return undefined;
-    }
-
-    const gridElement = telegramGridRef.current;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      const nextWidth = Number(entry?.contentRect?.width || 0);
-      setIsGridStacked(nextWidth > 0 && nextWidth < 1180);
-    });
-
-    observer.observe(gridElement);
-
-    return () => {
-      observer.disconnect();
     };
   }, []);
 
@@ -850,10 +820,6 @@ const TelegramControlPage = ({
 
   const handleGridResizerPointerDown = React.useCallback(
     (event, type) => {
-      if (isGridStacked) {
-        return;
-      }
-
       event.preventDefault();
       event.stopPropagation();
 
@@ -874,19 +840,16 @@ const TelegramControlPage = ({
       window.addEventListener("pointermove", handlePointerMove);
       window.addEventListener("pointerup", handlePointerUp);
     },
-    [applyGridDrag, isGridStacked],
+    [applyGridDrag],
   );
 
-  const telegramGridStyle = React.useMemo(() => {
-    if (isGridStacked) {
-      return undefined;
-    }
-
-    return {
+  const telegramGridStyle = React.useMemo(
+    () => ({
       "--telegram-grid-left": `${Math.round(gridColumnWidths.left)}px`,
       "--telegram-grid-center": `${Math.round(gridColumnWidths.center)}px`,
-    };
-  }, [gridColumnWidths.center, gridColumnWidths.left, isGridStacked]);
+    }),
+    [gridColumnWidths.center, gridColumnWidths.left],
+  );
 
   React.useEffect(() => {
     if (activeLeftPanel === "storage") {
@@ -3003,14 +2966,6 @@ const TelegramControlPage = ({
 
   return (
     <section id="telegramControlPage" className="telegramControlPage">
-      <div className="telegramControlPage_navWrap">
-        <Nav
-          state={state}
-          logOut={logOut}
-          acceptFriend={acceptFriend}
-          subApps={subApps}
-        />
-      </div>
       <div className="telegramControlPage_shell" ref={telegramShellRef}>
         <header className="telegramControlPage_header">
           <h1>Telegram Control</h1>
@@ -3025,12 +2980,12 @@ const TelegramControlPage = ({
           ref={telegramGridRef}
         >
           <div
-            className="telegramControlPage_leftColumn telegramControlPage_gridColumn telegramControlPage_gridColumn--left"
+            className="telegramControlPage_leftColumn telegramControlPage_gridColumn telegramControlPage_gridColumn--left telegramControlPage_card telegramControlPage_card--control"
             ref={leftColumnRef}
           >
             {/* Removed telegramControlPage_mountBar */}
             {activeLeftPanel === "migration" ? (
-              <aside className="telegramControlPage_card telegramControlPage_card--control">
+              <>
                 <div className="telegramControlPage_cardHeader">
                   <h2>Migration</h2>
                   <span>{token ? "Signed in" : "No token"}</span>
@@ -3319,7 +3274,7 @@ const TelegramControlPage = ({
                     </div>
                   </div>
                 </div>
-              </aside>
+              </>
             ) : null}
           </div>
           <button

@@ -3058,8 +3058,9 @@ export default class NogaPlanner extends Component {
     const anchorRect = anchorCellNode
       ? anchorCellNode.getBoundingClientRect()
       : rowNode.getBoundingClientRect();
+    const rowRect = rowNode.getBoundingClientRect();
     const nextPosition = {
-      top: Math.round(anchorRect.top),
+      top: Math.round(rowRect.bottom + 4),
       left: Math.round(anchorRect.right),
       height: Math.round(anchorRect.height),
     };
@@ -3812,6 +3813,38 @@ export default class NogaPlanner extends Component {
         </div>
       </div>
     );
+    const renderWrapperTabs = () => (
+      <div className="nogaPlanner_wrapperTabs">
+        <button
+          type="button"
+          className={
+            "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
+            (this.state.wrapperTab === "courses"
+              ? " nogaPlanner_wrapperTabBtn--active"
+              : "")
+          }
+          onClick={() => this.handleWrapperTabChange("courses")}
+          aria-label={this.isArabic() ? "المقررات" : "Courses"}
+          title={this.isArabic() ? "المقررات" : "Courses"}
+        >
+          <i className="fas fa-book-open" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          className={
+            "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
+            (this.state.wrapperTab === "exams"
+              ? " nogaPlanner_wrapperTabBtn--active"
+              : "")
+          }
+          onClick={() => this.handleWrapperTabChange("exams")}
+          aria-label={this.isArabic() ? "الامتحانات" : "Exams"}
+          title={this.isArabic() ? "الامتحانات" : "Exams"}
+        >
+          <i className="fas fa-file-alt" aria-hidden="true"></i>
+        </button>
+      </div>
+    );
 
     return (
       <section
@@ -3836,6 +3869,7 @@ export default class NogaPlanner extends Component {
                   : "Select a course component to render its lectures."}
               </p>
             </div>
+            {renderWrapperTabs()}
             <div className="nogaPlanner_savedCoursesCounters">
               <div className="nogaPlanner_savedCoursesCounter">
                 <span className="nogaPlanner_savedCoursesCounterValue">
@@ -4340,6 +4374,36 @@ export default class NogaPlanner extends Component {
                 {this.isArabic() ? "لوحة الامتحانات" : "Exams board"}
               </h2>
             </div>
+            <div className="nogaPlanner_wrapperTabs">
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
+                  (this.state.wrapperTab === "courses"
+                    ? " nogaPlanner_wrapperTabBtn--active"
+                    : "")
+                }
+                onClick={() => this.handleWrapperTabChange("courses")}
+                aria-label={this.isArabic() ? "المقررات" : "Courses"}
+                title={this.isArabic() ? "المقررات" : "Courses"}
+              >
+                <i className="fas fa-book-open" aria-hidden="true"></i>
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
+                  (this.state.wrapperTab === "exams"
+                    ? " nogaPlanner_wrapperTabBtn--active"
+                    : "")
+                }
+                onClick={() => this.handleWrapperTabChange("exams")}
+                aria-label={this.isArabic() ? "الامتحانات" : "Exams"}
+                title={this.isArabic() ? "الامتحانات" : "Exams"}
+              >
+                <i className="fas fa-file-alt" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
           <div
             className="nogaPlanner_savedCoursesColumnBody"
@@ -4505,36 +4569,6 @@ export default class NogaPlanner extends Component {
           }}
         >
           <div className="fc" id="nogaPlanner_coursesLectures_wrapper">
-            <div className="nogaPlanner_wrapperTabs">
-              <button
-                type="button"
-                className={
-                  "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
-                  (wrapperTab === "courses"
-                    ? " nogaPlanner_wrapperTabBtn--active"
-                    : "")
-                }
-                onClick={() => this.handleWrapperTabChange("courses")}
-                aria-label={this.isArabic() ? "المقررات" : "Courses"}
-                title={this.isArabic() ? "المقررات" : "Courses"}
-              >
-                <i className="fas fa-book-open" aria-hidden="true"></i>
-              </button>
-              <button
-                type="button"
-                className={
-                  "nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--iconOnly" +
-                  (wrapperTab === "exams"
-                    ? " nogaPlanner_wrapperTabBtn--active"
-                    : "")
-                }
-                onClick={() => this.handleWrapperTabChange("exams")}
-                aria-label={this.isArabic() ? "الامتحانات" : "Exams"}
-                title={this.isArabic() ? "الامتحانات" : "Exams"}
-              >
-                <i className="fas fa-file-alt" aria-hidden="true"></i>
-              </button>
-            </div>
             <div className="nogaPlanner_wrapperTabPanel">
               {wrapperTab === "courses"
                 ? this.renderSavedCoursesColumn()
