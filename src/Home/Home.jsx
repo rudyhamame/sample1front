@@ -93,8 +93,8 @@ const HOME_GALLERY_VISIBILITY_FILTERS = [
 ];
 
 const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
-  { length: 30 },
-  (_, index) => `${2000 + index}-${2001 + index}`,
+  { length: 31 },
+  (_, index) => `${2030 - index}-${2031 - index}`,
 );
 
 const HOME_DRAWING_ALLOWLIST_ZONES = [
@@ -3169,8 +3169,16 @@ function Home(props) {
     const nextAcademicInfoFields = {
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
-      studyYear: String(props.state?.studyYear || ""),
-      term: String(props.state?.term || ""),
+      studyYear: String(
+        props.state?.studyYear ||
+          props.state?.studying?.time?.current?.programYearNum ||
+          "",
+      ),
+      term: String(
+        props.state?.term ||
+          props.state?.studying?.time?.current?.programTerm ||
+          "",
+      ),
     };
 
     setAcademicInfoFields((currentFields) =>
@@ -3184,7 +3192,9 @@ function Home(props) {
   }, [
     props.state?.program,
     props.state?.university,
+    props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
+    props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
 
@@ -3662,12 +3672,14 @@ function Home(props) {
             program: String(profileStudying?.program || "").trim(),
             university: String(profileStudying?.university || "").trim(),
             studyYear: String(
-              profileStudying?.time?.currentDate?.year ||
+              profileStudying?.time?.current?.programYearNum ||
+                profileStudying?.time?.currentDate?.year ||
                 profileStudying?.academicYear ||
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.currentDate?.term ||
+              profileStudying?.time?.current?.programTerm ||
+                profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
             ).trim(),
@@ -7196,6 +7208,11 @@ function Home(props) {
     typeof profileStudyingTime.currentDate === "object"
       ? profileStudyingTime.currentDate
       : {};
+  const profileStudyingCurrent =
+    profileStudyingTime.current &&
+    typeof profileStudyingTime.current === "object"
+      ? profileStudyingTime.current
+      : {};
   const formatProfileValue = (value) => {
     const normalized = String(value ?? "").trim();
     return normalized || "-";
@@ -7255,12 +7272,16 @@ function Home(props) {
         },
         {
           label: "Current academic year",
-          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
+          value: formatProfileValue(
+            profileStudyingCurrent.programYearInterval ||
+              profileStudyingTime.currentAcademicYear,
+          ),
         },
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrentDate.term ||
+            profileStudyingCurrent.programTerm ||
+              profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,
           ),

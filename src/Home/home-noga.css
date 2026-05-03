@@ -230,8 +230,7 @@ body.dark #Main_article,
   min-height: 100%;
   height: auto;
   margin: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   background:
     radial-gradient(
       circle at top left,
@@ -6685,10 +6684,3 @@ input[type="file"] {
   color: rgba(228, 243, 246, 0.9);
 }
 
-#Home_Noga_studysessions_article {
-  height: 100dvh;
-  min-height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-  overscroll-behavior: none;
-}

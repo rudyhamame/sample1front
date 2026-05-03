@@ -1825,57 +1825,99 @@ class App extends React.Component {
           nextInfo?.username !== undefined
             ? String(nextInfo?.username || "").trim()
             : currentState.username,
-        studying: {
-          ...(currentState.studying && typeof currentState.studying === "object"
-            ? currentState.studying
-            : {}),
-          faculty:
-            nextInfo?.faculty !== undefined
-              ? String(nextInfo?.faculty || "").trim()
-              : String(currentState?.studying?.faculty || "").trim(),
-          program:
-            nextInfo?.program !== undefined
-              ? String(nextInfo?.program || "").trim()
-              : String(currentState?.studying?.program || "").trim(),
-          university:
-            nextInfo?.university !== undefined
-              ? String(nextInfo?.university || "").trim()
-              : String(currentState?.studying?.university || "").trim(),
-          language:
-            nextInfo?.language !== undefined
-              ? String(nextInfo?.language || "").trim()
-              : String(currentState?.studying?.language || "").trim(),
-          time: {
-            ...(currentState?.studying?.time &&
-            typeof currentState.studying.time === "object"
-              ? currentState.studying.time
-              : {}),
-            currentAcademicYear:
-              nextInfo?.currentAcademicYear !== undefined &&
-              String(nextInfo?.currentAcademicYear || "").trim() !== ""
-                ? Number(nextInfo.currentAcademicYear)
-                : String(nextInfo?.currentAcademicYear || "").trim() === ""
-                  ? null
-                  : currentState?.studying?.time?.currentAcademicYear ?? null,
-            currentDate: {
-              ...(currentState?.studying?.time?.currentDate &&
-              typeof currentState.studying.time.currentDate === "object"
-                ? currentState.studying.time.currentDate
-                : {}),
-              year:
-                nextInfo?.studyYear !== undefined &&
-                String(nextInfo?.studyYear || "").trim() !== ""
-                  ? Number(nextInfo.studyYear)
-                  : String(nextInfo?.studyYear || "").trim() === ""
-                    ? null
-                    : currentState?.studying?.time?.currentDate?.year ?? null,
-              term:
-                nextInfo?.term !== undefined
-                  ? String(nextInfo?.term || "").trim()
-                  : String(currentState?.studying?.time?.currentDate?.term || "").trim(),
+        studying: (() => {
+          const currentStudying =
+            currentState.studying && typeof currentState.studying === "object"
+              ? currentState.studying
+              : {};
+          const currentStudyingTime =
+            currentStudying.time && typeof currentStudying.time === "object"
+              ? currentStudying.time
+              : {};
+          const currentStudyingTimeStart =
+            currentStudyingTime.start && typeof currentStudyingTime.start === "object"
+              ? currentStudyingTime.start
+              : {};
+          const currentStudyingTimeCurrent =
+            currentStudyingTime.current &&
+            typeof currentStudyingTime.current === "object"
+              ? currentStudyingTime.current
+              : {};
+          const currentStudyingTimeStartDate =
+            currentStudyingTime.startDate &&
+            typeof currentStudyingTime.startDate === "object"
+              ? currentStudyingTime.startDate
+              : {};
+          const currentStudyingTimeCurrentDate =
+            currentStudyingTime.currentDate &&
+            typeof currentStudyingTime.currentDate === "object"
+              ? currentStudyingTime.currentDate
+              : {};
+
+          const nextCurrentProgramYearInterval =
+            nextInfo?.currentAcademicYear !== undefined
+              ? String(nextInfo?.currentAcademicYear || "").trim() || null
+              : currentStudyingTimeCurrent.programYearInterval ??
+                currentStudyingTime.currentAcademicYear ??
+                null;
+          const nextCurrentProgramYearNum =
+            nextInfo?.studyYear !== undefined
+              ? String(nextInfo?.studyYear || "").trim() !== ""
+                ? Number(nextInfo.studyYear)
+                : null
+              : currentStudyingTimeCurrent.programYearNum ??
+                currentStudyingTimeCurrentDate.year ??
+                null;
+          const nextCurrentProgramTerm =
+            nextInfo?.term !== undefined
+              ? String(nextInfo?.term || "").trim() || null
+              : String(
+                  currentStudyingTimeCurrent.programTerm ??
+                    currentStudyingTimeCurrentDate.term ??
+                    "",
+                ).trim() || null;
+
+          return {
+            ...currentStudying,
+            faculty:
+              nextInfo?.faculty !== undefined
+                ? String(nextInfo?.faculty || "").trim()
+                : String(currentStudying?.faculty || "").trim(),
+            program:
+              nextInfo?.program !== undefined
+                ? String(nextInfo?.program || "").trim()
+                : String(currentStudying?.program || "").trim(),
+            university:
+              nextInfo?.university !== undefined
+                ? String(nextInfo?.university || "").trim()
+                : String(currentStudying?.university || "").trim(),
+            language:
+              nextInfo?.language !== undefined
+                ? String(nextInfo?.language || "").trim()
+                : String(currentStudying?.language || "").trim(),
+            time: {
+              ...currentStudyingTime,
+              currentAcademicYear: nextCurrentProgramYearInterval,
+              start: {
+                ...currentStudyingTimeStart,
+              },
+              current: {
+                ...currentStudyingTimeCurrent,
+                programYearInterval: nextCurrentProgramYearInterval,
+                programYearNum: nextCurrentProgramYearNum,
+                programTerm: nextCurrentProgramTerm,
+              },
+              startDate: {
+                ...currentStudyingTimeStartDate,
+              },
+              currentDate: {
+                ...currentStudyingTimeCurrentDate,
+                year: nextCurrentProgramYearNum,
+                term: nextCurrentProgramTerm,
+              },
             },
-          },
-        },
+          };
+        })(),
         working: {
           ...(currentState.working && typeof currentState.working === "object"
             ? currentState.working
@@ -2712,6 +2754,7 @@ class App extends React.Component {
             <main id="Main_article" className="fr">
               <TelegramControlPage
                 state={this.state}
+                memory={this.memory}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
               />

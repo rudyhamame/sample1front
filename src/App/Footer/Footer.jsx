@@ -9,7 +9,7 @@ import {
 } from "../../music/globalMusicPlayer";
 import "./Footer.css";
 
-const Footer = ({ appState, onLogout }) => {
+const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   const [isDarkMode, setIsDarkMode] = React.useState(() =>
     typeof document !== "undefined"
       ? document.body.classList.contains("dark")
@@ -24,6 +24,8 @@ const Footer = ({ appState, onLogout }) => {
     currentPath === "/phenomed/home/noga/";
   const isHomeFooterRoute =
     currentPath === "/phenomed/home" || currentPath === "/phenomed/home/";
+  const isTelegramControlRoute =
+    currentPath === "/phenomed/telegram-control";
   const isArabicSchoolPlannerRoute =
     currentPath === "/phenomed/schoolplanner/ar" ||
     currentPath === "/phenomed/nogaplan";
@@ -34,11 +36,16 @@ const Footer = ({ appState, onLogout }) => {
   const normalizedUsername = String(appState.username || "").toLowerCase();
   const isNaghamNogaFooter =
     isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
-  const footerThemeClass = isHomeNogaFooterRoute || isNaghamNogaFooter
-    ? "server_answer--noga"
-    : isHomeFooterRoute
-      ? "server_answer--home"
-      : "";
+  const footerThemeClass = [
+    isHomeNogaFooterRoute || isNaghamNogaFooter
+      ? "server_answer--noga"
+      : isHomeFooterRoute
+        ? "server_answer--home"
+        : "",
+    isTelegramControlRoute ? "server_answer--telegram" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const plannerMusic = appState.planner_music || getPlannerMusicSnapshot();
   const footerSubApps = getHomeSubApps(appState.username);
   const selectedAiProvider = String(appState.aiProvider || "openai")
@@ -85,6 +92,11 @@ const Footer = ({ appState, onLogout }) => {
       }),
     ),
   ];
+  const aiControl = {
+    selectedProvider: selectedAiProvider,
+    statuses: appState.ai_connection_statuses || {},
+    onSelectProvider: onSetSelectedAiProvider,
+  };
 
   const openArabicSchoolPlanner = () => {
     if (typeof window === "undefined" || isArabicSchoolPlannerRoute) {
@@ -218,6 +230,7 @@ const Footer = ({ appState, onLogout }) => {
         placement="footer"
         authToken={appState.token}
         appHealth={{ rows: appHealthRows }}
+        aiControl={aiControl}
       />
       {isHomeNogaVideoMinimized ? (
         <div className="SubApps_minimizedWindows fr">

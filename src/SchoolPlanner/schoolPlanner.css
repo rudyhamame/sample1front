@@ -906,6 +906,55 @@
     grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
 }
 
+#schoolPlanner_addCourse_components_div {
+    gap: 8px;
+}
+
+#schoolPlanner_addCourse_component_input_section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+#schoolPlanner_addCourse_component_addButton {
+    border: none;
+    border-radius: 10px;
+    padding: 0 14px;
+    background: var(--planner-green-deep);
+    color: var(--white);
+    cursor: pointer;
+}
+
+#schoolPlanner_addCourse_components_ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.schoolPlanner_addCourse_components_item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(31, 95, 89, 0.1);
+    color: var(--planner-green-deep);
+    font-size: 12px;
+}
+
+.schoolPlanner_addCourse_components_item button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+}
+
 .schoolPlanner_addCourse_rowQuad {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }

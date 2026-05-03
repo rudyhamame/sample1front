@@ -15,6 +15,7 @@ var lectures = [];
 var courses_partOfPlan = [];
 var checkedLectures = [];
 var checkedCourses = [];
+var courseComponents = [];
 var courseDayAndTime = [];
 var courseExams = [];
 var lectureOutlines = [];
@@ -74,6 +75,13 @@ const getPrimaryCourseExam = (examEntries = []) => {
     course_grade: firstExam.course_grade || "",
     course_fullGrade: firstExam.course_fullGrade || "",
   };
+};
+
+const normalizeCourseComponentValue = (value) => {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue && normalizedValue !== "Course component"
+    ? normalizedValue
+    : "";
 };
 
 const normalizeCourseDuplicateKeyPart = (value) =>
@@ -3964,6 +3972,7 @@ export default class SchoolPlanner extends Component {
       ).textContent =
         object.buttonName === "Edit" ? this.t("edit") : this.t("add");
       if (object.buttonName === "Add") {
+        courseComponents = [];
         courseDayAndTime = [];
         courseInstructorsNames = [];
         courseExams = [];
@@ -3972,6 +3981,9 @@ export default class SchoolPlanner extends Component {
         document.getElementById(
           "schoolPlanner_addCourse_component_input",
         ).value = "Course component";
+        document.getElementById(
+          "schoolPlanner_addCourse_components_ul",
+        ).innerHTML = "";
         document.getElementById("schoolPlanner_addCourse_day_input").value =
           "Course day";
         document.getElementById(
@@ -4024,6 +4036,9 @@ export default class SchoolPlanner extends Component {
           "";
       }
       if (object.buttonName === "Edit") {
+        courseComponents = [
+          normalizeCourseComponentValue(object.course.course_component),
+        ].filter(Boolean);
         courseDayAndTime = object.course.course_dayAndTime;
         courseInstructorsNames = object.course.course_instructors;
         courseExams =
@@ -4049,6 +4064,7 @@ export default class SchoolPlanner extends Component {
         document.getElementById(
           "schoolPlanner_addCourse_component_input",
         ).value = object.course.course_component;
+        this.syncCourseComponentsList();
         document.getElementById("schoolPlanner_addCourse_day_input").value =
           "Course day";
         document.getElementById(
@@ -6902,6 +6918,81 @@ export default class SchoolPlanner extends Component {
     });
   };
   //...............................................
+  syncCourseComponentsList = () => {
+    const componentsListNode = document.getElementById(
+      "schoolPlanner_addCourse_components_ul",
+    );
+
+    if (!componentsListNode) {
+      return;
+    }
+
+    componentsListNode.innerHTML = "";
+
+    courseComponents.forEach((componentName) => {
+      const itemNode = document.createElement("li");
+      itemNode.className = "schoolPlanner_addCourse_components_item";
+
+      const labelNode = document.createElement("span");
+      labelNode.textContent = componentName;
+
+      const removeNode = document.createElement("button");
+      removeNode.type = "button";
+      removeNode.textContent = "×";
+      removeNode.setAttribute("aria-label", `Remove ${componentName}`);
+      removeNode.onclick = () => {
+        courseComponents = courseComponents.filter(
+          (entry) => entry !== componentName,
+        );
+        this.syncCourseComponentsList();
+      };
+
+      itemNode.appendChild(labelNode);
+      itemNode.appendChild(removeNode);
+      componentsListNode.appendChild(itemNode);
+    });
+  };
+
+  addCourseComponent = () => {
+    const componentInput = document.getElementById(
+      "schoolPlanner_addCourse_component_input",
+    );
+
+    if (!componentInput) {
+      return;
+    }
+
+    const nextComponent = normalizeCourseComponentValue(componentInput.value);
+
+    if (!nextComponent) {
+      return;
+    }
+
+    if (!courseComponents.includes(nextComponent)) {
+      courseComponents = [...courseComponents, nextComponent];
+    }
+
+    componentInput.value = "Course component";
+    this.syncCourseComponentsList();
+  };
+
+  getSelectedCourseComponents = () => {
+    const componentInput = document.getElementById(
+      "schoolPlanner_addCourse_component_input",
+    );
+    const draftComponent = normalizeCourseComponentValue(componentInput?.value);
+    const selectedComponents = Array.isArray(courseComponents)
+      ? [...courseComponents]
+      : [];
+
+    if (draftComponent && !selectedComponents.includes(draftComponent)) {
+      selectedComponents.push(draftComponent);
+    }
+
+    return selectedComponents;
+  };
+
+  //...............................................
   //..............EDIT COURSE....................
   editCourse = (object) => {
     const primaryExam = getPrimaryCourseExam(courseExams);
@@ -7111,6 +7202,7 @@ export default class SchoolPlanner extends Component {
   //.........ADD COURSE............
   addCourse = (object) => {
     const primaryExam = getPrimaryCourseExam(courseExams);
+    const selectedCourseComponents = this.getSelectedCourseComponents();
     if (object.course_name) {
       if (object.course_component === "Course component")
         object.course_component = "-";
@@ -7132,6 +7224,7 @@ export default class SchoolPlanner extends Component {
         body: JSON.stringify({
           course_name: object.course_name,
           course_component: object.course_component,
+          course_components: selectedCourseComponents,
           course_dayAndTime: courseDayAndTime,
           course_year: object.course_year,
           course_term: object.course_term,
@@ -8572,19 +8665,39 @@ export default class SchoolPlanner extends Component {
                       id="schoolPlanner_addCourse_name_input"
                       placeholder={this.t("courseNamePlaceholder")}
                     />
-                    <select id="schoolPlanner_addCourse_component_input">
-                      <option
-                        selected={true}
-                        disabled="disabled"
-                        value="Course component"
+                    <div
+                      id="schoolPlanner_addCourse_components_div"
+                      className="fc"
+                    >
+                      <div
+                        id="schoolPlanner_addCourse_component_input_section"
+                        className="fr"
                       >
-                        {this.t("courseComponentPlaceholder")}
-                      </option>
-                      <option value="In-class">{this.t("inClass")}</option>
-                      <option value="Out-of-class">
-                        {this.t("outOfClass")}
-                      </option>
-                    </select>
+                        <select id="schoolPlanner_addCourse_component_input">
+                          <option
+                            selected={true}
+                            disabled="disabled"
+                            value="Course component"
+                          >
+                            {this.t("courseComponentPlaceholder")}
+                          </option>
+                          <option value="In-class">{this.t("inClass")}</option>
+                          <option value="Out-of-class">
+                            {this.t("outOfClass")}
+                          </option>
+                        </select>
+                        <button
+                          type="button"
+                          id="schoolPlanner_addCourse_component_addButton"
+                          onClick={() => {
+                            this.addCourseComponent();
+                          }}
+                        >
+                          {this.t("add")}
+                        </button>
+                      </div>
+                      <ul id="schoolPlanner_addCourse_components_ul"></ul>
+                    </div>
                   </div>
                   <div className="schoolPlanner_addCourse_row schoolPlanner_addCourse_rowWide">
                     <div
@@ -9041,7 +9154,7 @@ export default class SchoolPlanner extends Component {
                   });
                   if (this.isActionLabel(buttonName, "Add")) {
                     this.addCourse({
-                      course_name: course_name + " (" + course_component + ")",
+                      course_name: course_name,
                       course_component: course_component,
                       course_year: course_year,
                       course_term: course_term,
@@ -9125,8 +9238,7 @@ export default class SchoolPlanner extends Component {
                     });
                     if (this.isActionLabel(buttonName, "Add")) {
                       this.addCourse({
-                        course_name:
-                          course_name + " (" + course_component + ")",
+                        course_name: course_name,
                         course_component: course_component,
                         course_year: course_year,
                         course_term: course_term,

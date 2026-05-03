@@ -259,6 +259,41 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   overflow: hidden;
 }
 
+.SubApps_startPanel {
+  position: fixed;
+}
+
+.SubApps_aiProviderButton {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.SubApps_aiProviderButton:hover {
+  color: #0b6a64;
+}
+
+.SubApps_aiProviderButton.is-selected {
+  color: #0b6a64;
+}
+
+.SubApps_aiPanel .SubApps_aiProviderButton.is-selected {
+  background: transparent;
+}
+
 .SubApps_settingsInlineList.is-open {
   display: flex;
 }

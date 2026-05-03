@@ -35,6 +35,85 @@ const normalizeHomeDrawing = (value) =>
 const normalizeImageGallery = (value) =>
   Array.isArray(value) ? value.filter(Boolean) : [];
 
+const normalizeNullableNumber = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeProfileStudyingTime = (studying = {}) => {
+  const studyingTime =
+    studying?.time && typeof studying.time === "object" ? studying.time : {};
+  const start =
+    studyingTime?.start && typeof studyingTime.start === "object"
+      ? studyingTime.start
+      : {};
+  const current =
+    studyingTime?.current && typeof studyingTime.current === "object"
+      ? studyingTime.current
+      : {};
+  const startDate =
+    studyingTime?.startDate && typeof studyingTime.startDate === "object"
+      ? studyingTime.startDate
+      : {};
+  const currentDate =
+    studyingTime?.currentDate && typeof studyingTime.currentDate === "object"
+      ? studyingTime.currentDate
+      : {};
+
+  const totalYearsNum = normalizeNullableNumber(
+    studyingTime?.totalYearsNum ?? studyingTime?.totalYears,
+    0,
+  );
+  const startProgramYearInterval = String(
+    start?.programYearInterval ?? startDate?.startYear ?? "",
+  ).trim();
+  const startProgramTerm = String(
+    start?.programTerm ?? startDate?.startTerm ?? "",
+  ).trim();
+  const currentProgramYearInterval = String(
+    current?.programYearInterval ?? studyingTime?.currentAcademicYear ?? "",
+  ).trim();
+  const currentProgramYearNum = normalizeNullableNumber(
+    current?.programYearNum ?? currentDate?.year,
+    null,
+  );
+  const currentProgramTerm = String(
+    current?.programTerm ?? currentDate?.term ?? studying?.term ?? "",
+  ).trim();
+
+  return {
+    ...studyingTime,
+    totalYearsNum,
+    totalYears: totalYearsNum,
+    start: {
+      ...(start && typeof start === "object" ? start : {}),
+      programYearInterval: startProgramYearInterval || null,
+      programTerm: startProgramTerm || null,
+    },
+    current: {
+      ...(current && typeof current === "object" ? current : {}),
+      programYearInterval: currentProgramYearInterval || null,
+      programYearNum: currentProgramYearNum,
+      programTerm: currentProgramTerm || null,
+    },
+    currentAcademicYear: currentProgramYearInterval || null,
+    startDate: {
+      ...(startDate && typeof startDate === "object" ? startDate : {}),
+      startYear: startProgramYearInterval || null,
+      startTerm: startProgramTerm || null,
+    },
+    currentDate: {
+      ...(currentDate && typeof currentDate === "object" ? currentDate : {}),
+      year: currentProgramYearNum,
+      term: currentProgramTerm || null,
+    },
+  };
+};
+
 const isProfileCompleted = (rawUser = {}) => {
   const profile =
     rawUser.profile && typeof rawUser.profile === "object"
@@ -65,16 +144,9 @@ const isProfileCompleted = (rawUser = {}) => {
     profile.studying && typeof profile.studying === "object"
       ? profile.studying
       : {};
-  const studyingTime =
-    studying.time && typeof studying.time === "object" ? studying.time : {};
-  const studyingTimeStartDate =
-    studyingTime.startDate && typeof studyingTime.startDate === "object"
-      ? studyingTime.startDate
-      : {};
-  const studyingTimeCurrentDate =
-    studyingTime.currentDate && typeof studyingTime.currentDate === "object"
-      ? studyingTime.currentDate
-      : {};
+  const studyingTime = normalizeProfileStudyingTime(studying);
+  const studyingTimeStartDate = studyingTime.startDate || {};
+  const studyingTimeCurrentDate = studyingTime.currentDate || {};
   const working =
     profile.working && typeof profile.working === "object"
       ? profile.working
@@ -131,15 +203,15 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
   const media = rawUser.media || {};
   const profile = rawUser.profile || rawUser.bio || {};
   const studying = profile.studying || {};
-  const studyingTime =
-    studying.time && typeof studying.time === "object" ? studying.time : {};
-  const studyingTimeStartDate =
-    studyingTime.startDate && typeof studyingTime.startDate === "object"
-      ? studyingTime.startDate
-      : {};
-  const studyingTimeCurrentDate =
-    studyingTime.currentDate && typeof studyingTime.currentDate === "object"
-      ? studyingTime.currentDate
+  const normalizedStudyingTime = normalizeProfileStudyingTime(studying);
+  const studyingTimeStartDate = normalizedStudyingTime.startDate || {};
+  const studyingTimeCurrentDate = normalizedStudyingTime.currentDate || {};
+  const normalizedStudying =
+    studying && typeof studying === "object"
+      ? {
+          ...studying,
+          time: normalizedStudyingTime,
+        }
       : {};
   const working = profile.working || {};
   const memory = rawUser.memory || {};
@@ -173,7 +245,7 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
       (profile.hometown && typeof profile.hometown === "object"
         ? profile.hometown
         : { Country: "", City: "" }),
-    studying: overrides.studying ?? profile.studying ?? {},
+    studying: overrides.studying ?? normalizedStudying,
     working: overrides.working ?? profile.working ?? {},
     faculty: String(overrides.faculty ?? studying.faculty ?? "").trim(),
     program: String(overrides.program ?? studying.program ?? "").trim(),
@@ -182,13 +254,18 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
     ).trim(),
     studyYear: String(
       overrides.studyYear ??
+        normalizedStudyingTime.current?.programYearNum ??
         studyingTimeStartDate.startYear ??
         studying.programStartYear ??
         studying.academicYear ??
         "",
     ).trim(),
     term: String(
-      overrides.term ?? studyingTimeCurrentDate.term ?? studying.term ?? "",
+      overrides.term ??
+        normalizedStudyingTime.current?.programTerm ??
+        studyingTimeCurrentDate.term ??
+        studying.term ??
+        "",
     ).trim(),
     aiProvider:
       String(

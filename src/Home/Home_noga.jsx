@@ -93,8 +93,8 @@ const HOME_GALLERY_VISIBILITY_FILTERS = [
 ];
 
 const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
-  { length: 30 },
-  (_, index) => `${2000 + index}-${2001 + index}`,
+  { length: 31 },
+  (_, index) => `${2030 - index}-${2031 - index}`,
 );
 
 const HOME_DRAWING_ALLOWLIST_ZONES = [
@@ -1709,14 +1709,16 @@ function HomeNoga(props) {
   const [aboutProfileDraft, setAboutProfileDraft] = useState({
     firstname: "",
     lastname: "",
-    username: "",
     dob: "",
     university: "",
     program: "",
     faculty: "",
-    currentYear: "",
-    currentTerm: "",
-    currentAcademicYear: "",
+    totalYearsNum: "",
+    startProgramYearInterval: "",
+    startProgramTerm: "",
+    currentProgramYearNum: "",
+    currentProgramYearInterval: "",
+    currentProgramTerm: "",
     language: "",
     company: "",
     position: "",
@@ -1724,7 +1726,6 @@ function HomeNoga(props) {
     phone: "",
     hometownCountry: "",
     hometownCity: "",
-    bio: "",
   });
   const [academicInfoFeedback, setAcademicInfoFeedback] = useState({
     tone: "",
@@ -3210,10 +3211,20 @@ function HomeNoga(props) {
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
       currentAcademicYear: String(
-        props.state?.studying?.time?.currentAcademicYear || "",
+        props.state?.studying?.time?.current?.programYearInterval ||
+          props.state?.studying?.time?.currentAcademicYear ||
+          "",
       ),
-      studyYear: String(props.state?.studyYear || ""),
-      term: String(props.state?.term || ""),
+      studyYear: String(
+        props.state?.studyYear ||
+          props.state?.studying?.time?.current?.programYearNum ||
+          "",
+      ),
+      term: String(
+        props.state?.term ||
+          props.state?.studying?.time?.current?.programTerm ||
+          "",
+      ),
     };
 
     setAcademicInfoFields((currentFields) =>
@@ -3232,8 +3243,11 @@ function HomeNoga(props) {
     props.state?.studying?.faculty,
     props.state?.program,
     props.state?.university,
+    props.state?.studying?.time?.current?.programYearInterval,
     props.state?.studying?.time?.currentAcademicYear,
+    props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
+    props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
 
@@ -3241,7 +3255,6 @@ function HomeNoga(props) {
     const nextAboutProfileDraft = {
       firstname: String(props.state?.firstname || ""),
       lastname: String(props.state?.lastname || ""),
-      username: String(props.state?.username || ""),
       dob: props.state?.dob
         ? String(props.state.dob).slice(0, 10)
         : "",
@@ -3254,12 +3267,21 @@ function HomeNoga(props) {
       faculty: String(
         props.state?.studying?.faculty || props.state?.faculty || "",
       ),
-      currentYear: String(props.state?.studyYear || ""),
-      currentTerm: String(
-        props.state?.studying?.time?.currentDate?.term || props.state?.term || "",
+      totalYearsNum: String(props.state?.studying?.time?.totalYearsNum || ""),
+      startProgramYearInterval: String(
+        props.state?.studying?.time?.start?.programYearInterval || "",
       ),
-      currentAcademicYear: String(
-        props.state?.studying?.time?.currentAcademicYear || "",
+      startProgramTerm: String(
+        props.state?.studying?.time?.start?.programTerm || "",
+      ),
+      currentProgramYearNum: String(
+        props.state?.studying?.time?.current?.programYearNum || "",
+      ),
+      currentProgramYearInterval: String(
+        props.state?.studying?.time?.current?.programYearInterval || "",
+      ),
+      currentProgramTerm: String(
+        props.state?.studying?.time?.current?.programTerm || "",
       ),
       language: String(props.state?.studying?.language || ""),
       company: String(props.state?.working?.company || ""),
@@ -3268,7 +3290,6 @@ function HomeNoga(props) {
       phone: String(props.state?.phone || ""),
       hometownCountry: String(props.state?.hometown?.Country || ""),
       hometownCity: String(props.state?.hometown?.City || ""),
-      bio: String(props.state?.bio || ""),
     };
 
     setAboutProfileDraft((currentDraft) =>
@@ -3279,7 +3300,6 @@ function HomeNoga(props) {
   }, [
     props.state?.firstname,
     props.state?.lastname,
-    props.state?.username,
     props.state?.dob,
     props.state?.studying?.university,
     props.state?.university,
@@ -3287,10 +3307,12 @@ function HomeNoga(props) {
     props.state?.program,
     props.state?.studying?.faculty,
     props.state?.faculty,
-    props.state?.studyYear,
-    props.state?.studying?.time?.currentDate?.term,
-    props.state?.term,
-    props.state?.studying?.time?.currentAcademicYear,
+    props.state?.studying?.time?.totalYearsNum,
+    props.state?.studying?.time?.start?.programYearInterval,
+    props.state?.studying?.time?.start?.programTerm,
+    props.state?.studying?.time?.current?.programYearNum,
+    props.state?.studying?.time?.current?.programTerm,
+    props.state?.studying?.time?.current?.programYearInterval,
     props.state?.studying?.language,
     props.state?.working?.company,
     props.state?.working?.position,
@@ -3298,7 +3320,6 @@ function HomeNoga(props) {
     props.state?.phone,
     props.state?.hometown?.Country,
     props.state?.hometown?.City,
-    props.state?.bio,
   ]);
 
   React.useEffect(() => {
@@ -3775,12 +3796,14 @@ function HomeNoga(props) {
             program: String(profileStudying?.program || "").trim(),
             university: String(profileStudying?.university || "").trim(),
             studyYear: String(
-              profileStudying?.time?.currentDate?.year ||
+              profileStudying?.time?.current?.programYearNum ||
+                profileStudying?.time?.currentDate?.year ||
                 profileStudying?.academicYear ||
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.currentDate?.term ||
+              profileStudying?.time?.current?.programTerm ||
+                profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
             ).trim(),
@@ -7294,14 +7317,16 @@ function HomeNoga(props) {
         body: JSON.stringify({
           firstname: aboutProfileDraft.firstname,
           lastname: aboutProfileDraft.lastname,
-          username: aboutProfileDraft.username,
           dob: aboutProfileDraft.dob,
           university: aboutProfileDraft.university,
           program: aboutProfileDraft.program,
           faculty: aboutProfileDraft.faculty,
-          studyYear: aboutProfileDraft.currentYear,
-          term: aboutProfileDraft.currentTerm,
-          currentAcademicYear: aboutProfileDraft.currentAcademicYear,
+          totalYearsNum: aboutProfileDraft.totalYearsNum,
+          startProgramYearInterval: aboutProfileDraft.startProgramYearInterval,
+          startProgramTerm: aboutProfileDraft.startProgramTerm,
+          currentProgramYearNum: aboutProfileDraft.currentProgramYearNum,
+          currentProgramYearInterval: aboutProfileDraft.currentProgramYearInterval,
+          currentProgramTerm: aboutProfileDraft.currentProgramTerm,
           language: aboutProfileDraft.language,
           company: aboutProfileDraft.company,
           position: aboutProfileDraft.position,
@@ -7309,7 +7334,6 @@ function HomeNoga(props) {
           phone: aboutProfileDraft.phone,
           hometownCountry: aboutProfileDraft.hometownCountry,
           hometownCity: aboutProfileDraft.hometownCity,
-          bio: aboutProfileDraft.bio,
           aiProvider: String(props.state?.aiProvider || "openai").trim(),
         }),
       });
@@ -7326,16 +7350,16 @@ function HomeNoga(props) {
       props.setUserAcademicInfo?.({
         firstname: nextInfo?.firstname ?? aboutProfileDraft.firstname,
         lastname: nextInfo?.lastname ?? aboutProfileDraft.lastname,
-        username: nextInfo?.username ?? aboutProfileDraft.username,
         dob: nextInfo?.dob ?? aboutProfileDraft.dob,
-        bio: nextInfo?.bio ?? aboutProfileDraft.bio,
         faculty: nextInfo?.faculty ?? aboutProfileDraft.faculty,
         program: nextInfo?.program ?? aboutProfileDraft.program,
         university: nextInfo?.university ?? aboutProfileDraft.university,
         currentAcademicYear:
-          nextInfo?.currentAcademicYear ?? aboutProfileDraft.currentAcademicYear,
-        studyYear: nextInfo?.studyYear ?? aboutProfileDraft.currentYear,
-        term: nextInfo?.term ?? aboutProfileDraft.currentTerm,
+          nextInfo?.currentProgramYearInterval ??
+          aboutProfileDraft.currentProgramYearInterval,
+        studyYear:
+          nextInfo?.currentProgramYearNum ?? aboutProfileDraft.currentProgramYearNum,
+        term: nextInfo?.currentProgramTerm ?? aboutProfileDraft.currentProgramTerm,
         language: nextInfo?.language ?? aboutProfileDraft.language,
         company: nextInfo?.company ?? aboutProfileDraft.company,
         position: nextInfo?.position ?? aboutProfileDraft.position,
@@ -7483,6 +7507,11 @@ function HomeNoga(props) {
     typeof profileStudyingTime.startDate === "object"
       ? profileStudyingTime.startDate
       : {};
+  const profileStudyingCurrent =
+    profileStudyingTime.current &&
+    typeof profileStudyingTime.current === "object"
+      ? profileStudyingTime.current
+      : {};
   const profileStudyingCurrentDate =
     profileStudyingTime.currentDate &&
     typeof profileStudyingTime.currentDate === "object"
@@ -7517,11 +7546,6 @@ function HomeNoga(props) {
           fieldName: "lastname",
         },
         {
-          label: "Username",
-          value: formatProfileValue(profileState.username),
-          fieldName: "username",
-        },
-        {
           label: "DOB",
           value: formattedDob,
           fieldName: "dob",
@@ -7554,20 +7578,52 @@ function HomeNoga(props) {
           fieldName: "faculty",
         },
         {
-          label: "Current academic year",
-          value: formatProfileValue(profileStudyingTime.currentAcademicYear),
-          fieldName: "currentAcademicYear",
+          label: "Total program years",
+          value: formatProfileValue(profileStudyingTime.totalYearsNum),
+          fieldName: "totalYearsNum",
+          inputType: "number",
+        },
+        {
+          label: "Start interval",
+          value: formatProfileValue(
+            profileStudyingTime.start?.programYearInterval,
+          ),
+          fieldName: "startProgramYearInterval",
+          inputType: "select",
+          options: HOME_ACADEMIC_YEAR_OPTIONS,
+        },
+        {
+          label: "Start term",
+          value: formatProfileValue(profileStudyingTime.start?.programTerm),
+          fieldName: "startProgramTerm",
+          inputType: "select",
+          options: ["First", "Second", "Third"],
+        },
+        {
+          label: "Current program year number",
+          value: formatProfileValue(profileStudyingCurrent.programYearNum),
+          fieldName: "currentProgramYearNum",
+          inputType: "number",
+        },
+        {
+          label: "Current interval",
+          value: formatProfileValue(
+            profileStudyingCurrent.programYearInterval ||
+              profileStudyingTime.currentAcademicYear,
+          ),
+          fieldName: "currentProgramYearInterval",
           inputType: "select",
           options: HOME_ACADEMIC_YEAR_OPTIONS,
         },
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrentDate.term ||
+            profileStudyingCurrent.programTerm ||
+              profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,
           ),
-          fieldName: "currentTerm",
+          fieldName: "currentProgramTerm",
           inputType: "select",
           options: ["First", "Second", "Third"],
         },
@@ -7616,17 +7672,6 @@ function HomeNoga(props) {
           label: "City",
           value: formatProfileValue(profileHometown.City),
           fieldName: "hometownCity",
-        },
-      ],
-    },
-    {
-      title: "Bio",
-      rows: [
-        {
-          label: "Bio",
-          value: formatProfileValue(profileState.bio),
-          fieldName: "bio",
-          inputType: "textarea",
         },
       ],
     },

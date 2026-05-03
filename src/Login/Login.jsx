@@ -169,10 +169,13 @@ const getUniversityOptionsForCountry = (country = "") => {
     : [];
 };
 
-const studyYearNumberOptions = Array.from(
-  { length: new Date().getFullYear() - 2000 + 7 },
-  (_, index) => String(2000 + index),
+const studyYearNumberOptions = Array.from({ length: 31 }, (_, index) =>
+  String(2030 - index),
 );
+const studyYearIntervalOptions = studyYearNumberOptions
+  .map((yearValue) => Number(yearValue))
+  .filter(Number.isFinite)
+  .map((yearValue) => `${yearValue}-${yearValue + 1}`);
 const studyTermOptions = ["First", "Second", "Third"];
 const programOptions = [
   "Medicine",
@@ -261,40 +264,6 @@ const completeProfileStudentFields = [
     options: programOptions,
   },
   {
-    key: "studying.time.totalYears",
-    label: "Program total years",
-    type: "number",
-  },
-  {
-    key: "studying.time.currentAcademicYear",
-    label: "Current academic year number",
-    type: "number",
-  },
-  {
-    key: "studying.time.startDate.startYear",
-    label: "Program start year",
-    type: "select",
-    options: studyYearNumberOptions,
-  },
-  {
-    key: "studying.time.startDate.startTerm",
-    label: "Program start term",
-    type: "select",
-    options: studyTermOptions,
-  },
-  {
-    key: "studying.time.currentDate.year",
-    label: "Current year",
-    type: "select",
-    options: studyYearNumberOptions,
-  },
-  {
-    key: "studying.time.currentDate.term",
-    label: "Current term",
-    type: "select",
-    options: studyTermOptions,
-  },
-  {
     key: "studying.language",
     label: "Language of study",
     type: "select",
@@ -326,6 +295,58 @@ const sanitizeNonNegativeNumberInput = (value) => {
   }
   return String(Math.max(0, parsedValue));
 };
+
+const createEmptyProfileCompletionForm = () => ({
+  firstname: "",
+  lastname: "",
+  email: "",
+  phoneCountry: "",
+  phone: "",
+  dob: "",
+  hometown: {
+    Country: "",
+    City: "",
+  },
+  bio: "",
+  studying: {
+    university: "",
+    faculty: "",
+    program: "",
+    programStartYear: "",
+    term: "",
+    time: {
+      totalYearsNum: "",
+      start: {
+        programYearInterval: "",
+        programTerm: "",
+      },
+      current: {
+        programYearNum: "",
+        programYearInterval: "",
+        programTerm: "",
+      },
+    },
+    language: "",
+  },
+  working: {
+    company: "",
+    position: "",
+  },
+  profilePic: {
+    url: "",
+    publicId: "",
+    mimeType: "",
+    width: null,
+    height: null,
+  },
+  viewport: {
+    x: 0,
+    y: 0,
+    zoom: 1,
+    width: null,
+    height: null,
+  },
+});
 
 const getStoredAuthState = () => {
   try {
@@ -469,57 +490,9 @@ const Login = ({ onLogin, onForceLogout }) => {
     username: "",
     password: "",
   });
-  const [profileCompletionForm, setProfileCompletionForm] = useState({
-    firstname: "",
-    lastname: "",
-    email: "",
-    phoneCountry: "",
-    phone: "",
-    dob: "",
-    hometown: {
-      Country: "",
-      City: "",
-    },
-    bio: "",
-    studying: {
-      university: "",
-      faculty: "",
-      program: "",
-      programStartYear: "",
-      term: "",
-      time: {
-        totalYears: "",
-        currentAcademicYear: "",
-        startDate: {
-          startYear: "",
-          startTerm: "",
-        },
-        currentDate: {
-          year: "",
-          term: "",
-        },
-      },
-      language: "",
-    },
-    working: {
-      company: "",
-      position: "",
-    },
-    profilePic: {
-      url: "",
-      publicId: "",
-      mimeType: "",
-      width: null,
-      height: null,
-    },
-    viewport: {
-      x: 0,
-      y: 0,
-      zoom: 1,
-      width: null,
-      height: null,
-    },
-  });
+  const [profileCompletionForm, setProfileCompletionForm] = useState(
+    createEmptyProfileCompletionForm(),
+  );
   const [isLoginTransitioning, setIsLoginTransitioning] = useState(false);
   const [isClinicalRealityOpen, setIsClinicalRealityOpen] = useState(false);
   const [isRealityToolbarOpen, setIsRealityToolbarOpen] = useState(false);
@@ -989,56 +962,7 @@ const Login = ({ onLogin, onForceLogout }) => {
     setSignupMessage(null);
     if (text !== "complete-profile") {
       setPendingSignupAuthReport(null);
-      setProfileCompletionForm({
-        firstname: "",
-        lastname: "",
-        email: "",
-        phone: "",
-        dob: "",
-        hometown: {
-          Country: "",
-          City: "",
-        },
-        bio: "",
-        studying: {
-          university: "",
-          faculty: "",
-          program: "",
-          programStartYear: "",
-          term: "",
-          time: {
-            totalYears: "",
-            currentAcademicYear: "",
-            startDate: {
-              startYear: "",
-              startTerm: "",
-            },
-            currentDate: {
-              year: "",
-              term: "",
-            },
-          },
-          language: "",
-        },
-        working: {
-          company: "",
-          position: "",
-        },
-        profilePic: {
-          url: "",
-          publicId: "",
-          mimeType: "",
-          width: null,
-          height: null,
-        },
-        viewport: {
-          x: 0,
-          y: 0,
-          zoom: 1,
-          width: null,
-          height: null,
-        },
-      });
+      setProfileCompletionForm(createEmptyProfileCompletionForm());
     }
   };
 
@@ -1806,10 +1730,11 @@ const Login = ({ onLogin, onForceLogout }) => {
       if (
         !studying.program.trim() ||
         !studying.university.trim() ||
-        !String(studying?.time?.startDate?.startYear || "").trim() ||
-        !String(studying?.time?.startDate?.startTerm || "").trim() ||
-        !String(studying?.time?.currentDate?.year || "").trim() ||
-        !String(studying?.time?.currentDate?.term || "").trim()
+        !String(studying?.time?.start?.programYearInterval || "").trim() ||
+        !String(studying?.time?.start?.programTerm || "").trim() ||
+        !String(studying?.time?.current?.programYearNum || "").trim() ||
+        !String(studying?.time?.current?.programYearInterval || "").trim() ||
+        !String(studying?.time?.current?.programTerm || "").trim()
       ) {
         setSignup_ok(false);
         setSignupMessage("Please complete all education information.");
@@ -2043,10 +1968,11 @@ const Login = ({ onLogin, onForceLogout }) => {
         return (
           !studying.program.trim() ||
           !studying.university.trim() ||
-          !String(studying?.time?.startDate?.startYear || "").trim() ||
-          !String(studying?.time?.startDate?.startTerm || "").trim() ||
-          !String(studying?.time?.currentDate?.year || "").trim() ||
-          !String(studying?.time?.currentDate?.term || "").trim()
+          !String(studying?.time?.start?.programYearInterval || "").trim() ||
+          !String(studying?.time?.start?.programTerm || "").trim() ||
+          !String(studying?.time?.current?.programYearNum || "").trim() ||
+          !String(studying?.time?.current?.programYearInterval || "").trim() ||
+          !String(studying?.time?.current?.programTerm || "").trim()
         );
       }
       if (isWorking) {
@@ -2216,6 +2142,110 @@ const Login = ({ onLogin, onForceLogout }) => {
                     : field.options,
               }),
             )}
+            <div className="Login_authFieldGroup">
+              <p className="Login_authFieldGroupTitle">
+                Total number of years of the program
+              </p>
+              {renderTextField({
+                id: "complete-profile-studying-time-totalYearsNum",
+                label: "Program total years",
+                type: "number",
+                value: sanitizeNonNegativeNumberInput(
+                  getNestedValue(
+                    profileCompletionForm,
+                    "studying.time.totalYearsNum",
+                  ),
+                ),
+                onChange: (value) =>
+                  updateNestedField(
+                    "studying.time.totalYearsNum",
+                    sanitizeNonNegativeNumberInput(value),
+                  ),
+              })}
+            </div>
+            <div className="Login_authFieldGroup">
+              <p className="Login_authFieldGroupTitle">Start</p>
+              <div className="Login_authInlineRow">
+                {renderTextField({
+                  id: "complete-profile-studying-time-start-programYearInterval",
+                  label: "Start program year interval",
+                  type: "select",
+                  value: getNestedValue(
+                    profileCompletionForm,
+                    "studying.time.start.programYearInterval",
+                  ),
+                  onChange: (value) =>
+                    updateNestedField(
+                      "studying.time.start.programYearInterval",
+                      value,
+                    ),
+                  options: studyYearIntervalOptions,
+                })}
+                {renderTextField({
+                  id: "complete-profile-studying-time-start-programTerm",
+                  label: "Start term",
+                  type: "select",
+                  value: getNestedValue(
+                    profileCompletionForm,
+                    "studying.time.start.programTerm",
+                  ),
+                  onChange: (value) =>
+                    updateNestedField("studying.time.start.programTerm", value),
+                  options: studyTermOptions,
+                })}
+              </div>
+            </div>
+            <div className="Login_authFieldGroup">
+              <p className="Login_authFieldGroupTitle">Current</p>
+              <div className="Login_authInlineRow">
+                {renderTextField({
+                  id: "complete-profile-studying-time-current-programYearNum",
+                  label: "Current program year number",
+                  type: "number",
+                  value: sanitizeNonNegativeNumberInput(
+                    getNestedValue(
+                      profileCompletionForm,
+                      "studying.time.current.programYearNum",
+                    ),
+                  ),
+                  onChange: (value) =>
+                    updateNestedField(
+                      "studying.time.current.programYearNum",
+                      sanitizeNonNegativeNumberInput(value),
+                    ),
+                })}
+                {renderTextField({
+                  id: "complete-profile-studying-time-current-programYearInterval",
+                  label: "Current program year interval",
+                  type: "select",
+                  value: getNestedValue(
+                    profileCompletionForm,
+                    "studying.time.current.programYearInterval",
+                  ),
+                  onChange: (value) =>
+                    updateNestedField(
+                      "studying.time.current.programYearInterval",
+                      value,
+                    ),
+                  options: studyYearIntervalOptions,
+                })}
+                {renderTextField({
+                  id: "complete-profile-studying-time-current-programTerm",
+                  label: "Current term",
+                  type: "select",
+                  value: getNestedValue(
+                    profileCompletionForm,
+                    "studying.time.current.programTerm",
+                  ),
+                  onChange: (value) =>
+                    updateNestedField(
+                      "studying.time.current.programTerm",
+                      value,
+                    ),
+                  options: studyTermOptions,
+                })}
+              </div>
+            </div>
           </div>,
           // Working section
           <div key="working-section" className="profile-section">
@@ -2641,57 +2671,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                     id="Login_authClearButton"
                     type="button"
                     onClick={() =>
-                      setProfileCompletionForm({
-                        firstname: "",
-                        lastname: "",
-                        email: "",
-                        phoneCountry: "",
-                        phone: "",
-                        dob: "",
-                        hometown: {
-                          Country: "",
-                          City: "",
-                        },
-                        bio: "",
-                        studying: {
-                          university: "",
-                          faculty: "",
-                          program: "",
-                          programStartYear: "",
-                          term: "",
-                          time: {
-                            totalYears: "",
-                            currentAcademicYear: "",
-                            startDate: {
-                              startYear: "",
-                              startTerm: "",
-                            },
-                            currentDate: {
-                              year: "",
-                              term: "",
-                            },
-                          },
-                          language: "",
-                        },
-                        working: {
-                          company: "",
-                          position: "",
-                        },
-                        profilePic: {
-                          url: "",
-                          publicId: "",
-                          mimeType: "",
-                          width: null,
-                          height: null,
-                        },
-                        viewport: {
-                          x: 0,
-                          y: 0,
-                          zoom: 1,
-                          width: null,
-                          height: null,
-                        },
-                      })
+                      setProfileCompletionForm(createEmptyProfileCompletionForm())
                     }
                   >
                     Clear

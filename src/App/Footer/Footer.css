@@ -464,3 +464,11 @@ body:not(.dark) #server_answer.server_answer--home #server_answer_musicLabel {
 body:not(.dark) #server_answer.server_answer--home #server_answer_musicTrack {
   color: rgba(24, 49, 58, 0.88);
 }
+
+#server_answer.server_answer--telegram {
+  position: static;
+  z-index: auto;
+  margin-top: 0;
+  flex: 0 0 auto;
+  align-self: stretch;
+}

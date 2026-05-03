@@ -12,6 +12,85 @@ const DEFAULT_HOME_DRAWING = {
 
 const toArray = (value) => (Array.isArray(value) ? value : []);
 
+const normalizeNullableNumber = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeProfileStudyingTime = (studying = {}) => {
+  const studyingTime =
+    studying?.time && typeof studying.time === "object" ? studying.time : {};
+  const start =
+    studyingTime?.start && typeof studyingTime.start === "object"
+      ? studyingTime.start
+      : {};
+  const current =
+    studyingTime?.current && typeof studyingTime.current === "object"
+      ? studyingTime.current
+      : {};
+  const startDate =
+    studyingTime?.startDate && typeof studyingTime.startDate === "object"
+      ? studyingTime.startDate
+      : {};
+  const currentDate =
+    studyingTime?.currentDate && typeof studyingTime.currentDate === "object"
+      ? studyingTime.currentDate
+      : {};
+
+  const totalYearsNum = normalizeNullableNumber(
+    studyingTime?.totalYearsNum ?? studyingTime?.totalYears,
+    0,
+  );
+  const startProgramYearInterval = String(
+    start?.programYearInterval ?? startDate?.startYear ?? "",
+  ).trim();
+  const startProgramTerm = String(
+    start?.programTerm ?? startDate?.startTerm ?? "",
+  ).trim();
+  const currentProgramYearInterval = String(
+    current?.programYearInterval ?? studyingTime?.currentAcademicYear ?? "",
+  ).trim();
+  const currentProgramYearNum = normalizeNullableNumber(
+    current?.programYearNum ?? currentDate?.year,
+    null,
+  );
+  const currentProgramTerm = String(
+    current?.programTerm ?? currentDate?.term ?? studying?.term ?? "",
+  ).trim();
+
+  return {
+    ...studyingTime,
+    totalYearsNum,
+    totalYears: totalYearsNum,
+    start: {
+      ...(start && typeof start === "object" ? start : {}),
+      programYearInterval: startProgramYearInterval || null,
+      programTerm: startProgramTerm || null,
+    },
+    current: {
+      ...(current && typeof current === "object" ? current : {}),
+      programYearInterval: currentProgramYearInterval || null,
+      programYearNum: currentProgramYearNum,
+      programTerm: currentProgramTerm || null,
+    },
+    currentAcademicYear: currentProgramYearInterval || null,
+    startDate: {
+      ...(startDate && typeof startDate === "object" ? startDate : {}),
+      startYear: startProgramYearInterval || null,
+      startTerm: startProgramTerm || null,
+    },
+    currentDate: {
+      ...(currentDate && typeof currentDate === "object" ? currentDate : {}),
+      year: currentProgramYearNum,
+      term: currentProgramTerm || null,
+    },
+  };
+};
+
 const getProfilePictureUrl = (...sources) => {
   for (const source of sources) {
     if (!source) {
@@ -161,6 +240,7 @@ export const normalizeUserUpdatePayload = (payload) => {
     profile?.studying && typeof profile.studying === "object"
       ? profile.studying
       : {};
+  const normalizedStudyingTime = normalizeProfileStudyingTime(studying);
   const memory = normalizeMemoryPayload(payload);
 
   const nextProfilePicture = getProfilePictureUrl(
@@ -185,14 +265,17 @@ export const normalizeUserUpdatePayload = (payload) => {
       ).trim(),
       term: String(
         personal?.term ??
-          studying?.time?.currentDate?.term ??
+          normalizedStudyingTime?.current?.programTerm ??
+          normalizedStudyingTime?.currentDate?.term ??
           studying?.term ??
           profile?.term ??
           "",
       ).trim(),
       studyYear: String(
         personal?.studyYear ??
-          studying?.time?.startDate?.startYear ??
+          normalizedStudyingTime?.current?.programYearNum ??
+          normalizedStudyingTime?.start?.programYearInterval ??
+          normalizedStudyingTime?.startDate?.startYear ??
           studying?.academicYear ??
           profile?.studyYear ??
           profile?.year ??
@@ -200,7 +283,13 @@ export const normalizeUserUpdatePayload = (payload) => {
       ).trim(),
     },
     profile,
-    studying,
+    studying:
+      studying && typeof studying === "object"
+        ? {
+            ...studying,
+            time: normalizedStudyingTime,
+          }
+        : {},
     settings,
     media,
     memory,

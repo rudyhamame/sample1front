@@ -10,6 +10,12 @@ const START_WINDOWS = {
     width: 320,
     height: 420,
   },
+  aiControl: {
+    title: "AI",
+    icon: "fas fa-robot",
+    width: 320,
+    height: 420,
+  },
 };
 
 const START_MENU_LAYOUT_STORAGE_KEY = "SubApps.startMenuLayout";
@@ -32,7 +38,7 @@ const readStoredStartMenuLayout = () => {
 const normalizeStartMenuLayout = (layout, appItemIds) => {
   const fallbackLayout = {
     main: appItemIds,
-    settings: ["appHealth"],
+    settings: ["appHealth", "aiControl"],
   };
   const nextLayout = START_MENU_LISTS.reduce((lists, listId) => {
     const listItems = Array.isArray(layout?.[listId]) ? layout[listId] : [];
@@ -42,7 +48,7 @@ const normalizeStartMenuLayout = (layout, appItemIds) => {
     };
   }, {});
 
-  const availableIds = new Set([...appItemIds, "appHealth"]);
+  const availableIds = new Set([...appItemIds, "appHealth", "aiControl"]);
   const usedIds = new Set();
 
   START_MENU_LISTS.forEach((listId) => {
@@ -191,7 +197,7 @@ const SubApps = (props) => {
       return;
     }
 
-    const panel = event.currentTarget.closest(".SubApps_healthPanel");
+    const panel = event.currentTarget.closest(".SubApps_startPanel");
     if (!panel) {
       return;
     }
@@ -268,6 +274,12 @@ const SubApps = (props) => {
           label: START_WINDOWS.appHealth.title,
           windowId: "appHealth",
         },
+        aiControl: {
+          type: "window",
+          icon: START_WINDOWS.aiControl.icon,
+          label: START_WINDOWS.aiControl.title,
+          windowId: "aiControl",
+        },
       },
     ),
   );
@@ -275,6 +287,22 @@ const SubApps = (props) => {
     ? props.appHealth.rows
     : [];
   const healthWindow = startWindows.appHealth || {};
+  const aiWindow = startWindows.aiControl || {};
+  const aiStatuses =
+    props.aiControl && typeof props.aiControl === "object"
+      ? props.aiControl.statuses || {}
+      : {};
+  const selectedAiProvider = String(
+    props.aiControl?.selectedProvider || "openai",
+  )
+    .trim()
+    .toLowerCase();
+  const supportedAiProviders = ["openai", "groq", "gemini"];
+  const aiProviders = supportedAiProviders.filter(
+    (provider) =>
+      Object.prototype.hasOwnProperty.call(aiStatuses, provider) ||
+      provider === selectedAiProvider,
+  );
   const minimizedStartWindows = Object.entries(startWindows).filter(
     ([windowId, windowState]) =>
       START_WINDOWS[windowId] && windowState?.isMinimized,
@@ -614,7 +642,7 @@ const SubApps = (props) => {
         </div>
       ) : null}
       <section
-        className={`SubApps_healthPanel fc${healthWindow.isOpen ? " is-open" : ""}`}
+        className={`SubApps_startPanel SubApps_healthPanel fc${healthWindow.isOpen ? " is-open" : ""}`}
         aria-label="App health information"
         style={
           healthWindow.position
@@ -670,6 +698,82 @@ const SubApps = (props) => {
             Health information is not available yet.
           </p>
         )}
+      </section>
+      <section
+        className={`SubApps_startPanel SubApps_healthPanel SubApps_aiPanel fc${aiWindow.isOpen ? " is-open" : ""}`}
+        aria-label="AI provider control"
+        style={
+          aiWindow.position
+            ? {
+                left: `${aiWindow.position.x}px`,
+                top: `${aiWindow.position.y}px`,
+              }
+            : undefined
+        }
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div
+          className="SubApps_healthMiniBar fr"
+          onPointerDown={(event) => startWindowDrag(event, "aiControl")}
+        >
+          <h4>AI</h4>
+          <div className="SubApps_healthWindowActions fr">
+            <button
+              type="button"
+              className="SubApps_healthWindowButton"
+              onClick={(event) => minimizeStartWindow(event, "aiControl")}
+              aria-label="Minimize AI control"
+              title="Minimize"
+            >
+              <i className="fas fa-minus"></i>
+            </button>
+            <button
+              type="button"
+              className="SubApps_healthWindowButton"
+              onClick={(event) => closeStartWindow(event, "aiControl")}
+              aria-label="Close AI control"
+              title="Close"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <ul className="SubApps_healthList fc">
+          {aiProviders.map((provider) => {
+            const normalizedProvider = String(provider || "")
+              .trim()
+              .toLowerCase();
+            const status = String(aiStatuses?.[normalizedProvider] || "offline")
+              .trim()
+              .toLowerCase();
+            const isSelected = normalizedProvider === selectedAiProvider;
+
+            return (
+              <li key={normalizedProvider} className="SubApps_healthRow fr">
+                <button
+                  type="button"
+                  className={`SubApps_aiProviderButton fr${isSelected ? " is-selected" : ""}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.aiControl?.onSelectProvider?.(normalizedProvider);
+                  }}
+                >
+                  <span className="SubApps_healthLabel">
+                    {normalizedProvider.charAt(0).toUpperCase() +
+                      normalizedProvider.slice(1)}
+                  </span>
+                  <span
+                    className={`SubApps_healthStatus SubApps_healthStatus--${status}`}
+                  >
+                    {isSelected
+                      ? `${status.toUpperCase()} / SELECTED`
+                      : status.toUpperCase()}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </section>
     </section>
   );

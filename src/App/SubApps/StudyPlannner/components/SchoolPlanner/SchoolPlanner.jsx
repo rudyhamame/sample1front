@@ -9,6 +9,7 @@ var lectures = [];
 var courses_partOfPlan = [];
 var checkedLectures = [];
 var checkedCourses = [];
+var courseComponents = [];
 var courseDayAndTime = [];
 var courseExams = [];
 var lectureOutlines = [];
@@ -66,6 +67,13 @@ const getPrimaryCourseExam = (examEntries = []) => {
     course_grade: firstExam.course_grade || "",
     course_fullGrade: firstExam.course_fullGrade || "",
   };
+};
+
+const normalizeCourseComponentValue = (value) => {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue && normalizedValue !== "Course component"
+    ? normalizedValue
+    : "";
 };
 
 const formatExamDateParts = (value) => {
