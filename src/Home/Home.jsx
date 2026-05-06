@@ -1582,13 +1582,11 @@ function Home(props) {
       attributeFilter: ["class"],
     });
 
-    const intervalId = window.setInterval(syncTheme, 800);
     document.addEventListener("visibilitychange", syncTheme);
     window.addEventListener("focus", syncTheme);
 
     return () => {
       observer.disconnect();
-      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", syncTheme);
       window.removeEventListener("focus", syncTheme);
     };

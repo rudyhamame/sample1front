@@ -33,7 +33,6 @@
   --home-rope-aurora-c-current: rgba(175, 239, 255, 0.84);
   --home-main-wrapper-overlay-start: rgba(246, 222, 217, 0.84);
   --home-main-wrapper-overlay-end: rgba(255, 255, 255, 0.74);
-  --home-main-wrapper-image: url("/img/Gemini_Generated_Image_2r2ldz2r2ldz2r2l.png");
   --home-reports-wrapper-border-current: rgba(186, 99, 82, 0.42);
   --home-reports-wrapper-spot-current: rgba(255, 246, 240, 0.32);
   --home-reports-wrapper-stripe-current: rgba(194, 104, 86, 0.11);
@@ -401,10 +400,21 @@ body.dark #Main_article,
 }
 
 .Home_Noga_socialFriendChatIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   margin-left: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: rgba(79, 43, 35, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  flex: 0 0 auto;
+}
+
+.Home_Noga_socialFriendChatIcon i {
+  font-size: 0.72rem;
 }
 .Home_Noga_bioToolColumn {
   display: flex;
@@ -575,20 +585,6 @@ body.dark #Main_article,
   overflow-y: auto;
   overflow-x: hidden;
   background-color: var(--home-main-wrapper-soft);
-  background-image:
-    linear-gradient(
-      145deg,
-      var(--home-main-wrapper-overlay-start, rgba(223, 39, 2, 0.899)),
-      var(--home-main-wrapper-overlay-end, rgb(192, 31, 31)) 70%
-    ),
-    var(
-      --home-main-wrapper-image,
-      url("/img/Gemini_Generated_Image_2r2ldz2r2ldz2r2l.png")
-    );
-  background-size: cover, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
-  background-attachment: scroll, fixed;
   color: var(--home-main-wrapper-text);
   margin: 0;
   align-self: stretch;
@@ -1248,6 +1244,9 @@ body.dark #Main_article,
 .Home_Noga_preStart_profileViewportFrame {
   position: absolute;
   inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(205, 107, 106, 0.22);
@@ -1260,6 +1259,14 @@ body.dark #Main_article,
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 4px 18px rgba(205, 107, 106, 0.1),
     0 1.5px 6px rgba(0, 0, 0, 0.06);
+}
+
+.Home_Noga_preStart_profileViewportFrame > .fa-user {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(2.6rem, 6vw, 4.4rem);
+  line-height: 1;
+  color: rgba(173, 110, 107, 0.62);
 }
 
 .Home_Noga_preStart_profileViewportFrame::before {
@@ -2481,6 +2488,18 @@ body.dark #Main_article,
   gap: 6px;
 }
 
+.Home_Noga_aboutProfileEditRow {
+  align-items: center;
+}
+
+.Home_Noga_requiredMarker {
+  color: #c7545f;
+  font-weight: 800;
+}
+
+.Home_Noga_aboutPanel p input,
+.Home_Noga_aboutPanel p select,
+.Home_Noga_aboutPanel p textarea,
 .Home_Noga_aboutProfileEditField input,
 .Home_Noga_aboutProfileEditField select,
 .Home_Noga_aboutProfileEditField textarea {
@@ -2496,6 +2515,7 @@ body.dark #Main_article,
   outline: none;
 }
 
+.Home_Noga_aboutPanel p textarea,
 .Home_Noga_aboutProfileEditField textarea {
   resize: vertical;
   min-height: 72px;

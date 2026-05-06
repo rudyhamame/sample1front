@@ -162,6 +162,10 @@ class App extends React.Component {
   isUnmounted = false;
   backendHealthAbortController = null;
   userInfoAbortController = null;
+  userInfoRequestPromise = null;
+  userInfoRefreshQueued = false;
+  lastUserInfoFetchAt = 0;
+  minUserInfoRefreshIntervalMs = 2500;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -288,6 +292,8 @@ class App extends React.Component {
       this.userInfoAbortController.abort();
       this.userInfoAbortController = null;
     }
+    this.userInfoRequestPromise = null;
+    this.userInfoRefreshQueued = false;
     // if (this.props.path === "/") {
     //   this.availableToChat(false);
     // }
@@ -715,7 +721,7 @@ class App extends React.Component {
             this.state.posts_comments[i] = this.state.posts[i].comments.length;
           }
         } else {
-          this.setState({
+          this.safeSetState({
             app_is_loading: true,
           });
           let date_p = document.createElement("p");
@@ -850,7 +856,7 @@ class App extends React.Component {
           ul.appendChild(li);
           this.state.posts_alreadyBuilt[i] = this.state.posts[i]._id;
           this.state.posts_comments[i] = this.state.posts[i].comments.length;
-          this.setState({
+          this.safeSetState({
             app_is_loading: false,
             //   posts_updated: true,
           });
@@ -911,7 +917,7 @@ class App extends React.Component {
                   this.state.posts[i].comments.length;
               }
             } else {
-              this.setState({
+              this.safeSetState({
                 app_is_loading: true,
               });
               let date_p = document.createElement("p");
@@ -1041,7 +1047,7 @@ class App extends React.Component {
               ul.prepend(li);
               this.profilePosts[i] = this.state.posts[i]._id;
               // this.state.posts_comments[i] = this.state.posts[i].comments.length;
-              this.setState({
+              this.safeSetState({
                 app_is_loading: false,
               });
             }
@@ -1467,7 +1473,7 @@ class App extends React.Component {
         let ul = document.getElementById("FriendsList_friends_list");
 
         for (var i = 0; i < jsonData.friends.length; i++) {
-          this.setState({
+          this.safeSetState({
             friends: jsonData.friends,
           });
           //For every friend
@@ -1535,7 +1541,7 @@ class App extends React.Component {
       }
     });
 
-    this.setState({
+    this.safeSetState({
       friendID_selected: friendID,
       activeChatFriendId: friendID,
       activeChatFriendName,
@@ -1554,7 +1560,7 @@ class App extends React.Component {
       this.updateMyTypingPresence(this.state.activeChatFriendId, false);
     }
 
-    this.setState({
+    this.safeSetState({
       friendID_selected: null,
       activeChatFriendId: null,
       activeChatFriendName: "",
@@ -1655,9 +1661,22 @@ class App extends React.Component {
     document.getElementById("li" + post_id).remove();
   };
   ////////////////////////////Update State//////////DONE/////////////////////
-  updateUserInfo = () => {
+  updateUserInfo = ({ force = false } = {}) => {
     if (!this.state.my_id) {
-      return;
+      return Promise.resolve(null);
+    }
+
+    const now = Date.now();
+    if (
+      !force &&
+      now - this.lastUserInfoFetchAt < this.minUserInfoRefreshIntervalMs
+    ) {
+      return Promise.resolve(null);
+    }
+
+    if (this.userInfoRequestPromise) {
+      this.userInfoRefreshQueued = true;
+      return this.userInfoRequestPromise;
     }
 
     if (this.userInfoAbortController) {
@@ -1672,11 +1691,14 @@ class App extends React.Component {
       mode: "cors",
       signal: this.userInfoAbortController.signal,
     });
-    fetch(req)
+    this.lastUserInfoFetchAt = Date.now();
+
+    this.userInfoRequestPromise = fetch(req)
       .then((response) => {
         if (response.status === 200) {
           return response.json();
         }
+        throw new Error(`Failed to load user info: ${response.status}`);
       })
       .then((jsonData) => {
         const normalizedPayload = normalizeUserUpdatePayload(jsonData);
@@ -1781,7 +1803,18 @@ class App extends React.Component {
 
         if (err.message === "Cannot read property 'credentials' of null")
           console.log("Error", err.message);
+      })
+      .finally(() => {
+        this.userInfoRequestPromise = null;
+        if (this.userInfoRefreshQueued && !this.isUnmounted) {
+          this.userInfoRefreshQueued = false;
+          this.updateUserInfo();
+        } else {
+          this.userInfoRefreshQueued = false;
+        }
       });
+
+    return this.userInfoRequestPromise;
   };
 
   persistStoredSession = (partialState = {}) => {
@@ -1797,7 +1830,7 @@ class App extends React.Component {
   };
 
   setUserAcademicInfo = (nextInfo = {}) => {
-    this.setState(
+    this.safeSetState(
       (currentState) => ({
         bio:
           nextInfo?.bio !== undefined
@@ -2022,7 +2055,7 @@ class App extends React.Component {
         ? Boolean(nextMedia.bioWrapperWallpaperRepeat)
         : this.state.bioWrapperWallpaperRepeat;
 
-    this.setState(
+    this.safeSetState(
       (currentState) => {
         const currentViewport = currentState.profilePictureViewport || {};
         const nextViewport = nextProfilePictureViewport || {};
@@ -2093,7 +2126,7 @@ class App extends React.Component {
       return;
     }
 
-    this.setState({
+    this.safeSetState({
       aiProvider: nextProvider,
     });
 
@@ -2157,7 +2190,7 @@ class App extends React.Component {
         mins = 0;
       }
 
-      this.setState({
+      this.safeSetState({
         timer: {
           hours: hours,
           mins: mins,
@@ -2276,14 +2309,13 @@ class App extends React.Component {
       }
     };
 
-    this.setState(
+    this.safeSetState(
       {
         isConnected: false,
       },
       () => {
-        this.availableToChat(false)
-          .catch(() => null)
-          .finally(finishLogout);
+        finishLogout();
+        this.availableToChat(false).catch(() => null);
       },
     );
   };
@@ -2427,7 +2459,7 @@ class App extends React.Component {
           options_div.appendChild(p_delete);
           options_div.appendChild(p_edit);
           p_delete.addEventListener("click", () => {
-            this.setState({ posts_deleted: true });
+            this.safeSetState({ posts_deleted: true });
             this.deletePost(options_div.id);
           });
           p_edit.addEventListener("click", () => this.editPost(options_div.id));
@@ -2494,7 +2526,7 @@ class App extends React.Component {
         li.appendChild(note_options_div);
         li.appendChild(comments_div);
         ul.appendChild(li);
-        this.setState({
+        this.safeSetState({
           app_is_loading: false,
         });
       }
@@ -2502,13 +2534,13 @@ class App extends React.Component {
     }
   };
   show_profile = (boolean) => {
-    this.setState({
+    this.safeSetState({
       profile: boolean,
     });
   };
   setAppFooterHidden = (shouldHide) => {
     const nextValue = Boolean(shouldHide);
-    this.setState({
+    this.safeSetState({
       hide_app_footer: nextValue,
     });
     if (typeof window !== "undefined") {
@@ -2820,3 +2852,4 @@ class App extends React.Component {
   }
 }
 export default App;
+

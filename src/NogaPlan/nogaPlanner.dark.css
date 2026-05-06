@@ -399,3 +399,7 @@ body.dark-mode .nogaPlanner_coursesMiniBarBtn:disabled {
   background: linear-gradient(180deg, rgba(49, 59, 73, 0.88), rgba(34, 40, 51, 0.84));
   border-color: rgba(112, 126, 147, 0.16);
 }
+.nogaPlanner_selectSettingsLoading {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7e0ea;
+}

@@ -124,42 +124,12 @@ const isProfileCompleted = (rawUser = {}) => {
 
   const hasCorePersonalFields =
     String(profile.firstname || "").trim() &&
-    String(profile.lastname || "").trim() &&
-    String(profile.email || "").trim() &&
-    String(profile.phone || "").trim() &&
-    Boolean(profile.dob);
+    String(profile.lastname || "").trim();
 
   if (!hasCorePersonalFields) {
     return false;
   }
-
-  const hometown =
-    profile.hometown && typeof profile.hometown === "object"
-      ? profile.hometown
-      : {};
-  const hasHometown =
-    String(hometown.Country || "").trim() && String(hometown.City || "").trim();
-
-  const studying =
-    profile.studying && typeof profile.studying === "object"
-      ? profile.studying
-      : {};
-  const studyingTime = normalizeProfileStudyingTime(studying);
-  const studyingTimeStartDate = studyingTime.startDate || {};
-  const studyingTimeCurrentDate = studyingTime.currentDate || {};
-  const working =
-    profile.working && typeof profile.working === "object"
-      ? profile.working
-      : {};
-
-  const hasStudying =
-    String(studying.program || "").trim() &&
-    String(studying.university || "").trim() &&
-    String(studyingTimeCurrentDate.term || studying.term || "").trim();
-  const hasWorking =
-    String(working.company || "").trim() && String(working.position || "").trim();
-
-  return Boolean(hasCorePersonalFields && hasHometown && (hasStudying || hasWorking));
+  return true;
 };
 
 const getProfilePictureUrl = (...sources) => {

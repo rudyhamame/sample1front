@@ -154,6 +154,13 @@ const HOME_DRAWING_VISIBILITY_WRAPPERS = [
   },
 ];
 
+const HOME_ABOUT_PROFILE_REQUIRED_FIELDS = new Set(["firstname", "lastname"]);
+const HOME_INLINE_REQUIRED_FIELDS = new Set([
+  "firstname",
+  "lastname",
+  "username",
+]);
+
 const FRIEND_USER_MODE_META = {
   blocked: {
     label: "Blocked",
@@ -1584,13 +1591,11 @@ function HomeNoga(props) {
       attributeFilter: ["class"],
     });
 
-    const intervalId = window.setInterval(syncTheme, 800);
     document.addEventListener("visibilitychange", syncTheme);
     window.addEventListener("focus", syncTheme);
 
     return () => {
       observer.disconnect();
-      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", syncTheme);
       window.removeEventListener("focus", syncTheme);
     };
@@ -4114,6 +4119,12 @@ function HomeNoga(props) {
                 </span>
               ) : null}
               <span
+                className="Home_Noga_socialFriendChatIcon"
+                aria-hidden="true"
+              >
+                <i className="fas fa-comments"></i>
+              </span>
+              <span
                 className={`Home_Noga_socialFriendStatus ${friendPresenceState.modifierClass}`}
               >
                 <i className={`fas ${friendPresenceState.iconClass}`}></i>
@@ -4450,6 +4461,12 @@ function HomeNoga(props) {
             </div>
             {candidateUserModeMeta ? (
               <div className="Home_Noga_socialFriendPresence">
+                <span
+                  className="Home_Noga_socialFriendChatIcon"
+                  aria-hidden="true"
+                >
+                  <i className="fas fa-comments"></i>
+                </span>
                 <span
                   className={`Home_Noga_socialFriendStatus ${candidateUserModeMeta.modifierClass}`}
                 >
@@ -7046,12 +7063,6 @@ function HomeNoga(props) {
       firstname: String(props.state?.firstname || "").trim(),
       lastname: String(props.state?.lastname || "").trim(),
       username: String(props.state?.username || "").trim(),
-      bio: String(props.state?.bio || "").trim(),
-      program: String(props.state?.program || "").trim(),
-      university: String(props.state?.university || "").trim(),
-      studyYear: String(props.state?.studyYear || "").trim(),
-      term: String(props.state?.term || "").trim(),
-      aiProvider: String(props.state?.aiProvider || "openai").trim(),
     };
 
     payloadBody[activePersonalInfoField] = nextFieldValue;
@@ -7407,10 +7418,18 @@ function HomeNoga(props) {
     }
 
     const fieldValue = String(aboutProfileDraft?.[fieldName] ?? "");
+    const isRequiredField = HOME_ABOUT_PROFILE_REQUIRED_FIELDS.has(fieldName);
 
     return (
-      <div key={label} className="Home_Noga_aboutProfileEditField">
-        <strong>{label}</strong>
+      <p key={label} className="Home_Noga_aboutProfileEditRow">
+        <strong>
+          {label}
+          {isRequiredField ? (
+            <span className="Home_Noga_requiredMarker" aria-hidden="true">
+              {" "}*
+            </span>
+          ) : null}
+        </strong>
         {inputType === "select" ? (
           <select
             value={fieldValue}
@@ -7444,17 +7463,26 @@ function HomeNoga(props) {
             placeholder={placeholder || label}
           />
         )}
-      </div>
+      </p>
     );
   };
 
   const renderInlineInfoField = (label, fieldName, fallback = "-") => {
     const isEditingThisField = activePersonalInfoField === fieldName;
     const displayValue = String(props.state?.[fieldName] || "").trim();
+    const isRequiredField = HOME_INLINE_REQUIRED_FIELDS.has(fieldName);
 
     return (
       <div className="fr Home_Noga_userMenu_contentDivs">
-        <label>{label}:</label>
+        <label>
+          {label}
+          {isRequiredField ? (
+            <span className="Home_Noga_requiredMarker" aria-hidden="true">
+              {" "}*
+            </span>
+          ) : null}
+          :
+        </label>
         {isEditingThisField ? (
           <input
             type="text"

@@ -204,44 +204,52 @@ const completeProfileCoreFields = [
     key: "firstname",
     label: "First name",
     type: "text",
+    required: true,
   },
   {
     key: "lastname",
     label: "Last name",
     type: "text",
+    required: true,
   },
   {
     key: "email",
     label: "Email address",
     type: "email",
+    required: false,
   },
   {
     key: "phoneCountry",
     label: "Phone country",
     type: "select",
     options: countryOptions,
+    required: false,
   },
   {
     key: "phone",
     label: "Phone number",
     type: "tel",
+    required: false,
   },
   {
     key: "dob",
     label: "Date of birth",
     type: "date",
+    required: false,
   },
   {
     key: "hometown.Country",
     label: "Country",
     type: "select",
     options: countryOptions,
+    required: false,
   },
   {
     key: "hometown.City",
     label: "City",
     type: "select",
     options: [],
+    required: false,
   },
 ];
 
@@ -251,6 +259,7 @@ const completeProfileStudentFields = [
     label: "University",
     type: "select",
     options: [], // Will be populated dynamically
+    required: true,
   },
   {
     key: "studying.faculty",
@@ -262,6 +271,7 @@ const completeProfileStudentFields = [
     label: "Program",
     type: "select",
     options: programOptions,
+    required: true,
   },
   {
     key: "studying.language",
@@ -276,11 +286,13 @@ const completeProfileWorkingFields = [
     key: "working.company",
     label: "Company",
     type: "text",
+    required: true,
   },
   {
     key: "working.position",
     label: "Position",
     type: "text",
+    required: true,
   },
 ];
 
@@ -468,6 +480,7 @@ const Login = ({ onLogin, onForceLogout }) => {
   const previousAuthFormRectRef = useRef(null);
   const authFormAnimationFrameRef = useRef(null);
   const authFormAnimationTimeoutRef = useRef(null);
+  const isMountedRef = useRef(true);
   const realityEditorRef = useRef(null);
   const hasSyncedRealityEditorRef = useRef(false);
   const hasCompletedClinicalRealityBootstrapRef = useRef(false);
@@ -535,6 +548,18 @@ const Login = ({ onLogin, onForceLogout }) => {
       (signupMessage || "Please make sure you entered valid information")) ||
     (signup_ok === null && signupMessage) ||
     null;
+
+  const runIfMounted = (callback) => {
+    if (isMountedRef.current) {
+      callback();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -679,17 +704,28 @@ const Login = ({ onLogin, onForceLogout }) => {
 
   useEffect(() => {
     // Legacy backend source (kept as a supplemental fallback list).
+    let ignoreUniversityOptions = false;
     fetch(apiUrl("/api/user/hometown-cities"))
       .then((response) => response.json().catch(() => ({ cities: [] })))
       .then((payload) => {
-        if (payload.cities && Array.isArray(payload.cities)) {
+        if (
+          !ignoreUniversityOptions &&
+          payload.cities &&
+          Array.isArray(payload.cities)
+        ) {
           setUniversityOptions(payload.cities);
         }
       })
       .catch(() => {
         // If fetching fails, set empty options
-        setUniversityOptions([]);
+        if (!ignoreUniversityOptions) {
+          setUniversityOptions([]);
+        }
       });
+
+    return () => {
+      ignoreUniversityOptions = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -837,8 +873,10 @@ const Login = ({ onLogin, onForceLogout }) => {
         html: clinicalRealityHtml,
       })
         .then(() => {
-          clinicalRealityBaselineRef.current = clinicalRealityHtml;
-          setHasPendingAdminSave(false);
+          if (!ignoreSave) {
+            clinicalRealityBaselineRef.current = clinicalRealityHtml;
+            setHasPendingAdminSave(false);
+          }
         })
         .catch(() => {
           // DB save intentionally has no browser fallback.
@@ -882,21 +920,30 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     setCanPersistClinicalReality(true);
     setIsClinicalRealitySaving(true);
+    let ignoreAuthenticatedSave = false;
 
     saveClinicalRealityToDb({
       token: authReport.token,
       html: clinicalRealityHtml,
     })
       .then(() => {
-        clinicalRealityBaselineRef.current = clinicalRealityHtml;
-        setHasPendingAdminSave(false);
+        if (!ignoreAuthenticatedSave) {
+          clinicalRealityBaselineRef.current = clinicalRealityHtml;
+          setHasPendingAdminSave(false);
+        }
       })
       .catch(() => {
         // DB save intentionally has no browser fallback.
       })
       .finally(() => {
-        setIsClinicalRealitySaving(false);
+        if (!ignoreAuthenticatedSave) {
+          setIsClinicalRealitySaving(false);
+        }
       });
+
+    return () => {
+      ignoreAuthenticatedSave = true;
+    };
   }, [authReport]);
 
   useEffect(() => {
@@ -1029,6 +1076,7 @@ const Login = ({ onLogin, onForceLogout }) => {
     onEnter,
     options = [],
     disabled = false,
+    required = false,
   }) => {
     const isPasswordField = type === "password";
     const resolvedType = isPasswordField && isPasswordVisible ? "text" : type;
@@ -1036,7 +1084,10 @@ const Login = ({ onLogin, onForceLogout }) => {
     if (type === "select") {
       return (
         <label className="Login_authField" htmlFor={id} key={id}>
-          <span className="Login_authFieldLabel">{label}</span>
+          <span className="Login_authFieldLabel">
+            {label}
+            {required ? " *" : ""}
+          </span>
           <span className="Login_authInputWrap">
             <select
               id={id}
@@ -1059,7 +1110,10 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     return (
       <label className="Login_authField" htmlFor={id} key={id}>
-        <span className="Login_authFieldLabel">{label}</span>
+        <span className="Login_authFieldLabel">
+          {label}
+          {required ? " *" : ""}
+        </span>
         <span className="Login_authInputWrap">
           <input
             id={id}
@@ -1231,24 +1285,41 @@ const Login = ({ onLogin, onForceLogout }) => {
           }
 
           if (response.status === 202 && payload.requiresProfileCompletion) {
-            // Profile completion required - redirect to post-signup form
-            setPendingSignupAuthReport({
+            const normalizedPendingUser = normalizeUserPayload(payload.user, {
               token: payload.token,
-              user: payload.user,
+              isConnected: true,
             });
-            setIsPendingSignupUsernameEditable(false);
-            setAuthMode("complete-profile");
-            setLoginMessage("Please complete your profile to continue.");
-            setIs_loading(false);
+
+            if (
+              String(normalizedPendingUser?.firstname || "").trim() &&
+              String(normalizedPendingUser?.lastname || "").trim()
+            ) {
+              login = true;
+              return payload;
+            }
+
+            // Profile completion required - redirect to post-signup form
+            runIfMounted(() => {
+              setPendingSignupAuthReport({
+                token: payload.token,
+                user: payload.user,
+              });
+              setIsPendingSignupUsernameEditable(false);
+              setAuthMode("complete-profile");
+              setLoginMessage("Please complete your profile to continue.");
+              setIs_loading(false);
+            });
             return null;
           }
 
           if (response.status === 401) {
-            setLoginMessage(
-              "The password you entered is not correct, please try again",
-            );
-            setLogin_ok(false);
-            setIs_loading(false);
+            runIfMounted(() => {
+              setLoginMessage(
+                "The password you entered is not correct, please try again",
+              );
+              setLogin_ok(false);
+              setIs_loading(false);
+            });
             return payload;
           }
 
@@ -1264,10 +1335,12 @@ const Login = ({ onLogin, onForceLogout }) => {
               isConnected: true,
             });
 
-            setAuthReport(nextAuthReport);
-            setLoginMessage(null);
-            setLogin_ok(true);
-            setIsClinicalRealitySaving(true);
+            runIfMounted(() => {
+              setAuthReport(nextAuthReport);
+              setLoginMessage(null);
+              setLogin_ok(true);
+              setIsClinicalRealitySaving(true);
+            });
             saveClinicalRealityToDb({
               token: userdata.token,
               html: realityEditorRef.current?.innerHTML || clinicalRealityHtml,
@@ -1275,29 +1348,37 @@ const Login = ({ onLogin, onForceLogout }) => {
               .then(() => {
                 clinicalRealityBaselineRef.current =
                   realityEditorRef.current?.innerHTML || clinicalRealityHtml;
-                setHasPendingAdminSave(false);
+                runIfMounted(() => {
+                  setHasPendingAdminSave(false);
+                });
               })
               .catch(() => {
                 // If this fails, we still allow login to continue.
               })
               .finally(() => {
-                setIsClinicalRealitySaving(false);
-                setCanPersistClinicalReality(true);
+                runIfMounted(() => {
+                  setIsClinicalRealitySaving(false);
+                  setCanPersistClinicalReality(true);
+                });
               });
           } else {
-            setLoginMessage(
-              "The password you entered is not correct, please try again",
-            );
-            setLogin_ok(false);
-            setIs_loading(false);
+            runIfMounted(() => {
+              setLoginMessage(
+                "The password you entered is not correct, please try again",
+              );
+              setLogin_ok(false);
+              setIs_loading(false);
+            });
           }
         })
         .catch(() => {
-          setLoginMessage(
-            "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
-          );
-          setLogin_ok(false);
-          setIs_loading(false);
+          runIfMounted(() => {
+            setLoginMessage(
+              "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+            );
+            setLogin_ok(false);
+            setIs_loading(false);
+          });
         });
     } else {
       setLoginMessage(
@@ -1662,21 +1743,27 @@ const Login = ({ onLogin, onForceLogout }) => {
             };
           }
 
-          setPendingSignupAuthReport(nextPendingAuthReport);
-          setIsPendingSignupUsernameEditable(false);
-          setSignup_ok(true);
-          setSignupMessage(
-            data.message ||
-              "Account created. Complete your profile to continue.",
-          );
-          setAuthMode("complete-profile");
+          runIfMounted(() => {
+            setPendingSignupAuthReport(nextPendingAuthReport);
+            setIsPendingSignupUsernameEditable(false);
+            setSignup_ok(true);
+            setSignupMessage(
+              data.message ||
+                "Account created. Complete your profile to continue.",
+            );
+            setAuthMode("complete-profile");
+          });
         })
         .catch((err) => {
-          setSignup_ok(false);
-          setSignupMessage(err.message);
+          runIfMounted(() => {
+            setSignup_ok(false);
+            setSignupMessage(err.message);
+          });
         })
         .finally(() => {
-          setIs_loading(false);
+          runIfMounted(() => {
+            setIs_loading(false);
+          });
         });
     } else {
       setIs_loading(false);
@@ -1709,13 +1796,7 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     if (
       !firstname.trim() ||
-      !lastname.trim() ||
-      !email.trim() ||
-      !phoneCountry.trim() ||
-      !phone.trim() ||
-      !dob.trim() ||
-      !hometown.Country.trim() ||
-      !hometown.City.trim()
+      !lastname.trim()
     ) {
       setSignup_ok(false);
       setSignupMessage("Please complete all required personal information.");
@@ -1750,14 +1831,6 @@ const Login = ({ onLogin, onForceLogout }) => {
       }
     }
 
-    if (!isStudying && !isWorking) {
-      setSignup_ok(false);
-      setSignupMessage(
-        "Please provide either education or professional information.",
-      );
-      return;
-    }
-
     setIs_loading(true);
     setSignupMessage(null);
 
@@ -1773,7 +1846,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         lastname,
         email,
         phone,
-        dob,
+        dob: String(dob || "").trim() ? dob : null,
         hometown,
         studying: isStudying ? studying : undefined,
         working: isWorking ? working : undefined,
@@ -1796,21 +1869,27 @@ const Login = ({ onLogin, onForceLogout }) => {
           isConnected: true,
         });
 
-        setAuthReport(nextAuthReport);
-        setLogin_ok(true);
-        setLoginMessage(null);
-        setSignup_ok(true);
-        setSignupMessage(
-          data.message || "Profile completed successfully. Redirecting...",
-        );
-        setCanPersistClinicalReality(true);
+        runIfMounted(() => {
+          setAuthReport(nextAuthReport);
+          setLogin_ok(true);
+          setLoginMessage(null);
+          setSignup_ok(true);
+          setSignupMessage(
+            data.message || "Profile completed successfully. Redirecting...",
+          );
+          setCanPersistClinicalReality(true);
+        });
       })
       .catch((error) => {
-        setSignup_ok(false);
-        setSignupMessage(error.message);
+        runIfMounted(() => {
+          setSignup_ok(false);
+          setSignupMessage(error.message);
+        });
       })
       .finally(() => {
-        setIs_loading(false);
+        runIfMounted(() => {
+          setIs_loading(false);
+        });
       });
   };
 
@@ -1856,21 +1935,27 @@ const Login = ({ onLogin, onForceLogout }) => {
         return data;
       })
       .then((data) => {
-        setPendingSignupAuthReport((current) => ({
-          ...(current || {}),
-          user: data.user,
-        }));
-        setIsPendingSignupUsernameEditable(false);
-        setSignup_ok(true);
-        setSignupMessage("Credentials updated. Continue profile completion.");
-        setAuthMode("complete-profile");
+        runIfMounted(() => {
+          setPendingSignupAuthReport((current) => ({
+            ...(current || {}),
+            user: data.user,
+          }));
+          setIsPendingSignupUsernameEditable(false);
+          setSignup_ok(true);
+          setSignupMessage("Credentials updated. Continue profile completion.");
+          setAuthMode("complete-profile");
+        });
       })
       .catch((error) => {
-        setSignup_ok(false);
-        setSignupMessage(error.message);
+        runIfMounted(() => {
+          setSignup_ok(false);
+          setSignupMessage(error.message);
+        });
       })
       .finally(() => {
-        setIs_loading(false);
+        runIfMounted(() => {
+          setIs_loading(false);
+        });
       });
   };
 
@@ -1907,15 +1992,21 @@ const Login = ({ onLogin, onForceLogout }) => {
         throw new Error(payload?.message || "Unable to summarize the text.");
       }
 
-      setSummaryReply(String(payload?.reply || "").trim());
-      setSummaryError("");
+      runIfMounted(() => {
+        setSummaryReply(String(payload?.reply || "").trim());
+        setSummaryError("");
+      });
     } catch (error) {
-      setSummaryReply("");
-      setSummaryError(
-        String(error?.message || "Unable to summarize the text right now."),
-      );
+      runIfMounted(() => {
+        setSummaryReply("");
+        setSummaryError(
+          String(error?.message || "Unable to summarize the text right now."),
+        );
+      });
     } finally {
-      setIsSummarizing(false);
+      runIfMounted(() => {
+        setIsSummarizing(false);
+      });
     }
   };
 
@@ -1933,6 +2024,14 @@ const Login = ({ onLogin, onForceLogout }) => {
         : completeSignupProfile;
   const isSignupAuthEditMode =
     authMode === "signup" && Boolean(pendingSignupAuthReport?.token);
+  const isProfileCompletionStudyingStarted = Boolean(
+    profileCompletionForm.studying.university.trim() ||
+      profileCompletionForm.studying.program.trim(),
+  );
+  const isProfileCompletionWorkingStarted = Boolean(
+    profileCompletionForm.working.company.trim() ||
+      profileCompletionForm.working.position.trim(),
+  );
 
   const isSubmitDisabled = (() => {
     if (authMode === "login" || authMode === "signup") {
@@ -1951,12 +2050,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       } = profileCompletionForm;
       if (
         !firstname.trim() ||
-        !lastname.trim() ||
-        !email.trim() ||
-        !phone.trim() ||
-        !dob.trim() ||
-        !hometown.Country.trim() ||
-        !hometown.City.trim()
+        !lastname.trim()
       ) {
         return true;
       }
@@ -1978,8 +2072,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       if (isWorking) {
         return !working.company.trim() || !working.position.trim();
       }
-      // User must be either studying or working
-      return !isStudying && !isWorking;
+      return false;
     }
     return false;
   })();
@@ -2075,6 +2168,7 @@ const Login = ({ onLogin, onForceLogout }) => {
               value,
               onChange,
               options,
+              required: Boolean(field.required),
               disabled:
                 field.key === "hometown.City" &&
                 !profileCompletionForm.hometown.Country,
@@ -2140,6 +2234,9 @@ const Login = ({ onLogin, onForceLogout }) => {
                         ]),
                       ]
                     : field.options,
+                required:
+                  Boolean(field.required) &&
+                  isProfileCompletionStudyingStarted,
               }),
             )}
             <div className="Login_authFieldGroup">
@@ -2161,6 +2258,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                     "studying.time.totalYearsNum",
                     sanitizeNonNegativeNumberInput(value),
                   ),
+                required: isProfileCompletionStudyingStarted,
               })}
             </div>
             <div className="Login_authFieldGroup">
@@ -2180,6 +2278,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                       value,
                     ),
                   options: studyYearIntervalOptions,
+                  required: isProfileCompletionStudyingStarted,
                 })}
                 {renderTextField({
                   id: "complete-profile-studying-time-start-programTerm",
@@ -2192,6 +2291,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                   onChange: (value) =>
                     updateNestedField("studying.time.start.programTerm", value),
                   options: studyTermOptions,
+                  required: isProfileCompletionStudyingStarted,
                 })}
               </div>
             </div>
@@ -2213,6 +2313,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                       "studying.time.current.programYearNum",
                       sanitizeNonNegativeNumberInput(value),
                     ),
+                  required: isProfileCompletionStudyingStarted,
                 })}
                 {renderTextField({
                   id: "complete-profile-studying-time-current-programYearInterval",
@@ -2228,6 +2329,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                       value,
                     ),
                   options: studyYearIntervalOptions,
+                  required: isProfileCompletionStudyingStarted,
                 })}
                 {renderTextField({
                   id: "complete-profile-studying-time-current-programTerm",
@@ -2243,6 +2345,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                       value,
                     ),
                   options: studyTermOptions,
+                  required: isProfileCompletionStudyingStarted,
                 })}
               </div>
             </div>
@@ -2257,6 +2360,9 @@ const Login = ({ onLogin, onForceLogout }) => {
                 type: field.type,
                 value: getNestedValue(profileCompletionForm, field.key),
                 onChange: (value) => updateNestedField(field.key, value),
+                required:
+                  Boolean(field.required) &&
+                  isProfileCompletionWorkingStarted,
               }),
             )}
           </div>,

@@ -166,59 +166,6 @@ const getComparableProgramYearNumber = (value) => {
   return Number.isFinite(parsedValue) ? parsedValue : null;
 };
 
-const isSavedCourseComponentFailed = (course = {}) => {
-  const normativeYearNumber = getComparableProgramYearNumber(
-    course?.normativeCourseYearNum || course?.time?.Normative?.courseYearNum,
-  );
-  const actualYearNumber = getComparableProgramYearNumber(
-    course?.actualCourseYearNum || course?.time?.actual?.courseYearNum,
-  );
-  const normativeTerm = String(
-    course?.normativeCourseTerm || course?.time?.Normative?.courseTerm || "",
-  ).trim();
-  const actualTerm = String(
-    course?.actualCourseTerm || course?.time?.actual?.courseTerm || "",
-  ).trim();
-
-  if (normativeYearNumber === null || actualYearNumber === null) {
-    return false;
-  }
-
-  if (actualYearNumber > normativeYearNumber) {
-    return true;
-  }
-
-  return (
-    actualYearNumber === normativeYearNumber &&
-    Boolean(normativeTerm) &&
-    Boolean(actualTerm) &&
-    normativeTerm !== actualTerm
-  );
-};
-
-const isSavedCourseComponentOngoing = (course = {}) => {
-  const normativeYearNumber = getComparableProgramYearNumber(
-    course?.normativeCourseYearNum || course?.time?.Normative?.courseYearNum,
-  );
-  const actualYearNumber = getComparableProgramYearNumber(
-    course?.actualCourseYearNum || course?.time?.actual?.courseYearNum,
-  );
-  const normativeTerm = String(
-    course?.normativeCourseTerm || course?.time?.Normative?.courseTerm || "",
-  ).trim();
-  const actualTerm = String(
-    course?.actualCourseTerm || course?.time?.actual?.courseTerm || "",
-  ).trim();
-
-  return (
-    normativeYearNumber !== null &&
-    actualYearNumber !== null &&
-    normativeYearNumber === actualYearNumber &&
-    Boolean(normativeTerm) &&
-    normativeTerm === actualTerm
-  );
-};
-
 const formatExamTimeParts = (value) => {
   if (!value || value === "-") {
     return { hour: "", minute: "" };
@@ -361,6 +308,31 @@ const formatCourseLocationDisplay = (value) => {
   return locationParts.length > 0 ? locationParts.join(" | ") : "-";
 };
 
+const formatPlannerStatusLabel = (value, locale = "en") => {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalizedValue || normalizedValue === "-") {
+    return "-";
+  }
+
+  const labels = {
+    new: { ar: "جديد", en: "New" },
+    failed: { ar: "راسب", en: "Failed" },
+    incomplete: { ar: "غير مكتمل", en: "Incomplete" },
+    passed: { ar: "ناجح", en: "Passed" },
+    ongoing: { ar: "قيد المتابعة", en: "Ongoing" },
+  };
+
+  const localizedLabel = labels[normalizedValue];
+  if (!localizedLabel) {
+    return String(value || "").trim() || "-";
+  }
+
+  return locale === "ar" ? localizedLabel.ar : localizedLabel.en;
+};
+
 const detectContentDirection = (value) => {
   const normalizedValue = String(value || "").trim();
 
@@ -415,112 +387,6 @@ const formatCourseComponentLabel = (value, locale = "en") => {
   return componentLabels[normalizedValue] || value;
 };
 
-const normalizeSavedComponentClassLabel = (value = "") => {
-  const normalizedValue = String(value || "")
-    .trim()
-    .toLowerCase();
-
-  const componentClassMap = {
-    lecture: "نظري",
-    نظري: "نظري",
-    lab: "عملي (مخبر)",
-    "عملي: مخبر": "عملي (مخبر)",
-    "عملي (مخبر)": "عملي (مخبر)",
-    "clinical rotation": "عملي (مشفى)",
-    "عملي: تدريب سريري": "عملي (مشفى)",
-    "عملي (مشفى)": "عملي (مشفى)",
-    "pharmacy training": "عملي (صيدلية)",
-    "عملي: تدريب صيدلي": "عملي (صيدلية)",
-    "عملي (صيدلية)": "عملي (صيدلية)",
-  };
-
-  return componentClassMap[normalizedValue] || String(value || "").trim();
-};
-
-const COMPONENT_STATUS_OPTIONS = [
-  { value: "new", labelAr: "أساسية", labelEn: "New" },
-  { value: "failed", labelAr: "راسبة", labelEn: "Failed" },
-  { value: "passed", labelAr: "ناجحة", labelEn: "Passed" },
-];
-
-const COURSE_STATUS_OPTIONS = [
-  { value: "new", labelAr: "اساسي", labelEn: "New" },
-  { value: "failed", labelAr: "راسب", labelEn: "Failed" },
-  { value: "incomplete", labelAr: "غير مكتمل", labelEn: "Incomplete" },
-  { value: "passed", labelAr: "ناجح", labelEn: "Passed" },
-];
-
-const normalizeSavedComponentStatusValue = (value = "") => {
-  const normalizedValue = String(value || "")
-    .trim()
-    .toLowerCase();
-
-  const statusMap = {
-    new: "new",
-    أساسية: "new",
-    جديد: "new",
-    failed: "failed",
-    راسبة: "failed",
-    passed: "passed",
-    ناجحة: "passed",
-    "not started": "new",
-    "لم يبدأ": "new",
-    "in progress": "new",
-    "قيد الإنجاز": "new",
-    completed: "passed",
-    مكتمل: "passed",
-  };
-
-  return statusMap[normalizedValue] || "new";
-};
-
-const formatSavedComponentStatusLabel = (value = "", locale = "en") => {
-  const normalizedValue = normalizeSavedComponentStatusValue(value);
-  const matchedOption = COMPONENT_STATUS_OPTIONS.find(
-    (option) => option.value === normalizedValue,
-  );
-
-  if (!matchedOption) {
-    return locale === "ar" ? "أساسية" : "New";
-  }
-
-  return locale === "ar" ? matchedOption.labelAr : matchedOption.labelEn;
-};
-
-const normalizeSavedCourseStatusValue = (value = "") => {
-  const normalizedValue = String(value || "")
-    .trim()
-    .toLowerCase();
-
-  const statusMap = {
-    new: "new",
-    اساسي: "new",
-    failed: "failed",
-    راسب: "failed",
-    incomplete: "incomplete",
-    "غير مكتمل": "incomplete",
-    passed: "passed",
-    ناجح: "passed",
-    "not started": "new",
-    completed: "passed",
-  };
-
-  return statusMap[normalizedValue] || "new";
-};
-
-const formatSavedCourseStatusLabel = (value = "", locale = "en") => {
-  const normalizedValue = normalizeSavedCourseStatusValue(value);
-  const matchedOption = COURSE_STATUS_OPTIONS.find(
-    (option) => option.value === normalizedValue,
-  );
-
-  if (!matchedOption) {
-    return locale === "ar" ? "اساسي" : "New";
-  }
-
-  return locale === "ar" ? matchedOption.labelAr : matchedOption.labelEn;
-};
-
 const mergeCoursePayloadWithAiResult = (
   existingCourse = {},
   nextCoursePayload = {},
@@ -571,9 +437,9 @@ const getDefaultInlineCourseDraft = () => ({
 const getDefaultSavedCourseDraft = () => ({
   course_code: "",
   course_components: [],
-  course_componentId: "",
-  course_status: "new",
-  component_status: "new",
+  course_status: "",
+  course_totalWeight: "",
+  component_status: "",
   normativeCourseYearNum: "",
   normativeCourseYearInterval: "",
   normativeCourseTerm: "",
@@ -587,19 +453,12 @@ const getDefaultSavedCourseDraft = () => ({
   course_daySelection: "",
   course_timeSelection: "",
   course_grade: "",
-  course_weightTotal: "100",
   course_locationBuilding: "",
   course_locationRoom: "",
 });
 
 const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
-  const courseComponentId = String(
-    draft?.course_componentId || draft?._id || "",
-  ).trim();
-  const courseClass = normalizeSavedComponentClassLabel(draft?.course_class);
-  const componentStatus = normalizeSavedComponentStatusValue(
-    draft?.component_status,
-  );
+  const courseClass = String(draft?.course_class || "").trim();
   const normativeCourseYearNum = normalizeProgramYearValue(
     draft?.normativeCourseYearNum,
   );
@@ -618,7 +477,6 @@ const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
     (entry) => entry !== "-",
   );
   const courseGrade = String(draft?.course_grade || "").trim();
-  const courseWeightTotal = String(draft?.course_weightTotal || "100").trim();
   const courseLocationBuilding = String(
     draft?.course_locationBuilding || "",
   ).trim();
@@ -643,9 +501,7 @@ const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
   }
 
   return {
-    ...(courseComponentId ? { course_componentId: courseComponentId } : {}),
     course_class: courseClass || "-",
-    component_status: componentStatus,
     normativeCourseYearNum,
     normativeCourseYearInterval,
     normativeCourseTerm,
@@ -657,7 +513,6 @@ const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
     course_term: actualCourseTerm,
     course_dayAndTime: courseDayAndTime,
     course_grade: courseGrade,
-    course_weightTotal: courseWeightTotal || "100",
     course_locationBuilding: courseLocationBuilding,
     course_locationRoom: courseLocationRoom,
   };
@@ -1074,30 +929,6 @@ const normalizeAcademicYearValue = (value) => {
 
   return ACADEMIC_YEAR_OPTIONS.includes(normalizedValue) ? normalizedValue : "";
 };
-
-const buildNormativeCourseYearInterval = (
-  programStartInterval = "",
-  courseYearNum = "",
-) => {
-  const normalizedProgramStartInterval =
-    normalizeAcademicYearValue(programStartInterval);
-  const normalizedCourseYearNum = normalizeProgramYearValue(courseYearNum);
-
-  if (!normalizedProgramStartInterval || !normalizedCourseYearNum) {
-    return "";
-  }
-
-  const startYearMatch = normalizedProgramStartInterval.match(/^(\d{4})/);
-  const parsedCourseYearNum = Number(normalizedCourseYearNum);
-
-  if (!startYearMatch || !Number.isFinite(parsedCourseYearNum)) {
-    return "";
-  }
-
-  const baseStartYear = Number(startYearMatch[1]);
-  const nextStartYear = baseStartYear + Math.max(parsedCourseYearNum - 1, 0);
-  return `${nextStartYear} - ${nextStartYear + 1}`;
-};
 const formatAcademicTermDisplay = (value, locale = "en") => {
   const normalizedValue = String(value || "").trim();
   const arabicTerms = {
@@ -1142,106 +973,6 @@ const formatAcademicYearAndTerm = (course, locale = "en") => {
 
   return displayedProgramYear || displayedAcademicYear || "-";
 };
-
-const formatNormativeTimingDisplay = (entry = {}, locale = "en") => {
-  const programYear = normalizeProgramYearValue(
-    entry?.normativeCourseYearNum || entry?.programYear,
-  );
-  const academicYear = normalizeAcademicYearValue(
-    entry?.normativeCourseYearInterval,
-  );
-  const rawTerm = String(entry?.normativeCourseTerm || "").trim();
-  const term =
-    rawTerm && rawTerm !== "-"
-      ? formatAcademicTermDisplay(rawTerm, locale)
-      : "";
-
-  const yearLabel = programYear
-    ? locale === "ar"
-      ? `السنة ${programYear}`
-      : `Year ${programYear}`
-    : "";
-  const intervalLabel = academicYear
-    ? locale === "ar"
-      ? `الفترة الدراسية ${academicYear}`
-      : `Academic interval ${academicYear}`
-    : "";
-  const termLabel = term
-    ? locale === "ar"
-      ? `(الفصل ${term})`
-      : `(${term})`
-    : "";
-
-  if (yearLabel && intervalLabel && termLabel) {
-    return `${yearLabel} | ${intervalLabel} ${termLabel}`;
-  }
-
-  if (yearLabel && intervalLabel) {
-    return `${yearLabel} | ${intervalLabel}`;
-  }
-
-  if (intervalLabel && termLabel) {
-    return `${intervalLabel} ${termLabel}`;
-  }
-
-  const nextValue = yearLabel || intervalLabel || termLabel;
-
-  if (nextValue) {
-    return nextValue;
-  }
-
-  return formatAcademicYearAndTerm(entry, locale);
-};
-
-const formatActualTimingDisplay = (entry = {}, locale = "en") => {
-  const actualYearNum = normalizeProgramYearValue(entry?.actualCourseYearNum);
-  const academicYear = normalizeAcademicYearValue(
-    entry?.actualCourseYearInterval || entry?.course_year,
-  );
-  const rawTerm = String(
-    entry?.actualCourseTerm || entry?.course_term || "",
-  ).trim();
-  const term =
-    rawTerm && rawTerm !== "-"
-      ? formatAcademicTermDisplay(rawTerm, locale)
-      : "";
-
-  const yearLabel = actualYearNum
-    ? locale === "ar"
-      ? `السنة ${actualYearNum}`
-      : `Year ${actualYearNum}`
-    : "";
-  const intervalLabel = academicYear
-    ? locale === "ar"
-      ? `الفترة الدراسية ${academicYear}`
-      : `Academic interval ${academicYear}`
-    : "";
-  const termLabel = term
-    ? locale === "ar"
-      ? `(الفصل ${term})`
-      : `(${term})`
-    : "";
-
-  if (yearLabel && intervalLabel && termLabel) {
-    return `${yearLabel} | ${intervalLabel} ${termLabel}`;
-  }
-
-  if (yearLabel && intervalLabel) {
-    return `${yearLabel} | ${intervalLabel}`;
-  }
-
-  if (intervalLabel && termLabel) {
-    return `${intervalLabel} ${termLabel}`;
-  }
-
-  const nextValue = yearLabel || intervalLabel || termLabel;
-
-  if (nextValue) {
-    return nextValue;
-  }
-
-  return formatAcademicYearAndTerm(entry, locale);
-};
 const TERM_OPTIONS = [
   { value: "First", labelEn: "First", labelAr: "الأول" },
   { value: "Second", labelEn: "Second", labelAr: "الثاني" },
@@ -1269,6 +1000,744 @@ const SAVED_COMPONENT_CLASS_OPTIONS = [
   "عملي (مشفى)",
   "عملي (صيدلية)",
 ];
+
+const PLANNER_DEFAULT_FIELD_REGISTRY = [
+  {
+    key: "savedCourse.course_name",
+    formKey: "savedCourse",
+    fieldName: "course_name",
+    labelAr: "اسم المقرر",
+    labelEn: "Course name",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "savedCourse.course_code",
+    formKey: "savedCourse",
+    fieldName: "course_code",
+    labelAr: "رمز المقرر",
+    labelEn: "Course code",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "savedCourse.course_classSelection",
+    formKey: "savedCourse",
+    fieldName: "course_classSelection",
+    labelAr: "نوع المكوّن",
+    labelEn: "Component class",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "componentClassOptions",
+  },
+  {
+    key: "savedCourse.normativeCourseYearNum",
+    formKey: "savedCourse",
+    fieldName: "normativeCourseYearNum",
+    labelAr: "رقم السنة المفترضة",
+    labelEn: "Normative year number",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "savedCourse.normativeCourseTerm",
+    formKey: "savedCourse",
+    fieldName: "normativeCourseTerm",
+    labelAr: "الفصل المفترض",
+    labelEn: "Normative term",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "termOptions",
+  },
+  {
+    key: "savedCourse.actualCourseYearNum",
+    formKey: "savedCourse",
+    fieldName: "actualCourseYearNum",
+    labelAr: "رقم السنة الفعلية",
+    labelEn: "Actual year number",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "savedCourse.actualCourseYearInterval",
+    formKey: "savedCourse",
+    fieldName: "actualCourseYearInterval",
+    labelAr: "الفترة الفعلية",
+    labelEn: "Actual year interval",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "academicYearOptions",
+  },
+  {
+    key: "savedCourse.actualCourseTerm",
+    formKey: "savedCourse",
+    fieldName: "actualCourseTerm",
+    labelAr: "الفصل الفعلي",
+    labelEn: "Actual term",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "termOptions",
+  },
+  {
+    key: "savedCourse.course_daySelection",
+    formKey: "savedCourse",
+    fieldName: "course_daySelection",
+    labelAr: "اليوم",
+    labelEn: "Day",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "weekdayOptions",
+  },
+  {
+    key: "savedCourse.course_timeSelection",
+    formKey: "savedCourse",
+    fieldName: "course_timeSelection",
+    labelAr: "الساعة",
+    labelEn: "Hour",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "select",
+    optionsKey: "hourOptions",
+  },
+  {
+    key: "savedCourse.course_locationBuilding",
+    formKey: "savedCourse",
+    fieldName: "course_locationBuilding",
+    labelAr: "المبنى",
+    labelEn: "Building",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "savedCourse.course_locationRoom",
+    formKey: "savedCourse",
+    fieldName: "course_locationRoom",
+    labelAr: "القاعة",
+    labelEn: "Room",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "savedCourse.course_grade",
+    formKey: "savedCourse",
+    fieldName: "course_grade",
+    labelAr: "الوزن",
+    labelEn: "Weight",
+    formLabelAr: "إضافة/تعديل مقرر",
+    formLabelEn: "Saved course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.type",
+    formKey: "exam",
+    fieldName: "type",
+    labelAr: "نوع الامتحان",
+    labelEn: "Exam type",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.normativeCourseYearNum",
+    formKey: "exam",
+    fieldName: "normativeCourseYearNum",
+    labelAr: "رقم السنة المفترضة",
+    labelEn: "Normative year number",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.normativeCourseTerm",
+    formKey: "exam",
+    fieldName: "normativeCourseTerm",
+    labelAr: "الفصل المفترض",
+    labelEn: "Normative term",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    optionsKey: "termOptions",
+  },
+  {
+    key: "exam.actualCourseYearNum",
+    formKey: "exam",
+    fieldName: "actualCourseYearNum",
+    labelAr: "رقم السنة الفعلية",
+    labelEn: "Actual year number",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.actualCourseYearInterval",
+    formKey: "exam",
+    fieldName: "actualCourseYearInterval",
+    labelAr: "الفترة الفعلية",
+    labelEn: "Actual year interval",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    optionsKey: "academicYearOptions",
+  },
+  {
+    key: "exam.actualCourseTerm",
+    formKey: "exam",
+    fieldName: "actualCourseTerm",
+    labelAr: "الفصل الفعلي",
+    labelEn: "Actual term",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    optionsKey: "termOptions",
+  },
+  {
+    key: "exam.locationBuilding",
+    formKey: "exam",
+    fieldName: "locationBuilding",
+    labelAr: "المبنى",
+    labelEn: "Building",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.locationRoom",
+    formKey: "exam",
+    fieldName: "locationRoom",
+    labelAr: "القاعة",
+    labelEn: "Room",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.volumeValue",
+    formKey: "exam",
+    fieldName: "volumeValue",
+    labelAr: "قيمة الحجم",
+    labelEn: "Volume value",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.volumeUnit",
+    formKey: "exam",
+    fieldName: "volumeUnit",
+    labelAr: "وحدة الحجم",
+    labelEn: "Volume unit",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_VOLUME_UNIT_OPTIONS,
+  },
+  {
+    key: "exam.volumeScope",
+    formKey: "exam",
+    fieldName: "volumeScope",
+    labelAr: "نطاق الحجم",
+    labelEn: "Volume scope",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.volumeNote",
+    formKey: "exam",
+    fieldName: "volumeNote",
+    labelAr: "ملاحظة الحجم",
+    labelEn: "Volume note",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.weightValue",
+    formKey: "exam",
+    fieldName: "weightValue",
+    labelAr: "قيمة الوزن",
+    labelEn: "Weight value",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.weightUnit",
+    formKey: "exam",
+    fieldName: "weightUnit",
+    labelAr: "وحدة الوزن",
+    labelEn: "Weight unit",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_WEIGHT_UNIT_OPTIONS,
+  },
+  {
+    key: "exam.passGradeValue",
+    formKey: "exam",
+    fieldName: "passGradeValue",
+    labelAr: "قيمة النجاح",
+    labelEn: "Pass grade value",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.passGradeMin",
+    formKey: "exam",
+    fieldName: "passGradeMin",
+    labelAr: "النجاح الأدنى",
+    labelEn: "Pass grade min",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.passGradeMax",
+    formKey: "exam",
+    fieldName: "passGradeMax",
+    labelAr: "النجاح الأقصى",
+    labelEn: "Pass grade max",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.passGradeUnit",
+    formKey: "exam",
+    fieldName: "passGradeUnit",
+    labelAr: "وحدة النجاح",
+    labelEn: "Pass grade unit",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_GRADE_UNIT_OPTIONS,
+  },
+  {
+    key: "exam.gradeValue",
+    formKey: "exam",
+    fieldName: "gradeValue",
+    labelAr: "قيمة العلامة",
+    labelEn: "Grade value",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.gradeMin",
+    formKey: "exam",
+    fieldName: "gradeMin",
+    labelAr: "العلامة الأدنى",
+    labelEn: "Grade min",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.gradeMax",
+    formKey: "exam",
+    fieldName: "gradeMax",
+    labelAr: "العلامة القصوى",
+    labelEn: "Grade max",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.gradeUnit",
+    formKey: "exam",
+    fieldName: "gradeUnit",
+    labelAr: "وحدة العلامة",
+    labelEn: "Grade unit",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_GRADE_UNIT_OPTIONS,
+  },
+  {
+    key: "exam.recommendationTiming",
+    formKey: "exam",
+    fieldName: "recommendationTiming",
+    labelAr: "توقيت التوصية",
+    labelEn: "Recommendation timing",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_RECOMMENDATION_TIMING_OPTIONS,
+  },
+  {
+    key: "exam.recommendationIntensity",
+    formKey: "exam",
+    fieldName: "recommendationIntensity",
+    labelAr: "شدة التوصية",
+    labelEn: "Recommendation intensity",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "select",
+    options: EXAM_RECOMMENDATION_INTENSITY_OPTIONS,
+  },
+  {
+    key: "exam.recommendationSuggestedHours",
+    formKey: "exam",
+    fieldName: "recommendationSuggestedHours",
+    labelAr: "الساعات المقترحة",
+    labelEn: "Suggested hours",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "number",
+  },
+  {
+    key: "exam.recommendationReason",
+    formKey: "exam",
+    fieldName: "recommendationReason",
+    labelAr: "سبب التوصية",
+    labelEn: "Recommendation reason",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "exam.recommendationNote",
+    formKey: "exam",
+    fieldName: "recommendationNote",
+    labelAr: "ملاحظة التوصية",
+    labelEn: "Recommendation note",
+    formLabelAr: "إضافة/تعديل امتحان",
+    formLabelEn: "Exam form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineCourse.course_name",
+    formKey: "inlineCourse",
+    fieldName: "course_name",
+    labelAr: "اسم المقرر",
+    labelEn: "Course name",
+    formLabelAr: "إضافة مقرر سريع",
+    formLabelEn: "Inline course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineCourse.course_code",
+    formKey: "inlineCourse",
+    fieldName: "course_code",
+    labelAr: "رمز المقرر",
+    labelEn: "Course code",
+    formLabelAr: "إضافة مقرر سريع",
+    formLabelEn: "Inline course form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineComponent.course_class",
+    formKey: "inlineComponent",
+    fieldName: "course_class",
+    labelAr: "نوع المكوّن",
+    labelEn: "Component class",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "select",
+    optionsKey: "componentClassOptions",
+  },
+  {
+    key: "inlineComponent.course_daySelection",
+    formKey: "inlineComponent",
+    fieldName: "course_daySelection",
+    labelAr: "اليوم",
+    labelEn: "Day",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "select",
+    optionsKey: "weekdayOptions",
+  },
+  {
+    key: "inlineComponent.course_timeSelection",
+    formKey: "inlineComponent",
+    fieldName: "course_timeSelection",
+    labelAr: "الساعة",
+    labelEn: "Hour",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "select",
+    optionsKey: "hourOptions",
+  },
+  {
+    key: "inlineComponent.course_year",
+    formKey: "inlineComponent",
+    fieldName: "course_year",
+    labelAr: "السنة الأكاديمية",
+    labelEn: "Academic year",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "select",
+    optionsKey: "academicYearOptions",
+  },
+  {
+    key: "inlineComponent.course_term",
+    formKey: "inlineComponent",
+    fieldName: "course_term",
+    labelAr: "الفصل",
+    labelEn: "Term",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "select",
+    optionsKey: "termOptions",
+  },
+  {
+    key: "inlineComponent.course_grade",
+    formKey: "inlineComponent",
+    fieldName: "course_grade",
+    labelAr: "الوزن",
+    labelEn: "Weight",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineComponent.course_locationBuilding",
+    formKey: "inlineComponent",
+    fieldName: "course_locationBuilding",
+    labelAr: "المبنى",
+    labelEn: "Building",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineComponent.course_locationRoom",
+    formKey: "inlineComponent",
+    fieldName: "course_locationRoom",
+    labelAr: "القاعة",
+    labelEn: "Room",
+    formLabelAr: "إضافة مكوّن سريع",
+    formLabelEn: "Inline component form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineLecture.lecture_name",
+    formKey: "inlineLecture",
+    fieldName: "lecture_name",
+    labelAr: "اسم المحاضرة",
+    labelEn: "Lecture name",
+    formLabelAr: "إضافة محاضرة سريعة",
+    formLabelEn: "Inline lecture form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineLecture.lecture_instructors",
+    formKey: "inlineLecture",
+    fieldName: "lecture_instructors",
+    labelAr: "المحاضرون",
+    labelEn: "Instructors",
+    formLabelAr: "إضافة محاضرة سريعة",
+    formLabelEn: "Inline lecture form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineLecture.lecture_writers",
+    formKey: "inlineLecture",
+    fieldName: "lecture_writers",
+    labelAr: "الكتّاب",
+    labelEn: "Writers",
+    formLabelAr: "إضافة محاضرة سريعة",
+    formLabelEn: "Inline lecture form",
+    control: "input",
+    inputType: "text",
+  },
+  {
+    key: "inlineLecture.lecture_date",
+    formKey: "inlineLecture",
+    fieldName: "lecture_date",
+    labelAr: "تاريخ المحاضرة",
+    labelEn: "Lecture date",
+    formLabelAr: "إضافة محاضرة سريعة",
+    formLabelEn: "Inline lecture form",
+    control: "input",
+    inputType: "date",
+  },
+];
+
+const PLANNER_SELECT_SETTINGS_STORAGE_KEY = "nogaPlanner.selectSettings.v1";
+
+const buildDefaultPlannerWeekdayOptions = (locale = "en") =>
+  WEEKDAY_OPTIONS.map((optionValue) =>
+    locale === "ar" ? optionValue.labelAr : optionValue.labelEn,
+  );
+
+const buildDefaultPlannerSelectSettings = (locale = "en") => ({
+  componentClassOptions: [...SAVED_COMPONENT_CLASS_OPTIONS],
+  weekdayOptions: buildDefaultPlannerWeekdayOptions(locale),
+  hourOptions: HOUR_OPTIONS.map((optionValue) => optionValue.value),
+  termOptions: TERM_OPTIONS.map((optionValue) => optionValue.value),
+  academicYearOptions: [...ACADEMIC_YEAR_OPTIONS],
+  fieldDefaults: {},
+  relationships: [],
+});
+
+const getDefaultPlannerRelationshipDraft = () => ({
+  course_classSelection: "",
+  normativeCourseTerm: "",
+  actualCourseTerm: "",
+  course_daySelection: "",
+  course_timeSelection: "",
+  course_locationBuilding: "",
+  course_locationRoom: "",
+  course_grade: "",
+  readOnly: false,
+});
+
+const createPlannerSettingsRelationshipId = () =>
+  `planner-rel-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const normalizePlannerSettingsStringList = (entries = [], fallback = []) => {
+  const normalizedEntries = Array.isArray(entries)
+    ? entries
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+        .filter(
+          (entry, entryIndex, sourceEntries) =>
+            sourceEntries.indexOf(entry) === entryIndex,
+        )
+    : [];
+
+  return normalizedEntries.length > 0 ? normalizedEntries : [...fallback];
+};
+
+const normalizePlannerRelationshipEntry = (entry = {}) => ({
+  id: String(entry?.id || "").trim() || createPlannerSettingsRelationshipId(),
+  course_classSelection: String(entry?.course_classSelection || "").trim(),
+  normativeCourseTerm: String(entry?.normativeCourseTerm || "").trim(),
+  actualCourseTerm: String(entry?.actualCourseTerm || "").trim(),
+  course_daySelection: String(entry?.course_daySelection || "").trim(),
+  course_timeSelection: String(entry?.course_timeSelection || "").trim(),
+  course_locationBuilding: String(entry?.course_locationBuilding || "").trim(),
+  course_locationRoom: String(entry?.course_locationRoom || "").trim(),
+  course_grade: String(entry?.course_grade || "").trim(),
+  readOnly: Boolean(entry?.readOnly),
+});
+
+const normalizePlannerSelectSettings = (value, locale = "en") => {
+  const fallbackSettings = buildDefaultPlannerSelectSettings(locale);
+  const nextValue = value && typeof value === "object" ? value : {};
+
+  return {
+    componentClassOptions: normalizePlannerSettingsStringList(
+      nextValue.componentClassOptions,
+      fallbackSettings.componentClassOptions,
+    ),
+    weekdayOptions: normalizePlannerSettingsStringList(
+      nextValue.weekdayOptions,
+      fallbackSettings.weekdayOptions,
+    ),
+    hourOptions: normalizePlannerSettingsStringList(
+      nextValue.hourOptions,
+      fallbackSettings.hourOptions,
+    ),
+    termOptions: normalizePlannerSettingsStringList(
+      nextValue.termOptions,
+      fallbackSettings.termOptions,
+    ),
+    academicYearOptions: normalizePlannerSettingsStringList(
+      nextValue.academicYearOptions,
+      fallbackSettings.academicYearOptions,
+    ),
+    fieldDefaults: {
+      ...(nextValue?.fieldDefaults &&
+      typeof nextValue.fieldDefaults === "object"
+        ? Object.fromEntries(
+            Object.entries(nextValue.fieldDefaults)
+              .map(([fieldKey, fieldValue]) => [
+                String(fieldKey || "").trim(),
+                String(fieldValue || "").trim(),
+              ])
+              .filter(([fieldKey]) => Boolean(fieldKey)),
+          )
+        : {}),
+      "savedCourse.course_classSelection": String(
+        nextValue?.defaults?.course_classSelection || "",
+      ).trim(),
+      "savedCourse.normativeCourseTerm": String(
+        nextValue?.defaults?.normativeCourseTerm || "",
+      ).trim(),
+      "savedCourse.actualCourseTerm": String(
+        nextValue?.defaults?.actualCourseTerm || "",
+      ).trim(),
+      "savedCourse.course_daySelection": String(
+        nextValue?.defaults?.course_daySelection || "",
+      ).trim(),
+      "savedCourse.course_timeSelection": String(
+        nextValue?.defaults?.course_timeSelection || "",
+      ).trim(),
+    },
+    relationships: Array.isArray(nextValue?.relationships)
+      ? nextValue.relationships
+          .map((entry) => normalizePlannerRelationshipEntry(entry))
+          .filter((entry) => Boolean(entry.course_classSelection))
+      : [],
+  };
+};
+
+const readPlannerSelectSettingsFromStorage = (locale = "en") => {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return buildDefaultPlannerSelectSettings(locale);
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(
+      PLANNER_SELECT_SETTINGS_STORAGE_KEY,
+    );
+
+    if (!storedValue) {
+      return buildDefaultPlannerSelectSettings(locale);
+    }
+
+    return normalizePlannerSelectSettings(JSON.parse(storedValue), locale);
+  } catch (error) {
+    console.error("[planner-select-settings] read failed:", error);
+    return buildDefaultPlannerSelectSettings(locale);
+  }
+};
 
 const getDefaultInlineComponentDraft = () => ({
   course_class: "",
@@ -1759,7 +2228,10 @@ export default class NogaPlanner extends Component {
         {
           inlineCourseRowVisible: true,
           inlineCourseFormTab: "traditional",
-          inlineCourseDraft: getDefaultInlineCourseDraft(),
+          inlineCourseDraft: this.applyPlannerFieldDefaultsToDraft(
+            "inlineCourse",
+            getDefaultInlineCourseDraft(),
+          ),
           inlineComponentRowVisible: false,
           inlineComponentDraft: getDefaultInlineComponentDraft(),
         },
@@ -1777,7 +2249,10 @@ export default class NogaPlanner extends Component {
   openInlineComponentRow = () => {
     this.setState({
       inlineComponentRowVisible: true,
-      inlineComponentDraft: getDefaultInlineComponentDraft(),
+      inlineComponentDraft: this.applyPlannerFieldDefaultsToDraft(
+        "inlineComponent",
+        getDefaultInlineComponentDraft(),
+      ),
       inlineCourseRowVisible: false,
     });
   };
@@ -2475,49 +2950,782 @@ export default class NogaPlanner extends Component {
     });
   };
 
-  getProgramStartYearInterval = () =>
-    normalizeAcademicYearValue(
-      this.props.state?.profile?.studying?.time?.start?.programYearInterval ||
-        this.props.state?.studying?.time?.start?.programYearInterval ||
-        "",
+  persistPlannerSelectSettings = (settings) => {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        PLANNER_SELECT_SETTINGS_STORAGE_KEY,
+        JSON.stringify(settings),
+      );
+    } catch (error) {
+      console.error("[planner-select-settings] write failed:", error);
+    }
+  };
+
+  getPlannerRelationshipForClass = (settings, courseClassValue) => {
+    const normalizedCourseClass = String(courseClassValue || "").trim();
+
+    if (!normalizedCourseClass) {
+      return null;
+    }
+
+    const relationships = Array.isArray(settings?.relationships)
+      ? settings.relationships
+      : [];
+
+    return (
+      relationships.find(
+        (entry) =>
+          String(entry?.course_classSelection || "").trim() ===
+          normalizedCourseClass,
+      ) || null
+    );
+  };
+
+  applyPlannerRelationshipToSavedCourseDraft = (
+    draft,
+    relationship,
+    forceRelationshipValues = true,
+  ) => {
+    if (!relationship) {
+      return { ...draft };
+    }
+
+    const nextDraft = { ...draft };
+    const relationshipFields = [
+      "normativeCourseTerm",
+      "actualCourseTerm",
+      "course_daySelection",
+      "course_timeSelection",
+      "course_locationBuilding",
+      "course_locationRoom",
+      "course_grade",
+    ];
+
+    relationshipFields.forEach((fieldName) => {
+      const relationshipValue = String(relationship?.[fieldName] || "").trim();
+
+      if (!relationshipValue) {
+        return;
+      }
+
+      if (
+        forceRelationshipValues ||
+        !String(nextDraft?.[fieldName] || "").trim()
+      ) {
+        nextDraft[fieldName] = relationshipValue;
+      }
+    });
+
+    return nextDraft;
+  };
+
+  buildSavedCourseDraftWithPlannerSettings = (
+    baseDraft = getDefaultSavedCourseDraft(),
+  ) => {
+    const plannerSelectSettings = normalizePlannerSelectSettings(
+      this.state?.plannerSelectSettings,
+      this.state?.ui_locale || "en",
+    );
+    let nextDraft = this.applyPlannerFieldDefaultsToDraft(
+      "savedCourse",
+      {
+        ...getDefaultSavedCourseDraft(),
+        ...baseDraft,
+      },
+      plannerSelectSettings,
     );
 
-  getCurrentProgramTiming = () => {
-    const currentStudyTime =
-      this.props.state?.profile?.studying?.time?.current ||
-      this.props.state?.studying?.time?.current ||
-      {};
+    const currentAcademicYear = normalizeAcademicYearValue(
+      this.props.state?.studying?.time?.currentAcademicYear ??
+        this.props.state?.studying?.currentAcademicYear ??
+        this.props.state?.profile?.studying?.time?.currentAcademicYear ??
+        this.props.state?.profile?.studying?.currentAcademicYear ??
+        this.props.state?.currentAcademicYear,
+    );
+    const currentAcademicTerm = String(
+      this.props.state?.studying?.time?.currentTerm ??
+        this.props.state?.studying?.currentTerm ??
+        this.props.state?.profile?.studying?.time?.currentTerm ??
+        this.props.state?.profile?.studying?.currentTerm ??
+        "",
+    ).trim();
 
-    return {
-      actualCourseYearNum: normalizeProgramYearValue(
-        currentStudyTime?.programYearNum,
+    if (!String(nextDraft?.actualCourseYearInterval || "").trim()) {
+      nextDraft.actualCourseYearInterval = currentAcademicYear;
+    }
+
+    if (!String(nextDraft?.actualCourseTerm || "").trim()) {
+      nextDraft.actualCourseTerm = currentAcademicTerm;
+    }
+
+    return this.applyPlannerRelationshipToSavedCourseDraft(
+      nextDraft,
+      this.getPlannerRelationshipForClass(
+        plannerSelectSettings,
+        nextDraft.course_classSelection || nextDraft.course_class,
       ),
-      actualCourseYearInterval: normalizeAcademicYearValue(
-        currentStudyTime?.programYearInterval || "",
-      ),
-      actualCourseTerm: String(
-        currentStudyTime?.programTerm ||
-          this.props.state?.profile?.studying?.term ||
-          this.props.state?.studying?.term ||
-          "",
-      ).trim(),
+      true,
+    );
+  };
+
+  applyPlannerFieldDefaultsToDraft = (
+    formKey,
+    baseDraft = {},
+    plannerSelectSettings = this.state?.plannerSelectSettings,
+  ) => {
+    const fieldDefaults =
+      plannerSelectSettings?.fieldDefaults &&
+      typeof plannerSelectSettings.fieldDefaults === "object"
+        ? plannerSelectSettings.fieldDefaults
+        : {};
+    const nextDraft = {
+      ...baseDraft,
     };
+
+    PLANNER_DEFAULT_FIELD_REGISTRY.filter(
+      (entry) => entry.formKey === formKey,
+    ).forEach((fieldConfig) => {
+      const defaultValue = String(
+        fieldDefaults?.[fieldConfig.key] || "",
+      ).trim();
+      const currentValue = nextDraft?.[fieldConfig.fieldName];
+      const hasValue = Array.isArray(currentValue)
+        ? currentValue.length > 0
+        : Boolean(String(currentValue || "").trim());
+
+      if (!hasValue && defaultValue) {
+        nextDraft[fieldConfig.fieldName] = defaultValue;
+      }
+    });
+
+    return nextDraft;
+  };
+
+  getLockedSavedCourseDraftFields = (draft = this.state?.savedCourseDraft) => {
+    const plannerSelectSettings = this.state?.plannerSelectSettings;
+    const relationship = this.getPlannerRelationshipForClass(
+      plannerSelectSettings,
+      draft?.course_classSelection || draft?.course_class,
+    );
+
+    if (!relationship?.readOnly) {
+      return new Set();
+    }
+
+    return new Set(
+      [
+        "normativeCourseTerm",
+        "actualCourseTerm",
+        "course_daySelection",
+        "course_timeSelection",
+        "course_locationBuilding",
+        "course_locationRoom",
+        "course_grade",
+      ].filter((fieldName) =>
+        Boolean(String(relationship?.[fieldName] || "").trim()),
+      ),
+    );
+  };
+
+  updatePlannerSelectSettings = (updater) => {
+    this.setState((previousState) => {
+      const previousSettings = normalizePlannerSelectSettings(
+        previousState.plannerSelectSettings,
+        previousState.ui_locale || "en",
+      );
+      const nextSettingsCandidate =
+        typeof updater === "function"
+          ? updater(previousSettings, previousState)
+          : updater;
+      const nextSettings = normalizePlannerSelectSettings(
+        nextSettingsCandidate,
+        previousState.ui_locale || "en",
+      );
+
+      this.persistPlannerSelectSettings(nextSettings);
+
+      return {
+        plannerSelectSettings: nextSettings,
+      };
+    });
+  };
+
+  handlePlannerFieldDefaultChange = (fieldKey, nextValue) => {
+    this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      fieldDefaults: {
+        ...(previousSettings.fieldDefaults || {}),
+        [fieldKey]: nextValue,
+      },
+    }));
+  };
+
+  handlePlannerSettingsInputChange = (fieldName, nextValue) => {
+    this.setState({
+      [fieldName]: nextValue,
+    });
+  };
+
+  addOrUpdatePlannerSettingsListItem = (listKey) => {
+    const fieldMap = {
+      componentClassOptions: {
+        inputKey: "plannerSettingsComponentClassInput",
+        indexKey: "plannerSettingsEditingComponentClassIndex",
+        selectedIndexKey: "plannerSettingsSelectedComponentClassIndex",
+      },
+      weekdayOptions: {
+        inputKey: "plannerSettingsWeekdayInput",
+        indexKey: "plannerSettingsEditingWeekdayIndex",
+        selectedIndexKey: "plannerSettingsSelectedWeekdayIndex",
+      },
+      hourOptions: {
+        inputKey: "plannerSettingsHourInput",
+        indexKey: "plannerSettingsEditingHourIndex",
+        selectedIndexKey: "plannerSettingsSelectedHourIndex",
+      },
+      termOptions: {
+        inputKey: "plannerSettingsTermInput",
+        indexKey: "plannerSettingsEditingTermIndex",
+        selectedIndexKey: "plannerSettingsSelectedTermIndex",
+      },
+      academicYearOptions: {
+        inputKey: "plannerSettingsAcademicYearInput",
+        indexKey: "plannerSettingsEditingAcademicYearIndex",
+        selectedIndexKey: "plannerSettingsSelectedAcademicYearIndex",
+      },
+    };
+    const fieldConfig = fieldMap[listKey];
+
+    if (!fieldConfig) {
+      return;
+    }
+
+    const nextValue = String(this.state?.[fieldConfig.inputKey] || "").trim();
+
+    if (!nextValue) {
+      return;
+    }
+
+    const editingIndex = Number(this.state?.[fieldConfig.indexKey] ?? -1);
+
+    this.updatePlannerSelectSettings((previousSettings) => {
+      const currentEntries = Array.isArray(previousSettings?.[listKey])
+        ? [...previousSettings[listKey]]
+        : [];
+      const duplicateIndex = currentEntries.findIndex(
+        (entry, entryIndex) =>
+          entry === nextValue && entryIndex !== editingIndex,
+      );
+
+      if (duplicateIndex !== -1) {
+        return previousSettings;
+      }
+
+      if (
+        Number.isInteger(editingIndex) &&
+        editingIndex >= 0 &&
+        editingIndex < currentEntries.length
+      ) {
+        currentEntries[editingIndex] = nextValue;
+      } else {
+        currentEntries.push(nextValue);
+      }
+
+      return {
+        ...previousSettings,
+        [listKey]: currentEntries,
+      };
+    });
+
+    this.setState({
+      [fieldConfig.inputKey]: "",
+      [fieldConfig.indexKey]: -1,
+      [fieldConfig.selectedIndexKey]: -1,
+    });
+  };
+
+  editPlannerSettingsListItem = (listKey, itemIndex) => {
+    const fieldMap = {
+      componentClassOptions: {
+        inputKey: "plannerSettingsComponentClassInput",
+        indexKey: "plannerSettingsEditingComponentClassIndex",
+        selectedIndexKey: "plannerSettingsSelectedComponentClassIndex",
+      },
+      weekdayOptions: {
+        inputKey: "plannerSettingsWeekdayInput",
+        indexKey: "plannerSettingsEditingWeekdayIndex",
+        selectedIndexKey: "plannerSettingsSelectedWeekdayIndex",
+      },
+      hourOptions: {
+        inputKey: "plannerSettingsHourInput",
+        indexKey: "plannerSettingsEditingHourIndex",
+        selectedIndexKey: "plannerSettingsSelectedHourIndex",
+      },
+      termOptions: {
+        inputKey: "plannerSettingsTermInput",
+        indexKey: "plannerSettingsEditingTermIndex",
+        selectedIndexKey: "plannerSettingsSelectedTermIndex",
+      },
+      academicYearOptions: {
+        inputKey: "plannerSettingsAcademicYearInput",
+        indexKey: "plannerSettingsEditingAcademicYearIndex",
+        selectedIndexKey: "plannerSettingsSelectedAcademicYearIndex",
+      },
+    };
+    const fieldConfig = fieldMap[listKey];
+
+    if (!fieldConfig) {
+      return;
+    }
+
+    const currentEntries = Array.isArray(
+      this.state?.plannerSelectSettings?.[listKey],
+    )
+      ? this.state.plannerSelectSettings[listKey]
+      : [];
+    const nextValue = String(currentEntries[itemIndex] || "").trim();
+
+    this.setState({
+      [fieldConfig.inputKey]: nextValue,
+      [fieldConfig.indexKey]: itemIndex,
+      [fieldConfig.selectedIndexKey]: itemIndex,
+    });
+  };
+
+  removePlannerSettingsListItem = (listKey, itemIndex) => {
+    this.updatePlannerSelectSettings((previousSettings) => {
+      const currentEntries = Array.isArray(previousSettings?.[listKey])
+        ? previousSettings[listKey].filter(
+            (_, currentIndex) => currentIndex !== itemIndex,
+          )
+        : [];
+      const nextSettings = {
+        ...previousSettings,
+        [listKey]: currentEntries,
+      };
+
+      if (listKey === "componentClassOptions") {
+        nextSettings.relationships = (
+          previousSettings.relationships || []
+        ).filter(
+          (entry) =>
+            String(entry?.course_classSelection || "").trim() !==
+            String(previousSettings?.[listKey]?.[itemIndex] || "").trim(),
+        );
+      }
+
+      if (listKey === "weekdayOptions") {
+        const removedValue = String(
+          previousSettings?.[listKey]?.[itemIndex] || "",
+        ).trim();
+        nextSettings.relationships = (nextSettings.relationships || []).map(
+          (entry) =>
+            String(entry?.course_daySelection || "").trim() === removedValue
+              ? {
+                  ...entry,
+                  course_daySelection: "",
+                }
+              : entry,
+        );
+      }
+
+      if (listKey === "hourOptions") {
+        const removedValue = String(
+          previousSettings?.[listKey]?.[itemIndex] || "",
+        ).trim();
+        nextSettings.relationships = (nextSettings.relationships || []).map(
+          (entry) =>
+            String(entry?.course_timeSelection || "").trim() === removedValue
+              ? {
+                  ...entry,
+                  course_timeSelection: "",
+                }
+              : entry,
+        );
+      }
+
+      if (listKey === "termOptions") {
+        const removedValue = String(
+          previousSettings?.[listKey]?.[itemIndex] || "",
+        ).trim();
+        nextSettings.relationships = (nextSettings.relationships || []).map(
+          (entry) => ({
+            ...entry,
+            normativeCourseTerm:
+              String(entry?.normativeCourseTerm || "").trim() === removedValue
+                ? ""
+                : entry?.normativeCourseTerm || "",
+            actualCourseTerm:
+              String(entry?.actualCourseTerm || "").trim() === removedValue
+                ? ""
+                : entry?.actualCourseTerm || "",
+          }),
+        );
+      }
+
+      const currentFieldDefaults =
+        previousSettings?.fieldDefaults &&
+        typeof previousSettings.fieldDefaults === "object"
+          ? previousSettings.fieldDefaults
+          : {};
+      const removedValue = String(
+        previousSettings?.[listKey]?.[itemIndex] || "",
+      ).trim();
+      nextSettings.fieldDefaults = Object.fromEntries(
+        Object.entries(currentFieldDefaults).map(([fieldKey, fieldValue]) => [
+          fieldKey,
+          String(fieldValue || "").trim() === removedValue ? "" : fieldValue,
+        ]),
+      );
+
+      return nextSettings;
+    });
+
+    const fieldMap = {
+      componentClassOptions: {
+        indexKey: "plannerSettingsEditingComponentClassIndex",
+        selectedIndexKey: "plannerSettingsSelectedComponentClassIndex",
+      },
+      weekdayOptions: {
+        indexKey: "plannerSettingsEditingWeekdayIndex",
+        selectedIndexKey: "plannerSettingsSelectedWeekdayIndex",
+      },
+      hourOptions: {
+        indexKey: "plannerSettingsEditingHourIndex",
+        selectedIndexKey: "plannerSettingsSelectedHourIndex",
+      },
+      termOptions: {
+        indexKey: "plannerSettingsEditingTermIndex",
+        selectedIndexKey: "plannerSettingsSelectedTermIndex",
+      },
+      academicYearOptions: {
+        indexKey: "plannerSettingsEditingAcademicYearIndex",
+        selectedIndexKey: "plannerSettingsSelectedAcademicYearIndex",
+      },
+    };
+    const fieldConfig = fieldMap[listKey];
+
+    if (fieldConfig) {
+      this.setState((previousState) => {
+        const editingIndex = Number(
+          previousState?.[fieldConfig.indexKey] ?? -1,
+        );
+        const selectedIndex = Number(
+          previousState?.[fieldConfig.selectedIndexKey] ?? -1,
+        );
+
+        return {
+          [fieldConfig.indexKey]:
+            editingIndex === itemIndex
+              ? -1
+              : editingIndex > itemIndex
+                ? editingIndex - 1
+                : editingIndex,
+          [fieldConfig.selectedIndexKey]:
+            selectedIndex === itemIndex
+              ? -1
+              : selectedIndex > itemIndex
+                ? selectedIndex - 1
+                : selectedIndex,
+        };
+      });
+    }
+  };
+
+  togglePlannerSettingsListItemSelection = (listKey, itemIndex) => {
+    const selectedIndexKeyMap = {
+      componentClassOptions: "plannerSettingsSelectedComponentClassIndex",
+      weekdayOptions: "plannerSettingsSelectedWeekdayIndex",
+      hourOptions: "plannerSettingsSelectedHourIndex",
+      termOptions: "plannerSettingsSelectedTermIndex",
+      academicYearOptions: "plannerSettingsSelectedAcademicYearIndex",
+    };
+    const selectedIndexKey = selectedIndexKeyMap[listKey];
+
+    if (!selectedIndexKey) {
+      return;
+    }
+
+    this.setState((previousState) => ({
+      [selectedIndexKey]:
+        Number(previousState?.[selectedIndexKey] ?? -1) === itemIndex
+          ? -1
+          : itemIndex,
+    }));
+  };
+
+  editSelectedPlannerSettingsListItem = (listKey) => {
+    const selectedIndexKeyMap = {
+      componentClassOptions: "plannerSettingsSelectedComponentClassIndex",
+      weekdayOptions: "plannerSettingsSelectedWeekdayIndex",
+      hourOptions: "plannerSettingsSelectedHourIndex",
+      termOptions: "plannerSettingsSelectedTermIndex",
+      academicYearOptions: "plannerSettingsSelectedAcademicYearIndex",
+    };
+    const selectedIndex = Number(
+      this.state?.[selectedIndexKeyMap[listKey]] ?? -1,
+    );
+
+    if (selectedIndex < 0) {
+      return;
+    }
+
+    this.editPlannerSettingsListItem(listKey, selectedIndex);
+  };
+
+  deleteSelectedPlannerSettingsListItem = (listKey) => {
+    const selectedIndexKeyMap = {
+      componentClassOptions: "plannerSettingsSelectedComponentClassIndex",
+      weekdayOptions: "plannerSettingsSelectedWeekdayIndex",
+      hourOptions: "plannerSettingsSelectedHourIndex",
+      termOptions: "plannerSettingsSelectedTermIndex",
+      academicYearOptions: "plannerSettingsSelectedAcademicYearIndex",
+    };
+    const selectedIndex = Number(
+      this.state?.[selectedIndexKeyMap[listKey]] ?? -1,
+    );
+
+    if (selectedIndex < 0) {
+      return;
+    }
+
+    this.removePlannerSettingsListItem(listKey, selectedIndex);
+  };
+
+  clearPlannerSettingsList = (listKey) => {
+    this.updatePlannerSelectSettings((previousSettings) => {
+      const nextSettings = {
+        ...previousSettings,
+        [listKey]: [],
+      };
+
+      if (listKey === "componentClassOptions") {
+        nextSettings.relationships = [];
+      }
+
+      if (listKey === "weekdayOptions") {
+        nextSettings.relationships = (previousSettings.relationships || []).map(
+          (entry) => ({
+            ...entry,
+            course_daySelection: "",
+          }),
+        );
+      }
+
+      if (listKey === "hourOptions") {
+        nextSettings.relationships = (previousSettings.relationships || []).map(
+          (entry) => ({
+            ...entry,
+            course_timeSelection: "",
+          }),
+        );
+      }
+
+      if (listKey === "termOptions") {
+        nextSettings.relationships = (previousSettings.relationships || []).map(
+          (entry) => ({
+            ...entry,
+            normativeCourseTerm: "",
+            actualCourseTerm: "",
+          }),
+        );
+      }
+
+      const currentFieldDefaults =
+        previousSettings?.fieldDefaults &&
+        typeof previousSettings.fieldDefaults === "object"
+          ? previousSettings.fieldDefaults
+          : {};
+      nextSettings.fieldDefaults = Object.fromEntries(
+        Object.entries(currentFieldDefaults).map(([fieldKey, fieldValue]) => {
+          const fieldConfig = PLANNER_DEFAULT_FIELD_REGISTRY.find(
+            (entry) => entry.key === fieldKey,
+          );
+          const shouldClear =
+            (listKey === "componentClassOptions" &&
+              fieldConfig?.optionsKey === "componentClassOptions") ||
+            (listKey === "weekdayOptions" &&
+              fieldConfig?.optionsKey === "weekdayOptions") ||
+            (listKey === "hourOptions" &&
+              fieldConfig?.optionsKey === "hourOptions") ||
+            (listKey === "termOptions" &&
+              fieldConfig?.optionsKey === "termOptions");
+
+          return [fieldKey, shouldClear ? "" : fieldValue];
+        }),
+      );
+
+      return nextSettings;
+    });
+
+    const fieldMap = {
+      componentClassOptions: {
+        indexKey: "plannerSettingsEditingComponentClassIndex",
+        selectedIndexKey: "plannerSettingsSelectedComponentClassIndex",
+      },
+      weekdayOptions: {
+        indexKey: "plannerSettingsEditingWeekdayIndex",
+        selectedIndexKey: "plannerSettingsSelectedWeekdayIndex",
+      },
+      hourOptions: {
+        indexKey: "plannerSettingsEditingHourIndex",
+        selectedIndexKey: "plannerSettingsSelectedHourIndex",
+      },
+      termOptions: {
+        indexKey: "plannerSettingsEditingTermIndex",
+        selectedIndexKey: "plannerSettingsSelectedTermIndex",
+      },
+      academicYearOptions: {
+        indexKey: "plannerSettingsEditingAcademicYearIndex",
+        selectedIndexKey: "plannerSettingsSelectedAcademicYearIndex",
+      },
+    };
+    const fieldConfig = fieldMap[listKey];
+
+    if (fieldConfig) {
+      this.setState({
+        [fieldConfig.indexKey]: -1,
+        [fieldConfig.selectedIndexKey]: -1,
+      });
+    }
+  };
+
+  handlePlannerSettingsRelationshipDraftChange = (fieldName, nextValue) => {
+    this.setState((previousState) => ({
+      plannerSettingsRelationshipDraft: {
+        ...previousState.plannerSettingsRelationshipDraft,
+        [fieldName]: nextValue,
+      },
+    }));
+  };
+
+  submitPlannerSettingsRelationship = () => {
+    const relationshipDraft = normalizePlannerRelationshipEntry({
+      ...this.state?.plannerSettingsRelationshipDraft,
+      id:
+        String(this.state?.plannerSettingsEditingRelationshipId || "").trim() ||
+        createPlannerSettingsRelationshipId(),
+    });
+
+    if (!relationshipDraft.course_classSelection) {
+      return;
+    }
+
+    this.updatePlannerSelectSettings((previousSettings) => {
+      const currentRelationships = Array.isArray(
+        previousSettings?.relationships,
+      )
+        ? [...previousSettings.relationships]
+        : [];
+      const editingRelationshipId = String(
+        this.state?.plannerSettingsEditingRelationshipId || "",
+      ).trim();
+      const nextRelationships =
+        editingRelationshipId.length > 0
+          ? currentRelationships.map((entry) =>
+              String(entry?.id || "").trim() === editingRelationshipId
+                ? relationshipDraft
+                : entry,
+            )
+          : [
+              ...currentRelationships.filter(
+                (entry) =>
+                  String(entry?.course_classSelection || "").trim() !==
+                  relationshipDraft.course_classSelection,
+              ),
+              relationshipDraft,
+            ];
+
+      return {
+        ...previousSettings,
+        relationships: nextRelationships,
+      };
+    });
+
+    this.setState({
+      plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
+      plannerSettingsEditingRelationshipId: "",
+    });
+  };
+
+  editPlannerSettingsRelationship = (relationshipId) => {
+    const relationships = Array.isArray(
+      this.state?.plannerSelectSettings?.relationships,
+    )
+      ? this.state.plannerSelectSettings.relationships
+      : [];
+    const relationship =
+      relationships.find(
+        (entry) =>
+          String(entry?.id || "").trim() ===
+          String(relationshipId || "").trim(),
+      ) || null;
+
+    if (!relationship) {
+      return;
+    }
+
+    this.setState({
+      plannerSettingsEditingRelationshipId: String(
+        relationship.id || "",
+      ).trim(),
+      plannerSettingsRelationshipDraft:
+        normalizePlannerRelationshipEntry(relationship),
+    });
+  };
+
+  deletePlannerSettingsRelationship = (relationshipId) => {
+    this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      relationships: (previousSettings.relationships || []).filter(
+        (entry) =>
+          String(entry?.id || "").trim() !==
+          String(relationshipId || "").trim(),
+      ),
+    }));
+
+    if (
+      String(this.state?.plannerSettingsEditingRelationshipId || "").trim() ===
+      String(relationshipId || "").trim()
+    ) {
+      this.setState({
+        plannerSettingsEditingRelationshipId: "",
+        plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
+      });
+    }
   };
 
   handleSavedCourseDraftChange = (fieldName, nextValue) => {
     this.setState((previousState) => {
-      const nextDraft = {
+      const lockedFields = this.getLockedSavedCourseDraftFields(
+        previousState.savedCourseDraft,
+      );
+
+      if (
+        fieldName !== "course_classSelection" &&
+        lockedFields.has(fieldName)
+      ) {
+        return null;
+      }
+
+      let nextDraft = {
         ...previousState.savedCourseDraft,
         [fieldName]: nextValue,
-        ...this.getCurrentProgramTiming(),
       };
 
-      if (fieldName === "normativeCourseYearNum") {
-        nextDraft.normativeCourseYearInterval =
-          buildNormativeCourseYearInterval(
-            this.getProgramStartYearInterval(),
+      if (fieldName === "course_classSelection") {
+        nextDraft = this.applyPlannerRelationshipToSavedCourseDraft(
+          nextDraft,
+          this.getPlannerRelationshipForClass(
+            previousState.plannerSelectSettings,
             nextValue,
-          );
+          ),
+          true,
+        );
       }
 
       return {
@@ -2535,6 +3743,18 @@ export default class NogaPlanner extends Component {
     }));
   };
 
+  togglePlannerSettings = () => {
+    this.setState((previousState) => ({
+      plannerSettingsVisible: !previousState.plannerSettingsVisible,
+    }));
+  };
+
+  handleBackFromPlannerSettings = () => {
+    this.setState({
+      plannerSettingsVisible: false,
+    });
+  };
+
   openInlineLectureRow = () => {
     if (!String(this.state?.selectedCourseForLecturesId || "").trim()) {
       return;
@@ -2542,7 +3762,10 @@ export default class NogaPlanner extends Component {
 
     this.setState({
       inlineLectureRowVisible: true,
-      inlineLectureDraft: getDefaultInlineLectureDraft(),
+      inlineLectureDraft: this.applyPlannerFieldDefaultsToDraft(
+        "inlineLecture",
+        getDefaultInlineLectureDraft(),
+      ),
       selectedTabItemId: null,
     });
   };
@@ -2656,8 +3879,6 @@ export default class NogaPlanner extends Component {
                 componentEntry.programYear ||
                 "",
             ).trim() &&
-          String(entry?.normativeCourseYearInterval || "").trim() ===
-            String(componentEntry.normativeCourseYearInterval || "").trim() &&
           String(entry?.normativeCourseTerm || "").trim() ===
             String(componentEntry.normativeCourseTerm || "").trim() &&
           String(entry?.actualCourseYearNum || "").trim() ===
@@ -2679,47 +3900,41 @@ export default class NogaPlanner extends Component {
       );
 
       if (duplicateExists) {
-        const currentProgramTiming = this.getCurrentProgramTiming();
         return {
           savedCourseDraft: {
             ...previousState.savedCourseDraft,
-            course_componentId: "",
-            component_status: "new",
             course_class: "",
             course_classSelection: "",
             normativeCourseYearNum: "",
-            normativeCourseYearInterval: "",
             normativeCourseTerm: "",
-            ...currentProgramTiming,
+            actualCourseYearNum: "",
+            actualCourseYearInterval: "",
+            actualCourseTerm: "",
             course_dayAndTime: "",
             course_daySelection: "",
             course_timeSelection: "",
             course_grade: "",
-            course_weightTotal: "100",
             course_locationBuilding: "",
             course_locationRoom: "",
           },
         };
       }
 
-      const currentProgramTiming = this.getCurrentProgramTiming();
       return {
         savedCourseDraft: {
           ...previousState.savedCourseDraft,
-          course_componentId: "",
           course_components: [...currentComponents, componentEntry],
-          component_status: "new",
           course_class: "",
           course_classSelection: "",
           normativeCourseYearNum: "",
-          normativeCourseYearInterval: "",
           normativeCourseTerm: "",
-          ...currentProgramTiming,
+          actualCourseYearNum: "",
+          actualCourseYearInterval: "",
+          actualCourseTerm: "",
           course_dayAndTime: "",
           course_daySelection: "",
           course_timeSelection: "",
           course_grade: "",
-          course_weightTotal: "100",
           course_locationBuilding: "",
           course_locationRoom: "",
         },
@@ -2739,105 +3954,6 @@ export default class NogaPlanner extends Component {
         savedCourseDraft: {
           ...previousState.savedCourseDraft,
           course_components: nextComponents,
-        },
-      };
-    });
-  };
-
-  moveSavedCourseComponentEntry = (entryIndexToMove, direction = 0) => {
-    this.setState((previousState) => {
-      const currentComponents = Array.isArray(
-        previousState.savedCourseDraft?.course_components,
-      )
-        ? [...previousState.savedCourseDraft.course_components]
-        : [];
-      const nextIndex = entryIndexToMove + direction;
-
-      if (
-        entryIndexToMove < 0 ||
-        entryIndexToMove >= currentComponents.length ||
-        nextIndex < 0 ||
-        nextIndex >= currentComponents.length
-      ) {
-        return null;
-      }
-
-      const swappedEntry = currentComponents[entryIndexToMove];
-      currentComponents[entryIndexToMove] = currentComponents[nextIndex];
-      currentComponents[nextIndex] = swappedEntry;
-
-      return {
-        savedCourseDraft: {
-          ...previousState.savedCourseDraft,
-          course_components: currentComponents,
-        },
-      };
-    });
-  };
-
-  editSavedCourseComponentEntry = (entryIndexToEdit) => {
-    this.setState((previousState) => {
-      const currentComponents = Array.isArray(
-        previousState.savedCourseDraft?.course_components,
-      )
-        ? previousState.savedCourseDraft.course_components
-        : [];
-      const entryToEdit = currentComponents[entryIndexToEdit];
-
-      if (!entryToEdit) {
-        return null;
-      }
-
-      const nextComponents = currentComponents.filter(
-        (_, entryIndex) => entryIndex !== entryIndexToEdit,
-      );
-      const nextScheduleUnits = Array.isArray(entryToEdit?.course_dayAndTime)
-        ? entryToEdit.course_dayAndTime
-        : splitCourseTextList(entryToEdit?.course_dayAndTime).filter(
-            (entry) => entry !== "-",
-          );
-
-      return {
-        savedCourseDraft: {
-          ...previousState.savedCourseDraft,
-          course_components: nextComponents,
-          course_componentId: String(
-            entryToEdit?.course_componentId || entryToEdit?._id || "",
-          ).trim(),
-          component_status: normalizeSavedComponentStatusValue(
-            entryToEdit?.component_status || entryToEdit?.status || "",
-          ),
-          course_class: normalizeSavedComponentClassLabel(
-            entryToEdit?.course_class,
-          ),
-          course_classSelection: normalizeSavedComponentClassLabel(
-            entryToEdit?.course_class,
-          ),
-          normativeCourseYearNum: String(
-            entryToEdit?.normativeCourseYearNum ||
-              entryToEdit?.programYear ||
-              "",
-          ).trim(),
-          normativeCourseYearInterval: String(
-            entryToEdit?.normativeCourseYearInterval || "",
-          ).trim(),
-          normativeCourseTerm: String(
-            entryToEdit?.normativeCourseTerm || "",
-          ).trim(),
-          ...this.getCurrentProgramTiming(),
-          course_dayAndTime: nextScheduleUnits.join(" | "),
-          course_daySelection: "",
-          course_timeSelection: "",
-          course_grade: String(entryToEdit?.course_grade || "").trim(),
-          course_weightTotal: String(
-            entryToEdit?.course_weightTotal || "100",
-          ).trim(),
-          course_locationBuilding: String(
-            entryToEdit?.course_locationBuilding || "",
-          ).trim(),
-          course_locationRoom: String(
-            entryToEdit?.course_locationRoom || "",
-          ).trim(),
         },
       };
     });
@@ -2876,138 +3992,17 @@ export default class NogaPlanner extends Component {
         (course) => String(course?._id || "").trim() === selectedComponentId,
       ) || null;
     const buildDraftFromCourse = (course = null) => {
-      const currentProgramTiming = this.getCurrentProgramTiming();
       const courseLocation =
         course?.course_location && typeof course.course_location === "object"
           ? course.course_location
           : {};
-      const savedComponents =
-        Array.isArray(course?.components) && course.components.length > 0
-          ? course.components.map((component) => {
-              const componentLocation =
-                component?.course_location &&
-                typeof component.course_location === "object"
-                  ? component.course_location
-                  : {};
-
-              return {
-                course_componentId: String(
-                  component?.course_componentId ||
-                    component?._id ||
-                    component?.primaryComponentId ||
-                    "",
-                ).trim(),
-                component_status: normalizeSavedComponentStatusValue(
-                  component?.component_status || component?.status || "",
-                ),
-                course_class: String(
-                  normalizeSavedComponentClassLabel(
-                    component?.course_class ||
-                      component?.course_component ||
-                      "",
-                  ),
-                ).trim(),
-                normativeCourseYearNum: normalizeProgramYearValue(
-                  component?.normativeCourseYearNum ||
-                    component?.time?.Normative?.courseYearNum ||
-                    component?.programYear ||
-                    component?.course_programYear ||
-                    component?.time?.programYear,
-                ),
-                normativeCourseYearInterval: normalizeAcademicYearValue(
-                  component?.normativeCourseYearInterval ||
-                    component?.time?.Normative?.courseYearInterval,
-                ),
-                normativeCourseTerm:
-                  String(
-                    component?.normativeCourseTerm ||
-                      component?.time?.Normative?.courseTerm ||
-                      "",
-                  ).trim() === "-"
-                    ? ""
-                    : String(
-                        component?.normativeCourseTerm ||
-                          component?.time?.Normative?.courseTerm ||
-                          "",
-                      ).trim(),
-                ...currentProgramTiming,
-                course_dayAndTime: splitCourseTextList(
-                  formatCourseScheduleDisplay(component?.course_dayAndTime),
-                ).filter((entry) => entry !== "-"),
-                course_grade: String(component?.course_grade || "").trim(),
-                course_weightTotal: String(
-                  component?.course_weightTotal || "100",
-                ).trim(),
-                course_locationBuilding: String(
-                  componentLocation?.building || "",
-                ).trim(),
-                course_locationRoom: String(
-                  componentLocation?.room || "",
-                ).trim(),
-              };
-            })
-          : [
-              {
-                course_componentId: String(
-                  course?.course_componentId ||
-                    course?._id ||
-                    course?.primaryComponentId ||
-                    "",
-                ).trim(),
-                component_status: normalizeSavedComponentStatusValue(
-                  course?.component_status || course?.status || "",
-                ),
-                course_class: String(
-                  normalizeSavedComponentClassLabel(
-                    course?.course_class || course?.course_component || "",
-                  ),
-                ).trim(),
-                normativeCourseYearNum: normalizeProgramYearValue(
-                  course?.normativeCourseYearNum ||
-                    course?.time?.Normative?.courseYearNum ||
-                    course?.programYear ||
-                    course?.course_programYear ||
-                    course?.time?.programYear,
-                ),
-                normativeCourseYearInterval: normalizeAcademicYearValue(
-                  course?.normativeCourseYearInterval ||
-                    course?.time?.Normative?.courseYearInterval,
-                ),
-                normativeCourseTerm:
-                  String(
-                    course?.normativeCourseTerm ||
-                      course?.time?.Normative?.courseTerm ||
-                      "",
-                  ).trim() === "-"
-                    ? ""
-                    : String(
-                        course?.normativeCourseTerm ||
-                          course?.time?.Normative?.courseTerm ||
-                          "",
-                      ).trim(),
-                ...currentProgramTiming,
-                course_dayAndTime: splitCourseTextList(
-                  formatCourseScheduleDisplay(course?.course_dayAndTime),
-                ).filter((entry) => entry !== "-"),
-                course_grade: String(course?.course_grade || "").trim(),
-                course_weightTotal: String(
-                  course?.course_weightTotal || "100",
-                ).trim(),
-                course_locationBuilding: String(
-                  courseLocation?.building || "",
-                ).trim(),
-                course_locationRoom: String(courseLocation?.room || "").trim(),
-              },
-            ];
 
       return {
         course_code: String(course?.course_code || "").trim(),
-        course_components: savedComponents,
-        course_componentId: "",
-        course_status: normalizeSavedCourseStatusValue(
-          course?.course_status || course?.status || "",
-        ),
-        component_status: "new",
+        course_status: String(course?.course_status || "").trim(),
+        course_totalWeight: String(course?.course_totalWeight || "").trim(),
+        component_status: String(course?.component_status || "").trim(),
+        course_components: [],
         normativeCourseYearNum: normalizeProgramYearValue(
           course?.normativeCourseYearNum ||
             course?.time?.Normative?.courseYearNum ||
@@ -3031,12 +4026,31 @@ export default class NogaPlanner extends Component {
                   course?.time?.Normative?.courseTerm ||
                   "",
               ).trim(),
-        ...currentProgramTiming,
+        actualCourseYearNum: normalizeProgramYearValue(
+          course?.actualCourseYearNum || course?.time?.actual?.courseYearNum,
+        ),
+        actualCourseYearInterval: normalizeAcademicYearValue(
+          course?.actualCourseYearInterval ||
+            course?.course_year ||
+            course?.time?.actual?.courseYearInterval,
+        ),
+        actualCourseTerm:
+          String(
+            course?.actualCourseTerm ||
+              course?.course_term ||
+              course?.time?.actual?.courseTerm ||
+              "",
+          ).trim() === "-"
+            ? ""
+            : String(
+                course?.actualCourseTerm ||
+                  course?.course_term ||
+                  course?.time?.actual?.courseTerm ||
+                  "",
+              ).trim(),
         course_name: String(course?.course_name || "").trim(),
         course_class: String(
-          normalizeSavedComponentClassLabel(
-            course?.course_class || course?.course_component || "",
-          ),
+          course?.course_class || course?.course_component || "",
         ).trim(),
         course_classSelection: "",
         course_dayAndTime: formatCourseScheduleDisplay(
@@ -3045,7 +4059,6 @@ export default class NogaPlanner extends Component {
         course_daySelection: "",
         course_timeSelection: "",
         course_grade: String(course?.course_grade || "").trim(),
-        course_weightTotal: String(course?.course_weightTotal || "100").trim(),
         course_locationBuilding: String(courseLocation?.building || "").trim(),
         course_locationRoom: String(courseLocation?.room || "").trim(),
       };
@@ -3058,10 +4071,9 @@ export default class NogaPlanner extends Component {
       savedCourseDraft:
         safeMode === "edit" && selectedCourse
           ? buildDraftFromCourse(selectedCourse)
-          : {
-              ...getDefaultSavedCourseDraft(),
-              ...this.getCurrentProgramTiming(),
-            },
+          : this.buildSavedCourseDraftWithPlannerSettings(
+              getDefaultSavedCourseDraft(),
+            ),
     });
   };
 
@@ -3083,114 +4095,6 @@ export default class NogaPlanner extends Component {
       typeof selectedCourse.course_location === "object"
         ? selectedCourse.course_location
         : {};
-    const currentProgramTiming = this.getCurrentProgramTiming();
-    const clonedComponents =
-      Array.isArray(selectedCourse?.components) &&
-      selectedCourse.components.length > 0
-        ? selectedCourse.components.map((component) => {
-            const componentLocation =
-              component?.course_location &&
-              typeof component.course_location === "object"
-                ? component.course_location
-                : {};
-
-            return {
-              component_status: normalizeSavedComponentStatusValue(
-                component?.component_status || component?.status || "",
-              ),
-              course_class: String(
-                normalizeSavedComponentClassLabel(
-                  component?.course_class || component?.course_component || "",
-                ),
-              ).trim(),
-              normativeCourseYearNum: normalizeProgramYearValue(
-                component?.normativeCourseYearNum ||
-                  component?.time?.Normative?.courseYearNum ||
-                  component?.programYear ||
-                  component?.course_programYear ||
-                  component?.time?.programYear,
-              ),
-              normativeCourseYearInterval: normalizeAcademicYearValue(
-                component?.normativeCourseYearInterval ||
-                  component?.time?.Normative?.courseYearInterval,
-              ),
-              normativeCourseTerm:
-                String(
-                  component?.normativeCourseTerm ||
-                    component?.time?.Normative?.courseTerm ||
-                    "",
-                ).trim() === "-"
-                  ? ""
-                  : String(
-                      component?.normativeCourseTerm ||
-                        component?.time?.Normative?.courseTerm ||
-                        "",
-                    ).trim(),
-              ...currentProgramTiming,
-              course_dayAndTime: splitCourseTextList(
-                formatCourseScheduleDisplay(component?.course_dayAndTime),
-              ).filter((entry) => entry !== "-"),
-              course_grade: String(component?.course_grade || "").trim(),
-              course_weightTotal: String(
-                component?.course_weightTotal || "100",
-              ).trim(),
-              course_locationBuilding: String(
-                componentLocation?.building || "",
-              ).trim(),
-              course_locationRoom: String(componentLocation?.room || "").trim(),
-            };
-          })
-        : [
-            {
-              component_status: normalizeSavedComponentStatusValue(
-                selectedCourse?.component_status ||
-                  selectedCourse?.status ||
-                  "",
-              ),
-              course_class: String(
-                normalizeSavedComponentClassLabel(
-                  selectedCourse?.course_class ||
-                    selectedCourse?.course_component ||
-                    "",
-                ),
-              ).trim(),
-              normativeCourseYearNum: normalizeProgramYearValue(
-                selectedCourse?.normativeCourseYearNum ||
-                  selectedCourse?.time?.Normative?.courseYearNum ||
-                  selectedCourse?.programYear ||
-                  selectedCourse?.course_programYear ||
-                  selectedCourse?.time?.programYear,
-              ),
-              normativeCourseYearInterval: normalizeAcademicYearValue(
-                selectedCourse?.normativeCourseYearInterval ||
-                  selectedCourse?.time?.Normative?.courseYearInterval,
-              ),
-              normativeCourseTerm:
-                String(
-                  selectedCourse?.normativeCourseTerm ||
-                    selectedCourse?.time?.Normative?.courseTerm ||
-                    "",
-                ).trim() === "-"
-                  ? ""
-                  : String(
-                      selectedCourse?.normativeCourseTerm ||
-                        selectedCourse?.time?.Normative?.courseTerm ||
-                        "",
-                    ).trim(),
-              ...currentProgramTiming,
-              course_dayAndTime: splitCourseTextList(
-                formatCourseScheduleDisplay(selectedCourse?.course_dayAndTime),
-              ).filter((entry) => entry !== "-"),
-              course_grade: String(selectedCourse?.course_grade || "").trim(),
-              course_weightTotal: String(
-                selectedCourse?.course_weightTotal || "100",
-              ).trim(),
-              course_locationBuilding: String(
-                selectedLocation?.building || "",
-              ).trim(),
-              course_locationRoom: String(selectedLocation?.room || "").trim(),
-            },
-          ];
 
     if (!selectedCourse) {
       this.openSavedCourseEditor("add");
@@ -3202,7 +4106,12 @@ export default class NogaPlanner extends Component {
       savedCourseEditorMode: "add",
       savedCourseDraft: {
         course_code: String(selectedCourse?.course_code || "").trim(),
-        course_components: clonedComponents,
+        course_status: String(selectedCourse?.course_status || "").trim(),
+        course_totalWeight: String(
+          selectedCourse?.course_totalWeight || "",
+        ).trim(),
+        component_status: String(selectedCourse?.component_status || "").trim(),
+        course_components: [],
         normativeCourseYearNum: normalizeProgramYearValue(
           selectedCourse?.normativeCourseYearNum ||
             selectedCourse?.time?.Normative?.courseYearNum ||
@@ -3226,17 +4135,34 @@ export default class NogaPlanner extends Component {
                   selectedCourse?.time?.Normative?.courseTerm ||
                   "",
               ).trim(),
-        ...currentProgramTiming,
-        course_name: String(selectedCourse?.course_name || "").trim(),
-        course_status: normalizeSavedCourseStatusValue(
-          selectedCourse?.course_status || selectedCourse?.status || "",
+        actualCourseYearNum: normalizeProgramYearValue(
+          selectedCourse?.actualCourseYearNum ||
+            selectedCourse?.time?.actual?.courseYearNum,
         ),
-        course_class: String(
-          normalizeSavedComponentClassLabel(
-            selectedCourse?.course_class ||
-              selectedCourse?.course_component ||
+        actualCourseYearInterval: normalizeAcademicYearValue(
+          selectedCourse?.actualCourseYearInterval ||
+            selectedCourse?.course_year ||
+            selectedCourse?.time?.actual?.courseYearInterval,
+        ),
+        actualCourseTerm:
+          String(
+            selectedCourse?.actualCourseTerm ||
+              selectedCourse?.course_term ||
+              selectedCourse?.time?.actual?.courseTerm ||
               "",
-          ),
+          ).trim() === "-"
+            ? ""
+            : String(
+                selectedCourse?.actualCourseTerm ||
+                  selectedCourse?.course_term ||
+                  selectedCourse?.time?.actual?.courseTerm ||
+                  "",
+              ).trim(),
+        course_name: String(selectedCourse?.course_name || "").trim(),
+        course_class: String(
+          selectedCourse?.course_class ||
+            selectedCourse?.course_component ||
+            "",
         ).trim(),
         course_classSelection: "",
         course_dayAndTime: formatCourseScheduleDisplay(
@@ -3245,9 +4171,6 @@ export default class NogaPlanner extends Component {
         course_daySelection: "",
         course_timeSelection: "",
         course_grade: String(selectedCourse?.course_grade || "").trim(),
-        course_weightTotal: String(
-          selectedCourse?.course_weightTotal || "100",
-        ).trim(),
         course_locationBuilding: String(
           selectedLocation?.building || "",
         ).trim(),
@@ -3261,7 +4184,6 @@ export default class NogaPlanner extends Component {
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
       savedCourseDraft: getDefaultSavedCourseDraft(),
-      savedCourse_isSaving: false,
     });
   };
 
@@ -3284,13 +4206,46 @@ export default class NogaPlanner extends Component {
     const { savedCourseSortKey, savedCourseSortDirection } = this.state;
     const directionMultiplier = savedCourseSortDirection === "desc" ? -1 : 1;
     const normalizedEntries = Array.isArray(entries) ? [...entries] : [];
-
-    normalizedEntries.sort((leftCourse, rightCourse) => {
+    const getCourseGroupKey = (course = {}) =>
+      String(course?.parentCourseId || "").trim() ||
+      [
+        String(course?.course_code || "")
+          .trim()
+          .toLowerCase(),
+        String(course?.course_name || "")
+          .trim()
+          .toLowerCase(),
+      ].join("|");
+    const getComparableValue = (course) => {
+      switch (savedCourseSortKey) {
+        case "course_name":
+          return formatSavedCourseTitle(course);
+        case "course_status":
+          return formatPlannerStatusLabel(
+            course?.course_status,
+            this.isArabic() ? "ar" : "en",
+          );
+        case "course_class":
+          return formatSavedCourseComponent(
+            course,
+            this.isArabic() ? "ar" : "en",
+          );
+        case "course_schedule":
+          return formatCourseScheduleDisplay(course?.course_dayAndTime);
+        case "course_location":
+          return formatCourseLocationDisplay(course?.course_location);
+        case "course_grade":
+        case "course_weight":
+          return String(course?.course_grade || "-");
+        default:
+          return formatSavedCourseTitle(course);
+      }
+    };
+    const compareSavedCourseValues = (leftCourse, rightCourse) => {
       if (savedCourseSortKey === "program_year") {
         return (
-          (getProgramYearSortValue(leftCourse) -
-            getProgramYearSortValue(rightCourse)) *
-          directionMultiplier
+          getProgramYearSortValue(leftCourse) -
+          getProgramYearSortValue(rightCourse)
         );
       }
 
@@ -3299,7 +4254,7 @@ export default class NogaPlanner extends Component {
         const rightProgramYear = getProgramYearSortValue(rightCourse);
 
         if (leftProgramYear !== rightProgramYear) {
-          return (leftProgramYear - rightProgramYear) * directionMultiplier;
+          return leftProgramYear - rightProgramYear;
         }
 
         const leftYear = getAcademicYearSortValue(
@@ -3310,45 +4265,58 @@ export default class NogaPlanner extends Component {
         );
 
         if (leftYear !== rightYear) {
-          return (leftYear - rightYear) * directionMultiplier;
+          return leftYear - rightYear;
         }
 
         return (
-          (getPlannerTermRank(leftCourse?.course_term) -
-            getPlannerTermRank(rightCourse?.course_term)) *
-          directionMultiplier
+          getPlannerTermRank(leftCourse?.course_term) -
+          getPlannerTermRank(rightCourse?.course_term)
         );
       }
 
-      const getComparableValue = (course) => {
-        switch (savedCourseSortKey) {
-          case "course_name":
-            return formatSavedCourseTitle(course);
-          case "course_class":
-            return formatSavedCourseComponent(
-              course,
-              this.isArabic() ? "ar" : "en",
-            );
-          case "course_schedule":
-            return formatCourseScheduleDisplay(course?.course_dayAndTime);
-          case "course_location":
-            return formatCourseLocationDisplay(course?.course_location);
-          case "course_weight":
-          case "course_grade":
-            return String(course?.course_grade || "-");
-          default:
-            return formatSavedCourseTitle(course);
-        }
-      };
+      return String(getComparableValue(leftCourse) || "")
+        .trim()
+        .localeCompare(
+          String(getComparableValue(rightCourse) || "").trim(),
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base",
+          },
+        );
+    };
 
-      const leftValue = String(getComparableValue(leftCourse) || "").trim();
-      const rightValue = String(getComparableValue(rightCourse) || "").trim();
+    normalizedEntries.sort((leftCourse, rightCourse) => {
+      const leftGroupKey = getCourseGroupKey(leftCourse);
+      const rightGroupKey = getCourseGroupKey(rightCourse);
+
+      if (leftGroupKey !== rightGroupKey) {
+        return (
+          String(leftCourse?.course_name || "")
+            .trim()
+            .localeCompare(
+              String(rightCourse?.course_name || "").trim(),
+              undefined,
+              {
+                numeric: true,
+                sensitivity: "base",
+              },
+            ) ||
+          String(leftCourse?.course_code || "")
+            .trim()
+            .localeCompare(
+              String(rightCourse?.course_code || "").trim(),
+              undefined,
+              {
+                numeric: true,
+                sensitivity: "base",
+              },
+            )
+        );
+      }
 
       return (
-        leftValue.localeCompare(rightValue, undefined, {
-          numeric: true,
-          sensitivity: "base",
-        }) * directionMultiplier
+        compareSavedCourseValues(leftCourse, rightCourse) * directionMultiplier
       );
     });
 
@@ -3487,227 +4455,72 @@ export default class NogaPlanner extends Component {
   };
 
   submitSavedCourseEditor = async () => {
-    if (this.state.savedCourse_isSaving) {
+    const {
+      savedCourseDraft,
+      savedCourseEditorMode,
+      selectedCourseForLecturesId,
+      savedCourseDetailsComponentId,
+    } = this.state;
+    const courseName = String(savedCourseDraft?.course_name || "").trim();
+    const courseCode = String(savedCourseDraft?.course_code || "").trim();
+    const courseTotalWeight = String(
+      savedCourseDraft?.course_totalWeight || "",
+    ).trim();
+    const componentToPersist = buildSavedCourseComponentEntryFromDraft({
+      ...savedCourseDraft,
+      course_class:
+        String(savedCourseDraft?.course_classSelection || "").trim() ||
+        String(savedCourseDraft?.course_class || "").trim(),
+    });
+
+    if (!courseName) {
+      this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
       return;
     }
 
-    this.setState({
-      savedCourse_isSaving: true,
-    });
+    if (
+      !componentToPersist ||
+      !String(componentToPersist?.course_class || "").trim()
+    ) {
+      this.props.serverReply(
+        this.isArabic()
+          ? "يرجى إضافة تصنيف المكوّن"
+          : "Please add component class",
+      );
+      return;
+    }
 
-    try {
-      const {
-        savedCourseDraft,
-        savedCourseEditorMode,
-        selectedCourseForLecturesId,
-        savedCourseDetailsComponentId,
-      } = this.state;
-      const courseName = String(savedCourseDraft?.course_name || "").trim();
-      const courseCode = String(savedCourseDraft?.course_code || "").trim();
-      const pendingComponent = buildSavedCourseComponentEntryFromDraft({
-        ...savedCourseDraft,
-        course_class:
-          String(savedCourseDraft?.course_classSelection || "").trim() ||
-          String(savedCourseDraft?.course_class || "").trim(),
-      });
-      const persistedComponents = Array.isArray(
-        savedCourseDraft?.course_components,
-      )
-        ? savedCourseDraft.course_components.filter(Boolean)
-        : [];
-      const componentsToPersist =
-        persistedComponents.length > 0
-          ? persistedComponents
-          : pendingComponent
-            ? [pendingComponent]
-            : [];
+    if (savedCourseEditorMode === "edit") {
+      const selectedComponentId = String(
+        savedCourseDetailsComponentId || selectedCourseForLecturesId || "",
+      ).trim();
+      const selectedCourse =
+        (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+          (course) => String(course?._id || "").trim() === selectedComponentId,
+        ) || null;
 
-      if (!courseName) {
-        this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
+      if (!selectedCourse) {
         return;
       }
 
-      if (
-        componentsToPersist.length === 0 ||
-        !String(componentsToPersist[0]?.course_class || "").trim()
-      ) {
-        this.props.serverReply(
-          this.isArabic()
-            ? "يرجى إضافة تصنيف المكوّن"
-            : "Please add component class",
-        );
-        return;
-      }
-
-      if (savedCourseEditorMode === "edit") {
-        const selectedComponentId = String(
-          savedCourseDetailsComponentId || selectedCourseForLecturesId || "",
-        ).trim();
-        const selectedCourse =
-          (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
-            (course) =>
-              String(course?._id || "").trim() === selectedComponentId,
-          ) || null;
-
-        if (!selectedCourse) {
-          return;
-        }
-
-        const parentCourseId = String(
+      const componentId = String(
+        selectedCourse?.primaryComponentId || selectedCourse?._id || "",
+      ).trim();
+      const editTargetId =
+        componentId ||
+        String(
           selectedCourse?.parentCourseId || selectedCourse?._id || "",
         ).trim();
-        const componentId = String(
-          selectedCourse?.primaryComponentId || selectedCourse?._id || "",
-        ).trim();
-        const existingComponents = Array.isArray(selectedCourse?.components)
-          ? selectedCourse.components
-          : [];
-        const existingComponentIds = existingComponents
-          .map((component, componentIndex) =>
-            String(
-              component?.course_componentId ||
-                component?._id ||
-                (componentIndex === 0 ? componentId : "") ||
-                "",
-            ).trim(),
-          )
-          .filter(Boolean);
-        const buildComponentRequestPayload = (componentEntry = {}) => ({
-          course_class: componentEntry.course_class || "-",
-          course_status: componentEntry.component_status || "new",
-          normativeCourseYearNum: componentEntry.normativeCourseYearNum
-            ? Number(componentEntry.normativeCourseYearNum)
-            : null,
-          normativeCourseYearInterval:
-            componentEntry.normativeCourseYearInterval || "-",
-          normativeCourseTerm: componentEntry.normativeCourseTerm || "-",
-          actualCourseYearNum: componentEntry.actualCourseYearNum
-            ? Number(componentEntry.actualCourseYearNum)
-            : null,
-          actualCourseYearInterval:
-            componentEntry.actualCourseYearInterval || "-",
-          actualCourseTerm: componentEntry.actualCourseTerm || "-",
-          programYear: componentEntry.programYear
-            ? Number(componentEntry.programYear)
-            : null,
-          course_dayAndTime: Array.isArray(componentEntry.course_dayAndTime)
-            ? componentEntry.course_dayAndTime
-            : [],
-          course_year: componentEntry.course_year || "-",
-          academicYear: componentEntry.course_year || "-",
-          course_term: componentEntry.course_term || "-",
-          term: componentEntry.course_term || "-",
-          course_grade: componentEntry.course_grade || "-",
-          course_weightTotal: componentEntry.course_weightTotal || "100",
-          course_locationBuilding:
-            componentEntry.course_locationBuilding || "-",
-          course_locationRoom: componentEntry.course_locationRoom || "-",
-          course_exams: [],
-        });
-        const keptExistingComponentIds = new Set();
 
-        if (parentCourseId) {
-          await fetch(
-            apiUrl("/api/user/editCourse/") +
-              this.props.state.my_id +
-              "/" +
-              parentCourseId,
-            {
-              method: "POST",
-              mode: "cors",
-              headers: {
-                Authorization: "Bearer " + this.props.state.token,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                course_name: courseName,
-                course_code: courseCode,
-                course_status: savedCourseDraft.course_status || "new",
-              }),
-            },
-          );
-        }
-
-        for (
-          let componentIndexToPersist = 0;
-          componentIndexToPersist < componentsToPersist.length;
-          componentIndexToPersist += 1
-        ) {
-          const componentEntry = componentsToPersist[componentIndexToPersist];
-          const targetComponentId = String(
-            componentEntry?.course_componentId ||
-              existingComponentIds[componentIndexToPersist] ||
-              "",
-          ).trim();
-          const requestPayload = buildComponentRequestPayload(componentEntry);
-
-          if (targetComponentId) {
-            keptExistingComponentIds.add(targetComponentId);
-            await fetch(
-              apiUrl("/api/user/editCourse/") +
-                this.props.state.my_id +
-                "/" +
-                targetComponentId,
-              {
-                method: "POST",
-                mode: "cors",
-                headers: {
-                  Authorization: "Bearer " + this.props.state.token,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestPayload),
-              },
-            );
-            continue;
-          }
-
-          if (parentCourseId) {
-            await fetch(
-              apiUrl("/api/user/addComponent/") +
-                this.props.state.my_id +
-                "/" +
-                parentCourseId,
-              {
-                method: "POST",
-                mode: "cors",
-                headers: {
-                  Authorization: "Bearer " + this.props.state.token,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestPayload),
-              },
-            );
-          }
-        }
-
-        const componentIdsToDelete = existingComponentIds.filter(
-          (existingId) => !keptExistingComponentIds.has(existingId),
-        );
-
-        for (const componentIdToDelete of componentIdsToDelete) {
-          await fetch(
-            apiUrl("/api/user/deleteCourse/") +
-              this.props.state.my_id +
-              "/" +
-              componentIdToDelete,
-            {
-              method: "DELETE",
-              mode: "cors",
-              headers: {
-                Authorization: "Bearer " + this.props.state.token,
-                "Content-Type": "application/json",
-              },
-            },
-          );
-        }
-
-        this.closeSavedCourseEditor();
-        this.retrieveCourses(parentCourseId || componentId);
+      if (!editTargetId) {
         return;
       }
 
-      const courseInfoResponse = await fetch(
-        apiUrl("/api/user/addCourseInfo/") + this.props.state.my_id,
+      await fetch(
+        apiUrl("/api/user/editCourse/") +
+          this.props.state.my_id +
+          "/" +
+          editTargetId,
         {
           method: "POST",
           mode: "cors",
@@ -3718,101 +4531,102 @@ export default class NogaPlanner extends Component {
           body: JSON.stringify({
             course_name: courseName,
             course_code: courseCode,
+            course_totalWeight: courseTotalWeight || "-",
+            course_class: componentToPersist.course_class || "-",
+            normativeCourseYearNum: componentToPersist.normativeCourseYearNum
+              ? Number(componentToPersist.normativeCourseYearNum)
+              : null,
+            normativeCourseYearInterval:
+              componentToPersist.normativeCourseYearInterval || "-",
+            normativeCourseTerm: componentToPersist.normativeCourseTerm || "-",
+            actualCourseYearNum: componentToPersist.actualCourseYearNum
+              ? Number(componentToPersist.actualCourseYearNum)
+              : null,
+            actualCourseYearInterval:
+              componentToPersist.actualCourseYearInterval || "-",
+            actualCourseTerm: componentToPersist.actualCourseTerm || "-",
+            programYear: componentToPersist.programYear
+              ? Number(componentToPersist.programYear)
+              : null,
+            course_dayAndTime: Array.isArray(
+              componentToPersist.course_dayAndTime,
+            )
+              ? componentToPersist.course_dayAndTime
+              : [],
+            course_year: componentToPersist.course_year || "-",
+            academicYear: componentToPersist.course_year || "-",
+            course_term: componentToPersist.course_term || "-",
+            term: componentToPersist.course_term || "-",
+            course_grade: componentToPersist.course_grade || "-",
+            course_locationBuilding:
+              componentToPersist.course_locationBuilding || "-",
+            course_locationRoom: componentToPersist.course_locationRoom || "-",
           }),
         },
       );
 
-      if (!courseInfoResponse.ok) {
-        this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
-        return;
-      }
-
-      const createdCoursePayload = await courseInfoResponse
-        .json()
-        .catch(() => ({}));
-      const createdCourseId = String(
-        createdCoursePayload?.course?._id || "",
-      ).trim();
-
-      let createdComponentId = "";
-
-      if (createdCourseId) {
-        for (const componentEntry of componentsToPersist) {
-          const componentResponse = await fetch(
-            apiUrl("/api/user/addComponent/") +
-              this.props.state.my_id +
-              "/" +
-              createdCourseId,
-            {
-              method: "POST",
-              mode: "cors",
-              headers: {
-                Authorization: "Bearer " + this.props.state.token,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                course_class: componentEntry.course_class || "-",
-                course_status: componentEntry.component_status || "new",
-                normativeCourseYearNum: componentEntry.normativeCourseYearNum
-                  ? Number(componentEntry.normativeCourseYearNum)
-                  : null,
-                normativeCourseYearInterval:
-                  componentEntry.normativeCourseYearInterval || "-",
-                normativeCourseTerm: componentEntry.normativeCourseTerm || "-",
-                actualCourseYearNum: componentEntry.actualCourseYearNum
-                  ? Number(componentEntry.actualCourseYearNum)
-                  : null,
-                actualCourseYearInterval:
-                  componentEntry.actualCourseYearInterval || "-",
-                actualCourseTerm: componentEntry.actualCourseTerm || "-",
-                programYear: componentEntry.programYear
-                  ? Number(componentEntry.programYear)
-                  : null,
-                course_year: componentEntry.course_year || "-",
-                academicYear: componentEntry.course_year || "-",
-                course_term: componentEntry.course_term || "-",
-                term: componentEntry.course_term || "-",
-                course_dayAndTime: Array.isArray(
-                  componentEntry.course_dayAndTime,
-                )
-                  ? componentEntry.course_dayAndTime
-                  : [],
-                course_grade: componentEntry.course_grade || "-",
-                course_locationBuilding:
-                  componentEntry.course_locationBuilding || "-",
-                course_locationRoom: componentEntry.course_locationRoom || "-",
-                course_exams: [],
-              }),
-            },
-          );
-
-          const componentPayload = await componentResponse
-            .json()
-            .catch(() => ({}));
-
-          if (!componentResponse.ok && componentResponse.status !== 201) {
-            this.props.serverReply(
-              componentPayload?.message ||
-                this.t("postingFailedPleaseAddCourseName"),
-            );
-            return;
-          }
-
-          if (!createdComponentId) {
-            createdComponentId = String(
-              componentPayload?.component?._id || "",
-            ).trim();
-          }
-        }
-      }
-
       this.closeSavedCourseEditor();
-      this.retrieveCourses(createdComponentId || createdCourseId);
-    } finally {
-      this.setState({
-        savedCourse_isSaving: false,
-      });
+      this.retrieveCourses(editTargetId);
+      return;
     }
+
+    const courseResponse = await fetch(
+      apiUrl("/api/user/addCourse/") + this.props.state.my_id,
+      {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.props.state.token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          course_name: courseName,
+          course_code: courseCode,
+          course_totalWeight: courseTotalWeight || "-",
+          course_class: componentToPersist.course_class || "-",
+          normativeCourseYearNum: componentToPersist.normativeCourseYearNum
+            ? Number(componentToPersist.normativeCourseYearNum)
+            : null,
+          normativeCourseYearInterval:
+            componentToPersist.normativeCourseYearInterval || "-",
+          normativeCourseTerm: componentToPersist.normativeCourseTerm || "-",
+          actualCourseYearNum: componentToPersist.actualCourseYearNum
+            ? Number(componentToPersist.actualCourseYearNum)
+            : null,
+          actualCourseYearInterval:
+            componentToPersist.actualCourseYearInterval || "-",
+          actualCourseTerm: componentToPersist.actualCourseTerm || "-",
+          programYear: componentToPersist.programYear
+            ? Number(componentToPersist.programYear)
+            : null,
+          course_year: componentToPersist.course_year || "-",
+          academicYear: componentToPersist.course_year || "-",
+          course_term: componentToPersist.course_term || "-",
+          term: componentToPersist.course_term || "-",
+          course_dayAndTime: Array.isArray(componentToPersist.course_dayAndTime)
+            ? componentToPersist.course_dayAndTime
+            : [],
+          course_grade: componentToPersist.course_grade || "-",
+          course_locationBuilding:
+            componentToPersist.course_locationBuilding || "-",
+          course_locationRoom: componentToPersist.course_locationRoom || "-",
+          course_exams: [],
+        }),
+      },
+    );
+
+    if (!courseResponse.ok) {
+      this.props.serverReply(this.t("postingFailedPleaseAddCourseName"));
+      return;
+    }
+
+    const createdCoursePayload = await courseResponse.json().catch(() => ({}));
+    const createdCourseId = String(
+      createdCoursePayload?.course?._id || "",
+    ).trim();
+
+    this.closeSavedCourseEditor();
+    this.retrieveCourses(createdCourseId);
   };
 
   deleteSelectedSavedCourse = async () => {
@@ -3867,7 +4681,6 @@ export default class NogaPlanner extends Component {
       inlineLectureDraft,
       lectureSortKey,
       lectureSortDirection,
-      lecture_isLoading,
     } = this.state;
     const visibleLectures = this.getLecturesForSelectedCourse();
     const sortedLectures = this.getSortedLectures(visibleLectures);
@@ -4024,13 +4837,7 @@ export default class NogaPlanner extends Component {
                   padding: "18px",
                 }}
               >
-                {lecture_isLoading
-                  ? this.isArabic()
-                    ? "جارٍ تحميل المحاضرات..."
-                    : "Loading lectures..."
-                  : this.isArabic()
-                    ? "لا توجد محاضرات"
-                    : "No lectures"}
+                {this.isArabic() ? "لا توجد محاضرات" : "No lectures"}
               </td>
             </tr>
           )}
@@ -4150,11 +4957,14 @@ export default class NogaPlanner extends Component {
   constructor(props) {
     super(props);
     const initialLocale = getDefaultPlannerLocale(props.locale);
+    const initialPlannerSelectSettings =
+      readPlannerSelectSettingsFromStorage(initialLocale);
 
     this.state = {
       ui_locale: initialLocale,
       wrapperTab: "courses",
       plannerTab: "courses",
+      plannerSettingsVisible: false,
       deleteSelectionMode: false,
       deleteSelectionIds: [],
       selectedTabItemId: null,
@@ -4172,7 +4982,6 @@ export default class NogaPlanner extends Component {
       exam_form_mode: "Add",
       exam_form_index: -1,
       course_isLoading: false,
-      savedCourse_isSaving: false,
       lecture_isLoading: false,
       telegram_isLoading: false,
       telegram_error: "",
@@ -4244,6 +5053,25 @@ export default class NogaPlanner extends Component {
       planner_swipeView: "main",
       inlineCourseRowVisible: false,
       inlineCourseDraft: getDefaultInlineCourseDraft(),
+      plannerSelectSettings: initialPlannerSelectSettings,
+      plannerSettingsComponentClassInput: "",
+      plannerSettingsWeekdayInput: "",
+      plannerSettingsHourInput: "",
+      plannerSettingsTermInput: "",
+      plannerSettingsAcademicYearInput: "",
+      plannerSettingsActiveListKey: "componentClassOptions",
+      plannerSettingsEditingComponentClassIndex: -1,
+      plannerSettingsEditingWeekdayIndex: -1,
+      plannerSettingsEditingHourIndex: -1,
+      plannerSettingsEditingTermIndex: -1,
+      plannerSettingsEditingAcademicYearIndex: -1,
+      plannerSettingsSelectedComponentClassIndex: -1,
+      plannerSettingsSelectedWeekdayIndex: -1,
+      plannerSettingsSelectedHourIndex: -1,
+      plannerSettingsSelectedTermIndex: -1,
+      plannerSettingsSelectedAcademicYearIndex: -1,
+      plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
+      plannerSettingsEditingRelationshipId: "",
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
       savedCourseDraft: getDefaultSavedCourseDraft(),
@@ -4280,7 +5108,6 @@ export default class NogaPlanner extends Component {
     this.telegramPdfObjectUrl = "";
     this.telegramCourseSuggestionStatusTimeout = null;
     this.savedCourseFloatingBarRaf = null;
-    this.plannerSnapshotRequest = null;
   }
 
   isArabic = () => this.state.ui_locale === "ar";
@@ -4379,6 +5206,14 @@ export default class NogaPlanner extends Component {
     this.scheduleSavedCourseFloatingBarPositionUpdate();
   };
 
+  renderSavedCoursesTableColGroup = () => (
+    <colgroup>
+      {Array.from({ length: 12 }, (_, index) => (
+        <col key={`saved-courses-col-${index}`} />
+      ))}
+    </colgroup>
+  );
+
   getActiveSavedCourseFloatingRowId = () => {
     const {
       plannerTab,
@@ -4447,14 +5282,13 @@ export default class NogaPlanner extends Component {
       return;
     }
 
-    const anchorCellNode = rowNode.querySelector(
-      ".nogaPlanner_savedCoursesTableCell--component",
-    );
+    const anchorCellNode = rowNode.querySelector("td");
     const anchorRect = anchorCellNode
       ? anchorCellNode.getBoundingClientRect()
       : rowNode.getBoundingClientRect();
+    const rowRect = rowNode.getBoundingClientRect();
     const nextPosition = {
-      top: Math.round(anchorRect.bottom),
+      top: Math.round(rowRect.bottom + 4),
       left: Math.round(anchorRect.right),
       height: Math.round(anchorRect.height),
     };
@@ -4480,7 +5314,27 @@ export default class NogaPlanner extends Component {
     this.setState({ lecture_isLoading: true });
 
     try {
-      const { lectures: nextLectures } = await this.fetchPlannerSnapshot();
+      const response = await fetch(
+        apiUrl("/api/user/update/") + this.props.state.my_id,
+        {
+          method: "GET",
+          mode: "cors",
+          headers: this.props.state?.token
+            ? {
+                Authorization: `Bearer ${this.props.state.token}`,
+                "Content-Type": "application/json",
+              }
+            : undefined,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to retrieve lectures: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const memory = normalizeMemoryPayload(payload);
+      const nextLectures = getSafePlannerLectures(memory);
 
       if (!this.isComponentMounted) {
         return;
@@ -4520,7 +5374,27 @@ export default class NogaPlanner extends Component {
     this.setState({ course_isLoading: true });
 
     try {
-      const { courses: nextCourses } = await this.fetchPlannerSnapshot();
+      const response = await fetch(
+        apiUrl("/api/user/update/") + this.props.state.my_id,
+        {
+          method: "GET",
+          mode: "cors",
+          headers: this.props.state?.token
+            ? {
+                Authorization: `Bearer ${this.props.state.token}`,
+                "Content-Type": "application/json",
+              }
+            : undefined,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to retrieve courses: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const memory = normalizeMemoryPayload(payload);
+      const nextCourses = getSafePlannerCourses(memory);
 
       if (!this.isComponentMounted) {
         return;
@@ -4577,47 +5451,6 @@ export default class NogaPlanner extends Component {
       }
       console.error("[retrieveCourses] fetch failed:", error);
     }
-  };
-
-  fetchPlannerSnapshot = async () => {
-    if (!this.props.state?.my_id) {
-      return { courses: [], lectures: [] };
-    }
-
-    if (!this.plannerSnapshotRequest) {
-      this.plannerSnapshotRequest = fetch(
-        apiUrl("/api/user/update/") + this.props.state.my_id,
-        {
-          method: "GET",
-          mode: "cors",
-          headers: this.props.state?.token
-            ? {
-                Authorization: `Bearer ${this.props.state.token}`,
-                "Content-Type": "application/json",
-              }
-            : undefined,
-        },
-      )
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error(
-              `Failed to retrieve planner snapshot: ${response.status}`,
-            );
-          }
-
-          const payload = await response.json();
-          const memory = normalizeMemoryPayload(payload);
-          return {
-            courses: getSafePlannerCourses(memory),
-            lectures: getSafePlannerLectures(memory),
-          };
-        })
-        .finally(() => {
-          this.plannerSnapshotRequest = null;
-        });
-    }
-
-    return this.plannerSnapshotRequest;
   };
 
   getRenderableCourseExamEntries = (course) => {
@@ -4738,44 +5571,6 @@ export default class NogaPlanner extends Component {
       .filter((entry) => entry.id);
   };
 
-  getLectureLabelById = (lectureId = "") => {
-    const normalizedLectureId = String(lectureId || "").trim();
-    if (!normalizedLectureId) {
-      return "";
-    }
-
-    const matchedLecture =
-      (Array.isArray(this.state.lectures) ? this.state.lectures : []).find(
-        (lecture) => String(lecture?._id || "").trim() === normalizedLectureId,
-      ) || null;
-
-    return (
-      String(matchedLecture?.lecture_name || "").trim() || normalizedLectureId
-    );
-  };
-
-  openExamLectures = (course = {}, examEntry = {}) => {
-    const selectedCourseId = String(course?._id || "").trim();
-    if (!selectedCourseId) {
-      return;
-    }
-
-    const linkedLectureIds = Array.isArray(examEntry?.lectures)
-      ? examEntry.lectures
-          .map((lectureId) => String(lectureId || "").trim())
-          .filter(Boolean)
-      : [];
-
-    this.setState({
-      plannerTab: "lectures",
-      selectedCourseForLecturesId: selectedCourseId,
-      selectedCourseForLecturesName: buildCourseLectureMatchLabel(course),
-      selectedTabItemId: linkedLectureIds[0] || null,
-      deleteSelectionMode: false,
-      deleteSelectionIds: [],
-    });
-  };
-
   openAddExamForm = (mode = "Add") => {
     const selectedCourse = this.getSelectedCourse();
     const examEntries = this.getRenderableCourseExamEntries(selectedCourse);
@@ -4792,10 +5587,10 @@ export default class NogaPlanner extends Component {
       exam_form_index: safeMode === "Edit" ? selectedExamIndex : -1,
       examDraft: targetExam
         ? buildExamDraftFromEntry(targetExam, selectedCourse?._id || "")
-        : {
+        : this.applyPlannerFieldDefaultsToDraft("exam", {
             ...getDefaultExamDraft(),
             selectedCourseId: selectedCourse?._id || "",
-          },
+          }),
     });
   };
 
@@ -4983,7 +5778,6 @@ export default class NogaPlanner extends Component {
     const savedCourses = Array.isArray(this.state?.courses)
       ? this.state.courses
       : [];
-    const isCoursesLoading = Boolean(this.state?.course_isLoading);
     const selectedComponentId = String(
       this.state?.selectedCourseForLecturesId || "",
     ).trim();
@@ -4999,6 +5793,26 @@ export default class NogaPlanner extends Component {
     ).trim();
     const {
       plannerTab,
+      plannerSettingsVisible,
+      plannerSelectSettings,
+      plannerSettingsComponentClassInput,
+      plannerSettingsWeekdayInput,
+      plannerSettingsHourInput,
+      plannerSettingsTermInput,
+      plannerSettingsAcademicYearInput,
+      plannerSettingsActiveListKey,
+      plannerSettingsEditingComponentClassIndex,
+      plannerSettingsEditingWeekdayIndex,
+      plannerSettingsEditingHourIndex,
+      plannerSettingsEditingTermIndex,
+      plannerSettingsEditingAcademicYearIndex,
+      plannerSettingsSelectedComponentClassIndex,
+      plannerSettingsSelectedWeekdayIndex,
+      plannerSettingsSelectedHourIndex,
+      plannerSettingsSelectedTermIndex,
+      plannerSettingsSelectedAcademicYearIndex,
+      plannerSettingsRelationshipDraft,
+      plannerSettingsEditingRelationshipId,
       savedCourseEditorVisible,
       savedCourseEditorMode,
       savedCourseDraft,
@@ -5007,7 +5821,109 @@ export default class NogaPlanner extends Component {
       deleteSelectionIds,
       savedCourseSortKey,
       savedCourseSortDirection,
+      savedCourseFloatingBarPosition,
     } = this.state;
+    const componentClassOptions = Array.isArray(
+      plannerSelectSettings?.componentClassOptions,
+    )
+      ? plannerSelectSettings.componentClassOptions
+      : SAVED_COMPONENT_CLASS_OPTIONS;
+    const weekdayOptions = Array.isArray(plannerSelectSettings?.weekdayOptions)
+      ? plannerSelectSettings.weekdayOptions
+      : buildDefaultPlannerWeekdayOptions(this.state?.ui_locale || "en");
+    const hourOptions = Array.isArray(plannerSelectSettings?.hourOptions)
+      ? plannerSelectSettings.hourOptions
+      : HOUR_OPTIONS.map((optionValue) => optionValue.value);
+    const termOptions = Array.isArray(plannerSelectSettings?.termOptions)
+      ? plannerSelectSettings.termOptions
+      : TERM_OPTIONS.map((optionValue) => optionValue.value);
+    const academicYearOptions = Array.isArray(
+      plannerSelectSettings?.academicYearOptions,
+    )
+      ? plannerSelectSettings.academicYearOptions
+      : [...ACADEMIC_YEAR_OPTIONS];
+    const plannerSettingsOptionGroupConfigs = [
+      {
+        key: "componentClassOptions",
+        label: this.isArabic() ? "أنواع المكوّن" : "Component classes",
+        inputValue: plannerSettingsComponentClassInput,
+        editingIndex: plannerSettingsEditingComponentClassIndex,
+        selectedIndex: plannerSettingsSelectedComponentClassIndex,
+        options: componentClassOptions,
+        placeholder: this.isArabic()
+          ? "أدخل نوع مكوّن"
+          : "Enter component class",
+      },
+      {
+        key: "weekdayOptions",
+        label: this.isArabic() ? "الجدول" : "Days",
+        inputValue: plannerSettingsWeekdayInput,
+        editingIndex: plannerSettingsEditingWeekdayIndex,
+        selectedIndex: plannerSettingsSelectedWeekdayIndex,
+        options: weekdayOptions,
+        placeholder: this.isArabic() ? "أدخل يوماً" : "Enter day",
+      },
+      {
+        key: "hourOptions",
+        label: this.isArabic() ? "الساعات" : "Hours",
+        inputValue: plannerSettingsHourInput,
+        editingIndex: plannerSettingsEditingHourIndex,
+        selectedIndex: plannerSettingsSelectedHourIndex,
+        options: hourOptions,
+        placeholder: this.isArabic() ? "مثال 08:00" : "Example 08:00",
+      },
+      {
+        key: "termOptions",
+        label: this.isArabic() ? "الفصول" : "Terms",
+        inputValue: plannerSettingsTermInput,
+        editingIndex: plannerSettingsEditingTermIndex,
+        selectedIndex: plannerSettingsSelectedTermIndex,
+        options: termOptions,
+        placeholder: this.isArabic() ? "أدخل فصلاً" : "Enter term",
+      },
+      {
+        key: "academicYearOptions",
+        label: this.isArabic() ? "السنوات الأكاديمية" : "Academic years",
+        inputValue: plannerSettingsAcademicYearInput,
+        editingIndex: plannerSettingsEditingAcademicYearIndex,
+        selectedIndex: plannerSettingsSelectedAcademicYearIndex,
+        options: academicYearOptions,
+        placeholder: this.isArabic()
+          ? "أدخل سنة أكاديمية"
+          : "Enter academic year",
+      },
+    ];
+    const activePlannerSettingsOptionGroup =
+      plannerSettingsOptionGroupConfigs.find(
+        (entry) => entry.key === plannerSettingsActiveListKey,
+      ) || plannerSettingsOptionGroupConfigs[0];
+    const plannerOptionsByKey = {
+      componentClassOptions,
+      weekdayOptions,
+      hourOptions,
+      termOptions,
+      academicYearOptions,
+    };
+    const plannerDefaultFields = PLANNER_DEFAULT_FIELD_REGISTRY.map(
+      (fieldConfig) => ({
+        ...fieldConfig,
+        value: String(
+          plannerSelectSettings?.fieldDefaults?.[fieldConfig.key] || "",
+        ).trim(),
+        options: fieldConfig.optionsKey
+          ? plannerOptionsByKey[fieldConfig.optionsKey] || []
+          : Array.isArray(fieldConfig.options)
+            ? fieldConfig.options
+            : [],
+      }),
+    );
+    const savedCourseLockedFields =
+      this.getLockedSavedCourseDraftFields(savedCourseDraft);
+    const plannerRelationships = Array.isArray(
+      plannerSelectSettings?.relationships,
+    )
+      ? plannerSelectSettings.relationships
+      : [];
     const selectedDetailsCourse =
       savedCourses.find(
         (course) =>
@@ -5025,64 +5941,40 @@ export default class NogaPlanner extends Component {
       plannerTab === "courses" &&
       !savedCourseSelectionMode &&
       !savedCourseEditorVisible;
+    const shouldBlurUnselectedSavedCourseRows =
+      shouldShowFloatingCourseRowActions && selectedSavedCourseIds.length > 0;
     const selectedLectureDeleteCount = Array.isArray(deleteSelectionIds)
       ? deleteSelectionIds.length
       : 0;
     const sortedSavedCourses = this.getSortedSavedCourses(savedCourses);
-    const savedCourseRowSpanByIndex = new Map();
-    for (let index = 0; index < sortedSavedCourses.length; index += 1) {
-      const currentCourse = sortedSavedCourses[index];
-      const currentGroupKey =
-        String(currentCourse?.parentCourseId || "").trim() ||
-        String(currentCourse?.course_name || "").trim();
-      const previousCourse = index > 0 ? sortedSavedCourses[index - 1] : null;
-      const previousGroupKey =
-        String(previousCourse?.parentCourseId || "").trim() ||
-        String(previousCourse?.course_name || "").trim();
-
-      if (
-        index > 0 &&
-        currentGroupKey &&
-        currentGroupKey === previousGroupKey
-      ) {
-        savedCourseRowSpanByIndex.set(index, 0);
-        continue;
-      }
-
-      let rowSpan = 1;
-      for (
-        let nextIndex = index + 1;
-        nextIndex < sortedSavedCourses.length;
-        nextIndex += 1
-      ) {
-        const nextCourse = sortedSavedCourses[nextIndex];
-        const nextGroupKey =
-          String(nextCourse?.parentCourseId || "").trim() ||
-          String(nextCourse?.course_name || "").trim();
-
-        if (!currentGroupKey || nextGroupKey !== currentGroupKey) {
-          break;
-        }
-
-        rowSpan += 1;
-      }
-
-      savedCourseRowSpanByIndex.set(index, rowSpan);
-    }
+    const currentAcademicYearNumber = getComparableProgramYearNumber(
+      this.props.state?.studying?.time?.currentAcademicYear ??
+        this.props.state?.studying?.currentAcademicYear ??
+        this.props.state?.profile?.studying?.time?.currentAcademicYear ??
+        this.props.state?.profile?.studying?.currentAcademicYear ??
+        this.props.state?.currentAcademicYear,
+    );
     const savedCourseCounts = savedCourses.reduce(
       (accumulator, course) => {
         const normalizedCourseName =
           String(course?.course_name || "")
             .trim()
             .toLowerCase() || "-";
+        const programYearNumber = getComparableProgramYearNumber(
+          course?.programYear ||
+            course?.course_programYear ||
+            course?.time?.programYear,
+        );
 
         accumulator.componentCount += 1;
         accumulator.courseNames.add(normalizedCourseName);
 
-        if (isSavedCourseComponentFailed(course)) {
-          accumulator.failedComponentsCount += 1;
-        } else if (isSavedCourseComponentOngoing(course)) {
-          accumulator.ongoingComponentsCount += 1;
+        if (currentAcademicYearNumber !== null && programYearNumber !== null) {
+          if (programYearNumber < currentAcademicYearNumber) {
+            accumulator.failedComponentsCount += 1;
+          } else if (programYearNumber === currentAcademicYearNumber) {
+            accumulator.ongoingComponentsCount += 1;
+          }
         }
 
         return accumulator;
@@ -5094,6 +5986,65 @@ export default class NogaPlanner extends Component {
         courseNames: new Set(),
       },
     );
+    const savedCourseRowSpanById = new Map();
+    const savedCourseGroupSelectedById = new Map();
+    for (let courseIndex = 0; courseIndex < sortedSavedCourses.length; ) {
+      const courseEntry = sortedSavedCourses[courseIndex] || {};
+      const groupKey =
+        String(courseEntry?.parentCourseId || "").trim() ||
+        [
+          String(courseEntry?.course_code || "")
+            .trim()
+            .toLowerCase(),
+          String(courseEntry?.course_name || "")
+            .trim()
+            .toLowerCase(),
+        ].join("|");
+      let spanCount = 1;
+
+      for (
+        let nextIndex = courseIndex + 1;
+        nextIndex < sortedSavedCourses.length;
+        nextIndex += 1
+      ) {
+        const nextEntry = sortedSavedCourses[nextIndex] || {};
+        const nextGroupKey =
+          String(nextEntry?.parentCourseId || "").trim() ||
+          [
+            String(nextEntry?.course_code || "")
+              .trim()
+              .toLowerCase(),
+            String(nextEntry?.course_name || "")
+              .trim()
+              .toLowerCase(),
+          ].join("|");
+
+        if (nextGroupKey !== groupKey) {
+          break;
+        }
+
+        spanCount += 1;
+      }
+
+      savedCourseRowSpanById.set(
+        String(courseEntry?._id || buildCourseDuplicateKey(courseEntry)),
+        spanCount,
+      );
+      savedCourseGroupSelectedById.set(
+        String(courseEntry?._id || buildCourseDuplicateKey(courseEntry)),
+        sortedSavedCourses
+          .slice(courseIndex, courseIndex + spanCount)
+          .some((entry) => {
+            const entryId = String(entry?._id || "").trim();
+            return (
+              selectedSavedCourseIds.includes(entryId) ||
+              selectedComponentId === entryId ||
+              selectedDetailsComponentId === entryId
+            );
+          }),
+      );
+      courseIndex += spanCount;
+    }
     const uniqueSavedCoursesCount = savedCourseCounts.courseNames.size;
     const savedCourseComponentsCount = savedCourseCounts.componentCount;
     const failedSavedCourseComponentsCount =
@@ -5115,13 +6066,69 @@ export default class NogaPlanner extends Component {
 
       return `${fallbackLabel}${sortMarker}`;
     };
+    const renderSavedCourseFieldEyebrow = (arabicLabel, englishLabel) => (
+      <span className="nogaPlanner_savedCourseFieldEyebrow">
+        {this.isArabic() ? arabicLabel : englishLabel}
+      </span>
+    );
+    const savedCoursePendingStatusLabel = this.isArabic()
+      ? "تحدّد لاحقاً"
+      : "Set later";
+    const savedCourseProfileActualAcademicYear =
+      normalizeAcademicYearValue(
+        String(savedCourseDraft?.actualCourseYearInterval || "").trim() ||
+          (this.props.state?.studying?.time?.currentAcademicYear ??
+            this.props.state?.studying?.currentAcademicYear ??
+            this.props.state?.profile?.studying?.time?.currentAcademicYear ??
+            this.props.state?.profile?.studying?.currentAcademicYear ??
+            this.props.state?.currentAcademicYear),
+      ) || "";
+    const savedCourseProfileActualTerm = String(
+      String(savedCourseDraft?.actualCourseTerm || "").trim() ||
+        (this.props.state?.studying?.time?.currentTerm ??
+          this.props.state?.studying?.currentTerm ??
+          this.props.state?.profile?.studying?.time?.currentTerm ??
+          this.props.state?.profile?.studying?.currentTerm ??
+          ""),
+    ).trim();
+    const savedCourseLocationEntries = Array.isArray(this.state?.courses)
+      ? this.state.courses
+      : [];
+    const locationBuildingOptions = Array.from(
+      new Set(
+        savedCourseLocationEntries
+          .map((entry) => String(entry?.course_location?.building || "").trim())
+          .concat(
+            String(savedCourseDraft?.course_locationBuilding || "").trim(),
+          )
+          .filter(Boolean),
+      ),
+    );
+    const locationRoomOptions = Array.from(
+      new Set(
+        savedCourseLocationEntries
+          .filter((entry) => {
+            const buildingValue = String(
+              entry?.course_location?.building || "",
+            ).trim();
+            const selectedBuilding = String(
+              savedCourseDraft?.course_locationBuilding || "",
+            ).trim();
+            return !selectedBuilding || buildingValue === selectedBuilding;
+          })
+          .map((entry) => String(entry?.course_location?.room || "").trim())
+          .concat(String(savedCourseDraft?.course_locationRoom || "").trim())
+          .filter(Boolean),
+      ),
+    );
     const renderSavedCourseEditorPanel = () => (
       <div className="nogaPlanner_savedCourseEditor">
-        <div className="nogaPlanner_savedCourseEditorGrid">
-          <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--course nogaPlanner_savedCourseEditorCell--courseBlock">
+        <div className="nogaPlanner_savedCourseEditorGrid nogaPlanner_savedCourseEditorGrid--courseComposer">
+          <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--courseCard">
             <p className="nogaPlanner_savedCourseEditorLabel">
               {this.isArabic() ? "بيانات المقرر" : "Course"}
             </p>
+            {renderSavedCourseFieldEyebrow("اسم المقرر", "Course name")}
             <input
               className="nogaPlanner_savedCoursesDetailsInput"
               type="text"
@@ -5134,6 +6141,7 @@ export default class NogaPlanner extends Component {
               }
               placeholder={this.isArabic() ? "اسم المقرر" : "Course name"}
             />
+            {renderSavedCourseFieldEyebrow("رمز المقرر", "Course code")}
             <input
               className="nogaPlanner_savedCoursesDetailsInput"
               type="text"
@@ -5146,497 +6154,771 @@ export default class NogaPlanner extends Component {
               }
               placeholder={this.isArabic() ? "رمز المقرر" : "Course code"}
             />
-            <select
+            {renderSavedCourseFieldEyebrow("حالة المقرر", "Course status")}
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
+              type="text"
+              value={
+                formatPlannerStatusLabel(
+                  savedCourseDraft.course_status,
+                  this.isArabic() ? "ar" : "en",
+                ) === "-"
+                  ? savedCoursePendingStatusLabel
+                  : formatPlannerStatusLabel(
+                      savedCourseDraft.course_status,
+                      this.isArabic() ? "ar" : "en",
+                    )
+              }
+              readOnly
+              placeholder={this.isArabic() ? "حالة المقرر" : "Course status"}
+            />
+            {renderSavedCourseFieldEyebrow("وزن المقرر", "Course weight")}
+            <input
               className="nogaPlanner_savedCoursesDetailsInput"
-              value={savedCourseDraft.course_status}
+              type="number"
+              min="0"
+              step="0.01"
+              value={savedCourseDraft.course_totalWeight}
               onChange={(event) =>
                 this.handleSavedCourseDraftChange(
-                  "course_status",
+                  "course_totalWeight",
+                  event.target.value,
+                )
+              }
+              placeholder={this.isArabic() ? "وزن المقرر" : "Course weight"}
+            />
+          </div>
+          <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--componentCard">
+            <p className="nogaPlanner_savedCourseEditorLabel">
+              {this.isArabic() ? "بيانات المكوّن" : "Component details"}
+            </p>
+            {renderSavedCourseFieldEyebrow("نوع المكوّن", "Component class")}
+            <select
+              className="nogaPlanner_savedCoursesDetailsInput"
+              value={savedCourseDraft.course_classSelection}
+              onChange={(event) =>
+                this.handleSavedCourseDraftChange(
+                  "course_classSelection",
                   event.target.value,
                 )
               }
             >
-              {COURSE_STATUS_OPTIONS.map((optionValue) => (
-                <option key={optionValue.value} value={optionValue.value}>
-                  {this.isArabic() ? optionValue.labelAr : optionValue.labelEn}
+              <option value="">
+                {this.isArabic() ? "نوع المكون" : "Component class"}
+              </option>
+              {componentClassOptions.map((optionValue) => (
+                <option key={optionValue} value={optionValue}>
+                  {optionValue}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--componentDetails nogaPlanner_savedCourseEditorCell--componentBlock">
-            <p className="nogaPlanner_savedCourseEditorLabel">
-              {this.isArabic() ? "بيانات المكوّن" : "Component details"}
-            </p>
-            <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
+            {renderSavedCourseFieldEyebrow("حالة المكوّن", "Component status")}
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
+              type="text"
+              value={
+                formatPlannerStatusLabel(
+                  savedCourseDraft.component_status,
+                  this.isArabic() ? "ar" : "en",
+                ) === "-"
+                  ? savedCoursePendingStatusLabel
+                  : formatPlannerStatusLabel(
+                      savedCourseDraft.component_status,
+                      this.isArabic() ? "ar" : "en",
+                    )
+              }
+              readOnly
+              placeholder={
+                this.isArabic() ? "حالة المكوّن" : "Component status"
+              }
+            />
+            {renderSavedCourseFieldEyebrow(
+              "الفترة السنوية المفترضة",
+              "Normative year interval",
+            )}
+            <select
+              className="nogaPlanner_savedCoursesDetailsInput"
+              value={savedCourseDraft.normativeCourseYearInterval}
+              onChange={(event) =>
+                this.handleSavedCourseDraftChange(
+                  "normativeCourseYearInterval",
+                  event.target.value,
+                )
+              }
+            >
+              <option value="">
+                {this.isArabic()
+                  ? "الفترة السنوية المفترضة"
+                  : "Normative year interval"}
+              </option>
+              {academicYearOptions.map((optionValue) => (
+                <option
+                  key={`normative-year-${optionValue}`}
+                  value={optionValue}
+                >
+                  {optionValue}
+                </option>
+              ))}
+            </select>
+            {renderSavedCourseFieldEyebrow("الفصل المفترض", "Normative term")}
+            <select
+              className="nogaPlanner_savedCoursesDetailsInput"
+              value={savedCourseDraft.normativeCourseTerm}
+              disabled={savedCourseLockedFields.has("normativeCourseTerm")}
+              onChange={(event) =>
+                this.handleSavedCourseDraftChange(
+                  "normativeCourseTerm",
+                  event.target.value,
+                )
+              }
+            >
+              <option value="">
+                {this.isArabic() ? "الفصل المفترض" : "Normative term"}
+              </option>
+              {termOptions.map((optionValue) => (
+                <option key={`normative-${optionValue}`} value={optionValue}>
+                  {optionValue}
+                </option>
+              ))}
+            </select>
+            {renderSavedCourseFieldEyebrow(
+              "الفترة السنوية الفعلية",
+              "Actual year interval",
+            )}
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput"
+              type="text"
+              value={savedCourseProfileActualAcademicYear}
+              readOnly
+              placeholder={
+                this.isArabic()
+                  ? "الفترة السنوية الفعلية"
+                  : "Actual year interval"
+              }
+            />
+            {renderSavedCourseFieldEyebrow("الفصل الفعلي", "Actual term")}
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput"
+              type="text"
+              value={savedCourseProfileActualTerm}
+              readOnly
+              placeholder={this.isArabic() ? "الفصل الفعلي" : "Actual term"}
+            />
+            <div className="nogaPlanner_savedCourseDetailGroup">
               <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                {this.isArabic() ? "التوقيت" : "Timing"}
+                {this.isArabic() ? "جدول الدوام" : "Schedule"}
               </span>
-              <div className="nogaPlanner_savedCourseDetailGroupsGrid">
-                <div className="nogaPlanner_savedCourseDetailGroup">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "المفترض" : "Normative"}
-                  </span>
-                  <input
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={savedCourseDraft.normativeCourseYearNum}
-                    onChange={(event) =>
-                      this.handleSavedCourseDraftChange(
-                        "normativeCourseYearNum",
-                        event.target.value,
-                      )
-                    }
-                    placeholder={
-                      this.isArabic()
-                        ? "رقم السنة المفترضة"
-                        : "Normative year number"
-                    }
-                  />
-                  <input
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    type="text"
-                    value={savedCourseDraft.normativeCourseYearInterval}
-                    readOnly
-                    placeholder={
-                      this.isArabic()
-                        ? "الفترة المفترضة"
-                        : "Normative year interval"
-                    }
-                  />
-                  <select
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    value={savedCourseDraft.normativeCourseTerm}
-                    onChange={(event) =>
-                      this.handleSavedCourseDraftChange(
-                        "normativeCourseTerm",
-                        event.target.value,
-                      )
-                    }
-                  >
-                    <option value="">
-                      {this.isArabic() ? "الفصل المفترض" : "Normative term"}
+              <div className="nogaPlanner_savedCoursesDetailsInputs">
+                <input
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  type="date"
+                  value={savedCourseDraft.course_daySelection}
+                  disabled={savedCourseLockedFields.has("course_daySelection")}
+                  onChange={(event) =>
+                    this.handleSavedCourseDraftChange(
+                      "course_daySelection",
+                      event.target.value,
+                    )
+                  }
+                />
+                <select
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={savedCourseDraft.course_timeSelection}
+                  disabled={savedCourseLockedFields.has("course_timeSelection")}
+                  onChange={(event) =>
+                    this.handleSavedCourseDraftChange(
+                      "course_timeSelection",
+                      event.target.value,
+                    )
+                  }
+                  onKeyDown={this.handleSavedCourseScheduleEnter}
+                >
+                  <option value="">
+                    {this.isArabic() ? "الساعة" : "Hour"}
+                  </option>
+                  {hourOptions.map((optionValue) => (
+                    <option key={optionValue} value={optionValue}>
+                      {optionValue}
                     </option>
-                    {TERM_OPTIONS.map((optionValue) => (
-                      <option
-                        key={`normative-${optionValue.value}`}
-                        value={optionValue.value}
-                      >
-                        {this.isArabic()
-                          ? optionValue.labelAr
-                          : optionValue.labelEn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="nogaPlanner_savedCourseDetailGroup">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "الحقيقي" : "Actual"}
-                  </span>
-                  <input
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={savedCourseDraft.actualCourseYearNum}
-                    readOnly
-                    placeholder={
-                      this.isArabic()
-                        ? "رقم السنة الفعلية"
-                        : "Actual year number"
-                    }
-                  />
-                  <input
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    type="text"
-                    value={savedCourseDraft.actualCourseYearInterval}
-                    readOnly
-                    placeholder={
-                      this.isArabic()
-                        ? "الفترة الفعلية"
-                        : "Actual year interval"
-                    }
-                  />
-                  <select
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    value={savedCourseDraft.actualCourseTerm}
-                    disabled
-                  >
-                    <option value="">
-                      {this.isArabic() ? "الفصل الفعلي" : "Actual term"}
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={this.appendSavedCourseScheduleEntry}
+                >
+                  +
+                </button>
+              </div>
+              <ul className="nogaPlanner_savedCoursesScheduleChips">
+                {splitCourseTextList(savedCourseDraft.course_dayAndTime).map(
+                  (entry, entryIndex) => (
+                    <li
+                      key={`saved-course-schedule-${entryIndex}`}
+                      className="nogaPlanner_savedCoursesScheduleChip"
+                      onClick={() =>
+                        this.removeSavedCourseScheduleEntry(entryIndex)
+                      }
+                    >
+                      {entry}
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+            <div className="nogaPlanner_savedCourseDetailGroup">
+              <span className="nogaPlanner_savedCourseDetailGroupTitle">
+                {this.isArabic() ? "الموقع" : "Location"}
+              </span>
+              <div className="nogaPlanner_savedCoursesDetailsInputs">
+                <select
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={savedCourseDraft.course_locationBuilding}
+                  disabled={savedCourseLockedFields.has(
+                    "course_locationBuilding",
+                  )}
+                  onChange={(event) =>
+                    this.handleSavedCourseDraftChange(
+                      "course_locationBuilding",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    {this.isArabic() ? "المبنى" : "Building"}
+                  </option>
+                  {locationBuildingOptions.map((optionValue) => (
+                    <option key={`building-${optionValue}`} value={optionValue}>
+                      {optionValue}
                     </option>
-                    {TERM_OPTIONS.map((optionValue) => (
-                      <option
-                        key={`actual-term-${optionValue.value}`}
-                        value={optionValue.value}
-                      >
+                  ))}
+                </select>
+                <select
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={savedCourseDraft.course_locationRoom}
+                  disabled={savedCourseLockedFields.has("course_locationRoom")}
+                  onChange={(event) =>
+                    this.handleSavedCourseDraftChange(
+                      "course_locationRoom",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    {this.isArabic() ? "القاعة" : "Room"}
+                  </option>
+                  {locationRoomOptions.map((optionValue) => (
+                    <option key={`room-${optionValue}`} value={optionValue}>
+                      {optionValue}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {renderSavedCourseFieldEyebrow("وزن المكوّن", "Component weight")}
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput"
+              type="number"
+              min="0"
+              step="0.01"
+              value={savedCourseDraft.course_grade}
+              disabled={savedCourseLockedFields.has("course_grade")}
+              onChange={(event) =>
+                this.handleSavedCourseDraftChange(
+                  "course_grade",
+                  event.target.value,
+                )
+              }
+              placeholder={this.isArabic() ? "وزن المكوّن" : "Component weight"}
+            />
+          </div>
+        </div>
+      </div>
+    );
+
+    const plannerSettingsPanel = (
+      <div className="nogaPlanner_selectSettingsPanel">
+        <div className="nogaPlanner_selectSettingsHeader">
+          <button
+            type="button"
+            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_selectSettingsBackBtn"
+            onClick={this.handleBackFromPlannerSettings}
+          >
+            <i className="fas fa-arrow-left" aria-hidden="true"></i>
+            <span>{this.isArabic() ? "رجوع" : "Back"}</span>
+          </button>
+          <span className="nogaPlanner_selectSettingsTitle">
+            {this.isArabic() ? "إعدادات القوائم" : "Select settings"}
+          </span>
+        </div>
+        <div className="nogaPlanner_selectSettingsColumns">
+          <div className="nogaPlanner_selectSettingsColumn">
+            <span className="nogaPlanner_selectSettingsColumnTitle">
+              {this.isArabic() ? "خيارات القوائم" : "Select options"}
+            </span>
+            <div className="nogaPlanner_selectSettingsFields">
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsActiveListKey}
+                onChange={(event) =>
+                  this.handlePlannerSettingsInputChange(
+                    "plannerSettingsActiveListKey",
+                    event.target.value,
+                  )
+                }
+              >
+                {plannerSettingsOptionGroupConfigs.map((optionGroup) => (
+                  <option key={optionGroup.key} value={optionGroup.key}>
+                    {optionGroup.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={activePlannerSettingsOptionGroup?.inputValue || ""}
+                onChange={(event) =>
+                  this.handlePlannerSettingsInputChange(
+                    activePlannerSettingsOptionGroup.key ===
+                      "componentClassOptions"
+                      ? "plannerSettingsComponentClassInput"
+                      : activePlannerSettingsOptionGroup.key ===
+                          "weekdayOptions"
+                        ? "plannerSettingsWeekdayInput"
+                        : activePlannerSettingsOptionGroup.key === "hourOptions"
+                          ? "plannerSettingsHourInput"
+                          : activePlannerSettingsOptionGroup.key ===
+                              "termOptions"
+                            ? "plannerSettingsTermInput"
+                            : "plannerSettingsAcademicYearInput",
+                    event.target.value,
+                  )
+                }
+                placeholder={
+                  activePlannerSettingsOptionGroup?.placeholder || ""
+                }
+              />
+              <div className="nogaPlanner_selectSettingsActions">
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() =>
+                    this.addOrUpdatePlannerSettingsListItem(
+                      activePlannerSettingsOptionGroup.key,
+                    )
+                  }
+                >
+                  {activePlannerSettingsOptionGroup?.editingIndex >= 0
+                    ? this.isArabic()
+                      ? "تحديث"
+                      : "Update"
+                    : this.isArabic()
+                      ? "إضافة"
+                      : "Add"}
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() =>
+                    this.deleteSelectedPlannerSettingsListItem(
+                      activePlannerSettingsOptionGroup.key,
+                    )
+                  }
+                  disabled={activePlannerSettingsOptionGroup?.selectedIndex < 0}
+                >
+                  {this.isArabic() ? "حذف المحدد" : "Delete selected"}
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() =>
+                    this.clearPlannerSettingsList(
+                      activePlannerSettingsOptionGroup.key,
+                    )
+                  }
+                  disabled={
+                    (activePlannerSettingsOptionGroup?.options || []).length ===
+                    0
+                  }
+                >
+                  {this.isArabic() ? "حذف الكل" : "Delete all"}
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={() =>
+                    this.editSelectedPlannerSettingsListItem(
+                      activePlannerSettingsOptionGroup.key,
+                    )
+                  }
+                  disabled={activePlannerSettingsOptionGroup?.selectedIndex < 0}
+                >
+                  {this.isArabic() ? "تعديل" : "Edit"}
+                </button>
+              </div>
+              <ul className="nogaPlanner_selectSettingsList">
+                {(activePlannerSettingsOptionGroup?.options || []).map(
+                  (optionValue, optionIndex) => (
+                    <li
+                      key={`planner-option-${activePlannerSettingsOptionGroup.key}-${optionValue}-${optionIndex}`}
+                      className={
+                        "nogaPlanner_selectSettingsItem" +
+                        (activePlannerSettingsOptionGroup?.selectedIndex ===
+                        optionIndex
+                          ? " nogaPlanner_selectSettingsItem--selected"
+                          : "")
+                      }
+                      onClick={() =>
+                        this.togglePlannerSettingsListItemSelection(
+                          activePlannerSettingsOptionGroup.key,
+                          optionIndex,
+                        )
+                      }
+                    >
+                      <span className="nogaPlanner_selectSettingsItemLabel">
+                        {optionValue}
+                      </span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          </div>
+          <div className="nogaPlanner_selectSettingsColumn">
+            <span className="nogaPlanner_selectSettingsColumnTitle">
+              {this.isArabic() ? "الافتراضيات" : "Defaults"}
+            </span>
+            <div className="nogaPlanner_selectSettingsFields">
+              <div className="nogaPlanner_selectSettingsDefaultsCard">
+                <span className="nogaPlanner_selectSettingsDefaultsTitle">
+                  {this.isArabic()
+                    ? "جميع حقول النماذج مع اسم النموذج"
+                    : "All planner form fields with their form tags"}
+                </span>
+                <div className="nogaPlanner_selectSettingsDefaultsGrid">
+                  {plannerDefaultFields.map((fieldConfig) => (
+                    <div
+                      key={`planner-default-${fieldConfig.key}`}
+                      className="nogaPlanner_selectSettingsDefaultField"
+                    >
+                      <span className="nogaPlanner_selectSettingsDefaultLabel">
                         {this.isArabic()
-                          ? optionValue.labelAr
-                          : optionValue.labelEn}
-                      </option>
-                    ))}
-                  </select>
+                          ? `${fieldConfig.formLabelAr} • ${fieldConfig.labelAr}`
+                          : `${fieldConfig.formLabelEn} • ${fieldConfig.labelEn}`}
+                      </span>
+                      {fieldConfig.control === "select" ? (
+                        <select
+                          className="nogaPlanner_savedCoursesDetailsInput"
+                          value={fieldConfig.value}
+                          onChange={(event) =>
+                            this.handlePlannerFieldDefaultChange(
+                              fieldConfig.key,
+                              event.target.value,
+                            )
+                          }
+                        >
+                          <option value="">
+                            {this.isArabic() ? "بدون" : "None"}
+                          </option>
+                          {fieldConfig.options.map((optionValue) => (
+                            <option
+                              key={`planner-default-option-${fieldConfig.key}-${optionValue}`}
+                              value={optionValue}
+                            >
+                              {optionValue}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          className="nogaPlanner_savedCoursesDetailsInput"
+                          type={fieldConfig.inputType || "text"}
+                          value={fieldConfig.value}
+                          onChange={(event) =>
+                            this.handlePlannerFieldDefaultChange(
+                              fieldConfig.key,
+                              event.target.value,
+                            )
+                          }
+                          placeholder={
+                            this.isArabic()
+                              ? `${fieldConfig.formLabelAr} • ${fieldConfig.labelAr}`
+                              : `${fieldConfig.formLabelEn} • ${fieldConfig.labelEn}`
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-            <div className="nogaPlanner_savedCourseMetaColumns nogaPlanner_savedCourseEditorFieldFull">
-              <div className="nogaPlanner_savedCourseMetaColumn">
-                <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "النوع" : "Type"}
-                  </span>
-                  <select
-                    className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCourseEditorFieldFull"
-                    value={savedCourseDraft.course_classSelection}
-                    onChange={(event) =>
-                      this.handleSavedCourseDraftChange(
-                        "course_classSelection",
-                        event.target.value,
-                      )
-                    }
+          </div>
+          <div className="nogaPlanner_selectSettingsColumn">
+            <span className="nogaPlanner_selectSettingsColumnTitle">
+              {this.isArabic() ? "علاقات المكوّن" : "Component presets"}
+            </span>
+            <div className="nogaPlanner_selectSettingsFields">
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsRelationshipDraft.course_classSelection}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_classSelection",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {this.isArabic() ? "نوع المكوّن" : "Component class"}
+                </option>
+                {componentClassOptions.map((optionValue) => (
+                  <option
+                    key={`relationship-class-${optionValue}`}
+                    value={optionValue}
                   >
-                    <option value="">
-                      {this.isArabic() ? "نوع المكون" : "Component class"}
-                    </option>
-                    {SAVED_COMPONENT_CLASS_OPTIONS.map((optionValue) => (
-                      <option key={optionValue} value={optionValue}>
-                        {optionValue}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "الحالة" : "Status"}
-                  </span>
-                  <select
-                    className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCourseEditorFieldFull"
-                    value={savedCourseDraft.component_status}
-                    onChange={(event) =>
-                      this.handleSavedCourseDraftChange(
-                        "component_status",
-                        event.target.value,
-                      )
-                    }
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsRelationshipDraft.normativeCourseTerm}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "normativeCourseTerm",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {this.isArabic() ? "الفصل المفترض" : "Normative term"}
+                </option>
+                {termOptions.map((optionValue) => (
+                  <option
+                    key={`relationship-normative-${optionValue}`}
+                    value={optionValue}
                   >
-                    {COMPONENT_STATUS_OPTIONS.map((optionValue) => (
-                      <option key={optionValue.value} value={optionValue.value}>
-                        {this.isArabic()
-                          ? optionValue.labelAr
-                          : optionValue.labelEn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "الوزن" : "Weight"}
-                  </span>
-                  <div className="nogaPlanner_savedCoursesDetailsInputs nogaPlanner_savedCourseEditorFieldFull">
-                    <input
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={savedCourseDraft.course_grade}
-                      onChange={(event) =>
-                        this.handleSavedCourseDraftChange(
-                          "course_grade",
-                          event.target.value,
-                        )
-                      }
-                      placeholder={this.isArabic() ? "القيمة" : "Value"}
-                    />
-                    <input
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={savedCourseDraft.course_weightTotal}
-                      onChange={(event) =>
-                        this.handleSavedCourseDraftChange(
-                          "course_weightTotal",
-                          event.target.value,
-                        )
-                      }
-                      placeholder={this.isArabic() ? "المجموع" : "Total"}
-                    />
-                  </div>
-                </div>
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsRelationshipDraft.actualCourseTerm}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "actualCourseTerm",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {this.isArabic() ? "الفصل الفعلي" : "Actual term"}
+                </option>
+                {termOptions.map((optionValue) => (
+                  <option
+                    key={`relationship-actual-${optionValue}`}
+                    value={optionValue}
+                  >
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsRelationshipDraft.course_daySelection}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_daySelection",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">{this.isArabic() ? "اليوم" : "Day"}</option>
+                {weekdayOptions.map((optionValue) => (
+                  <option
+                    key={`relationship-day-${optionValue}`}
+                    value={optionValue}
+                  >
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={plannerSettingsRelationshipDraft.course_timeSelection}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_timeSelection",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">{this.isArabic() ? "الساعة" : "Hour"}</option>
+                {hourOptions.map((optionValue) => (
+                  <option
+                    key={`relationship-hour-${optionValue}`}
+                    value={optionValue}
+                  >
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={plannerSettingsRelationshipDraft.course_locationBuilding}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_locationBuilding",
+                    event.target.value,
+                  )
+                }
+                placeholder={this.isArabic() ? "المبنى" : "Building"}
+              />
+              <input
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={plannerSettingsRelationshipDraft.course_locationRoom}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_locationRoom",
+                    event.target.value,
+                  )
+                }
+                placeholder={this.isArabic() ? "القاعة" : "Room"}
+              />
+              <input
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={plannerSettingsRelationshipDraft.course_grade}
+                onChange={(event) =>
+                  this.handlePlannerSettingsRelationshipDraftChange(
+                    "course_grade",
+                    event.target.value,
+                  )
+                }
+                placeholder={this.isArabic() ? "الوزن" : "Weight"}
+              />
+              <label className="nogaPlanner_selectSettingsCheckboxRow">
+                <input
+                  type="checkbox"
+                  checked={Boolean(plannerSettingsRelationshipDraft.readOnly)}
+                  onChange={(event) =>
+                    this.handlePlannerSettingsRelationshipDraftChange(
+                      "readOnly",
+                      event.target.checked,
+                    )
+                  }
+                />
+                <span>
+                  {this.isArabic()
+                    ? "قفل هذه القيم داخل المحرر"
+                    : "Lock these values in the editor"}
+                </span>
+              </label>
+              <div className="nogaPlanner_selectSettingsActions">
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={this.submitPlannerSettingsRelationship}
+                >
+                  {plannerSettingsEditingRelationshipId
+                    ? this.isArabic()
+                      ? "تحديث العلاقة"
+                      : "Update preset"
+                    : this.isArabic()
+                      ? "إضافة العلاقة"
+                      : "Add preset"}
+                </button>
               </div>
-              <div className="nogaPlanner_savedCourseMetaColumn">
-                <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-                  <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                    {this.isArabic() ? "الدوام" : "Attendance"}
-                  </span>
-                  <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-                    <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                      {this.isArabic() ? "الجدول" : "Schedule"}
-                    </span>
-                    <div className="nogaPlanner_savedCoursesDetailsInputs nogaPlanner_savedCourseEditorFieldFull">
-                      <select
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={savedCourseDraft.course_daySelection}
-                        onChange={(event) =>
-                          this.handleSavedCourseDraftChange(
-                            "course_daySelection",
-                            event.target.value,
-                          )
-                        }
-                      >
-                        <option value="">
-                          {this.isArabic() ? "اليوم" : "Day"}
-                        </option>
-                        {WEEKDAY_OPTIONS.map((optionValue) => (
-                          <option
-                            key={optionValue.key}
-                            value={
-                              this.isArabic()
-                                ? optionValue.labelAr
-                                : optionValue.labelEn
-                            }
-                          >
-                            {this.isArabic()
-                              ? optionValue.labelAr
-                              : optionValue.labelEn}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={savedCourseDraft.course_timeSelection}
-                        onChange={(event) =>
-                          this.handleSavedCourseDraftChange(
-                            "course_timeSelection",
-                            event.target.value,
-                          )
-                        }
-                        onKeyDown={this.handleSavedCourseScheduleEnter}
-                      >
-                        <option value="">
-                          {this.isArabic() ? "الساعة" : "Hour"}
-                        </option>
-                        {HOUR_OPTIONS.map((optionValue) => (
-                          <option
-                            key={optionValue.value}
-                            value={optionValue.value}
-                          >
-                            {optionValue.label}
-                          </option>
-                        ))}
-                      </select>
+              <ul className="nogaPlanner_selectSettingsRelationshipsList">
+                {plannerRelationships.map((relationship) => (
+                  <li
+                    key={relationship.id}
+                    className="nogaPlanner_selectSettingsRelationshipItem"
+                  >
+                    <div className="nogaPlanner_selectSettingsRelationshipBody">
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {relationship.course_classSelection}
+                      </span>
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {[
+                          relationship.normativeCourseTerm
+                            ? `${
+                                this.isArabic() ? "المفترض" : "Normative"
+                              }: ${relationship.normativeCourseTerm}`
+                            : "",
+                          relationship.actualCourseTerm
+                            ? `${this.isArabic() ? "الفعلي" : "Actual"}: ${
+                                relationship.actualCourseTerm
+                              }`
+                            : "",
+                          relationship.course_daySelection
+                            ? `${this.isArabic() ? "اليوم" : "Day"}: ${
+                                relationship.course_daySelection
+                              }`
+                            : "",
+                          relationship.course_timeSelection
+                            ? `${this.isArabic() ? "الساعة" : "Hour"}: ${
+                                relationship.course_timeSelection
+                              }`
+                            : "",
+                          relationship.course_locationBuilding
+                            ? `${this.isArabic() ? "المبنى" : "Building"}: ${
+                                relationship.course_locationBuilding
+                              }`
+                            : "",
+                          relationship.course_locationRoom
+                            ? `${this.isArabic() ? "القاعة" : "Room"}: ${
+                                relationship.course_locationRoom
+                              }`
+                            : "",
+                          relationship.course_grade
+                            ? `${this.isArabic() ? "الوزن" : "Weight"}: ${
+                                relationship.course_grade
+                              }`
+                            : "",
+                          relationship.readOnly
+                            ? this.isArabic()
+                              ? "مقفل"
+                              : "Locked"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") ||
+                          (this.isArabic()
+                            ? "بدون قيم إضافية"
+                            : "No extra values")}
+                      </span>
+                    </div>
+                    <span className="nogaPlanner_selectSettingsItemActions">
                       <button
                         type="button"
                         className="nogaPlanner_coursesMiniBarBtn"
-                        onClick={this.appendSavedCourseScheduleEntry}
+                        onClick={() =>
+                          this.editPlannerSettingsRelationship(relationship.id)
+                        }
                       >
-                        +
+                        {this.isArabic() ? "تعديل" : "Edit"}
                       </button>
-                    </div>
-                    <ul className="nogaPlanner_savedCoursesScheduleChips">
-                      {splitCourseTextList(savedCourseDraft.course_dayAndTime).map(
-                        (entry, entryIndex) => (
-                          <li
-                            key={`saved-course-schedule-${entryIndex}`}
-                            className="nogaPlanner_savedCoursesScheduleChip"
-                            onClick={() =>
-                              this.removeSavedCourseScheduleEntry(entryIndex)
-                            }
-                          >
-                            {entry}
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-                  <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseDetailGroup--location nogaPlanner_savedCourseEditorFieldFull">
-                    <span className="nogaPlanner_savedCourseDetailGroupTitle">
-                      {this.isArabic() ? "الموقع" : "Location"}
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={() =>
+                          this.deletePlannerSettingsRelationship(
+                            relationship.id,
+                          )
+                        }
+                      >
+                        {this.isArabic() ? "حذف" : "Delete"}
+                      </button>
                     </span>
-                    <input
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      type="text"
-                      value={savedCourseDraft.course_locationBuilding}
-                      onChange={(event) =>
-                        this.handleSavedCourseDraftChange(
-                          "course_locationBuilding",
-                          event.target.value,
-                        )
-                      }
-                      placeholder={this.isArabic() ? "المبنى" : "Building"}
-                    />
-                    <input
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      type="text"
-                      value={savedCourseDraft.course_locationRoom}
-                      onChange={(event) =>
-                        this.handleSavedCourseDraftChange(
-                          "course_locationRoom",
-                          event.target.value,
-                        )
-                      }
-                      placeholder={this.isArabic() ? "القاعة" : "Room"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="nogaPlanner_savedCourseEditorActionRow">
-              <button
-                type="button"
-                className="nogaPlanner_coursesMiniBarBtn"
-                onClick={this.appendSavedCourseComponentEntry}
-              >
-                {savedCourseEditorMode === "edit"
-                  ? this.isArabic()
-                    ? "تعديل مكوّن"
-                    : "Edit component"
-                  : this.isArabic()
-                    ? "إضافة مكوّن"
-                    : "Add component"}
-              </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
-        <div className="nogaPlanner_savedCourseComponentsTableWrap">
-          <table className="nogaPlanner_savedCourseComponentsTable">
-            <thead>
-              <tr>
-                <th>{this.isArabic() ? "المكوّن" : "Component"}</th>
-                <th>{this.isArabic() ? "الحالة" : "Status"}</th>
-                <th>{this.isArabic() ? "التوقيت المفترض" : "Normative"}</th>
-                <th>{this.isArabic() ? "التوقيت الحقيقي" : "Actual"}</th>
-                <th>{this.isArabic() ? "الجدول" : "Schedule"}</th>
-                <th>{this.isArabic() ? "الموقع" : "Location"}</th>
-                <th>{this.isArabic() ? "الوزن" : "Weight"}</th>
-                <th>{this.isArabic() ? "إجراءات" : "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Array.isArray(savedCourseDraft.course_components)
-                ? savedCourseDraft.course_components
-                : []
-              ).length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="nogaPlanner_savedCourseComponentsTableEmpty"
-                  >
-                    {this.isArabic()
-                      ? "لم تتم إضافة مكونات بعد"
-                      : "No components added yet"}
-                  </td>
-                </tr>
-              ) : (
-                (Array.isArray(savedCourseDraft.course_components)
-                  ? savedCourseDraft.course_components
-                  : []
-                ).map((entry, entryIndex) => (
-                  <tr
-                    key={`saved-course-component-${entryIndex}`}
-                    className="nogaPlanner_savedCourseComponentsTableRow"
-                  >
-                    <td>{entry.course_class || "-"}</td>
-                    <td>
-                      {formatSavedComponentStatusLabel(
-                        entry.component_status || entry.status || "",
-                        this.isArabic() ? "ar" : "en",
-                      )}
-                    </td>
-                    <td>
-                      {formatNormativeTimingDisplay(
-                        entry,
-                        this.isArabic() ? "ar" : "en",
-                      )}
-                    </td>
-                    <td>
-                      {formatActualTimingDisplay(
-                        entry,
-                        this.isArabic() ? "ar" : "en",
-                      )}
-                    </td>
-                    <td>
-                      {formatCourseScheduleDisplay(entry.course_dayAndTime)}
-                    </td>
-                    <td>
-                      {formatCourseLocationDisplay({
-                        building: entry.course_locationBuilding,
-                        room: entry.course_locationRoom,
-                      })}
-                    </td>
-                    <td>
-                      {entry.course_grade
-                        ? `${entry.course_grade}/${entry.course_weightTotal || "100"}`
-                        : "-"}
-                    </td>
-                    <td className="nogaPlanner_savedCourseComponentsTableActions">
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_savedCourseComponentsActionBtn"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          this.moveSavedCourseComponentEntry(entryIndex, -1);
-                        }}
-                        disabled={entryIndex === 0}
-                        aria-label={
-                          this.isArabic() ? "تحريك للأعلى" : "Move up"
-                        }
-                        title={this.isArabic() ? "تحريك للأعلى" : "Move up"}
-                      >
-                        <i className="fas fa-arrow-up" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_savedCourseComponentsActionBtn"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          this.moveSavedCourseComponentEntry(entryIndex, 1);
-                        }}
-                        disabled={
-                          entryIndex ===
-                          (Array.isArray(savedCourseDraft.course_components)
-                            ? savedCourseDraft.course_components.length
-                            : 0) -
-                            1
-                        }
-                        aria-label={
-                          this.isArabic() ? "تحريك للأسفل" : "Move down"
-                        }
-                        title={this.isArabic() ? "تحريك للأسفل" : "Move down"}
-                      >
-                        <i className="fas fa-arrow-down" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_savedCourseComponentsActionBtn"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          this.editSavedCourseComponentEntry(entryIndex);
-                        }}
-                        aria-label={this.isArabic() ? "تعديل" : "Edit"}
-                        title={this.isArabic() ? "تعديل" : "Edit"}
-                      >
-                        <i className="fas fa-pen" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_savedCourseComponentsActionBtn nogaPlanner_savedCourseComponentsActionBtn--danger"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          this.removeSavedCourseComponentEntry(entryIndex);
-                        }}
-                        aria-label={this.isArabic() ? "حذف" : "Delete"}
-                        title={this.isArabic() ? "حذف" : "Delete"}
-                      >
-                        <i className="fas fa-trash-alt" aria-hidden="true"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
     );
@@ -5719,7 +7001,7 @@ export default class NogaPlanner extends Component {
                       {failedSavedCourseComponentsCount}
                     </span>
                     <span className="nogaPlanner_savedCoursesCounterDetailLabel">
-                      {this.isArabic() ? "راسبة" : "Failed"}
+                      {this.isArabic() ? "حملة" : "Failed"}
                     </span>
                   </span>
                   <span className="nogaPlanner_savedCoursesCounterDetail nogaPlanner_savedCoursesCounterDetail--ongoing">
@@ -5734,6 +7016,17 @@ export default class NogaPlanner extends Component {
               </div>
             </div>
             <div className="nogaPlanner_coursesMiniBar">
+              <button
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
+                onClick={this.togglePlannerSettings}
+                aria-label={
+                  this.isArabic() ? "إعدادات القوائم" : "Select settings"
+                }
+                title={this.isArabic() ? "إعدادات القوائم" : "Select settings"}
+              >
+                <i className="fas fa-sliders-h" aria-hidden="true"></i>
+              </button>
               {shouldShowSelectedCourseLectures ? (
                 <>
                   <button
@@ -5796,18 +7089,10 @@ export default class NogaPlanner extends Component {
                     type="button"
                     className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
                     onClick={this.submitSavedCourseEditor}
-                    disabled={this.state.savedCourse_isSaving}
                     aria-label={this.t("save")}
                     title={this.t("save")}
                   >
-                    <i
-                      className={
-                        this.state.savedCourse_isSaving
-                          ? "fas fa-spinner fa-spin"
-                          : "fas fa-save"
-                      }
-                      aria-hidden="true"
-                    ></i>
+                    <i className="fas fa-save" aria-hidden="true"></i>
                   </button>
                   <button
                     type="button"
@@ -5821,54 +7106,7 @@ export default class NogaPlanner extends Component {
                 </>
               ) : (
                 <>
-                  {shouldShowFloatingCourseRowActions &&
-                  selectedSavedCourseIds.length > 0 ? (
-                    <div className="nogaPlanner_coursesMiniBarGroup nogaPlanner_coursesMiniBarGroup--editDelete">
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
-                        onClick={this.openSelectedSavedCourseLectures}
-                        aria-label={
-                          this.isArabic() ? "فتح المحاضرات" : "Open lectures"
-                        }
-                        title={
-                          this.isArabic() ? "فتح المحاضرات" : "Open lectures"
-                        }
-                      >
-                        <i className="fas fa-book-open" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
-                        onClick={() => this.openSavedCourseEditor("edit")}
-                        disabled={!canEditSelectedCourse}
-                        aria-label={this.isArabic() ? "تعديل" : "Edit"}
-                        title={this.isArabic() ? "تعديل" : "Edit"}
-                      >
-                        <i className="fas fa-pen" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
-                        onClick={this.cloneSelectedSavedCourseToEditor}
-                        disabled={!canEditSelectedCourse}
-                        aria-label={this.isArabic() ? "استنساخ" : "Clone row"}
-                        title={this.isArabic() ? "استنساخ" : "Clone row"}
-                      >
-                        <i className="fas fa-copy" aria-hidden="true"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
-                        onClick={this.deleteSelectedSavedCourse}
-                        disabled={!canDeleteSelectedCourses}
-                        aria-label={this.isArabic() ? "حذف" : "Delete"}
-                        title={this.isArabic() ? "حذف" : "Delete"}
-                      >
-                        <i className="fas fa-trash-alt" aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  ) : selectedDetailsCourse ? (
+                  {selectedDetailsCourse ? (
                     <>
                       <div className="nogaPlanner_coursesMiniBarGroup">
                         <button
@@ -5918,344 +7156,596 @@ export default class NogaPlanner extends Component {
               )}
             </div>
           </div>
-          {savedCourseEditorVisible ? renderSavedCourseEditorPanel() : null}
-          <div
-            className="nogaPlanner_savedCoursesColumnBody"
-            ref={this.savedCoursesColumnBodyRef}
-            onScroll={this.handleSavedCoursesBodyScroll}
-          >
-            {shouldShowSelectedCourseLectures ? (
-              this.renderSelectedCourseLecturesTable()
-            ) : (
-              <table className="nogaPlanner_tabTable nogaPlanner_savedCoursesTable">
-                <thead>
-                  <tr>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_name")
+          {plannerSettingsVisible ? (
+            plannerSettingsPanel
+          ) : (
+            <div className="nogaPlanner_savedCoursesWorkspace">
+              <div className="nogaPlanner_savedCoursesWorkspaceRow">
+                {savedCourseEditorVisible
+                  ? renderSavedCourseEditorPanel()
+                  : null}
+                <div className="nogaPlanner_savedCoursesColumnBody">
+                  {shouldShowSelectedCourseLectures ? (
+                    this.renderSelectedCourseLecturesTable()
+                  ) : (
+                    <div
+                      className="nogaPlanner_savedCoursesTableBodyScroll"
+                      ref={this.savedCoursesColumnBodyRef}
+                      onScroll={this.handleSavedCoursesBodyScroll}
+                    >
+                      <table
+                        className={
+                          "nogaPlanner_tabTable nogaPlanner_savedCoursesTable" +
+                          (shouldBlurUnselectedSavedCourseRows
+                            ? " nogaPlanner_savedCoursesTable--rowFocus"
+                            : "")
                         }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_name");
-                          }
-                        }}
                       >
-                        {renderSavedCourseSortLabel(
-                          "course_name",
-                          this.isArabic() ? "اسم المقرر" : "Course Name",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_class")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_class");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_class",
-                          this.isArabic() ? "نوع المكون" : "Component Class",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_year_term")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_year_term");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_year_term",
-                          this.isArabic()
-                            ? "التوقيت المفترض"
-                            : "Normative Timing",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_status")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_status");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_status",
-                          this.isArabic() ? "الحالة" : "Status",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_year_term")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_year_term");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_year_term",
-                          this.isArabic() ? "التوقيت الحقيقي" : "Actual Timing",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_schedule")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_schedule");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_schedule",
-                          this.isArabic() ? "الجدول" : "Schedule",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_location")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_location");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_location",
-                          this.isArabic() ? "الموقع" : "Location",
-                        )}
-                      </span>
-                    </th>
-                    <th>
-                      <span
-                        className="nogaPlanner_tabTableSortLabel"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          this.handleSavedCourseSort("course_grade")
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            this.handleSavedCourseSort("course_grade");
-                          }
-                        }}
-                      >
-                        {renderSavedCourseSortLabel(
-                          "course_grade",
-                          this.isArabic() ? "الوزن" : "Weight",
-                        )}
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedSavedCourses.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        style={{
-                          textAlign: "center",
-                          opacity: 0.6,
-                          padding: "18px",
-                        }}
-                      >
-                        {isCoursesLoading
-                          ? this.isArabic()
-                            ? "جارٍ تحميل المقررات..."
-                            : "Loading courses..."
-                          : this.isArabic()
-                            ? "لا توجد مقررات محفوظة"
-                            : "No saved courses"}
-                      </td>
-                    </tr>
-                  ) : null}
-                  {sortedSavedCourses.map((course, courseIndex) => {
-                    const courseId = String(course?._id || "").trim();
-                    const courseNameRowSpan =
-                      savedCourseRowSpanByIndex.get(courseIndex) || 0;
-                    const isCourseNameSelected =
-                      selectedSavedCourseIds.includes(courseId) ||
-                      selectedComponentId === courseId ||
-                      selectedDetailsComponentId === courseId;
+                        {this.renderSavedCoursesTableColGroup()}
+                        <thead>
+                          <tr>
+                            <th colSpan={3}>
+                              {this.isArabic() ? "المقرر" : "Course"}
+                            </th>
+                            <th colSpan={9}>
+                              {this.isArabic()
+                                ? "مكوّنات المقرر"
+                                : "Course components"}
+                            </th>
+                          </tr>
+                          <tr>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_name")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort("course_name");
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_name",
+                                  this.isArabic()
+                                    ? "اسم المقرر"
+                                    : "Course Name",
+                                )}
+                              </span>
+                            </th>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_class")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort("course_class");
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_status",
+                                  this.isArabic()
+                                    ? "حالة المقرر"
+                                    : "Course status",
+                                )}
+                              </span>
+                            </th>
+                            <th rowSpan={3}>
+                              {this.isArabic() ? "الوزن الكلي" : "Total weight"}
+                            </th>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_class")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort("course_class");
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_class",
+                                  this.isArabic()
+                                    ? "نوع المكون"
+                                    : "Component Class",
+                                )}
+                              </span>
+                            </th>
+                            <th rowSpan={3}>
+                              {this.isArabic()
+                                ? "حالة المكوّن"
+                                : "Component status"}
+                            </th>
+                            <th colSpan={4}>
+                              {this.isArabic() ? "التوقيت" : "Timing"}
+                            </th>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_schedule")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_schedule",
+                                    );
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_schedule",
+                                  this.isArabic() ? "الجدول" : "Schedule",
+                                )}
+                              </span>
+                            </th>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_location")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_location",
+                                    );
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_location",
+                                  this.isArabic() ? "الموقع" : "Location",
+                                )}
+                              </span>
+                            </th>
+                            <th rowSpan={3}>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_grade")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort("course_grade");
+                                  }
+                                }}
+                              >
+                                {renderSavedCourseSortLabel(
+                                  "course_grade",
+                                  this.isArabic() ? "الوزن" : "Weight",
+                                )}
+                              </span>
+                            </th>
+                          </tr>
+                          <tr>
+                            <th colSpan={2}>
+                              {this.isArabic() ? "المفترض" : "Normative"}
+                            </th>
+                            <th colSpan={2}>
+                              {this.isArabic() ? "الفعلي" : "Actual"}
+                            </th>
+                          </tr>
+                          <tr>
+                            <th>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_year_term")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_year_term",
+                                    );
+                                  }
+                                }}
+                              >
+                                {this.isArabic()
+                                  ? "الفترة السنوية"
+                                  : "Year interval"}
+                              </span>
+                            </th>
+                            <th>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_year_term")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_year_term",
+                                    );
+                                  }
+                                }}
+                              >
+                                {this.isArabic() ? "الفصل" : "Term"}
+                              </span>
+                            </th>
+                            <th>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_year_term")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_year_term",
+                                    );
+                                  }
+                                }}
+                              >
+                                {this.isArabic()
+                                  ? "الفترة السنوية"
+                                  : "Year interval"}
+                              </span>
+                            </th>
+                            <th>
+                              <span
+                                className="nogaPlanner_tabTableSortLabel"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() =>
+                                  this.handleSavedCourseSort("course_year_term")
+                                }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    this.handleSavedCourseSort(
+                                      "course_year_term",
+                                    );
+                                  }
+                                }}
+                              >
+                                {this.isArabic() ? "الفصل" : "Term"}
+                              </span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedSavedCourses.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={12}
+                                style={{
+                                  textAlign: "center",
+                                  opacity: 0.6,
+                                  padding: "18px",
+                                }}
+                              >
+                                {this.isArabic()
+                                  ? "لا توجد مقررات محفوظة"
+                                  : "No saved courses"}
+                              </td>
+                            </tr>
+                          ) : null}
+                          {sortedSavedCourses.map((course) => {
+                            const courseId = String(course?._id || "").trim();
+                            const courseRowSpan =
+                              savedCourseRowSpanById.get(
+                                courseId || buildCourseDuplicateKey(course),
+                              ) || 0;
+                            const mergedCourseCellSelected =
+                              savedCourseGroupSelectedById.get(
+                                courseId || buildCourseDuplicateKey(course),
+                              ) || false;
+                            const isSelected =
+                              selectedSavedCourseIds.includes(courseId) ||
+                              selectedComponentId === courseId ||
+                              selectedDetailsComponentId === courseId;
 
-                    return (
-                      <tr
-                        key={courseId || buildCourseDuplicateKey(course)}
-                        className="nogaPlanner_tabTableRow"
-                        ref={(node) =>
-                          this.setSavedCourseRowRef(courseId, node)
-                        }
-                      >
-                        {courseNameRowSpan > 0 ? (
-                          <td
-                            rowSpan={courseNameRowSpan}
-                            className={
-                              "nogaPlanner_savedCoursesTableCell--merged" +
-                              (isCourseNameSelected
-                                ? " nogaPlanner_savedCoursesTableCell--mergedSelected"
-                                : "")
-                            }
-                            style={getCellAlignmentStyle(course.course_name)}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() =>
-                              this.handleSavedCourseGroupClick(course)
-                            }
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                this.handleSavedCourseGroupClick(course);
-                              }
-                            }}
-                          >
-                            {course.course_name || "-"}
-                          </td>
-                        ) : null}
-                        <td
-                          className="nogaPlanner_savedCoursesTableCell--component"
-                          style={getCellAlignmentStyle(
-                            formatCourseComponentLabel(
-                              course.course_class || course.course_component,
-                              this.isArabic() ? "ar" : "en",
-                            ),
-                          )}
-                        >
-                          {formatCourseComponentLabel(
-                            course.course_class || course.course_component,
-                            this.isArabic() ? "ar" : "en",
-                          ) || "-"}
-                        </td>
-                        <td
-                          style={getCellAlignmentStyle(
-                            formatSavedCourseStatusLabel(
-                              course.course_status || course.status || "",
-                              this.isArabic() ? "ar" : "en",
-                            ),
-                          )}
-                        >
-                          {formatSavedCourseStatusLabel(
-                            course.course_status || course.status || "",
-                            this.isArabic() ? "ar" : "en",
-                          )}
-                        </td>
-                        <td
-                          className="nogaPlanner_tabTableCell--stacked"
-                          style={getCellAlignmentStyle(
-                            formatNormativeTimingDisplay(
-                              course,
-                              this.isArabic() ? "ar" : "en",
-                            ),
-                          )}
-                        >
-                          {formatNormativeTimingDisplay(
-                            course,
-                            this.isArabic() ? "ar" : "en",
-                          )}
-                        </td>
-                        <td
-                          className="nogaPlanner_tabTableCell--stacked"
-                          style={getCellAlignmentStyle(
-                            formatActualTimingDisplay(
-                              course,
-                              this.isArabic() ? "ar" : "en",
-                            ),
-                          )}
-                        >
-                          {formatActualTimingDisplay(
-                            course,
-                            this.isArabic() ? "ar" : "en",
-                          )}
-                        </td>
-                        <td
-                          style={getCellAlignmentStyle(
-                            formatCourseScheduleDisplay(
-                              course.course_dayAndTime,
-                            ),
-                          )}
-                        >
-                          {formatCourseScheduleDisplay(
-                            course.course_dayAndTime,
-                          )}
-                        </td>
-                        <td
-                          style={getCellAlignmentStyle(
-                            formatCourseLocationDisplay(course.course_location),
-                          )}
-                        >
-                          {formatCourseLocationDisplay(course.course_location)}
-                        </td>
-                        <td
-                          style={getCellAlignmentStyle(
-                            course.course_grade
-                              ? `${course.course_grade}/${course.course_weightTotal || "100"}`
-                              : "-",
-                          )}
-                        >
-                          {course.course_grade
-                            ? `${course.course_grade}/${course.course_weightTotal || "100"}`
-                            : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+                            return (
+                              <tr
+                                key={
+                                  courseId || buildCourseDuplicateKey(course)
+                                }
+                                className={
+                                  "nogaPlanner_tabTableRow" +
+                                  (isSelected ? " selected" : "")
+                                }
+                                ref={(node) =>
+                                  this.setSavedCourseRowRef(courseId, node)
+                                }
+                                onClick={() =>
+                                  this.handleSavedCourseGroupClick(course)
+                                }
+                              >
+                                {courseRowSpan > 0 ? (
+                                  <td
+                                    rowSpan={courseRowSpan}
+                                    className={
+                                      "nogaPlanner_savedCoursesTableCell--merged" +
+                                      (mergedCourseCellSelected
+                                        ? " nogaPlanner_savedCoursesTableCell--mergedSelected"
+                                        : "")
+                                    }
+                                    style={getCellAlignmentStyle(
+                                      course.course_name,
+                                    )}
+                                  >
+                                    {course.course_name || "-"}
+                                  </td>
+                                ) : null}
+                                {courseRowSpan > 0 ? (
+                                  <td
+                                    rowSpan={courseRowSpan}
+                                    className={
+                                      "nogaPlanner_savedCoursesTableCell--merged" +
+                                      (mergedCourseCellSelected
+                                        ? " nogaPlanner_savedCoursesTableCell--mergedSelected"
+                                        : "")
+                                    }
+                                    style={getCellAlignmentStyle(
+                                      formatPlannerStatusLabel(
+                                        course.course_status,
+                                        this.isArabic() ? "ar" : "en",
+                                      ),
+                                    )}
+                                  >
+                                    {formatPlannerStatusLabel(
+                                      course.course_status,
+                                      this.isArabic() ? "ar" : "en",
+                                    )}
+                                  </td>
+                                ) : null}
+                                {courseRowSpan > 0 ? (
+                                  <td
+                                    rowSpan={courseRowSpan}
+                                    className={
+                                      "nogaPlanner_savedCoursesTableCell--merged" +
+                                      (mergedCourseCellSelected
+                                        ? " nogaPlanner_savedCoursesTableCell--mergedSelected"
+                                        : "")
+                                    }
+                                    style={getCellAlignmentStyle(
+                                      course.course_totalWeight || "-",
+                                    )}
+                                  >
+                                    {course.course_totalWeight || "-"}
+                                  </td>
+                                ) : null}
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatCourseComponentLabel(
+                                      course.course_class ||
+                                        course.course_component,
+                                      this.isArabic() ? "ar" : "en",
+                                    ),
+                                  )}
+                                >
+                                  {formatCourseComponentLabel(
+                                    course.course_class ||
+                                      course.course_component,
+                                    this.isArabic() ? "ar" : "en",
+                                  ) || "-"}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatPlannerStatusLabel(
+                                      course.component_status,
+                                      this.isArabic() ? "ar" : "en",
+                                    ),
+                                  )}
+                                >
+                                  {formatPlannerStatusLabel(
+                                    course.component_status,
+                                    this.isArabic() ? "ar" : "en",
+                                  )}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    course.normativeCourseYearInterval || "-",
+                                  )}
+                                >
+                                  {course.normativeCourseYearInterval || "-"}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatAcademicTermDisplay(
+                                      course.normativeCourseTerm,
+                                      this.isArabic() ? "ar" : "en",
+                                    ),
+                                  )}
+                                >
+                                  {formatAcademicTermDisplay(
+                                    course.normativeCourseTerm,
+                                    this.isArabic() ? "ar" : "en",
+                                  )}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    course.actualCourseYearInterval ||
+                                      course.course_year ||
+                                      "-",
+                                  )}
+                                >
+                                  {course.actualCourseYearInterval ||
+                                    course.course_year ||
+                                    "-"}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatAcademicTermDisplay(
+                                      course.actualCourseTerm ||
+                                        course.course_term,
+                                      this.isArabic() ? "ar" : "en",
+                                    ),
+                                  )}
+                                >
+                                  {formatAcademicTermDisplay(
+                                    course.actualCourseTerm ||
+                                      course.course_term,
+                                    this.isArabic() ? "ar" : "en",
+                                  )}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatCourseScheduleDisplay(
+                                      course.course_dayAndTime,
+                                    ),
+                                  )}
+                                >
+                                  {formatCourseScheduleDisplay(
+                                    course.course_dayAndTime,
+                                  )}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    formatCourseLocationDisplay(
+                                      course.course_location,
+                                    ),
+                                  )}
+                                >
+                                  {formatCourseLocationDisplay(
+                                    course.course_location,
+                                  )}
+                                </td>
+                                <td
+                                  style={getCellAlignmentStyle(
+                                    course.course_grade || "-",
+                                  )}
+                                >
+                                  {course.course_grade || "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {shouldShowFloatingCourseRowActions &&
+          savedCourseFloatingBarPosition ? (
+            <div className="nogaPlanner_savedCoursesFloatingBarPortal">
+              <div
+                className="nogaPlanner_rowFloatingMiniBar"
+                style={savedCourseFloatingBarPosition}
+              >
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    this.openSelectedSavedCourseLectures();
+                  }}
+                  aria-label={
+                    this.isArabic() ? "فتح المحاضرات" : "Open lectures"
+                  }
+                  title={this.isArabic() ? "فتح المحاضرات" : "Open lectures"}
+                >
+                  <i className="fas fa-book-open" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    this.openSavedCourseEditor("edit");
+                  }}
+                  disabled={!canEditSelectedCourse}
+                  aria-label={this.isArabic() ? "تعديل" : "Edit"}
+                  title={this.isArabic() ? "تعديل" : "Edit"}
+                >
+                  <i className="fas fa-pen" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    this.cloneSelectedSavedCourseToEditor();
+                  }}
+                  disabled={!canEditSelectedCourse}
+                  aria-label={this.isArabic() ? "استنساخ" : "Clone row"}
+                  title={this.isArabic() ? "استنساخ" : "Clone row"}
+                >
+                  <i className="fas fa-copy" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--iconOnly"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    this.deleteSelectedSavedCourse();
+                  }}
+                  disabled={!canDeleteSelectedCourses}
+                  aria-label={this.isArabic() ? "حذف" : "Delete"}
+                  title={this.isArabic() ? "حذف" : "Delete"}
+                >
+                  <i className="fas fa-trash-alt" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     );
@@ -6276,7 +7766,6 @@ export default class NogaPlanner extends Component {
     );
     const sortedExamRows = this.getSortedExamBoardRows(examRows);
     const {
-      course_isLoading,
       examBoardSortKey,
       examBoardSortDirection,
       show_addExamForm,
@@ -6389,14 +7878,12 @@ export default class NogaPlanner extends Component {
                   }
                 >
                   <option value="">{this.isArabic() ? "الفصل" : "Term"}</option>
-                  {TERM_OPTIONS.map((optionValue) => (
+                  {termOptions.map((optionValue) => (
                     <option
-                      key={`exam-normative-${optionValue.value}`}
-                      value={optionValue.value}
+                      key={`exam-normative-${optionValue}`}
+                      value={optionValue}
                     >
-                      {this.isArabic()
-                        ? optionValue.labelAr
-                        : optionValue.labelEn}
+                      {optionValue}
                     </option>
                   ))}
                 </select>
@@ -6432,7 +7919,7 @@ export default class NogaPlanner extends Component {
                   <option value="">
                     {this.isArabic() ? "الفترة" : "Interval"}
                   </option>
-                  {ACADEMIC_YEAR_OPTIONS.map((optionValue) => (
+                  {academicYearOptions.map((optionValue) => (
                     <option
                       key={`exam-actual-${optionValue}`}
                       value={optionValue}
@@ -6452,14 +7939,12 @@ export default class NogaPlanner extends Component {
                   }
                 >
                   <option value="">{this.isArabic() ? "الفصل" : "Term"}</option>
-                  {TERM_OPTIONS.map((optionValue) => (
+                  {termOptions.map((optionValue) => (
                     <option
-                      key={`exam-actual-term-${optionValue.value}`}
-                      value={optionValue.value}
+                      key={`exam-actual-term-${optionValue}`}
+                      value={optionValue}
                     >
-                      {this.isArabic()
-                        ? optionValue.labelAr
-                        : optionValue.labelEn}
+                      {optionValue}
                     </option>
                   ))}
                 </select>
@@ -6952,123 +8437,94 @@ export default class NogaPlanner extends Component {
             <thead>
               <tr>
                 <th>
-                  <span
-                    className="nogaPlanner_tabTableSortLabel"
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
                     onClick={() => this.handleExamBoardSort("course_name")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        this.handleExamBoardSort("course_name");
-                      }
-                    }}
                   >
                     {renderExamBoardSortLabel(
                       "course_name",
                       this.isArabic() ? "المقرر" : "Course",
                     )}
-                  </span>
+                  </button>
                 </th>
                 <th>
-                  <span
-                    className="nogaPlanner_tabTableSortLabel"
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
                     onClick={() => this.handleExamBoardSort("type")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        this.handleExamBoardSort("type");
-                      }
-                    }}
                   >
                     {renderExamBoardSortLabel(
                       "type",
                       this.isArabic() ? "النوع" : "Type",
                     )}
-                  </span>
+                  </button>
                 </th>
                 <th>
-                  <span
-                    className="nogaPlanner_tabTableSortLabel"
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
                     onClick={() => this.handleExamBoardSort("time")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        this.handleExamBoardSort("time");
-                      }
-                    }}
                   >
                     {renderExamBoardSortLabel(
                       "time",
                       this.isArabic() ? "التوقيت" : "Timing",
                     )}
-                  </span>
+                  </button>
                 </th>
                 <th>
-                  <span
-                    className="nogaPlanner_tabTableSortLabel"
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
                     onClick={() => this.handleExamBoardSort("location")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        this.handleExamBoardSort("location");
-                      }
-                    }}
                   >
                     {renderExamBoardSortLabel(
                       "location",
                       this.isArabic() ? "الموقع" : "Location",
                     )}
-                  </span>
+                  </button>
                 </th>
-                <th>{this.isArabic() ? "المحاضرات" : "Lectures"}</th>
                 <th>
-                  <span
-                    className="nogaPlanner_tabTableSortLabel"
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
+                    onClick={() => this.handleExamBoardSort("volume")}
+                  >
+                    {renderExamBoardSortLabel(
+                      "volume",
+                      this.isArabic() ? "الحجم" : "Volume",
+                    )}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="nogaPlanner_tabTableSortButton"
                     onClick={() => this.handleExamBoardSort("weight")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        this.handleExamBoardSort("weight");
-                      }
-                    }}
                   >
                     {renderExamBoardSortLabel(
                       "weight",
                       this.isArabic() ? "الوزن" : "Weight",
                     )}
-                  </span>
+                  </button>
                 </th>
                 <th>{this.isArabic() ? "النجاح" : "Pass grade"}</th>
                 <th>{this.isArabic() ? "العلامة" : "Grade"}</th>
+                <th>{this.isArabic() ? "التوصية" : "Recommendation"}</th>
               </tr>
             </thead>
             <tbody>
               {sortedExamRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     style={{
                       textAlign: "center",
                       opacity: 0.6,
                       padding: "18px",
                     }}
                   >
-                    {course_isLoading
-                      ? this.isArabic()
-                        ? "جارٍ تحميل الامتحانات..."
-                        : "Loading exams..."
-                      : this.isArabic()
-                        ? "لا توجد امتحانات"
-                        : "No exams"}
+                    {this.isArabic() ? "لا توجد امتحانات" : "No exams"}
                   </td>
                 </tr>
               ) : (
@@ -7080,7 +8536,7 @@ export default class NogaPlanner extends Component {
                       (String(course?._id || "").trim() ===
                         String(selected_course_id || "").trim() &&
                       examIndex === selected_exam_index
-                        ? " selected"
+                        ? " nogaPlanner_tabTableRow--active"
                         : "")
                     }
                     onClick={() =>
@@ -7124,28 +8580,10 @@ export default class NogaPlanner extends Component {
                     </td>
                     <td
                       style={getCellAlignmentStyle(
-                        Array.isArray(examEntry?.lectures) &&
-                          examEntry.lectures.length > 0
-                          ? examEntry.lectures
-                              .map((lectureId) =>
-                                this.getLectureLabelById(lectureId),
-                              )
-                              .join(" | ")
-                          : "-",
+                        formatExamVolumeDisplay(examEntry),
                       )}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        this.openExamLectures(course, examEntry);
-                      }}
                     >
-                      {Array.isArray(examEntry?.lectures) &&
-                      examEntry.lectures.length > 0
-                        ? examEntry.lectures
-                            .map((lectureId) =>
-                              this.getLectureLabelById(lectureId),
-                            )
-                            .join(" | ")
-                        : "-"}
+                      {formatExamVolumeDisplay(examEntry)}
                     </td>
                     <td
                       style={getCellAlignmentStyle(
@@ -7167,6 +8605,19 @@ export default class NogaPlanner extends Component {
                       )}
                     >
                       {formatExamGradeDisplay(examEntry?.grade || {})}
+                    </td>
+                    <td
+                      style={getCellAlignmentStyle(
+                        formatExamRecommendationDisplay(
+                          examEntry,
+                          this.isArabic() ? "ar" : "en",
+                        ),
+                      )}
+                    >
+                      {formatExamRecommendationDisplay(
+                        examEntry,
+                        this.isArabic() ? "ar" : "en",
+                      )}
                     </td>
                   </tr>
                 ))
@@ -7206,3 +8657,8 @@ export default class NogaPlanner extends Component {
     );
   }
 }
+
+export const getPlannerMusicSnapshot = () => ({});
+export const playNextSharedPlannerMusicTrack = () => {};
+export const playPreviousSharedPlannerMusicTrack = () => {};
+export const toggleSharedPlannerMusic = () => {};
