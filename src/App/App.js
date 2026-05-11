@@ -145,6 +145,7 @@ class App extends React.Component {
         openai: "checking",
         groq: "checking",
         gemini: "checking",
+        kimi: "checking",
         telegram: "checking",
         cloudinary: "checking",
       },
@@ -414,6 +415,9 @@ class App extends React.Component {
             gemini: String(payload?.ai?.gemini || "offline")
               .trim()
               .toLowerCase(),
+            kimi: String(payload?.ai?.kimi || "offline")
+              .trim()
+              .toLowerCase(),
             telegram: String(payload?.ai?.telegram || "offline")
               .trim()
               .toLowerCase(),
@@ -434,6 +438,7 @@ class App extends React.Component {
             openai: "offline",
             groq: "offline",
             gemini: "offline",
+            kimi: "offline",
             telegram: "offline",
             cloudinary: "offline",
           },
@@ -1985,7 +1990,7 @@ class App extends React.Component {
         university: String(nextInfo?.university || "").trim(),
         studyYear: String(nextInfo?.studyYear || "").trim(),
         term: String(nextInfo?.term || "").trim(),
-        aiProvider: ["openai", "groq", "gemini"].includes(
+        aiProvider: ["openai", "groq", "gemini", "kimi"].includes(
           String(nextInfo?.aiProvider || "")
             .trim()
             .toLowerCase(),
@@ -2112,7 +2117,7 @@ class App extends React.Component {
   };
 
   setSelectedAiProvider = (provider) => {
-    const nextProvider = ["openai", "groq", "gemini"].includes(
+    const nextProvider = ["openai", "groq", "gemini", "kimi"].includes(
       String(provider || "")
         .trim()
         .toLowerCase(),

@@ -2136,7 +2136,7 @@ const TelegramControlPage = ({ state, memory }) => {
       .trim()
       .toLowerCase();
 
-    return ["openai", "groq", "gemini"].includes(normalizedProvider)
+    return ["openai", "groq", "gemini", "kimi"].includes(normalizedProvider)
       ? normalizedProvider
       : "openai";
   }, [state?.aiProvider]);

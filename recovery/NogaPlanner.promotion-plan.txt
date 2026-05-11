@@ -1,0 +1,48 @@
+Promotion plan
+
+live_jsx: E:\mctosh\sample1front\src\NogaPlan\NogaPlanner.jsx
+candidate_jsx: E:\mctosh\sample1front\recovery\NogaPlanner.merge-candidate-5.jsx
+live_css: E:\mctosh\sample1front\src\NogaPlan\nogaPlanner.css
+candidate_css: E:\mctosh\sample1front\recovery\nogaPlanner.merge-candidate-1.css
+
+summary:
+- CSS candidate is identical to live CSS. No CSS promotion is needed.
+- JSX candidate is structurally very different from live JSX and should not be promoted wholesale without validation.
+
+jsx_diff_stat:
+- 12362 insertions
+- 8673 deletions
+
+candidate_contains_planner_cluster:
+- persistPlannerSelectSettings
+- handlePlannerFieldDefaultChange
+- handlePlannerSettingsRelationshipDraftChange
+- openSelectedSavedCourseLectures
+- renderSavedCoursesColumn
+
+candidate_preserves_baseline_cluster_missing_from_live:
+- renderCoursesLecturesTabs
+- handlePlannerBrowserBack
+- openAddCourseForm
+- retrieveCourses
+- submitAddCourseForm
+
+live_only_cluster_missing_from_candidate:
+- planner settings list UI helpers
+- inline component / inline lecture helpers
+- saved-course floating bar helpers
+- exam board sort helpers
+- lecture sort helpers
+
+promotion_recommendation:
+1. Do not overwrite live JSX with the candidate as a single step.
+2. Keep live CSS as-is; no action required.
+3. For JSX, use the candidate as a donor file and merge in this order:
+   a. preserve live planner-settings list helpers
+   b. preserve live inline component / inline lecture helpers
+   c. preserve live saved-course floating-bar helpers
+   d. then validate recovered baseline cluster from candidate
+4. After each merge slice, run a parse/build check before the next slice.
+
+best_next_step:
+- build a promotion patch that keeps the current live-only planner helpers and adds only the missing baseline cluster from the candidate.

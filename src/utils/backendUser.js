@@ -176,6 +176,11 @@ export const normalizeMemoryPayload = (payload) => {
     planner?.studyPlanAid && typeof planner.studyPlanAid === "object"
       ? planner.studyPlanAid
       : {};
+  const moaEntries = Array.isArray(memory?.MOA) ? memory.MOA : [];
+  const telegramFromMoa =
+    moaEntries.find(
+      (entry) => entry?.telegram && typeof entry.telegram === "object",
+    )?.telegram || null;
 
   if (!memory || typeof memory !== "object") {
     return {
@@ -209,6 +214,8 @@ export const normalizeMemoryPayload = (payload) => {
     telegram:
       memory.telegram && typeof memory.telegram === "object"
         ? memory.telegram
+        : telegramFromMoa && typeof telegramFromMoa === "object"
+          ? telegramFromMoa
         : {},
   };
 };

@@ -1,0 +1,63 @@
+skip const getDefaultSavedCourseDraft: top-level const not found: getDefaultSavedCourseDraft
+skip const getSafePlannerCourses: top-level const not found: getSafePlannerCourses
+skip const formatCourseLocationDisplay: top-level const not found: formatCourseLocationDisplay
+skip const getPlannerTermRank: top-level const not found: getPlannerTermRank
+skip const getAcademicYearSortValue: top-level const not found: getAcademicYearSortValue
+skip const normalizeProgramYearValue: top-level const not found: normalizeProgramYearValue
+skip const getProgramYearSortValue: top-level const not found: getProgramYearSortValue
+skip const getComparableProgramYearNumber: top-level const not found: getComparableProgramYearNumber
+skip const formatPlannerStatusLabel: top-level const not found: formatPlannerStatusLabel
+skip const formatCourseComponentLabel: top-level const not found: formatCourseComponentLabel
+skip const formatPlannerTextList: top-level const not found: formatPlannerTextList
+skip const buildSavedCourseComponentEntryFromDraft: top-level const not found: buildSavedCourseComponentEntryFromDraft
+skip const buildExamDraftFromEntry: top-level const not found: buildExamDraftFromEntry
+skip const buildExamEntryFromDraft: top-level const not found: buildExamEntryFromDraft
+skip const formatExamTimingDisplay: top-level const not found: formatExamTimingDisplay
+skip const formatExamVolumeDisplay: top-level const not found: formatExamVolumeDisplay
+skip const formatExamWeightDisplay: top-level const not found: formatExamWeightDisplay
+skip const formatExamGradeDisplay: top-level const not found: formatExamGradeDisplay
+skip const formatExamRecommendationDisplay: top-level const not found: formatExamRecommendationDisplay
+skip const buildAcademicYearOptions: top-level const not found: buildAcademicYearOptions
+skip const normalizeAcademicYearValue: top-level const not found: normalizeAcademicYearValue
+skip const formatAcademicTermDisplay: top-level const not found: formatAcademicTermDisplay
+skip const formatAcademicYearAndTerm: top-level const not found: formatAcademicYearAndTerm
+skip const normalizePlannerSettingsStringList: top-level const not found: normalizePlannerSettingsStringList
+skip const normalizePlannerSelectSettings: top-level const not found: normalizePlannerSelectSettings
+skip const readPlannerSelectSettingsFromStorage: top-level const not found: readPlannerSelectSettingsFromStorage
+skip const formatSavedCourseTitle: top-level const not found: formatSavedCourseTitle
+skip const formatSavedCourseComponent: top-level const not found: formatSavedCourseComponent
+skip const buildCourseComponentPickerLabel: top-level const not found: buildCourseComponentPickerLabel
+skip const buildCourseLectureMatchLabel: top-level const not found: buildCourseLectureMatchLabel
+skip method constructor: class NogaPlanner not found
+skip method componentDidMount: class NogaPlanner not found
+skip method componentDidUpdate: class NogaPlanner not found
+skip method componentWillUnmount: class NogaPlanner not found
+skip method persistPlannerSelectSettings: class NogaPlanner not found
+skip method getPlannerRelationshipForClass: class NogaPlanner not found
+skip method applyPlannerRelationshipToSavedCourseDraft: class NogaPlanner not found
+skip method buildSavedCourseDraftWithPlannerSettings: class NogaPlanner not found
+skip method getLockedSavedCourseDraftFields: class NogaPlanner not found
+skip method updatePlannerSelectSettings: class NogaPlanner not found
+skip method handlePlannerFieldDefaultChange: class NogaPlanner not found
+skip method handlePlannerSettingsRelationshipDraftChange: class NogaPlanner not found
+skip method submitPlannerSettingsRelationship: class NogaPlanner not found
+skip method editPlannerSettingsRelationship: class NogaPlanner not found
+skip method deletePlannerSettingsRelationship: class NogaPlanner not found
+skip method handleSavedCourseDraftChange: class NogaPlanner not found
+skip method appendSavedCourseScheduleEntry: class NogaPlanner not found
+skip method appendSavedCourseComponentEntry: class NogaPlanner not found
+skip method removeSavedCourseComponentEntry: class NogaPlanner not found
+skip method removeSavedCourseScheduleEntry: class NogaPlanner not found
+skip method openSavedCourseEditor: class NogaPlanner not found
+skip method cloneSelectedSavedCourseToEditor: class NogaPlanner not found
+skip method closeSavedCourseEditor: class NogaPlanner not found
+skip method openSelectedSavedCourseLectures: class NogaPlanner not found
+skip method handleSavedCourseSort: class NogaPlanner not found
+skip method getSortedSavedCourses: class NogaPlanner not found
+skip method renderSelectedCourseLecturesTable: class NogaPlanner not found
+skip method handleExamDraftChange: class NogaPlanner not found
+skip method toggleExamDraftLectureId: class NogaPlanner not found
+skip method getExamLectureOptionsForCourse: class NogaPlanner not found
+skip method renderSavedCoursesColumn: class NogaPlanner not found
+
+parse: parse ok

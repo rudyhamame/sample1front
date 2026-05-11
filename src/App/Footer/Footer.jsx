@@ -26,9 +26,6 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     currentPath === "/phenomed/home" || currentPath === "/phenomed/home/";
   const isTelegramControlRoute =
     currentPath === "/phenomed/telegram-control";
-  const isArabicSchoolPlannerRoute =
-    currentPath === "/phenomed/schoolplanner/ar" ||
-    currentPath === "/phenomed/nogaplan";
   const isNogaPlanRoute =
     typeof window !== "undefined" &&
     (window.location.pathname.includes("/phenomed/schoolplanner/nogaplan") ||
@@ -36,8 +33,10 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   const normalizedUsername = String(appState.username || "").toLowerCase();
   const isNaghamNogaFooter =
     isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
+  const isNogaFooterThemeRoute =
+    isHomeNogaFooterRoute || isNogaPlanRoute || isNaghamNogaFooter;
   const footerThemeClass = [
-    isHomeNogaFooterRoute || isNaghamNogaFooter
+    isNogaFooterThemeRoute
       ? "server_answer--noga"
       : isHomeFooterRoute
         ? "server_answer--home"
@@ -98,19 +97,6 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     onSelectProvider: onSetSelectedAiProvider,
   };
 
-  const openArabicSchoolPlanner = () => {
-    if (typeof window === "undefined" || isArabicSchoolPlannerRoute) {
-      return;
-    }
-
-    const arabicTargetPath = currentPath.includes(
-      "/phenomed/schoolplanner/nogaplan",
-    )
-      ? "/phenomed/nogaplan"
-      : "/phenomed/schoolplanner/ar";
-
-    window.location.assign(arabicTargetPath);
-  };
 
   React.useEffect(() => {
     if (typeof document === "undefined") {
@@ -224,50 +210,54 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
       id="server_answer"
       className={`${appState.has_active_server_reply ? "server_answer--active " : ""}${footerThemeClass}`.trim()}
     >
-      <SubApps
-        subApps={footerSubApps}
-        startActions={footerStartActions}
-        placement="footer"
-        authToken={appState.token}
-        appHealth={{ rows: appHealthRows }}
-        aiControl={aiControl}
-      />
-      {isHomeNogaVideoMinimized ? (
-        <div className="SubApps_minimizedWindows fr">
-          <button
-            type="button"
-            className="SubApps_minimizedWindowButton"
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                  new CustomEvent("home-noga-video-window-restore"),
-                );
-              }
-            }}
-            title="Restore video player"
+      <div id="server_answer_mainCluster">
+        <SubApps
+          subApps={footerSubApps}
+          startActions={footerStartActions}
+          placement="footer"
+          authToken={appState.token}
+          appHealth={{ rows: appHealthRows }}
+          aiControl={aiControl}
+        />
+        {isHomeNogaVideoMinimized ? (
+          <div className="SubApps_minimizedWindows fr">
+            <button
+              type="button"
+              className="SubApps_minimizedWindowButton"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("home-noga-video-window-restore"),
+                  );
+                }
+              }}
+              title="Restore video player"
+            >
+              <i className="fas fa-film"></i>
+              <span>Video</span>
+            </button>
+          </div>
+        ) : null}
+        <div id="server_answer_wrapper">
+          <span
+            id="server_answer_light"
+            className={
+              appState.has_active_server_reply ? "server_answer_light--active" : ""
+            }
+            aria-hidden="true"
+          ></span>
+          <p
+            id="server_answer_message"
+            className={
+              appState.server_answer === "NO NEW SERVER REPLY"
+                ? "server_answer_message--idle"
+                : ""
+            }
           >
-            <i className="fas fa-film"></i>
-            <span>Video</span>
-          </button>
+            {appState.server_answer}
+          </p>
         </div>
-      ) : null}
-      <span
-        id="server_answer_light"
-        className={
-          appState.has_active_server_reply ? "server_answer_light--active" : ""
-        }
-        aria-hidden="true"
-      ></span>
-      <p
-        id="server_answer_message"
-        className={
-          appState.server_answer === "NO NEW SERVER REPLY"
-            ? "server_answer_message--idle"
-            : ""
-        }
-      >
-        {appState.server_answer}
-      </p>
+      </div>
       <div
         id="server_answer_musicPlayer"
         className={
@@ -332,16 +322,6 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
           </span>
         </div>
       </div>
-      <button
-        type="button"
-        className={`server_answer_locale_button${isArabicSchoolPlannerRoute ? " server_answer_locale_button--active" : ""}`}
-        onClick={openArabicSchoolPlanner}
-        aria-label="Open Arabic School Planner"
-        title="Arabic School Planner"
-        disabled={isArabicSchoolPlannerRoute}
-      >
-        Ar
-      </button>
     </footer>
   );
 };

@@ -1,0 +1,2780 @@
+﻿:root {
+  --nogaPlanner-font-family: "Noto Sans Arabic", "Noto Naskh Arabic", "Segoe UI", sans-serif;
+  --nogaPlanner-action-chip-width: 138px;
+  --nogaPlanner-action-chip-height: 38px;
+  --nogaPlanner-button-height-sm: 30px;
+  --nogaPlanner-button-height-md: 34px;
+  --nogaPlanner-button-height-lg: 38px;
+  --nogaPlanner-button-padding-x: 12px;
+  --nogaPlanner-button-radius-pill: 999px;
+  --nogaPlanner-icon-button-size: 36px;
+  --nogaPlanner-radius-xs: 12px;
+  --nogaPlanner-radius-sm: 18px;
+  --nogaPlanner-radius-md: 24px;
+  --nogaPlanner-radius-lg: 32px;
+  --nogaPlanner-shadow-soft: 0 16px 38px rgba(118, 64, 53, 0.14);
+  --nogaPlanner-shadow-panel:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 24px 50px rgba(118, 64, 53, 0.16);
+  --nogaPlanner-shadow-dark:
+    inset 0 1px 0 rgba(196, 230, 236, 0.08),
+    0 20px 42px rgba(0, 0, 0, 0.34);
+  --nogaPlanner-day-bg-start: #fff7f3;
+  --nogaPlanner-day-bg-mid: #fdeae5;
+  --nogaPlanner-day-bg-end: #f8dfd9;
+  --nogaPlanner-day-panel-start: rgba(251, 233, 225, 0.98);
+  --nogaPlanner-day-panel-end: rgba(238, 198, 183, 0.94);
+  --nogaPlanner-day-card-start: rgba(255, 249, 246, 0.94);
+  --nogaPlanner-day-card-end: rgba(248, 225, 216, 0.9);
+  --nogaPlanner-day-card-strong-start: rgba(244, 206, 191, 0.96);
+  --nogaPlanner-day-card-strong-end: rgba(231, 171, 154, 0.92);
+  --nogaPlanner-day-border: rgba(186, 99, 82, 0.24);
+  --nogaPlanner-day-border-strong: rgba(186, 99, 82, 0.4);
+  --nogaPlanner-day-ink: #4f2b23;
+  --nogaPlanner-day-heading: #5a3128;
+  --nogaPlanner-day-subtle: rgba(79, 43, 35, 0.78);
+  --nogaPlanner-day-accent: #e09080;
+  --nogaPlanner-day-accent-strong: #d27767;
+  --nogaPlanner-day-pill: rgba(255, 247, 242, 0.84);
+  --nogaPlanner-day-chip-text: #5f352c;
+  --nogaPlanner-day-input-bg: rgba(255, 255, 255, 0.76);
+  --nogaPlanner-day-input-border: rgba(189, 120, 102, 0.24);
+  --nogaPlanner-day-overlay: rgba(115, 64, 55, 0.2);
+  --nogaPlanner-day-bg-overlay-start: rgba(246, 222, 217, 0.84);
+  --nogaPlanner-day-bg-overlay-end: rgba(255, 255, 255, 0.74);
+  --nogaPlanner-day-bg-image: url("/img/NogaPlannerBG.png");
+}
+
+#nogaPlanner_article {
+  --nogaPlanner-page-bg-start: var(--nogaPlanner-day-bg-start);
+  --nogaPlanner-page-bg-mid: var(--nogaPlanner-day-bg-mid);
+  --nogaPlanner-page-bg-end: var(--nogaPlanner-day-bg-end);
+  --nogaPlanner-panel-start: var(--nogaPlanner-day-panel-start);
+  --nogaPlanner-panel-end: var(--nogaPlanner-day-panel-end);
+  --nogaPlanner-card-start: var(--nogaPlanner-day-card-start);
+  --nogaPlanner-card-end: var(--nogaPlanner-day-card-end);
+  --nogaPlanner-card-strong-start: var(--nogaPlanner-day-card-strong-start);
+  --nogaPlanner-card-strong-end: var(--nogaPlanner-day-card-strong-end);
+  --nogaPlanner-border: var(--nogaPlanner-day-border);
+  --nogaPlanner-border-strong: var(--nogaPlanner-day-border-strong);
+  --nogaPlanner-ink: var(--nogaPlanner-day-ink);
+  --nogaPlanner-heading: var(--nogaPlanner-day-heading);
+  --nogaPlanner-subtle: var(--nogaPlanner-day-subtle);
+  --nogaPlanner-accent: var(--nogaPlanner-day-accent);
+  --nogaPlanner-accent-strong: var(--nogaPlanner-day-accent-strong);
+  --nogaPlanner-pill: var(--nogaPlanner-day-pill);
+  --nogaPlanner-chip-text: var(--nogaPlanner-day-chip-text);
+  --nogaPlanner-input-bg: var(--nogaPlanner-day-input-bg);
+  --nogaPlanner-input-border: var(--nogaPlanner-day-input-border);
+  --nogaPlanner-overlay: var(--nogaPlanner-day-overlay);
+  --nogaPlanner-bg-overlay-start: var(--nogaPlanner-day-bg-overlay-start);
+  --nogaPlanner-bg-overlay-end: var(--nogaPlanner-day-bg-overlay-end);
+  --nogaPlanner-bg-image: var(--nogaPlanner-day-bg-image);
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background-color: var(--nogaPlanner-page-bg-mid);
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--nogaPlanner-bg-overlay-start),
+      var(--nogaPlanner-bg-overlay-end)
+    ),
+    var(--nogaPlanner-bg-image);
+  background-position: center, center;
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 420px auto;
+  font-family: var(--nogaPlanner-font-family);
+  color: var(--nogaPlanner-ink);
+  isolation: isolate;
+}
+
+#nogaPlanner_article *:not(i):not(.fa):not(.fas):not(.far):not(.fab):not([class*="fa-"]) {
+  font-family: var(--nogaPlanner-font-family) !important;
+}
+
+#nogaPlanner_article::before {
+  content: none;
+}
+
+#nogaPlanner_article > * {
+  position: relative;
+  z-index: 1;
+}
+
+#nogaPlanner_article *,
+#nogaPlanner_article *::before,
+#nogaPlanner_article *::after {
+  box-sizing: border-box;
+}
+
+#nogaPlanner_article ul {
+  list-style: none;
+}
+
+#nogaPlanner_article input,
+#nogaPlanner_article select,
+#nogaPlanner_article textarea {
+  width: 100%;
+  min-width: 0;
+  background: var(--nogaPlanner-input-bg);
+  color: var(--nogaPlanner-ink);
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+#nogaPlanner_article input::placeholder,
+#nogaPlanner_article textarea::placeholder {
+  color: var(--nogaPlanner-subtle);
+}
+
+#nogaPlanner_article input:focus,
+#nogaPlanner_article select:focus,
+#nogaPlanner_article textarea:focus {
+  border-color: var(--nogaPlanner-accent);
+  box-shadow: 0 0 0 3px rgba(224, 144, 128, 0.16);
+}
+
+#nogaPlanner_article.nogaPlanner--arabic {
+  text-align: right;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic h1,
+#nogaPlanner_article.nogaPlanner--arabic h2,
+#nogaPlanner_article.nogaPlanner--arabic h3,
+#nogaPlanner_article.nogaPlanner--arabic strong,
+#nogaPlanner_article.nogaPlanner--arabic button,
+#nogaPlanner_article.nogaPlanner--arabic label,
+#nogaPlanner_article.nogaPlanner--arabic select,
+#nogaPlanner_article.nogaPlanner--arabic input {
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_homeSoulEyebrow,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_homeSoulTitle,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_homeSoulSubtitle,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_courses_sectionTitle,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_lectures_tableLabels_div th {
+  letter-spacing: 0;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_tabTable th,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_tabTableSortLabel {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+#nogaPlanner_article button,
+.nogaPlanner_telegramSendButton,
+#nogaPlanner_addLecture_div label,
+#nogaPlanner_addLecture_div [role="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  min-height: var(--nogaPlanner-button-height-md);
+  padding: 0 var(--nogaPlanner-button-padding-x);
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-strong-start) 0%,
+    var(--nogaPlanner-card-strong-end) 100%
+  );
+  color: var(--nogaPlanner-chip-text);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+  box-shadow: 0 10px 24px rgba(118, 64, 53, 0.12);
+}
+
+#nogaPlanner_article button:hover,
+.nogaPlanner_telegramSendButton:hover,
+#nogaPlanner_addLecture_div label:hover,
+#nogaPlanner_addLecture_div [role="button"]:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.05);
+}
+
+#nogaPlanner_article button:disabled,
+.nogaPlanner_telegramSendButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nogaPlanner_wrapperTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(203, 150, 135, 0.28);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 244, 239, 0.58)),
+    linear-gradient(135deg, rgba(245, 214, 204, 0.5), rgba(255, 247, 244, 0.18));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 12px 28px rgba(137, 83, 69, 0.1);
+  backdrop-filter: blur(12px) saturate(1.02);
+}
+
+.nogaPlanner_wrapperTabsGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nogaPlanner_wrapperTabsAside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline-start: 8px;
+  margin-inline-start: 2px;
+  border-inline-start: 1px solid rgba(203, 150, 135, 0.28);
+}
+
+.nogaPlanner_wrapperTabBtn {
+  min-height: var(--nogaPlanner-button-height-sm);
+  padding: 0 14px !important;
+  font-size: 0.76rem;
+  line-height: 1;
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  border: 1px solid rgba(203, 150, 135, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 234, 228, 0.84));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 4px 10px rgba(153, 103, 89, 0.06);
+  opacity: 0.82;
+}
+
+.nogaPlanner_wrapperTabBtn--active {
+  opacity: 1;
+  border-color: rgba(210, 119, 103, 0.38);
+  background: linear-gradient(180deg, rgba(255, 243, 238, 0.98), rgba(246, 214, 204, 0.9));
+  box-shadow:
+    0 0 0 2px rgba(224, 144, 128, 0.18),
+    0 8px 18px rgba(153, 103, 89, 0.12);
+}
+
+#nogaPlanner_courses_aside,
+#nogaPlanner_savedCoursesColumn,
+#nogaPlanner_lectures_section,
+#nogaPlanner_exam_section,
+#nogaPlanner_plan_scheduleBoard,
+#nogaPlanner_lectureDetailsCard {
+  position: relative;
+  overflow: visible;
+}
+
+#nogaPlanner_courses_aside,
+#nogaPlanner_savedCoursesColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+
+.nogaPlanner_tabBody {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.nogaPlanner_tabTable {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  table-layout: auto;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.18)),
+    linear-gradient(
+      180deg,
+      var(--nogaPlanner-card-start) 0%,
+      var(--nogaPlanner-card-end) 100%
+    );
+  
+}
+
+.nogaPlanner_tabBody .nogaPlanner_tabTable {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nogaPlanner_inlineCourseForm {
+  flex: 0 0 300px;
+  width: 300px;
+  min-width: 260px;
+  max-width: 34%;
+  padding: 10px;
+  gap: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--nogaPlanner-border, rgba(118, 64, 53, 0.16));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.52)),
+    var(--nogaPlanner-panel-start, #fff7f3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 8px 18px rgba(90, 45, 33, 0.1);
+  overflow-y: auto;
+}
+
+.nogaPlanner_inlineCourseFormTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_inlineCourseFormField {
+  gap: 4px;
+}
+
+.nogaPlanner_inlineCourseFormField span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.nogaPlanner_inlineCourseFormField input {
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--nogaPlanner-border, rgba(118, 64, 53, 0.2));
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--nogaPlanner-text, #3a1f18);
+  text-align: start;
+}
+
+
+.nogaPlanner_tabTable tbody {
+  height: auto;
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-start) 0%,
+    var(--nogaPlanner-card-end) 100%
+  );
+}
+
+.nogaPlanner_tabTable tbody tr,
+.nogaPlanner_tabTableRow {
+  height: auto;
+  max-height: max-content;
+}
+
+.nogaPlanner_tabTable thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--nogaPlanner-card-strong-end);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(118, 64, 53, 0.16),
+    0 8px 14px rgba(118, 64, 53, 0.1);
+}
+
+.nogaPlanner_tabTable thead tr:first-child:not(:only-child) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 14px rgba(118, 64, 53, 0.1);
+}
+
+.nogaPlanner_tabTable thead tr:first-child:not(:only-child) + tr {
+  box-shadow:
+    inset 0 -1px 0 rgba(118, 64, 53, 0.16),
+    0 8px 14px rgba(118, 64, 53, 0.1);
+}
+
+.nogaPlanner_tabTable th {
+  padding: 10px 12px 9px;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.3;
+  vertical-align: middle;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 250, 247, 0.96);
+  background: var(--nogaPlanner-card-strong-end) !important;
+  border-bottom: 1.5px solid rgba(194, 149, 136, 0.24);
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(94, 44, 34, 0.34);
+}
+
+.nogaPlanner_tabTable th[colspan] {
+  text-align: center !important;
+}
+
+.nogaPlanner_tabTable thead tr:first-child:not(:only-child) th[rowspan] {
+  border-bottom: 0;
+}
+
+.nogaPlanner_tabTableSortButton {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  text-align: inherit;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.nogaPlanner_tabTableSortButton:hover,
+.nogaPlanner_tabTableSortButton:focus-visible {
+  color: rgba(255, 255, 255, 1);
+  outline: none;
+}
+
+.nogaPlanner_tabTableSortLabel {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+
+.nogaPlanner_tabTableSortLabel:hover,
+.nogaPlanner_tabTableSortLabel:focus-visible {
+  color: rgba(255, 255, 255, 1);
+  outline: none;
+}
+
+.nogaPlanner_tabTable th,
+.nogaPlanner_tabTable td{
+  border-right: 1px solid var(--nogaPlanner-border, rgba(118, 64, 53, 0.14));
+}
+
+/* Keep the Volume | Progress divider visible even if other borders are overridden. */
+.nogaPlanner_tabTable th:nth-last-child(2),
+.nogaPlanner_tabTable td:nth-last-child(2) {
+  border-right: 1px solid var(--nogaPlanner-border, rgba(118, 64, 53, 0.18));
+}
+
+.nogaPlanner_tabTable td {
+  padding: 9px 12px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  vertical-align: top;
+  color: var(--nogaPlanner-text, #3a1f18);
+  border-bottom: 1px solid var(--nogaPlanner-border, rgba(118, 64, 53, 0.08));
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.nogaPlanner_tabTable td.nogaPlanner_tabTableCell--stacked {
+  padding: 6px 8px;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.02)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+
+.nogaPlanner_tabTableCellLine {
+  display: block;
+  line-height: 1.35;
+}
+
+.nogaPlanner_tabTableCellLine + .nogaPlanner_tabTableCellLine {
+  margin-top: 2px;
+}
+
+.nogaPlanner_tabTableRow {
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.nogaPlanner_tabTableRow:hover {
+  background: rgba(118, 64, 53, 0.05);
+}
+
+.nogaPlanner_tabTableRow.selected {
+  height: 0;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 239, 0.92), rgba(255, 232, 224, 0.74));
+  box-shadow:
+    inset 4px 0 0 rgba(224, 144, 128, 0.94),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 10px 18px rgba(118, 64, 53, 0.12);
+}
+
+.nogaPlanner_tabTableRow--static {
+  cursor: default;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_tabTable th,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_tabTable td {
+  text-align: right;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_courses_aside,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_lectures_section,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_exam_section,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_plan_scheduleBoard,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_lectureDetailsCard {
+  text-align: right;
+}
+
+#nogaPlanner_lecturesExamCluster {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  gap: 20px;
+  align-items: stretch;
+}
+
+#nogaPlanner_courses_headerBlock,
+#nogaPlanner_courses_panelWrapper,
+#nogaPlanner_lectures_nav,
+#nogaPlanner_lectures_actionsShell {
+  position: relative;
+  z-index: 1;
+}
+
+.nogaPlanner_homeSoulEyebrow,
+.nogaPlanner_plan_boardEyebrow,
+#nogaPlanner_lectureDetailsEyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_homeSoulTitle,
+.nogaPlanner_plan_boardTitle,
+#nogaPlanner_lectureDetailsTitle {
+  font-size: clamp(1.08rem, 1.25vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_coursesTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(215, 171, 159, 0.26);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 245, 240, 0.56)),
+    linear-gradient(135deg, rgba(248, 221, 212, 0.44), rgba(244, 232, 226, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 10px 22px rgba(153, 103, 89, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.nogaPlanner_savedCoursesCounters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+.nogaPlanner_savedCoursesCounter {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: 1px solid rgba(191, 148, 137, 0.24);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 250, 0.94), rgba(247, 231, 225, 0.86)),
+    rgba(255, 255, 255, 0.44);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 8px 18px rgba(149, 103, 90, 0.08);
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_savedCoursesCounterDetails {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline-start: 4px;
+}
+
+.nogaPlanner_savedCoursesCounterDetail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.nogaPlanner_savedCoursesCounterDetailValue {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_savedCoursesCounterDetailLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--nogaPlanner-subtle);
+  white-space: nowrap;
+}
+
+.nogaPlanner_savedCoursesCounterDetail--failed {
+  background: rgba(247, 226, 222, 0.92);
+}
+
+.nogaPlanner_savedCoursesCounterDetail--ongoing {
+  background: rgba(248, 234, 214, 0.94);
+}
+
+.nogaPlanner_savedCoursesCounterValue {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_savedCoursesCounterLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--nogaPlanner-subtle);
+  white-space: nowrap;
+}
+
+.nogaPlanner_coursesMiniBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(191, 148, 137, 0.28);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 246, 0.9), rgba(248, 236, 231, 0.82)),
+    rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 18px rgba(149, 103, 90, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.nogaPlanner_coursesMiniBarGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56);
+}
+
+.nogaPlanner_coursesMiniBarGroup--editDelete {
+  background: rgba(246, 221, 214, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 4px 10px rgba(171, 111, 97, 0.08);
+}
+
+.nogaPlanner_coursesMiniBarBtn {
+  min-height: var(--nogaPlanner-button-height-sm);
+  padding: 0 12px !important;
+  font-size: 0.80rem;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid rgba(194, 149, 136, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 229, 222, 0.88));
+  color: rgba(95, 58, 49, 0.94);
+  opacity: 0.96;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 6px 12px rgba(151, 104, 91, 0.1);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.nogaPlanner_coursesMiniBarBtn:hover:not(:disabled),
+.nogaPlanner_coursesMiniBarBtn:focus-visible:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(186, 118, 100, 0.42);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 232, 224, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 18px rgba(151, 104, 91, 0.14);
+}
+
+.nogaPlanner_coursesMiniBarBtn:disabled {
+  opacity: 0.46;
+  color: rgba(123, 101, 95, 0.72);
+  background: linear-gradient(180deg, rgba(244, 237, 234, 0.9), rgba(231, 221, 217, 0.88));
+  border-color: rgba(190, 170, 164, 0.2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.nogaPlanner_coursesMiniBarBtn--active {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(224, 144, 128, 0.28);
+}
+
+.nogaPlanner_coursesTitleButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: default;
+}
+
+.nogaPlanner_coursesTitleButton--clickable {
+  cursor: pointer;
+}
+
+.nogaPlanner_homeSoulSubtitle,
+.nogaPlanner_plan_boardCopy,
+#nogaPlanner_lectureDetailsMeta {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_homeSoulFieldLabel,
+.nogaPlanner_addCourse_examFieldLabel,
+.nogaPlanner_plan_telegramControlLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+#nogaPlanner_courses_panelWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#nogaPlanner_savedCoursesColumn {
+  display: flex;
+  flex-grow: 1;
+  position: relative;
+  gap: 10px;
+  overflow: scroll;
+  padding: 10px 10px 0px 10px;
+}
+
+.nogaPlanner_savedCoursesColumnHeader {
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  align-self: center;
+  height: 100%;
+}
+
+.nogaPlanner_savedCoursesColumnHeader > .nogaPlanner_coursesTitleRow {
+  width: 100%;
+  min-width: 0;
+}
+
+.nogaPlanner_savedCourseEditor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 4px;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--nogaPlanner-border);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-start) 0%,
+    var(--nogaPlanner-card-end) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 10px 22px rgba(90, 45, 33, 0.12);
+}
+
+.nogaPlanner_savedCoursesWorkspace {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.nogaPlanner_savedCoursesWorkspaceRow {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.nogaPlanner_savedCoursesWorkspaceRow > .nogaPlanner_savedCourseEditor {
+  flex: 0 0 25%;
+  min-height: 0;
+  min-width: 0;
+  width: 25%;
+  max-width: 25%;
+}
+
+.nogaPlanner_savedCourseEditorGrid {
+  flex: 1 1 auto;
+  display: grid;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  overflow: auto;
+}
+
+.nogaPlanner_savedCourseEditorGrid--courseComposer {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.nogaPlanner_savedCourseEditorCell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid rgba(118, 64, 53, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 247, 243, 0.6)),
+    rgba(255, 255, 255, 0.42);
+}
+
+.nogaPlanner_savedCourseEditorCell--spacer {
+  visibility: hidden;
+  pointer-events: none;
+  min-height: 0;
+}
+
+.nogaPlanner_savedCourseEditorCell--course {
+  grid-column: 1 / -1;
+}
+
+.nogaPlanner_savedCourseEditorCell--componentDetails {
+  grid-column: 1 / -1;
+}
+
+.nogaPlanner_savedCourseEditorCell--courseCard,
+.nogaPlanner_savedCourseEditorCell--componentCard {
+  grid-column: auto;
+}
+
+.nogaPlanner_savedCourseEditorLabel {
+  flex: 0 0 auto;
+  font-size: 0.80rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+  margin: 0;
+}
+
+.nogaPlanner_savedCourseFieldEyebrow {
+  display: block;
+  margin: 2px 0 -2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_savedCourseEditorCell > .nogaPlanner_savedCoursesDetailsInput,
+.nogaPlanner_savedCourseEditorCell > input.nogaPlanner_savedCoursesDetailsInput,
+.nogaPlanner_savedCourseEditorCell > select.nogaPlanner_savedCoursesDetailsInput,
+.nogaPlanner_savedCourseEditorCell > textarea.nogaPlanner_savedCoursesDetailsInput {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseEditorCell > .nogaPlanner_savedCoursesDetailsInputs {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseEditorCell > .nogaPlanner_savedCoursesScheduleChips {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseEditorCell > .nogaPlanner_coursesMiniBarBtn {
+  flex: 0 0 auto;
+}
+
+.nogaPlanner_savedCourseEditorFieldFull {
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseMetaColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+.nogaPlanner_savedCourseMetaColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nogaPlanner_savedCourseDetailGroupsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseDetailGroup {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid rgba(118, 64, 53, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.nogaPlanner_savedCourseDetailGroupTitle {
+  flex: 0 0 100%;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--nogaPlanner-subtle);
+  text-transform: uppercase;
+}
+
+.nogaPlanner_savedCourseDetailGroup--location
+  .nogaPlanner_savedCoursesDetailsInput {
+  flex: 1 1 120px;
+}
+
+.nogaPlanner_savedCourseEditorActionRow {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.nogaPlanner_savedCourseEditorActionRow .nogaPlanner_savedCoursesDetailsInput {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.nogaPlanner_savedCourseEditorActionRow .nogaPlanner_coursesMiniBarBtn {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_savedCoursesDetailsInputs {
+  gap: 3px;
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_savedCoursesDetailsInput {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 0.76rem !important;
+  line-height: 1.1;
+}
+
+.nogaPlanner_savedCourseEditor input.nogaPlanner_savedCoursesDetailsInput,
+.nogaPlanner_savedCourseEditor select.nogaPlanner_savedCoursesDetailsInput,
+.nogaPlanner_savedCourseEditor textarea.nogaPlanner_savedCoursesDetailsInput {
+  font-size: 0.76rem !important;
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_coursesMiniBarBtn {
+  min-height: 24px;
+  padding: 0 7px !important;
+  font-size: 0.56rem;
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_savedCoursesScheduleChips {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  margin-top: 2px;
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
+  gap:5px;
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_savedCoursesScheduleChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 2px 6px;
+  border: 1px solid rgba(118, 64, 53, 0.12);
+  background: rgba(224, 144, 128, 0.16);
+  color: rgba(90, 45, 33, 0.88);
+  cursor: pointer;
+  font-size: 0.80rem;
+  line-height: 1.1;
+}
+.nogaPlanner_savedCourseEditorGrid--courseComposer .nogaPlanner_savedCourseDetailGroup {
+  flex-direction: column;
+}
+
+.nogaPlanner_savedCourseEditorGrid--courseComposer
+  .nogaPlanner_savedCourseDetailGroup
+  .nogaPlanner_savedCoursesDetailsInput {
+  width: 100%;
+}
+
+.nogaPlanner_examEditor {
+  margin-top: 10px;
+}
+
+.nogaPlanner_examLectureTokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.nogaPlanner_examLectureToken {
+  min-height: 24px;
+  padding: 4px 9px !important;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 64, 53, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--nogaPlanner-ink);
+  font-size: 0.72rem;
+}
+
+.nogaPlanner_examLectureToken.is-active {
+  background: rgba(224, 144, 128, 0.18);
+  border-color: rgba(224, 144, 128, 0.36);
+}
+
+.nogaPlanner_examLectureEmpty {
+  color: var(--nogaPlanner-subtle);
+  font-size: 0.74rem;
+}
+
+.nogaPlanner_tabTableRow--active {
+  outline: 2px solid rgba(224, 144, 128, 0.22);
+  outline-offset: -2px;
+}
+
+.nogaPlanner_savedCoursesColumnBody {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  overflow: hidden;
+  overscroll-behavior: auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(118, 64, 53, 0.08),
+    0 8px 18px rgba(90, 45, 33, 0.12);
+}
+
+.nogaPlanner_savedCoursesTableBodyScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.nogaPlanner_savedCoursesFloatingBarPortal {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.nogaPlanner_rowFloatingMiniBar {
+  position: fixed;
+  z-index: 61;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  white-space: nowrap;
+  transform: translateX(-100%);
+  margin-left: 0;
+  border: 1px solid rgba(194, 149, 136, 0.24);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.96),
+      rgba(246, 230, 223, 0.92)
+    ),
+    rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 8px 16px rgba(118, 64, 53, 0.12);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.nogaPlanner_savedCoursesTable {
+  width: 100%;
+  min-width: max-content;
+  table-layout: auto;
+}
+
+.nogaPlanner_savedCoursesTable thead tr,
+.nogaPlanner_savedCoursesTable thead tr:first-child:not(:only-child),
+.nogaPlanner_savedCoursesTable thead tr:first-child:not(:only-child) + tr {
+  box-shadow: none;
+}
+
+.nogaPlanner_savedCoursesTable th,
+.nogaPlanner_savedCoursesTable td {
+  width: min-content;
+}
+
+.nogaPlanner_savedCoursesTable thead th[rowspan] {
+  border-bottom: 0;
+}
+
+.nogaPlanner_savedCoursesTable td {
+  max-width: none;
+  text-overflow: clip;
+}
+
+.nogaPlanner_savedCoursesTable .nogaPlanner_tabTableRow {
+  cursor: default;
+}
+
+.nogaPlanner_savedCoursesTable .nogaPlanner_tabTableRow:hover {
+  background: transparent;
+}
+
+.nogaPlanner_savedCoursesTableCell--merged {
+  vertical-align: middle !important;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease,
+    color 120ms ease;
+}
+
+.nogaPlanner_savedCoursesTableCell--merged:hover,
+.nogaPlanner_savedCoursesTableCell--merged:focus-visible {
+  background: rgba(118, 64, 53, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(118, 64, 53, 0.12);
+  outline: none;
+}
+
+.nogaPlanner_savedCoursesTableCell--mergedSelected {
+  background: rgba(118, 64, 53, 0.18) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(118, 64, 53, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  outline: none;
+}
+
+.nogaPlanner_savedCoursesTable .nogaPlanner_tabTableRow--groupSelected td {
+  background: rgba(118, 64, 53, 0.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(118, 64, 53, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+
+.nogaPlanner_lecturesTable {
+  min-width: 920px;
+}
+
+.nogaPlanner_savedCoursesDetailsList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(245, 222, 214, 0.22) 100%
+    );
+  border: 1px solid rgba(118, 64, 53, 0.12);
+}
+
+.nogaPlanner_savedCoursesDetailsItem {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72)),
+    linear-gradient(
+      180deg,
+      var(--nogaPlanner-card-start) 0%,
+      var(--nogaPlanner-card-end) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 10px 22px rgba(90, 45, 33, 0.12);
+}
+
+.nogaPlanner_savedCoursesDetailsItem strong {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 5px 9px;
+  background: rgba(224, 144, 128, 0.18);
+  border: 1px solid rgba(118, 64, 53, 0.1);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(118, 64, 53, 0.72);
+  padding: 5px;
+}
+
+.nogaPlanner_savedCoursesDetailsItem span {
+  display: block;
+  min-height: 22px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--nogaPlanner-ink);
+  line-height: 1.45;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.nogaPlanner_savedCoursesDetailsInputs {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.nogaPlanner_tabTableCell--stacked .nogaPlanner_savedCoursesDetailsInputs {
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 6px;
+}
+
+.nogaPlanner_savedCoursesDetailsInput {
+  width: 100%;
+  min-height: 28px;
+  padding: 5px 7px;
+  border: 1px solid rgba(118, 64, 53, 0.16);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--nogaPlanner-ink);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: inherit;
+  line-height: 1.35;
+  direction: rtl;
+  outline: none;
+  text-align: right;
+}
+
+.nogaPlanner_tabTableCell--stacked .nogaPlanner_savedCoursesDetailsInput {
+  min-height: 30px;
+  padding: 6px 8px;
+}
+
+.nogaPlanner_tabTableCell--stacked .nogaPlanner_coursesMiniBarBtn {
+  min-height: 30px;
+  padding: 4px 8px !important;
+  font-size: 0.68rem;
+}
+
+.nogaPlanner_tabTableCell--stacked .nogaPlanner_savedCoursesScheduleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nogaPlanner_tabTableCell--stacked .nogaPlanner_savedCoursesScheduleChip {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+}
+
+.nogaPlanner_savedCoursesDetailsInput:focus {
+  border-color: rgba(180, 86, 69, 0.42);
+  box-shadow: 0 0 0 3px rgba(224, 144, 128, 0.18);
+}
+
+.nogaPlanner_savedCoursesDetailsInput[readonly] {
+  background: rgba(132, 122, 118, 0.12);
+  border-color: rgba(118, 64, 53, 0.12);
+  color: rgba(76, 58, 52, 0.82);
+  box-shadow: none;
+  cursor: default;
+}
+
+.nogaPlanner_savedCoursesDetailsInput--pending[readonly] {
+  background: rgba(118, 64, 53, 0.08);
+  border-color: rgba(118, 64, 53, 0.1);
+  color: rgba(90, 78, 72, 0.58);
+}
+
+.nogaPlanner_savedCourseEditor .nogaPlanner_savedCoursesDetailsInput--pending[readonly] {
+  background: rgba(118, 64, 53, 0.08) !important;
+  border-color: rgba(118, 64, 53, 0.1) !important;
+  color: rgba(90, 78, 72, 0.58) !important;
+  opacity: 0.78;
+}
+
+.nogaPlanner_savedCoursesScheduleEditor {
+  gap: 8px;
+}
+
+.nogaPlanner_savedCoursesScheduleControls {
+  gap: 4px;
+  align-items: center;
+}
+
+.nogaPlanner_savedCoursesScheduleControls .nogaPlanner_savedCoursesDetailsInput {
+  min-width: 0;
+}
+
+.nogaPlanner_savedCoursesSchedulePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nogaPlanner_savedCoursesSchedulePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid rgba(118, 64, 53, 0.12);
+  border-radius: 999px;
+  background: rgba(224, 144, 128, 0.16);
+  color: rgba(90, 45, 33, 0.88);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 750;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.nogaPlanner_savedCoursesSchedulePill:hover,
+.nogaPlanner_savedCoursesSchedulePill:focus-visible {
+  background: rgba(224, 144, 128, 0.26);
+  border-color: rgba(118, 64, 53, 0.22);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.nogaPlanner_savedCoursesListItemComponent {
+  width: 100%;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-align: inherit;
+  color: inherit;
+}
+
+.nogaPlanner_savedCoursesEmpty {
+  text-align: center;
+  opacity: 0.65;
+}
+
+#nogaPlanner_courses_select_shell,
+#nogaPlanner_courses_details_div,
+#nogaPlanner_courses_actions_mount,
+.nogaPlanner_addCourse_examPanelWrapper,
+#nogaPlanner_lectures_tableShell,
+#nogaPlanner_lectureDetailsProgressBlock,
+#nogaPlanner_lectureDetailsCorrections,
+#nogaPlanner_lectureDetailsPages,
+#nogaPlanner_lectureDetailsTelegram,
+#nogaPlanner_plan_scheduleBoard {
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-start) 0%,
+    var(--nogaPlanner-card-end) 100%
+  );
+  border-radius: var(--nogaPlanner-radius-md);
+}
+
+#nogaPlanner_courses_select_shell,
+.nogaPlanner_addCourse_examPanelWrapper {
+  padding: 12px;
+  gap: 8px;
+}
+
+#nogaPlanner_courses_select {
+  appearance: none;
+}
+
+#nogaPlanner_courses_details_div,
+#nogaPlanner_courses_actions_mount {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px;
+  gap: 8px;
+  overflow: auto;
+}
+
+.nogaPlanner_courses_panel--hidden {
+  display: none !important;
+}
+
+.nogaPlanner_courses_panel--printing {
+  background: #fffdfb;
+}
+
+#nogaPlanner_addCourse_div,
+#nogaPlanner_addCourse_form,
+#nogaPlanner_addCourse_examSection,
+#nogaPlanner_addCourse_exam_input_section_inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nogaPlanner_addCourse_row,
+.nogaPlanner_addLecture_row {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.nogaPlanner_addCourse_rowSplit,
+.nogaPlanner_addLecture_rowSplit {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nogaPlanner_addCourse_rowQuad {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nogaPlanner_addCourse_rowWide,
+.nogaPlanner_addLecture_rowWide,
+.nogaPlanner_addLecture_rowNarrow {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#nogaPlanner_addCourse_dayAndTime_div,
+#nogaPlanner_addCourse_instructorsNames_div,
+#nogaPlanner_addCourse_exam_div,
+#nogaPlanner_addLecture_corrections_div,
+#nogaPlanner_addLecture_outlines_div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+  align-items: start;
+}
+
+#nogaPlanner_addCourse_dayAndTime_input_section,
+#nogaPlanner_addCourse_instructorName_section,
+#nogaPlanner_addLecture_corrections_div > .fc,
+#nogaPlanner_addLecture_outlines_div > .fc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nogaPlanner_addCourse_dayAndTime_row,
+#nogaPlanner_addCourse_time_inputs,
+#nogaPlanner_addCourse_examDate_inputs,
+#nogaPlanner_addCourse_examTime_inputs,
+#nogaPlanner_addCourse_grade_div,
+#nogaPlanner_addLecture_corrections_inputs {
+  display: grid;
+  gap: 10px;
+}
+
+.nogaPlanner_addCourse_dayAndTime_row,
+#nogaPlanner_addCourse_grade_div,
+#nogaPlanner_addLecture_corrections_inputs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#nogaPlanner_addCourse_time_inputs,
+#nogaPlanner_addCourse_examTime_inputs {
+  grid-template-columns: repeat(2, minmax(72px, 1fr));
+}
+
+#nogaPlanner_addCourse_examDate_inputs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#nogaPlanner_addCourse_dayAndTime_ul,
+#nogaPlanner_addCourse_instructorsNames_ul,
+#nogaPlanner_addCourse_exams_ul,
+#nogaPlanner_addLecture_corrections_ul,
+#nogaPlanner_addLecture_outlines_ul,
+#nogaPlanner_courses_exam_ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#nogaPlanner_addCourse_dayAndTime_ul li,
+#nogaPlanner_addCourse_instructorsNames_ul li,
+#nogaPlanner_addCourse_exams_ul li,
+#nogaPlanner_addLecture_corrections_ul li,
+#nogaPlanner_addLecture_outlines_ul li,
+.nogaPlanner_courses_exam_li {
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+  color: var(--nogaPlanner-chip-text);
+}
+
+#nogaPlanner_addCourse_dayAndTime_div > div[role="button"],
+#nogaPlanner_addLecture_corrections_div > div[role="button"],
+#nogaPlanner_addLecture_outlines_div > div[role="button"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 48px;
+}
+
+#nogaPlanner_courses_examBlock,
+#nogaPlanner_courses_examEmpty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nogaPlanner_courses_sectionTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_courseDetail_row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.75fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 9px 11px;
+  border-radius: 14px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_courseDetail_row_exam {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nogaPlanner_courseDetail_row p:first-child {
+  color: var(--nogaPlanner-subtle);
+  font-weight: 700;
+}
+
+.nogaPlanner_courseDetail_input {
+  color: var(--nogaPlanner-ink);
+}
+
+.nogaPlanner_courseAiStatus,
+.nogaPlanner_courseLetterBlock {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_courseAiStatus--success {
+  border-color: rgba(96, 178, 123, 0.38);
+}
+
+.nogaPlanner_courseAiStatus--error {
+  border-color: rgba(191, 90, 90, 0.38);
+}
+
+.nogaPlanner_courseAiDraftActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nogaPlanner_savedCourseComponentsTableWrap {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.nogaPlanner_savedCourseComponentsTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 820px;
+}
+
+.nogaPlanner_savedCourseComponentsTable th,
+.nogaPlanner_savedCourseComponentsTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--nogaPlanner-border);
+  text-align: start;
+  font-size: 0.76rem;
+  color: var(--nogaPlanner-chip-text);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.nogaPlanner_savedCourseComponentsTable th {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.nogaPlanner_savedCourseComponentsTableRow:hover td {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.nogaPlanner_savedCourseComponentsTableEmpty {
+  text-align: center !important;
+  color: var(--nogaPlanner-subtle) !important;
+}
+
+.nogaPlanner_savedCourseComponentsTableActions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.nogaPlanner_savedCourseComponentsActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  }
+
+.nogaPlanner_savedCourseComponentsActionBtn:last-child {
+  margin-inline-end: 0;
+}
+
+.nogaPlanner_savedCourseComponentsActionBtn--danger {
+  color: rgba(132, 51, 43, 0.96);
+}
+
+
+
+.nogaPlanner_selectSettingsTriggerWrap {
+  position: relative;
+}
+
+.nogaPlanner_selectSettingsPanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 247, 243, 0.93)),
+    linear-gradient(
+      145deg,
+      rgba(255, 251, 249, 0.98),
+      rgba(244, 226, 219, 0.94)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 16px 30px rgba(118, 64, 53, 0.12),
+    0 4px 10px rgba(118, 64, 53, 0.06);
+  backdrop-filter: blur(14px) saturate(1.04);
+  font-family: var(--nogaPlanner-font-family);
+  font-size: 12px;
+}
+
+.nogaPlanner_selectSettingsPanel,
+.nogaPlanner_selectSettingsPanel input,
+.nogaPlanner_selectSettingsPanel select,
+.nogaPlanner_selectSettingsPanel button {
+  font-family: var(--nogaPlanner-font-family) !important;
+}
+
+.nogaPlanner_selectSettingsPanel *:not(i):not(.fa):not(.fas):not(.far):not(.fab):not([class*="fa-"]) {
+  font-family: var(--nogaPlanner-font-family) !important;
+}
+
+.nogaPlanner_selectSettingsPanel .nogaPlanner_savedCoursesDetailsInput {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  border-radius: 10px;
+  border-color: rgba(176, 122, 107, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.nogaPlanner_selectSettingsPanel .nogaPlanner_coursesMiniBarBtn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  border-radius: 999px;
+}
+
+.nogaPlanner_selectSettingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(176, 122, 107, 0.12);
+}
+
+.nogaPlanner_selectSettingsBackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.nogaPlanner_selectSettingsTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-heading);
+  letter-spacing: 0;
+}
+
+.nogaPlanner_selectSettingsColumns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: start;
+
+}
+
+.nogaPlanner_selectSettingsColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  border: 1px solid rgba(173, 118, 103, 0.16);
+  padding: 10px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.nogaPlanner_selectSettingsColumnTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_selectSettingsFields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(187, 132, 116, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 247, 243, 0.91)),
+    rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 2px 6px rgba(118, 64, 53, 0.04);
+}
+
+.nogaPlanner_selectSettingsActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.nogaPlanner_selectSettingsDefaultsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nogaPlanner_selectSettingsDefaultsTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_selectSettingsDefaultsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  border: 1px solid rgba(187, 132, 116, 0.16);
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.nogaPlanner_selectSettingsDefaultField {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.nogaPlanner_selectSettingsCheckboxRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 9px;
+  gap: 8px;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--nogaPlanner-ink);
+  border: 1px solid rgba(176, 122, 107, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  cursor: pointer;
+}
+
+.nogaPlanner_selectSettingsCheckboxRow input[type="checkbox"] {
+  display: block;
+  width: 15px;
+  min-width: 15px;
+  max-width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--nogaPlanner-accent-strong);
+}
+
+.nogaPlanner_selectSettingsCheckboxRow span {
+  flex: 1 1 auto;
+}
+
+.nogaPlanner_selectSettingsCheckboxRow:hover {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.nogaPlanner_selectSettingsDefaultLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--nogaPlanner-ink);
+}
+
+.nogaPlanner_selectSettingsRelationshipsList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid rgba(187, 132, 116, 0.16);
+  border-radius: 12px;
+
+}
+
+.nogaPlanner_selectSettingsRelationshipItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border-bottom: 1px solid rgba(169, 113, 97, 0.14);
+}
+
+.nogaPlanner_selectSettingsRelationshipBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nogaPlanner_selectSettingsRelationshipText {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--nogaPlanner-ink);
+  white-space: nowrap;
+}
+
+.nogaPlanner_selectSettingsList {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(173, 118, 103, 0.16);
+ 
+  max-height: min(42vh, 340px);
+  overflow-y: auto;
+}
+
+.nogaPlanner_selectSettingsItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 6px 7px 6px 8px;
+  border-bottom: 1px solid rgba(169, 113, 97, 0.14);
+  direction: rtl;
+  cursor: pointer;
+}
+
+.nogaPlanner_selectSettingsItem--selected {
+  background: rgba(118, 64, 53, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(118, 64, 53, 0.18);
+}
+
+.nogaPlanner_selectSettingsItemLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--nogaPlanner-ink);
+  line-height: 1.2;
+  width: 100%;
+  text-align: center;
+}
+
+.nogaPlanner_selectSettingsItemActions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.nogaPlanner_selectSettingsItemActions .nogaPlanner_coursesMiniBarBtn {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 0 6px;
+  font-size: 0.64rem;
+}
+
+
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_selectSettingsBackBtn {
+  flex-direction: row-reverse;
+}
+
+.nogaPlanner_courseAiDraftButton--secondary {
+  background: var(--nogaPlanner-pill);
+}
+
+#nogaPlanner_courses_actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.nogaPlanner_courses_actionsWindow,
+#nogaPlanner_lectures_actionsWindow {
+  width: var(--nogaPlanner-action-chip-width);
+  min-width: var(--nogaPlanner-action-chip-width);
+  max-width: var(--nogaPlanner-action-chip-width);
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  gap: 0;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  border-radius: 18px;
+  border: 1px solid var(--nogaPlanner-border);
+  background: rgba(255, 255, 255, 0.18);
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-x;
+  scroll-snap-type: x mandatory;
+}
+
+#nogaPlanner_courses_actions {
+  margin-top: auto;
+  align-items: center;
+}
+
+#nogaPlanner_courses_actionRail {
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: max-content;
+  min-width: max-content;
+}
+
+#nogaPlanner_courses_actionRail.nogaPlanner_actionsRail--dragging,
+#nogaPlanner_lectures_actionsWindow.nogaPlanner_lectures_actionsWindow--dragging {
+  cursor: grabbing;
+}
+
+.nogaPlanner_courses_actionChip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--nogaPlanner-action-chip-width);
+  min-width: 116px;
+  max-width: var(--nogaPlanner-action-chip-width);
+  min-height: var(--nogaPlanner-button-height-md);
+  padding: 0 10px;
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  border: 1px solid var(--nogaPlanner-border);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-strong-start) 0%,
+    var(--nogaPlanner-card-strong-end) 100%
+  );
+  color: var(--nogaPlanner-chip-text);
+  box-shadow: 0 8px 18px rgba(118, 64, 53, 0.1);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  text-align: center;
+  scroll-snap-align: center;
+}
+
+.nogaPlanner_courses_actionChip span {
+  display: inline-block;
+  width: auto;
+}
+
+.nogaPlanner_courses_actionChip--windowActive {
+  outline: 2px solid var(--nogaPlanner-accent);
+  outline-offset: 2px;
+}
+
+.nogaPlanner_courses_actionChip--dragging {
+  transform: scale(0.985);
+}
+
+#nogaPlanner_lectures_section {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  gap: 12px;
+}
+
+#nogaPlanner_exam_section {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 20px 200px;
+  gap: 10px;
+  overflow: scroll;
+}
+
+#nogaPlanner_exam_nav,
+#nogaPlanner_exam_body {
+  position: relative;
+  z-index: 1;
+}
+
+.nogaPlanner_examHeaderTop {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_examHeaderTop {
+  flex-direction: row-reverse;
+}
+
+.nogaPlanner_examHeaderCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+#nogaPlanner_exam_body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+  overflow-y: visible;
+  overflow-x: auto;
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-start) 0%,
+    var(--nogaPlanner-card-end) 100%
+  );
+  border: 1px solid var(--nogaPlanner-border);
+  border-radius: var(--nogaPlanner-radius-md);
+}
+
+#nogaPlanner_exam_empty,
+#nogaPlanner_exam_ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+#nogaPlanner_exam_empty {
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_exam_li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_exam_liHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_exam_liHeader {
+  flex-direction: row-reverse;
+}
+
+.nogaPlanner_exam_courseName {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-heading);
+}
+
+.nogaPlanner_exam_typeBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--nogaPlanner-button-height-sm);
+  padding: 0 10px;
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-strong-start) 0%,
+    var(--nogaPlanner-card-strong-end) 100%
+  );
+  border: 1px solid var(--nogaPlanner-border);
+  color: var(--nogaPlanner-chip-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.nogaPlanner_exam_metaGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.nogaPlanner_exam_metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_exam_metaLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_exam_metaValue {
+  font-size: 0.8rem;
+  color: var(--nogaPlanner-ink);
+}
+
+#nogaPlanner_lectures_nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nogaPlanner_lecturesHeaderTop {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_lecturesHeaderTop {
+  flex-direction: row-reverse;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_courses_actionRail,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_lectures_actionsWindow {
+  flex-direction: row-reverse;
+}
+
+.nogaPlanner_lecturesHeaderCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+#nogaPlanner_lectures_search_div {
+  display: flex;
+  align-items: center;
+  min-width: min(100%, 280px);
+  max-width: 320px;
+}
+
+#nogaPlanner_lectures_actionsShell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--nogaPlanner-border);
+  align-items: center;
+}
+
+#nogaPlanner_lectures_tableShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: visible;
+  overflow-x: auto;
+}
+
+#nogaPlanner_lectures_table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  table-layout: fixed;
+}
+
+#nogaPlanner_lectures_tableLabels_section {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+#nogaPlanner_lectures_tableLabels_div th {
+  padding: 0 10px 8px;
+  text-align: start;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nogaPlanner-subtle);
+}
+
+.nogaPlanner_lecture_row td {
+  padding: 10px 10px;
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-start) 0%,
+    var(--nogaPlanner-card-end) 100%
+  );
+  border-top: 1px solid var(--nogaPlanner-border);
+  border-bottom: 1px solid var(--nogaPlanner-border);
+  color: var(--nogaPlanner-ink);
+  vertical-align: middle;
+}
+
+.nogaPlanner_lecture_row td:first-child {
+  border-left: 1px solid var(--nogaPlanner-border);
+  border-top-left-radius: 18px;
+  border-bottom-left-radius: 18px;
+}
+
+.nogaPlanner_lecture_row td:last-child {
+  border-right: 1px solid var(--nogaPlanner-border);
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_courseAiDraftActions,
+#nogaPlanner_article.nogaPlanner--arabic #nogaPlanner_lectureDetailsHeaderActions,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_lectureDetailsPagesActions,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_lectureDetailsSectionHeader,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_lectureDetailsTelegramMessageMeta,
+#nogaPlanner_article.nogaPlanner--arabic .nogaPlanner_plan_boardTitleRow {
+  flex-direction: row-reverse;
+}
+
+.nogaPlanner_lecture_titleText {
+  color: var(--nogaPlanner-heading);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.nogaPlanner_lecture_titleText:hover,
+.nogaPlanner_lecture_titleText:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+#nogaPlanner_planDoor_div {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 0;
+  width: 0;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    width 260ms ease,
+    flex-basis 260ms ease,
+    opacity 220ms ease,
+    transform 260ms ease;
+}
+
+#nogaPlanner_planDoor_div[data-open="true"] {
+  flex-basis: min(360px, 32vw);
+  width: min(360px, 32vw);
+  opacity: 1;
+}
+
+#nogaPlanner_lectureDetailsMount {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#nogaPlanner_lectureDetailsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-height: 0;
+  padding: 16px;
+  transform: translateX(18px);
+  opacity: 0;
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease;
+}
+
+.nogaPlanner_lectureDetailsCard--open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.nogaPlanner_lectureDetailsCard--closed {
+  pointer-events: none;
+}
+
+#nogaPlanner_lectureDetailsHeader,
+#nogaPlanner_lectureDetailsPagesHeader,
+.nogaPlanner_lectureDetailsSectionHeader,
+.nogaPlanner_lectureDetailsCorrectionHeader,
+.nogaPlanner_lectureDetailsTelegramMessageMeta,
+.nogaPlanner_plan_boardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#nogaPlanner_lectureDetailsTitleBlock,
+#nogaPlanner_lectureDetailsProgressBlock,
+#nogaPlanner_lectureDetailsCorrections,
+#nogaPlanner_lectureDetailsPages,
+#nogaPlanner_lectureDetailsTelegram {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#nogaPlanner_lectureDetailsHeaderActions,
+.nogaPlanner_lectureDetailsPagesActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#nogaPlanner_lectureDetailsClose,
+#nogaPlanner_lectureDetailsPagesToggle,
+#nogaPlanner_ringVideoClose {
+  width: var(--nogaPlanner-icon-button-size);
+  min-width: var(--nogaPlanner-icon-button-size);
+  height: var(--nogaPlanner-icon-button-size);
+  min-height: var(--nogaPlanner-icon-button-size);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#nogaPlanner_lectureDetailsProgressBar {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.46);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.div_indicator_progression {
+  height: 100%;
+  border-radius: inherit;
+}
+
+#nogaPlanner_lectureDetailsCorrectionsList,
+#nogaPlanner_lectureDetailsTelegramList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nogaPlanner_lectureDetailsCorrectionItem,
+.nogaPlanner_lectureDetailsTelegramMessage {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_lectureDetailsCorrectionsEmpty,
+.nogaPlanner_lectureDetailsTelegramEmpty {
+  color: var(--nogaPlanner-subtle);
+}
+
+#nogaPlanner_lectureDetailsPagesBody {
+  display: none;
+}
+
+.nogaPlanner_lectureDetailsPagesBody--open {
+  display: block !important;
+}
+
+#nogaPlanner_lectureDetailsPagesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 10px;
+}
+
+.nogaPlanner_lecturePageButton {
+  min-height: var(--nogaPlanner-button-height-md);
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  background: var(--nogaPlanner-pill) !important;
+  border: 1px solid var(--nogaPlanner-border) !important;
+  color: var(--nogaPlanner-chip-text) !important;
+  box-shadow: none !important;
+}
+
+.nogaPlanner_lecturePageButton--finished {
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-strong-start) 0%,
+    var(--nogaPlanner-card-strong-end) 100%
+  ) !important;
+}
+
+#nogaPlanner_scheduleSwipePage {
+  position: absolute;
+  inset: 0 18px 74px 18px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(120%);
+  opacity: 0;
+  transition:
+    transform 280ms ease,
+    opacity 220ms ease;
+}
+
+#nogaPlanner_article[data-swipe-view="schedule"] #nogaPlanner_scheduleSwipePage {
+  pointer-events: auto;
+  transform: translateY(0);
+  opacity: 1;
+}
+
+#nogaPlanner_plan_scheduleBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(720px, 100%);
+  max-height: 100%;
+  padding: 16px;
+}
+
+#nogaPlanner_plan_days_list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: visible;
+  min-height: 0;
+}
+
+#nogaPlanner_plan_days_list > li {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+}
+
+.nogaPlanner_plan_boardBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--nogaPlanner-button-height-sm);
+  padding: 0 12px;
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  background: var(--nogaPlanner-pill);
+  border: 1px solid var(--nogaPlanner-border);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--nogaPlanner-chip-text);
+}
+
+.nogaPlanner_navStrip {
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--nogaPlanner-button-height-md);
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--nogaPlanner-border);
+  border-radius: var(--nogaPlanner-button-radius-pill);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-card-strong-start) 0%,
+    var(--nogaPlanner-card-strong-end) 100%
+  );
+  color: var(--nogaPlanner-chip-text);
+}
+
+.nogaPlanner_navStrip--bottom {
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+}
+
+.nogaPlanner_navStrip_label {
+  white-space: nowrap;
+}
+
+#nogaPlanner_ringVideoFileInput {
+  display: none;
+}
+
+#nogaPlanner_ringVideoOverlay,
+#nogaPlanner_addLecture_div {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 26px;
+  background: var(--nogaPlanner-overlay);
+  backdrop-filter: blur(10px);
+}
+
+#nogaPlanner_ringVideoWrapper,
+#nogaPlanner_addLecture_form {
+  width: min(900px, 100%);
+  border-radius: 28px;
+  border: 1px solid var(--nogaPlanner-border);
+  background: linear-gradient(
+    180deg,
+    var(--nogaPlanner-panel-start) 0%,
+    var(--nogaPlanner-panel-end) 100%
+  );
+  box-shadow: var(--nogaPlanner-shadow-panel);
+}
+
+#nogaPlanner_ringVideoWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  max-width: 920px;
+}
+
+#nogaPlanner_ringVideoPlayer {
+  width: 100%;
+  max-height: min(72vh, 640px);
+  border-radius: 22px;
+  background: #000;
+}
+
+#nogaPlanner_ringVideoUploadHint,
+#nogaPlanner_ringVideoUploadError {
+  color: var(--nogaPlanner-subtle);
+}
+
+#nogaPlanner_addLecture_div {
+  flex-direction: column;
+  gap: 10px;
+}
+
+#nogaPlanner_addLecture_div > label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#nogaPlanner_addLecture_form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+#nogaPlanner_addLecture_outlines_input {
+  min-height: 140px;
+  resize: vertical;
+}
+
+#nogaPlanner_addLecture_addButton_label {
+  min-width: 140px;
+}
+
+.nogaPlanner_courses_printSpacer {
+  display: none;
+}
+
+#nogaPlanner_article[dir="rtl"] #nogaPlanner_lectures_tableLabels_div th,
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_courseDetail_row,
+#nogaPlanner_article[dir="rtl"] #nogaPlanner_lectureDetailsMeta {
+  text-align: right;
+}
+
+#nogaPlanner_article[dir="rtl"] #nogaPlanner_lectures_search_div,
+#nogaPlanner_article[dir="rtl"] #nogaPlanner_courses_headerBlock,
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_lecturesHeaderCopy,
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_examHeaderCopy {
+  align-items: flex-start;
+}
+
+sp
+
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_lecture_row td:first-child {
+  border-left: 0;
+  border-right: 1px solid var(--nogaPlanner-border);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
+#nogaPlanner_article[dir="rtl"] .nogaPlanner_lecture_row td:last-child {
+  border-right: 0;
+  border-left: 1px solid var(--nogaPlanner-border);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 18px;
+  border-bottom-left-radius: 18px;
+}
+.nogaPlanner_selectSettingsLoading {
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: rgba(0, 0, 0, 0.05);
+  color: #2f3a45;
+}

@@ -5461,6 +5461,7 @@ function HomeNoga(props) {
             url: cloudinaryPayload.secure_url,
             publicId: cloudinaryPayload.public_id,
             assetId: cloudinaryPayload.asset_id,
+            contentHash: cloudinaryPayload.etag,
             folder: cloudinaryPayload.folder,
             resourceType: cloudinaryPayload.resource_type || resourceType,
             mimeType: currentMimeType,

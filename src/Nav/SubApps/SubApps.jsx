@@ -297,7 +297,7 @@ const SubApps = (props) => {
   )
     .trim()
     .toLowerCase();
-  const supportedAiProviders = ["openai", "groq", "gemini"];
+  const supportedAiProviders = ["openai", "groq", "gemini", "kimi"];
   const aiProviders = supportedAiProviders.filter(
     (provider) =>
       Object.prototype.hasOwnProperty.call(aiStatuses, provider) ||

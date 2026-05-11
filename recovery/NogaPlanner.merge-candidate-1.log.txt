@@ -1,0 +1,6 @@
+source: E:\mctosh\sample1front\recovery\nogaPlanner.current-live.css
+strategy: preserve current live CSS as first merge candidate
+reason: current CSS already contains planner-specific saved-courses/settings styles and lecture shell styles; block-merging baseline CSS adds unnecessary risk
+baseline comparison: diff vs latest-baseline remains 1400 insertions / 245 deletions
+live file untouched: E:\mctosh\sample1front\src\NogaPlan\nogaPlanner.css
+candidate file: E:\mctosh\sample1front\recovery\nogaPlanner.merge-candidate-1.css
