@@ -83,7 +83,6 @@
   color: var(--nogaPlanner-ink);
   isolation: isolate;
   background: #ef0662;
-  padding-left: 50px;
 }
 
 #nogaPlanner_article *:not(i):not(.fa):not(.fas):not(.far):not(.fab):not([class*="fa-"]) {
@@ -207,7 +206,6 @@
 .nogaPlanner_wrapperTabsGroup {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   width: 100%;
   min-width: 0;
   flex-grow: 1;
@@ -996,20 +994,10 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: 4px;
   max-height: 100%;
   overflow: visible;
   overscroll-behavior: auto;
-  padding: 6px 8px;
-  border: 1px solid var(--nogaPlanner-border);
-  background: linear-gradient(
-    180deg,
-    var(--nogaPlanner-card-start) 0%,
-    var(--nogaPlanner-card-end) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    0 10px 22px rgba(90, 45, 33, 0.12);
+  background-color: #ef0662;
 }
 
 .nogaPlanner_savedCoursesWorkspace {
@@ -1084,9 +1072,9 @@
   max-width: 320px;
 }
 
-.nogaPlanner_savedCourseEditorGrid--courseComposer {
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+#nogaPlanner_savedCourseEditor {
+  display: flex;
+  flex-direction: row;
 }
 
 .nogaPlanner_savedCourseEditorCell {
@@ -1096,8 +1084,6 @@
   flex-wrap: nowrap;
   gap: 8px;
   min-width: 0;
-  padding: 6px;
-  border: 1px dotted rgba(118, 64, 53, 0.1);
 }
 
 .nogaPlanner_savedCourseEditorCell--spacer {
@@ -1114,41 +1100,30 @@
   grid-column: 1 / -1;
 }
 
-.nogaPlanner_savedCourseEditorCell--courseCard,
-.nogaPlanner_savedCourseEditorCell--componentCard {
-  grid-column: auto;
-}
-
 .nogaPlanner_savedCourseEditorCell--courseCard {
   border-color: rgba(182, 116, 96, 0.30);
-  background:
-    linear-gradient(180deg, rgba(255, 249, 246, 0.95), rgba(247, 227, 218, 0.84)),
-    rgba(255, 255, 255, 0.52);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 8px 18px rgba(138, 84, 70, 0.12);
+  background: linear-gradient(180deg, var(--nogaPlanner-card-start) 0%, var(--nogaPlanner-card-end) 100%);
+  width: 100%;
 }
 
 .nogaPlanner_savedCourseEditorCell--componentCard {
   border-color: rgba(172, 124, 108, 0.34);
-  background:
-    linear-gradient(180deg, rgba(255, 242, 235, 0.96), rgba(240, 214, 201, 0.88)),
-    rgba(255, 248, 244, 0.56);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 8px 18px rgba(132, 83, 71, 0.14);
+  background: linear-gradient(180deg, var(--nogaPlanner-card-start) 0%, var(--nogaPlanner-card-end) 100%);
+  width: 100%;
+  min-width: 380px;
 }
 
 .nogaPlanner_savedCourseEditorLabel {
   flex: 0 0 auto;
-  font-size: 0.85rem;
-  font-weight: 800;
+  font-size: 0.70rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--nogaPlanner-subtle);
+  color: white;
   margin: 0;
   border-bottom: 1px dotted rgba(118, 64, 53, 0.12);
-  padding: 5px 0px;
+  white-space: nowrap;
+  background-color: #ef0662;
+  padding: 10px;
 }
 
 .nogaPlanner_savedCourseEditorLabelRow {
@@ -1159,6 +1134,14 @@
   width: 100%;
 }
 
+.nogaPlanner_savedCourseEditor_componentFormFieldsWrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+}
+
 .nogaPlanner_savedCourseEditorLabelControls {
   display: flex;
   align-items: center;
@@ -1167,16 +1150,16 @@
 }
 
 .nogaPlanner_savedCourseEditor .nogaPlanner_savedCourseEditorLabelControls .nogaPlanner_savedCoursesDetailsInput {
-  width: 180px;
   min-width: 0;
-  font-size: 0.68rem;
+  font-size: 0.70rem !important;
+  width: fit-content !important;
 }
 
 .nogaPlanner_savedCourseEditor
   .nogaPlanner_savedCourseEditorLabelButton
   .nogaPlanner_savedCourseEditorLabelControls
   > select.nogaPlanner_savedCoursesDetailsInput {
-  font-size: 0.68rem;
+  font-size: 0.70rem;
   line-height: 1.1;
 }
 
@@ -1185,7 +1168,7 @@
   .nogaPlanner_savedCourseEditorLabelControls
   > select.nogaPlanner_savedCoursesDetailsInput
   > option {
-  font-size: 0.68rem;
+  font-size: 0.70rem;
 }
 
 .nogaPlanner_savedCourseEditorLabelButton {
@@ -1196,17 +1179,25 @@
   width: 100%;
 }
 
+#nogaPlanner_savedCourseEditor_courseCardTitle,
+#nogaPlanner_savedCourseEditor_componentCardTitle {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
 .nogaPlanner_savedCourseFieldEyebrow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin: 2px 0 -2px;
-  font-size: 0.80rem;
-  font-weight: 700;
+  font-size: 0.70rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--nogaPlanner-subtle);
+  white-space: nowrap;
 }
 
 .nogaPlanner_savedCourseFieldClass {
@@ -1220,7 +1211,6 @@
   background: rgba(233, 161, 145, 0.1);
   color: rgba(118, 64, 53, 0.86);
   font-size: 0.62rem;
-  font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -1438,14 +1428,14 @@
   gap: 4px;
 }
 
-.nogaPlanner_savedCourseEditorGrid--courseComposer .nogaPlanner_savedCourseScheduleRow {
+#nogaPlanner_savedCourseEditor .nogaPlanner_savedCourseScheduleRow {
   flex-direction: row;
 }
-.nogaPlanner_savedCourseEditorGrid--courseComposer .nogaPlanner_savedCourseDetailGroup {
+#nogaPlanner_savedCourseEditor .nogaPlanner_savedCourseDetailGroup {
   flex-direction: column;
 }
 
-.nogaPlanner_savedCourseEditorGrid--courseComposer
+#nogaPlanner_savedCourseEditor
   .nogaPlanner_savedCourseDetailGroup
   .nogaPlanner_savedCoursesDetailsInput {
   width: 100%;
@@ -1562,6 +1552,12 @@
   width: min-content;
 }
 
+.nogaPlanner_savedCoursesTable th {
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .nogaPlanner_savedCoursesTable thead th[rowspan] {
   border-bottom: 0;
 }
@@ -1569,6 +1565,10 @@
 .nogaPlanner_savedCoursesTable td {
   max-width: none;
   text-overflow: clip;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nogaPlanner_savedCoursesTable .nogaPlanner_tabTableRow {
@@ -1588,6 +1588,15 @@
 
 #nogaPlanner_savedCoursesTableBody {
   height: auto !important;
+}
+
+.nogaPlanner_savedCoursesWorkspace--editorOpen
+  #nogaPlanner_savedCoursesTableBodyScroll {
+  overflow-x: auto;
+}
+
+.nogaPlanner_savedCoursesWorkspace--editorOpen .nogaPlanner_savedCoursesTable {
+  min-width: 1100px;
 }
 
 

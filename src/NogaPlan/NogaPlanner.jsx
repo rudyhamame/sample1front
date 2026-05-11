@@ -1287,6 +1287,7 @@ export default class NogaPlanner extends Component {
         rawFailureMessage.toLowerCase().includes("failed to fetch")
           ? NOGAPLANNER_TEXT.messages.settingsServerUnreachable
           : rawFailureMessage;
+      this.props.serverReply(failureMessage);
       this.setState({
         plannerSettingsSaveStatus: "error",
         plannerSettingsSaveMessage: failureMessage,
@@ -1303,6 +1304,7 @@ export default class NogaPlanner extends Component {
         resolve,
       ),
     );
+    this.props.serverReply(NOGAPLANNER_TEXT.messages.settingsSaved);
     return persistedSettings;
   };
   handlePlannerFieldDefaultChange = async (fieldKey, nextValue) => {

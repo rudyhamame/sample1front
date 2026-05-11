@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import NogaPlannerSettings from "./NogaPlannerSettings";
 
 const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
@@ -757,10 +757,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       id="nogaPlanner_savedCourseEditor"
       className="nogaPlanner_savedCourseEditor"
     >
-      <div
-        id="nogaPlanner_savedCourseEditorGrid"
-        className="nogaPlanner_savedCourseEditorGrid nogaPlanner_savedCourseEditorGrid--courseComposer"
-      >
+      
         <div
           id="nogaPlanner_savedCourseEditor_courseCard"
           className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--courseCard"
@@ -854,54 +851,58 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               className="nogaPlanner_savedCourseEditorLabel nogaPlanner_savedCourseEditorLabelButton"
             >
               <span>{courseUi.editor.componentCardTitle}</span>
-              <div
-                id="nogaPlanner_savedCourseEditorLabelControls"
-                className="nogaPlanner_savedCourseEditorLabelControls"
+            </div>
+            <div
+              id="nogaPlanner_savedCourseEditorLabelControls"
+              className="nogaPlanner_savedCourseEditorLabelControls"
+            >
+              <select
+                id="nogaPlanner_savedCourseSelect_componentPicker"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={selectedSavedCourseComponentPickerValue}
+                onChange={(event) => {
+                  if (event.target.value === "__current__") return;
+                  planner.selectSavedCourseDraftComponent(event.target.value);
+                }}
               >
-                <select
-                  id="nogaPlanner_savedCourseSelect_componentPicker"
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  value={selectedSavedCourseComponentPickerValue}
-                  onChange={(event) => {
-                    if (event.target.value === "__current__") return;
-                    planner.selectSavedCourseDraftComponent(event.target.value);
-                  }}
-                >
-                  <option value="">{courseUi.editor.newComponent}</option>
-                  {String(
-                    savedCourseDraft?.course_classSelection ||
-                      savedCourseDraft?.course_class ||
-                      "",
-                  ).trim() ? (
-                    <option value="__current__">
-                      {String(
-                        savedCourseDraft?.course_classSelection ||
-                          savedCourseDraft?.course_class ||
-                          "",
-                      ).trim() || courseUi.editor.currentComponent}
-                    </option>
-                  ) : null}
-                  {getDraftComponentOptions().map((optionEntry) => (
-                    <option
-                      key={`saved-course-component-picker-${optionEntry.value}`}
-                      value={optionEntry.value}
-                    >
-                      {optionEntry.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  id="nogaPlanner_savedCourseBtn_addComponent"
-                  type="button"
-                  className="nogaPlanner_coursesMiniBarBtn"
-                  onClick={planner.appendSavedCourseComponentEntry}
-                  disabled={!hasSelectedComponentType}
-                >
-                  +
-                </button>
-              </div>
+                <option value="">{courseUi.editor.newComponent}</option>
+                {String(
+                  savedCourseDraft?.course_classSelection ||
+                    savedCourseDraft?.course_class ||
+                    "",
+                ).trim() ? (
+                  <option value="__current__">
+                    {String(
+                      savedCourseDraft?.course_classSelection ||
+                        savedCourseDraft?.course_class ||
+                        "",
+                    ).trim() || courseUi.editor.currentComponent}
+                  </option>
+                ) : null}
+                {getDraftComponentOptions().map((optionEntry) => (
+                  <option
+                    key={`saved-course-component-picker-${optionEntry.value}`}
+                    value={optionEntry.value}
+                  >
+                    {optionEntry.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                id="nogaPlanner_savedCourseBtn_addComponent"
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn"
+                onClick={planner.appendSavedCourseComponentEntry}
+                disabled={!hasSelectedComponentType}
+              >
+                +
+              </button>
             </div>
           </div>
+          <div
+            id="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
+            className="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
+          >
           {renderSavedCourseFieldEyebrow(
             courseFieldLabel("course_classSelection"),
             { fieldName: "course_classSelection" },
@@ -1222,8 +1223,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             }
             placeholder={courseFieldLabel("course_grade")}
           />
+          </div>
         </div>
-      </div>
     </div>
   );
 
@@ -1749,7 +1750,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       ) : (
         <div
           id="nogaPlanner_savedCoursesWorkspace"
-          className="nogaPlanner_savedCoursesWorkspace"
+          className={
+            "nogaPlanner_savedCoursesWorkspace" +
+            (showCourseEditor ? " nogaPlanner_savedCoursesWorkspace--editorOpen" : "")
+          }
         >
           {hasActivePlannerTab ? (
             <div
@@ -1775,3 +1779,4 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
 };
 
 export default NogaPlannerSavedCoursesPanel;
+

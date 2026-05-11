@@ -46,8 +46,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsSelectedLocationRoomIndex,
     plannerSettingsRelationshipDraft,
     plannerSettingsEditingRelationshipId,
-    plannerSettingsSaveStatus,
-    plannerSettingsSaveMessage,
     plannerSettingsLogoMotionEnabled,
     plannerSettingsLogoFixedClock,
   } = planner.state;
@@ -307,18 +305,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
         </button>
         <span className="nogaPlanner_selectSettingsTitle">{SETTINGS_TEXT.title}</span>
       </div>
-      {String(plannerSettingsSaveMessage || "").trim() ? (
-        <p
-          className="nogaPlanner_homeSoulEyebrow"
-          style={{
-            color: plannerSettingsSaveStatus === "error" ? "#c62828" : "#2e7d32",
-            marginTop: "8px",
-            marginBottom: "8px",
-          }}
-        >
-          {plannerSettingsSaveMessage}
-        </p>
-      ) : null}
       <div className="nogaPlanner_selectSettingsFields">
         <label className="nogaPlanner_selectSettingsCheckboxRow">
           <input
