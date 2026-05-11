@@ -6,6 +6,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     useState("50%");
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
   const [logoClockPosition, setLogoClockPosition] = useState("9");
+  const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
   const savedCoursesWorkspacePointerRafRef = useRef(0);
   const logoClockPositionRef = useRef("9");
@@ -48,6 +49,18 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     "9": "/img/NP9.png",
     "11": "/img/NP11.png",
     "10": "/img/NP10.png",
+  };
+  const setLogoClockPositionImmediate = (nextClockBucket) => {
+    const normalizedClockBucket = String(nextClockBucket || "").trim();
+    const nextLogoSource =
+      LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
+    if (logoImageRef.current?.getAttribute("src") !== nextLogoSource) {
+      logoImageRef.current?.setAttribute("src", nextLogoSource);
+    }
+    if (logoClockPositionRef.current !== normalizedClockBucket) {
+      logoClockPositionRef.current = normalizedClockBucket;
+      setLogoClockPosition(normalizedClockBucket);
+    }
   };
 
   const savedCourses = Array.isArray(planner.state?.courses)
@@ -176,10 +189,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           ? fixedLogoClockPosition
           : "9";
       articleElement.dataset.pointerClock = normalizedFixedClock;
-      if (logoClockPositionRef.current !== normalizedFixedClock) {
-        logoClockPositionRef.current = normalizedFixedClock;
-        setLogoClockPosition(normalizedFixedClock);
-      }
+      setLogoClockPositionImmediate(normalizedFixedClock);
       return false;
     }
     const pointerState = savedCoursesWorkspacePointerStateRef.current;
@@ -216,10 +226,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       "--nogaPlanner-workspace-pointer-angle",
       `${angleDeg.toFixed(2)}deg`,
     );
-    if (logoClockPositionRef.current !== clockBucket) {
-      logoClockPositionRef.current = clockBucket;
-      setLogoClockPosition(clockBucket);
-    }
+    setLogoClockPositionImmediate(clockBucket);
 
     const shouldContinue = pointerState.active || distance > 0.0015;
     if (!shouldContinue) {
@@ -280,10 +287,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           "--nogaPlanner-workspace-pointer-angle",
           `${angleDeg.toFixed(2)}deg`,
         );
-        if (logoClockPositionRef.current !== clockBucket) {
-          logoClockPositionRef.current = clockBucket;
-          setLogoClockPosition(clockBucket);
-        }
+        setLogoClockPositionImmediate(clockBucket);
       }
     }
     ensureSavedCoursesWorkspacePointerLoop();
@@ -383,6 +387,14 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     },
     [],
   );
+  useEffect(() => {
+    // Warm all clock-position assets to avoid first-click network/decode lag.
+    Object.values(LOGO_BY_CLOCK_POSITION).forEach((imageSource) => {
+      const image = new Image();
+      image.src = imageSource;
+      image.decoding = "async";
+    });
+  }, []);
   useEffect(() => {
     const articleElement = document.getElementById("nogaPlanner_article");
     if (!articleElement) {
@@ -1784,12 +1796,16 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           className="nogaPlanner_coursesTitleTextWrap"
         >
             <img
+              ref={logoImageRef}
               id="nogaPlanner_coursesEyebrowLogo"
               src={
                 LOGO_BY_CLOCK_POSITION[String(logoClockPosition || "").trim()] ||
                 "/img/NP9.png"
               }
               alt={NOGAPLANNER_TEXT.common.appEyebrow}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
             />
         </div>
         {renderWrapperTabs()}
