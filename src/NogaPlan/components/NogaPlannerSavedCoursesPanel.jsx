@@ -242,25 +242,72 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     };
     savedCoursesWorkspacePointerRafRef.current = requestAnimationFrame(step);
   };
-  const queueSavedCoursesWorkspacePointerUpdate = (clientX, clientY) => {
+  const queueSavedCoursesWorkspacePointerUpdate = (
+    clientX,
+    clientY,
+    options = {},
+  ) => {
     if (!isLogoMotionListenerEnabled) {
       return;
     }
     updateSavedCoursesWorkspacePointerTarget(clientX, clientY);
+    if (options?.snapToTarget) {
+      const pointerState = savedCoursesWorkspacePointerStateRef.current;
+      pointerState.currentX = pointerState.targetX;
+      pointerState.currentY = pointerState.targetY;
+      const articleElement = document.getElementById("nogaPlanner_article");
+      if (articleElement) {
+        const vectorX = pointerState.currentX - 0.5;
+        const vectorY = pointerState.currentY - 0.5;
+        const angleDeg = (Math.atan2(vectorY, vectorX) * 180) / Math.PI;
+        const clockBucket = getPointerClockBucket(
+          pointerState.currentX,
+          pointerState.currentY,
+        );
+        articleElement.dataset.pointerX = pointerState.currentX.toFixed(4);
+        articleElement.dataset.pointerY = pointerState.currentY.toFixed(4);
+        articleElement.dataset.pointerAngle = angleDeg.toFixed(2);
+        articleElement.dataset.pointerClock = clockBucket;
+        articleElement.style.setProperty(
+          "--nogaPlanner-workspace-pointer-x",
+          pointerState.currentX.toFixed(4),
+        );
+        articleElement.style.setProperty(
+          "--nogaPlanner-workspace-pointer-y",
+          pointerState.currentY.toFixed(4),
+        );
+        articleElement.style.setProperty(
+          "--nogaPlanner-workspace-pointer-angle",
+          `${angleDeg.toFixed(2)}deg`,
+        );
+        if (logoClockPositionRef.current !== clockBucket) {
+          logoClockPositionRef.current = clockBucket;
+          setLogoClockPosition(clockBucket);
+        }
+      }
+    }
     ensureSavedCoursesWorkspacePointerLoop();
   };
   const handleSavedCoursesWorkspacePointerClick = (event) => {
     if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
       return;
     }
-    queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY);
+    queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY, {
+      snapToTarget: true,
+    });
   };
   const handleSavedCoursesWorkspaceTouchStart = (event) => {
     const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
     if (!touchPoint) {
       return;
     }
-    queueSavedCoursesWorkspacePointerUpdate(touchPoint.clientX, touchPoint.clientY);
+    queueSavedCoursesWorkspacePointerUpdate(
+      touchPoint.clientX,
+      touchPoint.clientY,
+      {
+        snapToTarget: true,
+      },
+    );
   };
   const clearSavedCoursesWorkspacePointer = () => {
     if (!isLogoMotionListenerEnabled) {
@@ -345,14 +392,22 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
         return;
       }
-      queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY);
+      queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY, {
+        snapToTarget: true,
+      });
     };
     const handleArticleTouchStart = (event) => {
       const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
       if (!touchPoint) {
         return;
       }
-      queueSavedCoursesWorkspacePointerUpdate(touchPoint.clientX, touchPoint.clientY);
+      queueSavedCoursesWorkspacePointerUpdate(
+        touchPoint.clientX,
+        touchPoint.clientY,
+        {
+          snapToTarget: true,
+        },
+      );
     };
     articleElement.addEventListener("click", handleArticleClick);
     articleElement.addEventListener("touchstart", handleArticleTouchStart, {
