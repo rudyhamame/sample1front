@@ -6,6 +6,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     useState("50%");
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
   const [logoClockPosition, setLogoClockPosition] = useState("9");
+  const [logoAssetsReady, setLogoAssetsReady] = useState(false);
   const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
   const savedCoursesWorkspacePointerRafRef = useRef(0);
@@ -51,6 +52,9 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     "10": "/img/NP10.png",
   };
   const setLogoClockPositionImmediate = (nextClockBucket) => {
+    if (!logoAssetsReady) {
+      return;
+    }
     const normalizedClockBucket = String(nextClockBucket || "").trim();
     const nextLogoSource =
       LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
@@ -254,7 +258,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     clientY,
     options = {},
   ) => {
-    if (!isLogoMotionListenerEnabled) {
+    if (!isLogoMotionListenerEnabled || !logoAssetsReady) {
       return;
     }
     updateSavedCoursesWorkspacePointerTarget(clientX, clientY);
@@ -388,12 +392,27 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     [],
   );
   useEffect(() => {
-    // Warm all clock-position assets to avoid first-click network/decode lag.
-    Object.values(LOGO_BY_CLOCK_POSITION).forEach((imageSource) => {
-      const image = new Image();
-      image.src = imageSource;
-      image.decoding = "async";
+    let isCancelled = false;
+    const imageSources = Object.values(LOGO_BY_CLOCK_POSITION);
+    Promise.all(
+      imageSources.map(
+        (imageSource) =>
+          new Promise((resolve) => {
+            const image = new Image();
+            image.decoding = "async";
+            image.onload = resolve;
+            image.onerror = resolve;
+            image.src = imageSource;
+          }),
+      ),
+    ).then(() => {
+      if (!isCancelled) {
+        setLogoAssetsReady(true);
+      }
     });
+    return () => {
+      isCancelled = true;
+    };
   }, []);
   useEffect(() => {
     const articleElement = document.getElementById("nogaPlanner_article");
@@ -1795,18 +1814,26 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           id="nogaPlanner_coursesTitleTextWrap"
           className="nogaPlanner_coursesTitleTextWrap"
         >
-            <img
-              ref={logoImageRef}
-              id="nogaPlanner_coursesEyebrowLogo"
-              src={
-                LOGO_BY_CLOCK_POSITION[String(logoClockPosition || "").trim()] ||
-                "/img/NP9.png"
-              }
-              alt={NOGAPLANNER_TEXT.common.appEyebrow}
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
+            {logoAssetsReady ? (
+              <img
+                ref={logoImageRef}
+                id="nogaPlanner_coursesEyebrowLogo"
+                src={
+                  LOGO_BY_CLOCK_POSITION[String(logoClockPosition || "").trim()] ||
+                  "/img/NP9.png"
+                }
+                alt={NOGAPLANNER_TEXT.common.appEyebrow}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            ) : (
+              <div
+                id="nogaPlanner_coursesEyebrowLogoLoader"
+                className="nogaPlanner_coursesEyebrowLogoLoader"
+                aria-label="Loading logo images"
+              />
+            )}
         </div>
         {renderWrapperTabs()}
       </div>
