@@ -249,14 +249,14 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     updateSavedCoursesWorkspacePointerTarget(clientX, clientY);
     ensureSavedCoursesWorkspacePointerLoop();
   };
-  const handleSavedCoursesWorkspacePointerMove = (event) => {
+  const handleSavedCoursesWorkspacePointerClick = (event) => {
     if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
       return;
     }
     queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY);
   };
-  const handleSavedCoursesWorkspaceTouchMove = (event) => {
-    const touchPoint = event?.touches?.[0];
+  const handleSavedCoursesWorkspaceTouchStart = (event) => {
+    const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
     if (!touchPoint) {
       return;
     }
@@ -341,32 +341,26 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     if (!articleElement) {
       return undefined;
     }
-    const handleArticleMouseMove = (event) => {
+    const handleArticleClick = (event) => {
       if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
         return;
       }
       queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY);
     };
-    const handleArticleTouchMove = (event) => {
-      const touchPoint = event?.touches?.[0];
+    const handleArticleTouchStart = (event) => {
+      const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
       if (!touchPoint) {
         return;
       }
       queueSavedCoursesWorkspacePointerUpdate(touchPoint.clientX, touchPoint.clientY);
     };
-    articleElement.addEventListener("mousemove", handleArticleMouseMove);
-    articleElement.addEventListener("mouseleave", clearSavedCoursesWorkspacePointer);
-    articleElement.addEventListener("touchmove", handleArticleTouchMove, {
+    articleElement.addEventListener("click", handleArticleClick);
+    articleElement.addEventListener("touchstart", handleArticleTouchStart, {
       passive: true,
     });
-    articleElement.addEventListener("touchend", clearSavedCoursesWorkspacePointer);
-    articleElement.addEventListener("touchcancel", clearSavedCoursesWorkspacePointer);
     return () => {
-      articleElement.removeEventListener("mousemove", handleArticleMouseMove);
-      articleElement.removeEventListener("mouseleave", clearSavedCoursesWorkspacePointer);
-      articleElement.removeEventListener("touchmove", handleArticleTouchMove);
-      articleElement.removeEventListener("touchend", clearSavedCoursesWorkspacePointer);
-      articleElement.removeEventListener("touchcancel", clearSavedCoursesWorkspacePointer);
+      articleElement.removeEventListener("click", handleArticleClick);
+      articleElement.removeEventListener("touchstart", handleArticleTouchStart);
     };
   }, [isLogoMotionListenerEnabled]);
   useEffect(() => {
