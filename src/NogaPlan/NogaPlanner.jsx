@@ -819,8 +819,15 @@ export default class NogaPlanner extends Component {
       : [];
     return courseEntries;
   };
-  handleSavedCourseGroupClick = (course = {}) => {
+  handleSavedCourseGroupClick = (course = {}, courseGroup = []) => {
     const componentId = String(course?._id || "").trim();
+    const groupComponentIds = Array.isArray(courseGroup)
+      ? courseGroup
+          .map((entry) => String(entry?._id || "").trim())
+          .filter(Boolean)
+      : [];
+    const effectiveGroupIds =
+      groupComponentIds.length > 0 ? groupComponentIds : [componentId];
     const lectureCourseLabel = buildCourseLectureMatchLabel(course);
     if (!componentId) {
       return;
@@ -834,8 +841,10 @@ export default class NogaPlanner extends Component {
               .map((entry) => String(entry || "").trim())
               .filter(Boolean)
           : [];
-        const isAlreadySelected = previousSelectedIds.includes(componentId);
-        if (isAlreadySelected && previousSelectedIds.length === 1) {
+        const isGroupFullySelected = effectiveGroupIds.every((entryId) =>
+          previousSelectedIds.includes(entryId),
+        );
+        if (isGroupFullySelected && previousSelectedIds.length === effectiveGroupIds.length) {
           return {
             plannerTab: "courses",
             selectedTabItemId: null,
@@ -850,7 +859,7 @@ export default class NogaPlanner extends Component {
         return {
           plannerTab: "courses",
           selectedTabItemId: null,
-          selectedSavedCourseIds: [componentId],
+          selectedSavedCourseIds: [...effectiveGroupIds],
           selectedCourseForLecturesId: componentId,
           selectedCourseForLecturesName: lectureCourseLabel,
           savedCourseDetailsComponentId: "",
@@ -865,10 +874,12 @@ export default class NogaPlanner extends Component {
             .map((entry) => String(entry || "").trim())
             .filter(Boolean)
         : [];
-      const isAlreadySelected = previousSelectedIds.includes(componentId);
-      if (isAlreadySelected) {
+      const isGroupFullySelected = effectiveGroupIds.every((entryId) =>
+        previousSelectedIds.includes(entryId),
+      );
+      if (isGroupFullySelected) {
         const nextSelectedIds = previousSelectedIds.filter(
-          (entry) => entry !== componentId,
+          (entry) => !effectiveGroupIds.includes(entry),
         );
         const nextActiveId =
           String(previousState?.selectedCourseForLecturesId || "").trim() ===
@@ -904,7 +915,9 @@ export default class NogaPlanner extends Component {
       return {
         plannerTab: "courses",
         selectedTabItemId: null,
-        selectedSavedCourseIds: [...previousSelectedIds, componentId],
+        selectedSavedCourseIds: Array.from(
+          new Set([...previousSelectedIds, ...effectiveGroupIds]),
+        ),
         selectedCourseForLecturesId:
           previousState?.selectedCourseForLecturesId || componentId,
         selectedCourseForLecturesName:
@@ -1029,21 +1042,22 @@ export default class NogaPlanner extends Component {
       console.error("[planner-select-settings] db read failed:", error);
     }
   };
-  getPlannerRelationshipForClass = (settings, courseClassValue) => {
-    const normalizedCourseClass = String(courseClassValue || "").trim();
-    if (!normalizedCourseClass) {
-      return null;
-    }
+  getPlannerRelationshipForClass = (settings, draft = {}) => {
     const relationships = Array.isArray(settings?.relationships)
       ? settings.relationships
       : [];
-    return (
-      relationships.find(
-        (entry) =>
-          String(entry?.course_classSelection || "").trim() ===
-          normalizedCourseClass,
-      ) || null
-    );
+    const match = relationships.find((entry) => {
+      if (String(entry?.relationScope || "").trim() !== "innerComponent") {
+        return false;
+      }
+      const causeField = String(entry?.causeField || "").trim();
+      const causeValue = String(entry?.causeValue || "").trim();
+      if (!causeField || !causeValue) {
+        return false;
+      }
+      return String(draft?.[causeField] || "").trim() === causeValue;
+    });
+    return match || null;
   };
   applyPlannerRelationshipToSavedCourseDraft = (
     draft,
@@ -1058,27 +1072,17 @@ export default class NogaPlanner extends Component {
     const nextDraft = {
       ...draft,
     };
-    const relationshipFields = [
-      "normativeCourseTerm",
-      "actualCourseTerm",
-      "course_daySelection",
-      "course_timeSelection",
-      "course_locationBuilding",
-      "course_locationRoom",
-      "course_grade",
-    ];
-    relationshipFields.forEach((fieldName) => {
-      const relationshipValue = String(relationship?.[fieldName] || "").trim();
-      if (!relationshipValue) {
-        return;
-      }
-      if (
-        forceRelationshipValues ||
-        !String(nextDraft?.[fieldName] || "").trim()
-      ) {
-        nextDraft[fieldName] = relationshipValue;
-      }
-    });
+    const effectField = String(relationship?.effectField || "").trim();
+    const effectValue = String(relationship?.effectValue || "").trim();
+    if (!effectField || !effectValue) {
+      return nextDraft;
+    }
+    if (
+      forceRelationshipValues ||
+      !String(nextDraft?.[effectField] || "").trim()
+    ) {
+      nextDraft[effectField] = effectValue;
+    }
     return nextDraft;
   };
   getPlannerProfileAcademicYear = () =>
@@ -1200,7 +1204,7 @@ export default class NogaPlanner extends Component {
         nextDraft,
         this.getPlannerRelationshipForClass(
           plannerSelectSettings,
-          nextDraft.course_classSelection || nextDraft.course_class,
+          nextDraft,
         ),
         true,
       );
@@ -1245,24 +1249,12 @@ export default class NogaPlanner extends Component {
     const plannerSelectSettings = this.state?.plannerSelectSettings;
     const relationship = this.getPlannerRelationshipForClass(
       plannerSelectSettings,
-      draft?.course_classSelection || draft?.course_class,
+      draft,
     );
-    if (!relationship?.readOnly) {
+    if (!relationship?.readOnly || !relationship?.effectField) {
       return new Set();
     }
-    return new Set(
-      [
-        "normativeCourseTerm",
-        "actualCourseTerm",
-        "course_daySelection",
-        "course_timeSelection",
-        "course_locationBuilding",
-        "course_locationRoom",
-        "course_grade",
-      ].filter((fieldName) =>
-        Boolean(String(relationship?.[fieldName] || "").trim()),
-      ),
-    );
+    return new Set([String(relationship.effectField || "").trim()].filter(Boolean));
   };
   updatePlannerSelectSettings = async (updater) => {
     const previousSettings = normalizePlannerSelectSettings(
@@ -2064,10 +2056,62 @@ export default class NogaPlanner extends Component {
         String(this.state?.plannerSettingsEditingRelationshipId || "").trim() ||
         createPlannerSettingsRelationshipId(),
     });
-    if (!relationshipDraft.course_classSelection) {
+    const relationshipPayload = {
+      ...relationshipDraft,
+      mode: relationshipDraft.relationScope,
+      active: Boolean(relationshipDraft.readOnly),
+      layerLevel:
+        relationshipDraft.relationScope === "intercomponent"
+          ? "inter-component"
+          : "inner-component",
+      conditionFormKey: "savedCourse",
+      conditionFieldKey: relationshipDraft.causeField,
+      conditionValue: relationshipDraft.causeValue,
+      conditions:
+        relationshipDraft.causeField && relationshipDraft.causeValue
+          ? [
+              {
+                id: `${relationshipDraft.id}-cond-1`,
+                conditionType: "field",
+                formKey: "savedCourse",
+                fieldKey: relationshipDraft.causeField,
+                value: relationshipDraft.causeValue,
+                logicalOperator: "AND",
+                negate: false,
+              },
+            ]
+          : [],
+      resultFormKey: "savedCourse",
+      resultFieldKey: relationshipDraft.effectField,
+      resultValue: relationshipDraft.effectValue,
+    };
+    if (relationshipDraft.relationScope === "intercomponent") {
+      const message = "علاقات المكوّنات المتداخلة سيتم تفعيلها لاحقاً.";
+      this.props.serverReply(message);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: message,
+      });
       return;
     }
-    await this.updatePlannerSelectSettings((previousSettings) => {
+    if (
+      relationshipDraft.relationScope === "innerComponent" &&
+      (!relationshipDraft.causeField ||
+        !relationshipDraft.causeValue ||
+        !relationshipDraft.effectField ||
+        !relationshipDraft.effectValue)
+    ) {
+      const message =
+        "يرجى إكمال العلاقة: حقل السبب، قيمة السبب، حقل الأثر، وقيمة الأثر.";
+      this.props.serverReply(message);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: message,
+      });
+      return;
+    }
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => {
       const currentRelationships = Array.isArray(
         previousSettings?.relationships,
       )
@@ -2080,27 +2124,92 @@ export default class NogaPlanner extends Component {
         editingRelationshipId.length > 0
           ? currentRelationships.map((entry) =>
               String(entry?.id || "").trim() === editingRelationshipId
-                ? relationshipDraft
+                ? relationshipPayload
                 : entry,
             )
-          : [
-              ...currentRelationships.filter(
-                (entry) =>
-                  String(entry?.course_classSelection || "").trim() !==
-                  relationshipDraft.course_classSelection,
-              ),
-              relationshipDraft,
-            ];
+          : [...currentRelationships, relationshipPayload];
       return {
         ...previousSettings,
         relationships: nextRelationships,
       };
-    });
+      },
+    );
+    const relationshipWasPersisted = Array.isArray(
+      persistedSettings?.relationships,
+    )
+      ? persistedSettings.relationships.some(
+          (entry) =>
+            String(entry?.causeField || "").trim() ===
+              String(relationshipDraft.causeField || "").trim() &&
+            String(entry?.causeValue || "").trim() ===
+              String(relationshipDraft.causeValue || "").trim() &&
+            String(entry?.effectField || "").trim() ===
+              String(relationshipDraft.effectField || "").trim() &&
+            String(entry?.effectValue || "").trim() ===
+              String(relationshipDraft.effectValue || "").trim() &&
+            String(
+              entry?.relationScope || entry?.mode || "innerComponent",
+            ).trim() === String(relationshipDraft.relationScope).trim(),
+        )
+      : false;
+    if (!relationshipWasPersisted) {
+      const message =
+        "لم يتم حفظ العلاقة في الإعدادات. تأكد من اكتمال الحقول ثم أعد المحاولة.";
+      this.props.serverReply(message);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: message,
+      });
+      return;
+    }
     this.setState({
       plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
       plannerSettingsEditingRelationshipId: "",
+      plannerSettingsSelectedRelationshipId: "",
       plannerSettingsSaveStatus: "",
       plannerSettingsSaveMessage: "",
+    });
+  };
+  togglePlannerSettingsRelationshipSelection = (relationshipId) => {
+    const normalizedId = String(relationshipId || "").trim();
+    if (!normalizedId) {
+      return;
+    }
+    this.setState((previousState) => ({
+      plannerSettingsSelectedRelationshipId:
+        String(previousState?.plannerSettingsSelectedRelationshipId || "").trim() ===
+        normalizedId
+          ? ""
+          : normalizedId,
+    }));
+  };
+  editSelectedPlannerSettingsRelationship = () => {
+    const relationshipId = String(
+      this.state?.plannerSettingsSelectedRelationshipId || "",
+    ).trim();
+    if (!relationshipId) {
+      return;
+    }
+    this.editPlannerSettingsRelationship(relationshipId);
+  };
+  deleteSelectedPlannerSettingsRelationship = async () => {
+    const relationshipId = String(
+      this.state?.plannerSettingsSelectedRelationshipId || "",
+    ).trim();
+    if (!relationshipId) {
+      return;
+    }
+    await this.deletePlannerSettingsRelationship(relationshipId);
+  };
+  clearPlannerSettingsRelationships = async () => {
+    await this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      relationships: [],
+    }));
+    this.setState({
+      plannerSettingsSelectedRelationshipId: "",
+      plannerSettingsEditingRelationshipId: "",
+      plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
     });
   };
   editPlannerSettingsRelationship = (relationshipId) => {
@@ -2122,6 +2231,9 @@ export default class NogaPlanner extends Component {
       plannerSettingsEditingRelationshipId: String(
         relationship.id || "",
       ).trim(),
+      plannerSettingsSelectedRelationshipId: String(
+        relationship.id || "",
+      ).trim(),
       plannerSettingsRelationshipDraft:
         normalizePlannerRelationshipEntry(relationship),
     });
@@ -2141,7 +2253,17 @@ export default class NogaPlanner extends Component {
     ) {
       this.setState({
         plannerSettingsEditingRelationshipId: "",
+        plannerSettingsSelectedRelationshipId: "",
         plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
+      });
+      return;
+    }
+    if (
+      String(this.state?.plannerSettingsSelectedRelationshipId || "").trim() ===
+      String(relationshipId || "").trim()
+    ) {
+      this.setState({
+        plannerSettingsSelectedRelationshipId: "",
       });
     }
   };
@@ -2165,7 +2287,17 @@ export default class NogaPlanner extends Component {
           nextDraft,
           this.getPlannerRelationshipForClass(
             previousState.plannerSelectSettings,
-            nextValue,
+            nextDraft,
+          ),
+          true,
+        );
+      }
+      if (fieldName !== "course_classSelection") {
+        nextDraft = this.applyPlannerRelationshipToSavedCourseDraft(
+          nextDraft,
+          this.getPlannerRelationshipForClass(
+            previousState.plannerSelectSettings,
+            nextDraft,
           ),
           true,
         );
@@ -3237,7 +3369,14 @@ export default class NogaPlanner extends Component {
       this.props.serverReply(`${courseName} ${NOGAPLANNER_TEXT.messages.courseAddedSuffix}`);
     }
     this.closeSavedCourseEditor();
-    this.retrieveCourses(createdCourseId);
+    this.setState({
+      selectedSavedCourseIds: [],
+      selectedCourseForLecturesId: "",
+      selectedCourseForLecturesName: "",
+      savedCourseDetailsComponentId: "",
+      selectedTabItemId: null,
+    });
+    this.retrieveCourses();
   };
   deleteSelectedSavedCourse = async () => {
     const selectedComponentIds = (
@@ -3463,6 +3602,7 @@ export default class NogaPlanner extends Component {
       plannerSettingsSelectedLocationRoomIndex: -1,
       plannerSettingsRelationshipDraft: getDefaultPlannerRelationshipDraft(),
       plannerSettingsEditingRelationshipId: "",
+      plannerSettingsSelectedRelationshipId: "",
       plannerSettingsSaveStatus: "",
       plannerSettingsSaveMessage: "",
       plannerSettingsLogoMotionEnabled: true,

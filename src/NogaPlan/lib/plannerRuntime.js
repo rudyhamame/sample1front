@@ -1585,14 +1585,11 @@ export const buildDefaultPlannerSelectSettings = () => ({
   relationships: [],
 });
 export const getDefaultPlannerRelationshipDraft = () => ({
-  course_classSelection: "",
-  normativeCourseTerm: "",
-  actualCourseTerm: "",
-  course_daySelection: "",
-  course_timeSelection: "",
-  course_locationBuilding: "",
-  course_locationRoom: "",
-  course_grade: "",
+  relationScope: "innerComponent",
+  causeField: "",
+  causeValue: "",
+  effectField: "",
+  effectValue: "",
   readOnly: false,
 });
 
@@ -1644,15 +1641,38 @@ const normalizePlannerRoomOptionsByBuilding = (entries = []) =>
 
 export const normalizePlannerRelationshipEntry = (entry = {}) => ({
   id: String(entry?.id || "").trim() || createPlannerSettingsRelationshipId(),
-  course_classSelection: String(entry?.course_classSelection || "").trim(),
-  normativeCourseTerm: String(entry?.normativeCourseTerm || "").trim(),
-  actualCourseTerm: String(entry?.actualCourseTerm || "").trim(),
-  course_daySelection: String(entry?.course_daySelection || "").trim(),
-  course_timeSelection: String(entry?.course_timeSelection || "").trim(),
-  course_locationBuilding: String(entry?.course_locationBuilding || "").trim(),
-  course_locationRoom: String(entry?.course_locationRoom || "").trim(),
-  course_grade: String(entry?.course_grade || "").trim(),
-  readOnly: Boolean(entry?.readOnly),
+  mode:
+    String(entry?.mode || "").trim() === "intercomponent"
+      ? "intercomponent"
+      : "innerComponent",
+  relationScope:
+    String(entry?.relationScope || "").trim() === "intercomponent" ||
+    String(entry?.mode || "").trim() === "intercomponent" ||
+    String(entry?.layerLevel || entry?.layer || "").trim() === "inter-component"
+      ? "intercomponent"
+      : "innerComponent",
+  causeField: String(
+    entry?.causeField ||
+      entry?.conditionFieldKey ||
+      entry?.conditions?.[0]?.fieldKey ||
+      "",
+  ).trim(),
+  causeValue: String(
+    entry?.causeValue ||
+      entry?.conditionValue ||
+      entry?.conditions?.[0]?.value ||
+      "",
+  ).trim(),
+  effectField: String(entry?.effectField || entry?.resultFieldKey || "").trim(),
+  effectValue: String(entry?.effectValue || entry?.resultValue || "").trim(),
+  active:
+    typeof entry?.active === "boolean"
+      ? entry.active
+      : Boolean(entry?.readOnly),
+  readOnly:
+    typeof entry?.readOnly === "boolean"
+      ? entry.readOnly
+      : Boolean(entry?.active),
 });
 
 export const normalizePlannerSelectSettings = (value) => {
@@ -1716,7 +1736,11 @@ export const normalizePlannerSelectSettings = (value) => {
     relationships: Array.isArray(nextValue?.relationships)
       ? nextValue.relationships
           .map((entry) => normalizePlannerRelationshipEntry(entry))
-          .filter((entry) => Boolean(entry.course_classSelection))
+          .filter(
+            (entry) =>
+              entry.relationScope === "intercomponent" ||
+              (Boolean(entry.causeField) && Boolean(entry.effectField)),
+          )
       : [],
   };
 };

@@ -46,6 +46,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsSelectedLocationRoomIndex,
     plannerSettingsRelationshipDraft,
     plannerSettingsEditingRelationshipId,
+    plannerSettingsSelectedRelationshipId,
     plannerSettingsLogoMotionEnabled,
     plannerSettingsLogoFixedClock,
   } = planner.state;
@@ -291,6 +292,92 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
   )
     ? plannerSelectSettings.relationships
     : [];
+  const componentRelationshipFieldOptions = [
+    { value: "course_classSelection", label: "نوع المكوّن" },
+    { value: "normativeCourseTerm", label: "الفصل المفترض" },
+    { value: "actualCourseTerm", label: "الفصل الفعلي" },
+    { value: "course_daySelection", label: "اليوم" },
+    { value: "course_timeSelection", label: "الساعة" },
+    { value: "course_locationBuilding", label: "المبنى" },
+    { value: "course_locationRoom", label: "القاعة" },
+    { value: "course_grade", label: "الوزن" },
+  ];
+  const allLocationRoomOptions = Array.from(
+    new Set(
+      [
+        ...locationRoomOptions,
+        ...locationRoomOptionsByBuilding.flatMap((entry) =>
+          Array.isArray(entry?.rooms) ? entry.rooms : [],
+        ),
+      ]
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    ),
+  );
+  const getRelationshipFieldValueOptions = (fieldName) => {
+    const normalizedFieldName = String(fieldName || "").trim();
+    if (!normalizedFieldName) {
+      return [];
+    }
+    if (normalizedFieldName === "course_classSelection") {
+      return componentClassOptions;
+    }
+    if (normalizedFieldName === "normativeCourseTerm") {
+      return termOptions;
+    }
+    if (normalizedFieldName === "actualCourseTerm") {
+      return termOptions;
+    }
+    if (normalizedFieldName === "course_daySelection") {
+      return weekdayOptions;
+    }
+    if (normalizedFieldName === "course_timeSelection") {
+      return hourOptions;
+    }
+    if (normalizedFieldName === "course_locationBuilding") {
+      return locationBuildingOptions;
+    }
+    if (normalizedFieldName === "course_locationRoom") {
+      return allLocationRoomOptions;
+    }
+    return [];
+  };
+  const renderRelationshipValueControl = ({
+    fieldName,
+    value,
+    onChange,
+    placeholder,
+  }) => {
+    const options = getRelationshipFieldValueOptions(fieldName);
+    if (options.length > 0) {
+      return (
+        <select
+          className="nogaPlanner_savedCoursesDetailsInput"
+          value={String(value || "")}
+          onChange={onChange}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((optionValue) => (
+            <option
+              key={`relationship-value-${fieldName}-${optionValue}`}
+              value={optionValue}
+            >
+              {optionValue}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    return (
+      <input
+        className="nogaPlanner_savedCoursesDetailsInput"
+        type="text"
+        value={String(value || "")}
+        onChange={onChange}
+        placeholder={placeholder}
+      />
+    );
+  };
 
   return (
     <div className="nogaPlanner_selectSettingsPanel">
@@ -771,140 +858,91 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           <div className="nogaPlanner_selectSettingsFields">
             <select
               className="nogaPlanner_savedCoursesDetailsInput"
-              value={plannerSettingsRelationshipDraft.course_classSelection}
+              value={
+                plannerSettingsRelationshipDraft.relationScope ||
+                "innerComponent"
+              }
               onChange={(event) =>
                 planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_classSelection",
+                  "relationScope",
                   event.target.value,
                 )
               }
             >
-              <option value="">نوع المكوّن</option>
-              {componentClassOptions.map((optionValue) => (
-                <option
-                  key={`relationship-class-${optionValue}`}
-                  value={optionValue}
-                >
-                  {optionValue}
-                </option>
-              ))}
+              <option value="innerComponent">داخل المكوّن</option>
+              <option value="intercomponent">
+                بين مكوّنات نفس المادّة (لاحقاً)
+              </option>
             </select>
-            <select
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={plannerSettingsRelationshipDraft.normativeCourseTerm}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "normativeCourseTerm",
-                  event.target.value,
-                )
-              }
-            >
-              <option value="">الفصل المفترض</option>
-              {termOptions.map((optionValue) => (
-                <option
-                  key={`relationship-normative-${optionValue}`}
-                  value={optionValue}
+            {(plannerSettingsRelationshipDraft.relationScope ||
+              "innerComponent") === "innerComponent" ? (
+              <>
+                <select
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={plannerSettingsRelationshipDraft.causeField || ""}
+                  onChange={(event) =>
+                    planner.handlePlannerSettingsRelationshipDraftChange(
+                      "causeField",
+                      event.target.value,
+                    )
+                  }
                 >
-                  {optionValue}
-                </option>
-              ))}
-            </select>
-            <select
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={plannerSettingsRelationshipDraft.actualCourseTerm}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "actualCourseTerm",
-                  event.target.value,
-                )
-              }
-            >
-              <option value="">الفصل الفعلي</option>
-              {termOptions.map((optionValue) => (
-                <option
-                  key={`relationship-actual-${optionValue}`}
-                  value={optionValue}
+                  <option value="">حقل السبب</option>
+                  {componentRelationshipFieldOptions.map((option) => (
+                    <option
+                      key={`relationship-cause-${option.value}`}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {renderRelationshipValueControl({
+                  fieldName: plannerSettingsRelationshipDraft.causeField,
+                  value: plannerSettingsRelationshipDraft.causeValue || "",
+                  onChange: (event) =>
+                    planner.handlePlannerSettingsRelationshipDraftChange(
+                      "causeValue",
+                      event.target.value,
+                    ),
+                  placeholder: "قيمة السبب",
+                })}
+                <select
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={plannerSettingsRelationshipDraft.effectField || ""}
+                  onChange={(event) =>
+                    planner.handlePlannerSettingsRelationshipDraftChange(
+                      "effectField",
+                      event.target.value,
+                    )
+                  }
                 >
-                  {optionValue}
-                </option>
-              ))}
-            </select>
-            <select
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={plannerSettingsRelationshipDraft.course_daySelection}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_daySelection",
-                  event.target.value,
-                )
-              }
-            >
-              <option value="">اليوم</option>
-              {weekdayOptions.map((optionValue) => (
-                <option
-                  key={`relationship-day-${optionValue}`}
-                  value={optionValue}
-                >
-                  {optionValue}
-                </option>
-              ))}
-            </select>
-            <select
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={plannerSettingsRelationshipDraft.course_timeSelection}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_timeSelection",
-                  event.target.value,
-                )
-              }
-            >
-              <option value="">الساعة</option>
-              {hourOptions.map((optionValue) => (
-                <option
-                  key={`relationship-hour-${optionValue}`}
-                  value={optionValue}
-                >
-                  {optionValue}
-                </option>
-              ))}
-            </select>
-            <input
-              className="nogaPlanner_savedCoursesDetailsInput"
-              type="text"
-              value={plannerSettingsRelationshipDraft.course_locationBuilding}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_locationBuilding",
-                  event.target.value,
-                )
-              }
-              placeholder="المبنى"
-            />
-            <input
-              className="nogaPlanner_savedCoursesDetailsInput"
-              type="text"
-              value={plannerSettingsRelationshipDraft.course_locationRoom}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_locationRoom",
-                  event.target.value,
-                )
-              }
-              placeholder="القاعة"
-            />
-            <input
-              className="nogaPlanner_savedCoursesDetailsInput"
-              type="text"
-              value={plannerSettingsRelationshipDraft.course_grade}
-              onChange={(event) =>
-                planner.handlePlannerSettingsRelationshipDraftChange(
-                  "course_grade",
-                  event.target.value,
-                )
-              }
-              placeholder="الوزن"
-            />
+                  <option value="">حقل الأثر</option>
+                  {componentRelationshipFieldOptions.map((option) => (
+                    <option
+                      key={`relationship-effect-${option.value}`}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {renderRelationshipValueControl({
+                  fieldName: plannerSettingsRelationshipDraft.effectField,
+                  value: plannerSettingsRelationshipDraft.effectValue || "",
+                  onChange: (event) =>
+                    planner.handlePlannerSettingsRelationshipDraftChange(
+                      "effectValue",
+                      event.target.value,
+                    ),
+                  placeholder: "قيمة الأثر",
+                })}
+              </>
+            ) : (
+              <span className="nogaPlanner_selectSettingsRelationshipText">
+                سيتم إعداد علاقات المكوّنات المتداخلة لاحقاً
+              </span>
+            )}
             <label className="nogaPlanner_selectSettingsCheckboxRow">
               <input
                 type="checkbox"
@@ -919,6 +957,13 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
               <span>قفل هذه القيم داخل المحرر</span>
             </label>
             <div className="nogaPlanner_selectSettingsActions">
+              {(() => {
+                const hasSelectedRelationship = Boolean(
+                  String(plannerSettingsSelectedRelationshipId || "").trim(),
+                );
+                const hasRelationships = plannerRelationships.length > 0;
+                return (
+                  <>
               <button
                 type="button"
                 className="nogaPlanner_coursesMiniBarBtn"
@@ -926,72 +971,108 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
               >
                 {plannerSettingsEditingRelationshipId
                   ? "تحديث العلاقة"
-                  : "إضافة العلاقة"}
+                  : "إضافة"}
               </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (hasSelectedRelationship
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.editSelectedPlannerSettingsRelationship}
+                disabled={!hasSelectedRelationship}
+              >
+                تعديل
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (hasSelectedRelationship
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.deleteSelectedPlannerSettingsRelationship}
+                disabled={!hasSelectedRelationship}
+              >
+                حذف المحدد
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (hasRelationships
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.clearPlannerSettingsRelationships}
+                disabled={!hasRelationships}
+              >
+                حذف الكل
+              </button>
+                  </>
+                );
+              })()}
             </div>
             <ul className="nogaPlanner_selectSettingsRelationshipsList">
-              {plannerRelationships.map((relationship) => (
-                <li
-                  key={relationship.id}
-                  className="nogaPlanner_selectSettingsRelationshipItem"
-                >
-                  <div className="nogaPlanner_selectSettingsRelationshipBody">
+              {plannerRelationships.length > 0 ? (
+                plannerRelationships.map((relationship) => (
+                  <li
+                    key={relationship.id}
+                    className={
+                      "nogaPlanner_selectSettingsRelationshipItem" +
+                      (String(plannerSettingsSelectedRelationshipId || "").trim() ===
+                      String(relationship.id || "").trim()
+                        ? " nogaPlanner_selectSettingsItem--selected"
+                        : "")
+                    }
+                    onClick={() =>
+                      planner.togglePlannerSettingsRelationshipSelection(
+                        relationship.id,
+                      )
+                    }
+                  >
+                    <div className="nogaPlanner_selectSettingsRelationshipBody">
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {relationship.relationScope === "intercomponent"
+                          ? "بين مكوّنات نفس المادّة"
+                          : "داخل المكوّن"}
+                      </span>
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {relationship.relationScope === "intercomponent"
+                          ? "لاحقاً"
+                          : [
+                              relationship.causeField
+                                ? `السبب: ${componentRelationshipFieldOptions.find((entry) => entry.value === relationship.causeField)?.label || relationship.causeField}`
+                                : "",
+                              relationship.causeValue
+                                ? `قيمة السبب: ${relationship.causeValue}`
+                                : "",
+                              relationship.effectField
+                                ? `الأثر: ${componentRelationshipFieldOptions.find((entry) => entry.value === relationship.effectField)?.label || relationship.effectField}`
+                                : "",
+                              relationship.effectValue
+                                ? `قيمة الأثر: ${relationship.effectValue}`
+                                : "",
+                              relationship.readOnly ? "مقفل" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" • ") || "بدون قيم إضافية"}
+                      </span>
+                    </div>
+                  </li>
+                ))
+              ) : (
+                <li className="nogaPlanner_selectSettingsRelationshipItem nogaPlanner_selectSettingsRelationshipItem--empty">
+                  <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--empty">
                     <span className="nogaPlanner_selectSettingsRelationshipText">
-                      {relationship.course_classSelection}
-                    </span>
-                    <span className="nogaPlanner_selectSettingsRelationshipText">
-                      {[
-                        relationship.normativeCourseTerm
-                          ? `المفترض: ${relationship.normativeCourseTerm}`
-                          : "",
-                        relationship.actualCourseTerm
-                          ? `الفعلي: ${relationship.actualCourseTerm}`
-                          : "",
-                        relationship.course_daySelection
-                          ? `اليوم: ${relationship.course_daySelection}`
-                          : "",
-                        relationship.course_timeSelection
-                          ? `الساعة: ${relationship.course_timeSelection}`
-                          : "",
-                        relationship.course_locationBuilding
-                          ? `المبنى: ${relationship.course_locationBuilding}`
-                          : "",
-                        relationship.course_locationRoom
-                          ? `القاعة: ${relationship.course_locationRoom}`
-                          : "",
-                        relationship.course_grade
-                          ? `الوزن: ${relationship.course_grade}`
-                          : "",
-                        relationship.readOnly ? "مقفل" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" • ") || "بدون قيم إضافية"}
+                      لا يوجد أي إدخال
                     </span>
                   </div>
-                  <span className="nogaPlanner_selectSettingsItemActions">
-                    <button
-                      type="button"
-                      className="nogaPlanner_coursesMiniBarBtn"
-                      onClick={() =>
-                        planner.editPlannerSettingsRelationship(relationship.id)
-                      }
-                    >
-                      تعديل
-                    </button>
-                    <button
-                      type="button"
-                      className="nogaPlanner_coursesMiniBarBtn"
-                      onClick={() =>
-                        planner.deletePlannerSettingsRelationship(
-                          relationship.id,
-                        )
-                      }
-                    >
-                      حذف
-                    </button>
-                  </span>
                 </li>
-              ))}
+              )}
             </ul>
           </div>
         </div>

@@ -7,6 +7,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
   const [logoClockPosition, setLogoClockPosition] = useState("9");
   const [logoAssetsReady, setLogoAssetsReady] = useState(false);
+  const [noAttendanceForComponent, setNoAttendanceForComponent] = useState(false);
+  const [hoveredCourseGroupKey, setHoveredCourseGroupKey] = useState("");
   const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
   const savedCoursesWorkspacePointerRafRef = useRef(0);
@@ -25,12 +27,12 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     buildSavedCourseComponentEntryFromDraft,
     normalizeAcademicYearValue,
     formatCourseLocationDisplay,
+    formatAcademicTermDisplay,
     HOUR_OPTIONS,
     TERM_OPTIONS,
     SAVED_COMPONENT_CLASS_OPTIONS,
     ACADEMIC_YEAR_OPTIONS,
     buildDefaultPlannerWeekdayOptions,
-    buildSavedCourseGroupKey,
     PLANNER_COURSE_UI,
     getPlannerDefaultFieldsForForm,
     NOGAPLANNER_WRAPPER_TABS,
@@ -52,13 +54,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     "10": "/img/NP10.png",
   };
   const setLogoClockPositionImmediate = (nextClockBucket) => {
-    if (!logoAssetsReady) {
-      return;
-    }
     const normalizedClockBucket = String(nextClockBucket || "").trim();
     const nextLogoSource =
       LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
-    if (logoImageRef.current?.getAttribute("src") !== nextLogoSource) {
+    if (
+      logoAssetsReady &&
+      logoImageRef.current?.getAttribute("src") !== nextLogoSource
+    ) {
       logoImageRef.current?.setAttribute("src", nextLogoSource);
     }
     if (logoClockPositionRef.current !== normalizedClockBucket) {
@@ -120,8 +122,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const selectedDetailsComponent = String(
     savedCourseDetailsComponentId || "",
   ).trim();
-  const canEditSelectedCourse = selectedIds.length === 1;
-  const canDeleteSelectedCourses = selectedIds.length > 0;
+  const getCourseNameGroupKey = (course = {}) =>
+    String(course?.course_name || "").trim().toLowerCase();
   const isLecturesTab = plannerTab === "lectures";
   const isCoursesTab = plannerTab === "courses";
   const hasActivePlannerTab =
@@ -138,6 +140,12 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     isLecturesTab && !savedCourseSelectionMode;
   const isLogoMotionListenerEnabled = Boolean(plannerSettingsLogoMotionEnabled);
   const fixedLogoClockPosition = String(plannerSettingsLogoFixedClock || "9").trim();
+  const scheduleDisabledForComponent =
+    noAttendanceForComponent || !hasSelectedComponentType;
+
+  useEffect(() => {
+    setNoAttendanceForComponent(false);
+  }, [selectedSavedCourseDraftComponentIndex, hasSelectedComponentType]);
 
   const handleWrapperTabButtonClick = (tabKey) => {
     const isActiveTab = planner.state.wrapperTab === tabKey;
@@ -258,7 +266,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     clientY,
     options = {},
   ) => {
-    if (!isLogoMotionListenerEnabled || !logoAssetsReady) {
+    if (!isLogoMotionListenerEnabled) {
       return;
     }
     updateSavedCoursesWorkspacePointerTarget(clientX, clientY);
@@ -393,6 +401,11 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   );
   useEffect(() => {
     let isCancelled = false;
+    const preloadFallbackTimeout = window.setTimeout(() => {
+      if (!isCancelled) {
+        setLogoAssetsReady(true);
+      }
+    }, 1500);
     const imageSources = Object.values(LOGO_BY_CLOCK_POSITION);
     Promise.all(
       imageSources.map(
@@ -407,13 +420,28 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       ),
     ).then(() => {
       if (!isCancelled) {
+        window.clearTimeout(preloadFallbackTimeout);
         setLogoAssetsReady(true);
       }
     });
     return () => {
       isCancelled = true;
+      window.clearTimeout(preloadFallbackTimeout);
     };
   }, []);
+  useEffect(() => {
+    if (!logoAssetsReady) {
+      return;
+    }
+    const normalizedClockBucket = String(
+      logoClockPositionRef.current || "9",
+    ).trim();
+    const nextLogoSource =
+      LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
+    if (logoImageRef.current?.getAttribute("src") !== nextLogoSource) {
+      logoImageRef.current?.setAttribute("src", nextLogoSource);
+    }
+  }, [logoAssetsReady]);
   useEffect(() => {
     const articleElement = document.getElementById("nogaPlanner_article");
     if (!articleElement) {
@@ -724,12 +752,12 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   let rowIndex = 0;
   while (rowIndex < renderSavedCourses.length) {
     const row = renderSavedCourses[rowIndex];
-    const groupKey = buildSavedCourseGroupKey(row);
+    const groupKey = getCourseNameGroupKey(row);
     const group = [row];
     let nextIndex = rowIndex + 1;
     while (
       nextIndex < renderSavedCourses.length &&
-      buildSavedCourseGroupKey(renderSavedCourses[nextIndex]) === groupKey
+      getCourseNameGroupKey(renderSavedCourses[nextIndex]) === groupKey
     ) {
       group.push(renderSavedCourses[nextIndex]);
       nextIndex += 1;
@@ -737,6 +765,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     groupedRows.push(group);
     rowIndex = nextIndex;
   }
+
+  const selectedGroupCount = groupedRows.filter((group) => {
+    const groupIds = group
+      .map((entry) => String(entry?._id || "").trim())
+      .filter(Boolean);
+    return groupIds.some((entryId) => selectedIds.includes(entryId));
+  }).length;
+  const canEditSelectedCourse = selectedIds.length > 0 && selectedGroupCount === 1;
+  const canDeleteSelectedCourses = selectedIds.length > 0;
 
   const uniqueSavedCoursesCount = groupedRows.length;
   const totalSavedCourseComponentsCount = renderSavedCourses.length;
@@ -848,75 +885,89 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           >
             {courseUi.editor.courseCardTitle}
           </p>
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("course_name"), {
-            fieldName: "course_name",
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_course_name"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="text"
-            value={savedCourseDraft.course_name}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "course_name",
-                event.target.value,
-              )
-            }
-            placeholder={courseFieldLabel("course_name")}
-          />
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("course_code"), {
-            fieldName: "course_code",
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_course_code"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="text"
-            value={savedCourseDraft.course_code}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "course_code",
-                event.target.value,
-              )
-            }
-            placeholder={courseFieldLabel("course_code")}
-          />
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("course_status"), {
-            fieldName: "course_status",
-            readOnly: true,
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_course_status"
-            className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
-            type="text"
-            value={
-              formatPlannerStatusLabel(savedCourseDraft.course_status) === "-"
-                ? courseUi.editor.pendingStatus
-                : formatPlannerStatusLabel(savedCourseDraft.course_status)
-            }
-            readOnly
-            placeholder={courseFieldLabel("course_status")}
-          />
-          {renderSavedCourseFieldEyebrow(
-            courseFieldLabel("course_totalWeight"),
-            {
-              fieldName: "course_totalWeight",
-            },
-          )}
-          <input
-            id="nogaPlanner_savedCourseInput_course_totalWeight"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="number"
-            min="0"
-            step="0.01"
-            value={savedCourseDraft.course_totalWeight}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "course_totalWeight",
-                event.target.value,
-              )
-            }
-            placeholder={courseFieldLabel("course_totalWeight")}
-          />
+          <div
+            id="nogaPlanner_savedCourseEditor_courseFormFieldsWrapper"
+            className="nogaPlanner_savedCourseEditor_courseFormFieldsWrapper"
+          >
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_name"), {
+                fieldName: "course_name",
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_course_name"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={savedCourseDraft.course_name}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "course_name",
+                    event.target.value,
+                  )
+                }
+                placeholder={courseFieldLabel("course_name")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_code"), {
+                fieldName: "course_code",
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_course_code"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={savedCourseDraft.course_code}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "course_code",
+                    event.target.value,
+                  )
+                }
+                placeholder={courseFieldLabel("course_code")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_status"), {
+                fieldName: "course_status",
+                readOnly: true,
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_course_status"
+                className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
+                type="text"
+                value={
+                  formatPlannerStatusLabel(savedCourseDraft.course_status) ===
+                  "-"
+                    ? courseUi.editor.pendingStatus
+                    : formatPlannerStatusLabel(savedCourseDraft.course_status)
+                }
+                readOnly
+                placeholder={courseFieldLabel("course_status")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(
+                courseFieldLabel("course_totalWeight"),
+                {
+                  fieldName: "course_totalWeight",
+                },
+              )}
+              <input
+                id="nogaPlanner_savedCourseInput_course_totalWeight"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="number"
+                min="0"
+                step="0.01"
+                value={savedCourseDraft.course_totalWeight}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "course_totalWeight",
+                    event.target.value,
+                  )
+                }
+                placeholder={courseFieldLabel("course_totalWeight")}
+              />
+            </div>
+          </div>
         </div>
         <div
           id="nogaPlanner_savedCourseEditor_componentCard"
@@ -932,6 +983,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             >
               <span>{courseUi.editor.componentCardTitle}</span>
             </div>
+          </div>
+          <div
+            id="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
+            className="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
+          >
+          <div
+            id="nogaPlanner_savedCourseEditor_componentEntriesRow"
+            className="nogaPlanner_savedCourseEditor_componentEntriesRow"
+          >
             <div
               id="nogaPlanner_savedCourseEditorLabelControls"
               className="nogaPlanner_savedCourseEditorLabelControls"
@@ -979,132 +1039,144 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               </button>
             </div>
           </div>
-          <div
-            id="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
-            className="nogaPlanner_savedCourseEditor_componentFormFieldsWrapper"
-          >
-          {renderSavedCourseFieldEyebrow(
-            courseFieldLabel("course_classSelection"),
-            { fieldName: "course_classSelection" },
-          )}
-          <select
-            id="nogaPlanner_savedCourseSelect_course_classSelection"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            value={savedCourseDraft.course_classSelection}
-            disabled={savedCourseLockedFields.has("course_classSelection")}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "course_classSelection",
-                event.target.value,
-              )
-            }
-          >
-            <option value="">
-              {courseFieldLabel("course_classSelection")}
-            </option>
-            {componentClassOptions.map((optionValue) => (
-              <option key={optionValue} value={optionValue}>
-                {optionValue}
-              </option>
-            ))}
-          </select>
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("component_status"), {
-            fieldName: "component_status",
-            readOnly: true,
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_component_status"
-            className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
-            type="text"
-            value={
-              formatPlannerStatusLabel(savedCourseDraft.component_status) ===
-              "-"
-                ? courseUi.editor.pendingStatus
-                : formatPlannerStatusLabel(savedCourseDraft.component_status)
-            }
-            readOnly
-            placeholder={courseFieldLabel("component_status")}
-          />
-          {renderSavedCourseFieldEyebrow(
-            courseFieldLabel("normativeCourseYearInterval"),
-            { fieldName: "normativeCourseYearInterval" },
-          )}
-          <select
-            id="nogaPlanner_savedCourseSelect_normativeCourseYearInterval"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            value={savedCourseProfileNormativeAcademicYear}
-            disabled={!hasSelectedComponentType}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "normativeCourseYearInterval",
-                event.target.value,
-              )
-            }
-          >
-            <option value="">
-              {courseFieldLabel("normativeCourseYearInterval")}
-            </option>
-            {ACADEMIC_YEAR_OPTIONS.map((optionValue) => (
-              <option key={`normative-year-${optionValue}`} value={optionValue}>
-                {optionValue}
-              </option>
-            ))}
-          </select>
-          {renderSavedCourseFieldEyebrow(
-            courseFieldLabel("normativeCourseTerm"),
-            {
-              fieldName: "normativeCourseTerm",
-            },
-          )}
-          <select
-            id="nogaPlanner_savedCourseSelect_normativeCourseTerm"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            value={savedCourseProfileNormativeTerm}
-            disabled={!hasSelectedComponentType}
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "normativeCourseTerm",
-                event.target.value,
-              )
-            }
-          >
-            <option value="">{courseFieldLabel("normativeCourseTerm")}</option>
-            {TERM_OPTIONS.map((optionValue) => (
-              <option key={`normative-term-${optionValue}`} value={optionValue}>
-                {optionValue}
-              </option>
-            ))}
-          </select>
-          {renderSavedCourseFieldEyebrow(
-            courseFieldLabel("actualCourseYearInterval"),
-            { fieldName: "actualCourseYearInterval", readOnly: true },
-          )}
-          <input
-            id="nogaPlanner_savedCourseInput_actualCourseYearInterval"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="text"
-            value={savedCourseProfileActualAcademicYear}
-            disabled={!hasSelectedComponentType}
-            readOnly
-            placeholder={courseFieldLabel("actualCourseYearInterval")}
-          />
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("actualCourseTerm"), {
-            fieldName: "actualCourseTerm",
-            readOnly: true,
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_actualCourseTerm"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="text"
-            value={savedCourseProfileActualTerm}
-            disabled={!hasSelectedComponentType}
-            readOnly
-            placeholder={courseFieldLabel("actualCourseTerm")}
-          />
-          <div
-            id="nogaPlanner_savedCourseDetailGroupsGrid"
-            className="nogaPlanner_savedCourseDetailGroupsGrid"
-          >
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(
+                courseFieldLabel("course_classSelection"),
+                { fieldName: "course_classSelection" },
+              )}
+              <select
+                id="nogaPlanner_savedCourseSelect_course_classSelection"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={savedCourseDraft.course_classSelection}
+                disabled={savedCourseLockedFields.has("course_classSelection")}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "course_classSelection",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {courseFieldLabel("course_classSelection")}
+                </option>
+                {componentClassOptions.map((optionValue) => (
+                  <option key={optionValue} value={optionValue}>
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("component_status"), {
+                fieldName: "component_status",
+                readOnly: true,
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_component_status"
+                className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
+                type="text"
+                value={
+                  formatPlannerStatusLabel(savedCourseDraft.component_status) ===
+                  "-"
+                    ? courseUi.editor.pendingStatus
+                    : formatPlannerStatusLabel(savedCourseDraft.component_status)
+                }
+                readOnly
+                placeholder={courseFieldLabel("component_status")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(
+                courseFieldLabel("normativeCourseYearInterval"),
+                { fieldName: "normativeCourseYearInterval" },
+              )}
+              <select
+                id="nogaPlanner_savedCourseSelect_normativeCourseYearInterval"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={savedCourseProfileNormativeAcademicYear}
+                disabled={!hasSelectedComponentType}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "normativeCourseYearInterval",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">
+                  {courseFieldLabel("normativeCourseYearInterval")}
+                </option>
+                {ACADEMIC_YEAR_OPTIONS.map((optionValue) => (
+                  <option
+                    key={`normative-year-${optionValue}`}
+                    value={optionValue}
+                  >
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(
+                courseFieldLabel("normativeCourseTerm"),
+                {
+                  fieldName: "normativeCourseTerm",
+                },
+              )}
+              <select
+                id="nogaPlanner_savedCourseSelect_normativeCourseTerm"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={savedCourseProfileNormativeTerm}
+                disabled={!hasSelectedComponentType}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "normativeCourseTerm",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="">{courseFieldLabel("normativeCourseTerm")}</option>
+                {TERM_OPTIONS.map((optionValue) => (
+                  <option key={`normative-term-${optionValue}`} value={optionValue}>
+                    {optionValue}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(
+                courseFieldLabel("actualCourseYearInterval"),
+                { fieldName: "actualCourseYearInterval", readOnly: true },
+              )}
+              <input
+                id="nogaPlanner_savedCourseInput_actualCourseYearInterval"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={savedCourseProfileActualAcademicYear}
+                disabled={!hasSelectedComponentType}
+                readOnly
+                placeholder={courseFieldLabel("actualCourseYearInterval")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("actualCourseTerm"), {
+                fieldName: "actualCourseTerm",
+                readOnly: true,
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_actualCourseTerm"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={savedCourseProfileActualTerm}
+                disabled={!hasSelectedComponentType}
+                readOnly
+                placeholder={courseFieldLabel("actualCourseTerm")}
+              />
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              <div
+                id="nogaPlanner_savedCourseDetailGroupsGrid"
+                className="nogaPlanner_savedCourseDetailGroupsGrid"
+              >
             <div
               id="nogaPlanner_savedCourseDetailGroup_schedule"
               className="nogaPlanner_savedCourseDetailGroup"
@@ -1117,8 +1189,29 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                   courseUi.editor.scheduleGroupTitle,
                   { fieldName: "course_dayAndTime" },
                 )}
+                <label
+                  htmlFor="nogaPlanner_savedCourseCheckbox_noAttendance"
+                  className="nogaPlanner_savedCourseNoAttendanceToggle"
+                >
+                  <input
+                    id="nogaPlanner_savedCourseCheckbox_noAttendance"
+                    type="checkbox"
+                    checked={noAttendanceForComponent}
+                    onChange={(event) =>
+                      setNoAttendanceForComponent(Boolean(event.target.checked))
+                    }
+                  />
+                  <span>لا يوجد حضور لهذا المكوّن</span>
+                </label>
               </div>
-              <div className="nogaPlanner_savedCourseScheduleControlsRow">
+              <div
+                className={
+                  "nogaPlanner_savedCourseScheduleControlsRow" +
+                  (scheduleDisabledForComponent
+                    ? " nogaPlanner_savedCourseFields--inactive"
+                    : "")
+                }
+              >
                 <div
                   id="nogaPlanner_savedCourseScheduleRow"
                   className="nogaPlanner_savedCourseScheduleRow"
@@ -1132,7 +1225,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       className="nogaPlanner_savedCoursesDetailsInput"
                       value={savedCourseDraft.course_daySelection}
                       disabled={
-                        !hasSelectedComponentType ||
+                        scheduleDisabledForComponent ||
                         savedCourseLockedFields.has("course_daySelection")
                       }
                       onChange={(event) =>
@@ -1161,7 +1254,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       className="nogaPlanner_savedCoursesDetailsInput"
                       value={savedCourseDraft.course_timeSelection}
                       disabled={
-                        !hasSelectedComponentType ||
+                        scheduleDisabledForComponent ||
                         savedCourseLockedFields.has("course_timeSelection")
                       }
                       onChange={(event) =>
@@ -1188,29 +1281,40 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                   type="button"
                   className="nogaPlanner_coursesMiniBarBtn"
                   onClick={planner.appendSavedCourseScheduleEntry}
-                  disabled={!hasSelectedComponentType}
+                  disabled={scheduleDisabledForComponent}
                 >
                   +
                 </button>
               </div>
               <ul
                 id="nogaPlanner_savedCoursesScheduleChips"
-                className="nogaPlanner_savedCoursesScheduleChips"
+                className={
+                  "nogaPlanner_savedCoursesScheduleChips" +
+                  (scheduleDisabledForComponent
+                    ? " nogaPlanner_savedCourseFields--inactive"
+                    : "")
+                }
               >
-                {splitCourseTextList(savedCourseDraft.course_dayAndTime).map(
-                  (entry, entryIndex) => (
-                    <li
-                      id={`nogaPlanner_savedCourseScheduleChip_${entryIndex}`}
-                      key={`saved-course-schedule-${entryIndex}`}
-                      className="nogaPlanner_savedCoursesScheduleChip"
-                      onClick={() => {
-                        if (!hasSelectedComponentType) return;
-                        planner.removeSavedCourseScheduleEntry(entryIndex);
-                      }}
-                    >
-                      {entry}
-                    </li>
-                  ),
+                {splitCourseTextList(savedCourseDraft.course_dayAndTime).length > 0 ? (
+                  splitCourseTextList(savedCourseDraft.course_dayAndTime).map(
+                    (entry, entryIndex) => (
+                      <li
+                        id={`nogaPlanner_savedCourseScheduleChip_${entryIndex}`}
+                        key={`saved-course-schedule-${entryIndex}`}
+                        className="nogaPlanner_savedCoursesScheduleChip"
+                        onClick={() => {
+                          if (scheduleDisabledForComponent) return;
+                          planner.removeSavedCourseScheduleEntry(entryIndex);
+                        }}
+                      >
+                        {entry}
+                      </li>
+                    ),
+                  )
+                ) : (
+                  <li className="nogaPlanner_savedCoursesScheduleEmpty">
+                    لا يوجد أي إدخال، أضف واحداً
+                  </li>
                 )}
               </ul>
             </div>
@@ -1225,10 +1329,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               )}
               <select
                 id="nogaPlanner_savedCourseSelect_course_locationBuilding"
-                className="nogaPlanner_savedCoursesDetailsInput"
+                className={
+                  "nogaPlanner_savedCoursesDetailsInput" +
+                  (scheduleDisabledForComponent
+                    ? " nogaPlanner_savedCourseFields--inactive"
+                    : "")
+                }
                 value={savedCourseDraft.course_locationBuilding}
                 disabled={
-                  !hasSelectedComponentType ||
+                  scheduleDisabledForComponent ||
                   savedCourseLockedFields.has("course_locationBuilding")
                 }
                 onChange={(event) => {
@@ -1254,10 +1363,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               </select>
               <select
                 id="nogaPlanner_savedCourseSelect_course_locationRoom"
-                className="nogaPlanner_savedCoursesDetailsInput"
+                className={
+                  "nogaPlanner_savedCoursesDetailsInput" +
+                  (scheduleDisabledForComponent
+                    ? " nogaPlanner_savedCourseFields--inactive"
+                    : "")
+                }
                 value={savedCourseDraft.course_locationRoom}
                 disabled={
-                  !hasSelectedComponentType ||
+                  scheduleDisabledForComponent ||
                   !String(
                     savedCourseDraft.course_locationBuilding || "",
                   ).trim() ||
@@ -1280,29 +1394,32 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                 ))}
               </select>
             </div>
-          </div>
-          {renderSavedCourseFieldEyebrow(courseFieldLabel("course_grade"), {
-            fieldName: "course_grade",
-          })}
-          <input
-            id="nogaPlanner_savedCourseInput_course_grade"
-            className="nogaPlanner_savedCoursesDetailsInput"
-            type="number"
-            min="0"
-            step="0.01"
-            value={savedCourseDraft.course_grade}
-            disabled={
-              !hasSelectedComponentType ||
-              savedCourseLockedFields.has("course_grade")
-            }
-            onChange={(event) =>
-              planner.handleSavedCourseDraftChange(
-                "course_grade",
-                event.target.value,
-              )
-            }
-            placeholder={courseFieldLabel("course_grade")}
-          />
+              </div>
+            </div>
+            <div className="nogaPlanner_savedCourseEditorFieldCluster">
+              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_grade"), {
+                fieldName: "course_grade",
+              })}
+              <input
+                id="nogaPlanner_savedCourseInput_course_grade"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="number"
+                min="0"
+                step="0.01"
+                value={savedCourseDraft.course_grade}
+                disabled={
+                  !hasSelectedComponentType ||
+                  savedCourseLockedFields.has("course_grade")
+                }
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange(
+                    "course_grade",
+                    event.target.value,
+                  )
+                }
+                placeholder={courseFieldLabel("course_grade")}
+              />
+            </div>
           </div>
         </div>
     </div>
@@ -1716,15 +1833,20 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             groupedRows.map((group) =>
               group.map((course, groupIndex) => {
                 const courseId = String(course?._id || "").trim();
+                const courseGroupKey = getCourseNameGroupKey(course);
                 const isSelected =
                   selectedIds.includes(courseId) ||
                   selectedComponentId === courseId ||
                   selectedDetailsComponent === courseId;
+                const isGroupHovered =
+                  courseGroupKey &&
+                  String(hoveredCourseGroupKey || "").trim() === courseGroupKey;
                 const scheduleParts = splitScheduleParts(
                   course?.course_dayAndTime,
                 );
                 const rowClassName =
                   "nogaPlanner_tabTableRow" +
+                  (isGroupHovered ? " hovered" : "") +
                   (isSelected ? " selected" : "") +
                   (course.__draft ? " nogaPlanner_tabTableRow--draft" : "");
                 return (
@@ -1735,6 +1857,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       `${buildSavedCourseGroupKey(course)}-${groupIndex}`
                     }
                     className={rowClassName}
+                    onMouseEnter={() => setHoveredCourseGroupKey(courseGroupKey)}
+                    onMouseLeave={() => setHoveredCourseGroupKey("")}
                   >
                     {groupIndex === 0 ? (
                       <>
@@ -1748,15 +1872,21 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                           }
                           onClick={() =>
                             !course.__draft &&
-                            planner.handleSavedCourseGroupClick(course)
+                            planner.handleSavedCourseGroupClick(course, group)
                           }
                         >
                           {formatSavedCourseTitle(course)}
                         </td>
-                        <td rowSpan={group.length}>
+                        <td
+                          rowSpan={group.length}
+                          className="nogaPlanner_savedCoursesTableCell--courseStatusMerged"
+                        >
                           {formatPlannerStatusLabel(group[0]?.course_status)}
                         </td>
-                        <td rowSpan={group.length}>
+                        <td
+                          rowSpan={group.length}
+                          className="nogaPlanner_savedCoursesTableCell--courseWeightMerged"
+                        >
                           {formatCourseWeightDisplay(
                             group[0]?.course_totalWeight,
                           )}
@@ -1768,9 +1898,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       {formatPlannerStatusLabel(course?.component_status)}
                     </td>
                     <td>{course?.normativeCourseYearInterval || "-"}</td>
-                    <td>{course?.normativeCourseTerm || "-"}</td>
+                    <td>
+                      {formatAcademicTermDisplay(course?.normativeCourseTerm) ||
+                        "-"}
+                    </td>
                     <td>{course?.actualCourseYearInterval || "-"}</td>
-                    <td>{course?.actualCourseTerm || "-"}</td>
+                    <td>
+                      {formatAcademicTermDisplay(course?.actualCourseTerm) ||
+                        "-"}
+                    </td>
                     <td>{scheduleParts.day}</td>
                     <td>{scheduleParts.time}</td>
                     <td>
