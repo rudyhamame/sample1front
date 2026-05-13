@@ -834,38 +834,7 @@ export default class NogaPlanner extends Component {
     }
     this.setState((previousState) => {
       if (!previousState?.savedCourseSelectionMode) {
-        const previousSelectedIds = Array.isArray(
-          previousState?.selectedSavedCourseIds,
-        )
-          ? previousState.selectedSavedCourseIds
-              .map((entry) => String(entry || "").trim())
-              .filter(Boolean)
-          : [];
-        const isGroupFullySelected = effectiveGroupIds.every((entryId) =>
-          previousSelectedIds.includes(entryId),
-        );
-        if (isGroupFullySelected && previousSelectedIds.length === effectiveGroupIds.length) {
-          return {
-            plannerTab: "courses",
-            selectedTabItemId: null,
-            selectedSavedCourseIds: [],
-            selectedCourseForLecturesId: "",
-            selectedCourseForLecturesName: "",
-            savedCourseDetailsComponentId: "",
-            deleteSelectionMode: false,
-            deleteSelectionIds: [],
-          };
-        }
-        return {
-          plannerTab: "courses",
-          selectedTabItemId: null,
-          selectedSavedCourseIds: [...effectiveGroupIds],
-          selectedCourseForLecturesId: componentId,
-          selectedCourseForLecturesName: lectureCourseLabel,
-          savedCourseDetailsComponentId: "",
-          deleteSelectionMode: false,
-          deleteSelectionIds: [],
-        };
+        return null;
       }
       const previousSelectedIds = Array.isArray(
         previousState?.selectedSavedCourseIds,
@@ -1001,11 +970,17 @@ export default class NogaPlanner extends Component {
         settings,
       }),
     });
-    if (!response.ok) {
-      throw new Error(`Planner settings save failed: ${response.status}`);
-    }
     const payload = await response.json().catch(() => ({}));
-    return payload?.settings || settings;
+    if (!response.ok) {
+      const backendMessage = String(payload?.message || "").trim();
+      throw new Error(
+        backendMessage || `Planner settings save failed: ${response.status}`,
+      );
+    }
+    return {
+      settings: payload?.settings || settings,
+      message: String(payload?.message || "").trim(),
+    };
   };
   loadPlannerSelectSettings = async () => {
     const userId = String(this.props.state?.my_id || "").trim();
@@ -1037,6 +1012,22 @@ export default class NogaPlanner extends Component {
         plannerSettingsLogoFixedClock: String(
           nextSettings?.logoFixedClock || "9",
         ).trim(),
+        plannerSettingsMessageFromFriendFromId: String(
+          nextSettings?.messageFriend?.from?.friendID || "",
+        ).trim(),
+        plannerSettingsMessageFromFriendToId: "",
+        plannerSettingsMessageFromFriendToMessage: "",
+        plannerSettingsMessageFromFriendSelectedToIndex: -1,
+        plannerSettingsMessageFromFriendToList: Array.isArray(
+          nextSettings?.messageFriend?.to,
+        )
+          ? nextSettings.messageFriend.to
+              .map((entry) => ({
+                friendID: String(entry?.friendID || "").trim(),
+                message: String(entry?.message || "").trim(),
+              }))
+              .filter((entry) => entry.friendID && entry.message)
+          : [],
       });
     } catch (error) {
       console.error("[planner-select-settings] db read failed:", error);
@@ -1266,11 +1257,12 @@ export default class NogaPlanner extends Component {
         : updater;
     const nextSettings = normalizePlannerSelectSettings(nextSettingsCandidate);
     let persistedSettings = nextSettings;
+    let backendReplyMessage = "";
     try {
+      const saveResult = await this.persistPlannerSelectSettings(nextSettings);
       persistedSettings =
-        normalizePlannerSelectSettings(
-          await this.persistPlannerSelectSettings(nextSettings),
-        ) || nextSettings;
+        normalizePlannerSelectSettings(saveResult?.settings) || nextSettings;
+      backendReplyMessage = String(saveResult?.message || "").trim();
     } catch (error) {
       const rawFailureMessage = String(
         error?.message || NOGAPLANNER_TEXT.messages.settingsSaveFailed,
@@ -1291,12 +1283,15 @@ export default class NogaPlanner extends Component {
         {
           plannerSelectSettings: persistedSettings,
           plannerSettingsSaveStatus: "success",
-          plannerSettingsSaveMessage: NOGAPLANNER_TEXT.messages.settingsSaved,
+          plannerSettingsSaveMessage:
+            backendReplyMessage || NOGAPLANNER_TEXT.messages.settingsSaved,
         },
         resolve,
       ),
     );
-    this.props.serverReply(NOGAPLANNER_TEXT.messages.settingsSaved);
+    this.props.serverReply(
+      backendReplyMessage || NOGAPLANNER_TEXT.messages.settingsSaved,
+    );
     return persistedSettings;
   };
   handlePlannerFieldDefaultChange = async (fieldKey, nextValue) => {
@@ -1469,6 +1464,126 @@ export default class NogaPlanner extends Component {
     }
     this.setState({
       [fieldName]: nextValue,
+    });
+  };  addPlannerSettingsMessageFriendRecipient = () => {
+    const friendID = String(
+      this.state?.plannerSettingsMessageFromFriendToId || "",
+    ).trim();
+    const message = String(
+      this.state?.plannerSettingsMessageFromFriendToMessage || "",
+    ).trim();
+    if (!friendID || !message) {
+      return;
+    }
+    this.setState((previousState) => {
+      const currentList = Array.isArray(
+        previousState?.plannerSettingsMessageFromFriendToList,
+      )
+        ? previousState.plannerSettingsMessageFromFriendToList
+        : [];
+      const duplicateIndex = currentList.findIndex(
+        (entry) =>
+          String(entry?.friendID || "").trim() === friendID &&
+          String(entry?.message || "").trim() === message,
+      );
+      const nextList =
+        duplicateIndex >= 0
+          ? currentList
+          : [...currentList, { friendID, message }];
+      return {
+        plannerSettingsMessageFromFriendToList: nextList,
+        plannerSettingsMessageFromFriendToId: "",
+        plannerSettingsMessageFromFriendToMessage: "",
+        plannerSettingsMessageFromFriendSelectedToIndex: -1,
+      };
+    });
+  };
+  togglePlannerSettingsMessageFriendRecipientSelection = (entryIndex) => {
+    this.setState((previousState) => ({
+      plannerSettingsMessageFromFriendSelectedToIndex:
+        Number(previousState?.plannerSettingsMessageFromFriendSelectedToIndex) ===
+        entryIndex
+          ? -1
+          : entryIndex,
+    }));
+  };
+  removeSelectedPlannerSettingsMessageFriendRecipient = () => {
+    this.setState((previousState) => {
+      const selectedIndex = Number(
+        previousState?.plannerSettingsMessageFromFriendSelectedToIndex ?? -1,
+      );
+      if (selectedIndex < 0) {
+        return null;
+      }
+      const currentList = Array.isArray(
+        previousState?.plannerSettingsMessageFromFriendToList,
+      )
+        ? previousState.plannerSettingsMessageFromFriendToList
+        : [];
+      return {
+        plannerSettingsMessageFromFriendToList: currentList.filter(
+          (_, index) => index !== selectedIndex,
+        ),
+        plannerSettingsMessageFromFriendSelectedToIndex: -1,
+      };
+    });
+  };
+  savePlannerSettingsMessageFromFriend = async () => {
+    const fromFriendID = String(
+      this.state?.plannerSettingsMessageFromFriendFromId || "",
+    ).trim();
+    const toList = Array.isArray(this.state?.plannerSettingsMessageFromFriendToList)
+      ? this.state.plannerSettingsMessageFromFriendToList
+          .map((entry) => ({
+            friendID: String(entry?.friendID || "").trim(),
+            message: String(entry?.message || "").trim(),
+          }))
+          .filter((entry) => entry.friendID && entry.message)
+      : [];
+    if (!fromFriendID && toList.length === 0) {
+      const validationMessage =
+        "يرجى اختيار صديق للاستماع أو إضافة رسالة إرسال.";
+      this.props.serverReply(validationMessage);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: validationMessage,
+      });
+      return;
+    }
+    const previousFromMessage = String(
+      this.state?.plannerSelectSettings?.messageFriend?.from?.message || "",
+    ).trim();
+    const matchedOutgoingMessage =
+      toList.find((entry) => entry.friendID === fromFriendID)?.message || "";
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => ({
+        ...previousSettings,
+        messageFriend: {
+          from: {
+            friendID: fromFriendID,
+            message: matchedOutgoingMessage || previousFromMessage,
+          },
+          to: toList,
+        },
+      }),
+    );
+    this.setState({
+      plannerSettingsMessageFromFriendFromId: String(
+        persistedSettings?.messageFriend?.from?.friendID || fromFriendID,
+      ).trim(),
+      plannerSettingsMessageFromFriendToId: "",
+      plannerSettingsMessageFromFriendToMessage: "",
+      plannerSettingsMessageFromFriendSelectedToIndex: -1,
+      plannerSettingsMessageFromFriendToList: Array.isArray(
+        persistedSettings?.messageFriend?.to,
+      )
+        ? persistedSettings.messageFriend.to
+            .map((entry) => ({
+              friendID: String(entry?.friendID || "").trim(),
+              message: String(entry?.message || "").trim(),
+            }))
+            .filter((entry) => entry.friendID && entry.message)
+        : [],
     });
   };
   addOrUpdatePlannerSettingsListItem = async (listKey) => {
@@ -2639,14 +2754,10 @@ export default class NogaPlanner extends Component {
             ).trim(),
       );
       if (duplicateExists) {
-        return {
-          selectedSavedCourseDraftComponentIndex: -1,
-          savedCourseDraft: this.getResetSavedCourseComponentDraftFields(
-            previousState.savedCourseDraft,
-          ),
-        };
+        return null;
       }
       const nextComponents = [...currentComponents];
+      let nextSelectedComponentIndex = selectedSavedCourseDraftComponentIndex;
       if (
         Number.isInteger(selectedSavedCourseDraftComponentIndex) &&
         selectedSavedCourseDraftComponentIndex >= 0
@@ -2655,19 +2766,38 @@ export default class NogaPlanner extends Component {
           ...(nextComponents[selectedSavedCourseDraftComponentIndex] || {}),
           ...componentEntry,
         };
+        nextSelectedComponentIndex = selectedSavedCourseDraftComponentIndex;
       } else {
         nextComponents.push(componentEntry);
+        nextSelectedComponentIndex = nextComponents.length - 1;
       }
-      return {
-        selectedSavedCourseDraftComponentIndex: -1,
-        savedCourseDraft: {
-          ...this.getResetSavedCourseComponentDraftFields(
-            previousState.savedCourseDraft,
-          ),
+      const nextDraft = this.applySavedCourseDraftComponentEntryToDraft(
+        {
+          ...previousState.savedCourseDraft,
           course_components: nextComponents,
         },
+        nextComponents[nextSelectedComponentIndex] || componentEntry,
+      );
+      return {
+        selectedSavedCourseDraftComponentIndex: nextSelectedComponentIndex,
+        savedCourseDraft: nextDraft,
       };
     });
+  };
+  startAddingNewSavedCourseComponent = () => {
+    this.setState((previousState) => ({
+      selectedSavedCourseDraftComponentIndex: -1,
+      savedCourseDraft: this.getResetSavedCourseComponentDraftFields(
+        previousState.savedCourseDraft,
+      ),
+    }));
+  };
+  deleteSelectedSavedCourseDraftComponent = () => {
+    const selectedIndex = Number(this.state?.selectedSavedCourseDraftComponentIndex);
+    if (!Number.isInteger(selectedIndex) || selectedIndex < 0) {
+      return;
+    }
+    this.removeSavedCourseComponentEntry(selectedIndex);
   };
   removeSavedCourseComponentEntry = (entryIndexToRemove) => {
     this.setState((previousState) => {
@@ -2715,6 +2845,7 @@ export default class NogaPlanner extends Component {
   };
   openSavedCourseEditor = (mode = "add") => {
     const safeMode = mode === "edit" ? "edit" : "add";
+    const allCourses = Array.isArray(this.state?.courses) ? this.state.courses : [];
     const selectedComponentId = String(
       this.state?.savedCourseDetailsComponentId ||
         (Array.isArray(this.state?.selectedSavedCourseIds)
@@ -2724,10 +2855,117 @@ export default class NogaPlanner extends Component {
         "",
     ).trim();
     const selectedCourse =
-      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+      allCourses.find(
         (course) => String(course?._id || "").trim() === selectedComponentId,
       ) || null;
-    const buildDraftFromCourse = (course = null) => {
+    const getNormalizedCourseIdentity = (course = {}) => ({
+      parentCourseId: String(course?.parentCourseId || "").trim(),
+      compositeKey: [
+        String(course?.course_code || "")
+          .trim()
+          .toLowerCase(),
+        String(course?.course_name || "")
+          .trim()
+          .toLowerCase(),
+      ].join("|"),
+    });
+    const selectedCourseIdentity = getNormalizedCourseIdentity(selectedCourse || {});
+    const selectedCourseGroup = selectedCourse
+      ? allCourses.filter(
+          (courseEntry) => {
+            const entryIdentity = getNormalizedCourseIdentity(courseEntry);
+            if (
+              selectedCourseIdentity.parentCourseId &&
+              entryIdentity.parentCourseId &&
+              selectedCourseIdentity.parentCourseId === entryIdentity.parentCourseId
+            ) {
+              return true;
+            }
+            return entryIdentity.compositeKey === selectedCourseIdentity.compositeKey;
+          },
+        )
+      : [];
+    const selectedCourseGroupComponentIndex = selectedCourse
+      ? selectedCourseGroup.findIndex(
+          (courseEntry) =>
+            String(courseEntry?._id || "").trim() === selectedComponentId,
+        )
+      : -1;
+    const toDraftComponentEntry = (courseEntry = {}) => {
+      const courseLocation =
+        courseEntry?.course_location && typeof courseEntry.course_location === "object"
+          ? courseEntry.course_location
+          : {};
+      return {
+        course_class: String(
+          courseEntry?.course_class || courseEntry?.course_component || "",
+        ).trim(),
+        component_status: String(courseEntry?.component_status || "").trim(),
+        normativeCourseYearNum: normalizeProgramYearValue(
+          courseEntry?.normativeCourseYearNum ||
+            courseEntry?.time?.Normative?.courseYearNum ||
+            courseEntry?.programYear ||
+            courseEntry?.course_programYear ||
+            courseEntry?.time?.programYear,
+        ),
+        normativeCourseYearInterval: normalizeAcademicYearValue(
+          courseEntry?.normativeCourseYearInterval ||
+            courseEntry?.time?.Normative?.courseYearInterval,
+        ),
+        normativeCourseTerm:
+          String(
+            courseEntry?.normativeCourseTerm ||
+              courseEntry?.time?.Normative?.courseTerm ||
+              "",
+          ).trim() === "-"
+            ? ""
+            : String(
+                courseEntry?.normativeCourseTerm ||
+                  courseEntry?.time?.Normative?.courseTerm ||
+                  "",
+              ).trim(),
+        actualCourseYearNum: normalizeProgramYearValue(
+          courseEntry?.actualCourseYearNum || courseEntry?.time?.actual?.courseYearNum,
+        ),
+        actualCourseYearInterval: normalizeAcademicYearValue(
+          courseEntry?.actualCourseYearInterval ||
+            courseEntry?.course_year ||
+            courseEntry?.time?.actual?.courseYearInterval,
+        ),
+        actualCourseTerm:
+          String(
+            courseEntry?.actualCourseTerm ||
+              courseEntry?.course_term ||
+              courseEntry?.time?.actual?.courseTerm ||
+              "",
+          ).trim() === "-"
+            ? ""
+            : String(
+                courseEntry?.actualCourseTerm ||
+                  courseEntry?.course_term ||
+                  courseEntry?.time?.actual?.courseTerm ||
+                  "",
+              ).trim(),
+        programYear: normalizeProgramYearValue(
+          courseEntry?.programYear || courseEntry?.course_programYear,
+        ),
+        course_dayAndTime: formatCourseScheduleDisplay(courseEntry?.course_dayAndTime),
+        course_year: normalizeAcademicYearValue(
+          courseEntry?.course_year || courseEntry?.actualCourseYearInterval,
+        ),
+        course_term: String(
+          courseEntry?.course_term || courseEntry?.actualCourseTerm || "",
+        ).trim(),
+        course_grade: String(courseEntry?.course_grade || "").trim(),
+        course_locationBuilding: String(
+          courseEntry?.course_locationBuilding || courseLocation?.building || "",
+        ).trim(),
+        course_locationRoom: String(
+          courseEntry?.course_locationRoom || courseLocation?.room || "",
+        ).trim(),
+      };
+    };
+    const buildDraftFromCourse = (course = null, groupedCourses = []) => {
       const courseLocation =
         course?.course_location && typeof course.course_location === "object"
           ? course.course_location
@@ -2740,7 +2978,9 @@ export default class NogaPlanner extends Component {
         course_exams: Array.isArray(course?.course_exams)
           ? course.course_exams
           : [],
-        course_components: [],
+        course_components: Array.isArray(groupedCourses)
+          ? groupedCourses.map((courseEntry) => toDraftComponentEntry(courseEntry))
+          : [],
         normativeCourseYearNum: normalizeProgramYearValue(
           course?.normativeCourseYearNum ||
             course?.time?.Normative?.courseYearNum ||
@@ -2803,20 +3043,38 @@ export default class NogaPlanner extends Component {
     };
     const nextDraft =
       safeMode === "edit" && selectedCourse
-        ? buildDraftFromCourse(selectedCourse)
+        ? buildDraftFromCourse(selectedCourse, selectedCourseGroup)
         : this.buildSavedCourseDraftWithPlannerSettings(
             getDefaultSavedCourseDraft(),
           );
+    const nextSelectedSavedCourseDraftComponentIndex =
+      safeMode === "edit" && selectedCourseGroupComponentIndex >= 0
+        ? selectedCourseGroupComponentIndex
+        : -1;
+    const nextSelectedComponentEntry =
+      nextSelectedSavedCourseDraftComponentIndex >= 0 &&
+      Array.isArray(nextDraft?.course_components)
+        ? nextDraft.course_components[nextSelectedSavedCourseDraftComponentIndex] ||
+          null
+        : null;
+    const hydratedDraft =
+      safeMode === "edit" && nextSelectedComponentEntry
+        ? this.applySavedCourseDraftComponentEntryToDraft(
+            { ...nextDraft },
+            nextSelectedComponentEntry,
+          )
+        : nextDraft;
     this.setState({
       plannerTab: safeMode === "edit" ? "courses" : this.state.plannerTab,
       savedCourseEditorVisible: true,
       savedCourseEditorMode: safeMode,
       savedCourseDraft: {
-        ...nextDraft,
-        course_status: this.deriveSavedCourseComponentStatus(nextDraft),
-        component_status: this.deriveSavedCourseComponentStatus(nextDraft),
+        ...hydratedDraft,
+        course_status: this.deriveSavedCourseComponentStatus(hydratedDraft),
+        component_status: this.deriveSavedCourseComponentStatus(hydratedDraft),
       },
-      selectedSavedCourseDraftComponentIndex: -1,
+      selectedSavedCourseDraftComponentIndex:
+        nextSelectedSavedCourseDraftComponentIndex,
     });
   };
   cloneSelectedSavedCourseToEditor = () => {
@@ -3217,20 +3475,20 @@ export default class NogaPlanner extends Component {
           body: JSON.stringify({
             course_name: courseName,
             course_code: courseCode,
-            course_totalWeight: courseTotalWeight || "-",
-            course_class: componentToPersist.course_class || "-",
+            course_totalWeight: courseTotalWeight || "",
+            course_class: componentToPersist.course_class || "",
             normativeCourseYearNum: componentToPersist.normativeCourseYearNum
               ? Number(componentToPersist.normativeCourseYearNum)
               : null,
             normativeCourseYearInterval:
-              componentToPersist.normativeCourseYearInterval || "-",
-            normativeCourseTerm: componentToPersist.normativeCourseTerm || "-",
+              componentToPersist.normativeCourseYearInterval || "",
+            normativeCourseTerm: componentToPersist.normativeCourseTerm || "",
             actualCourseYearNum: componentToPersist.actualCourseYearNum
               ? Number(componentToPersist.actualCourseYearNum)
               : null,
             actualCourseYearInterval:
-              componentToPersist.actualCourseYearInterval || "-",
-            actualCourseTerm: componentToPersist.actualCourseTerm || "-",
+              componentToPersist.actualCourseYearInterval || "",
+            actualCourseTerm: componentToPersist.actualCourseTerm || "",
             programYear: componentToPersist.programYear
               ? Number(componentToPersist.programYear)
               : null,
@@ -3239,14 +3497,14 @@ export default class NogaPlanner extends Component {
             )
               ? componentToPersist.course_dayAndTime
               : [],
-            course_year: componentToPersist.course_year || "-",
-            academicYear: componentToPersist.course_year || "-",
-            course_term: componentToPersist.course_term || "-",
-            term: componentToPersist.course_term || "-",
-            course_grade: componentToPersist.course_grade || "-",
+            course_year: componentToPersist.course_year || "",
+            academicYear: componentToPersist.course_year || "",
+            course_term: componentToPersist.course_term || "",
+            term: componentToPersist.course_term || "",
+            course_grade: componentToPersist.course_grade || "",
             course_locationBuilding:
-              componentToPersist.course_locationBuilding || "-",
-            course_locationRoom: componentToPersist.course_locationRoom || "-",
+              componentToPersist.course_locationBuilding || "",
+            course_locationRoom: componentToPersist.course_locationRoom || "",
           }),
         },
       );
@@ -3304,33 +3562,27 @@ export default class NogaPlanner extends Component {
       this.props.serverReply(NOGAPLANNER_TEXT.messages.componentTypeRequired);
       return;
     }
-    let createdCourseId = "";
-    for (
-      let componentIndex = 0;
-      componentIndex < stagedComponents.length;
-      componentIndex += 1
-    ) {
-      const componentEntry = stagedComponents[componentIndex];
-      const courseResponse = await fetch(
-        apiUrl("/api/user/addCourse/") + this.props.state.my_id,
-        {
-          method: "POST",
-          mode: "cors",
-          headers: {
-            Authorization: "Bearer " + this.props.state.token,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            course_name: courseName,
-            course_code: courseCode,
-            course_totalWeight: courseTotalWeight || "-",
+    const courseResponse = await fetch(
+      apiUrl("/api/user/addCourse/") + this.props.state.my_id,
+      {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: "Bearer " + this.props.state.token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          course_name: courseName,
+          course_code: courseCode,
+          course_totalWeight: courseTotalWeight || "",
+          course_components: stagedComponents.map((componentEntry) => ({
             course_class: componentEntry.course_class || "-",
             normativeCourseYearNum: componentEntry.normativeCourseYearNum
               ? Number(componentEntry.normativeCourseYearNum)
               : null,
             normativeCourseYearInterval:
-              componentEntry.normativeCourseYearInterval || "-",
-            normativeCourseTerm: componentEntry.normativeCourseTerm || "-",
+              componentEntry.normativeCourseYearInterval || "",
+            normativeCourseTerm: componentEntry.normativeCourseTerm || "",
             actualCourseYearNum: componentEntry.actualCourseYearNum
               ? Number(componentEntry.actualCourseYearNum)
               : null,
@@ -3349,25 +3601,21 @@ export default class NogaPlanner extends Component {
             course_locationBuilding:
               componentEntry.course_locationBuilding || "-",
             course_locationRoom: componentEntry.course_locationRoom || "-",
-          }),
-        },
+          })),
+        }),
+      },
+    );
+    if (!courseResponse.ok) {
+      const errorPayload = await courseResponse.json().catch(() => ({}));
+      const serverMessage = String(errorPayload?.message || "").trim();
+      this.props.serverReply(
+        serverMessage || NOGAPLANNER_TEXT.messages.courseSaveError,
       );
-      if (!courseResponse.ok) {
-        const errorPayload = await courseResponse.json().catch(() => ({}));
-        const serverMessage = String(errorPayload?.message || "").trim();
-        this.props.serverReply(
-          serverMessage || NOGAPLANNER_TEXT.messages.courseSaveError,
-        );
-        return;
-      }
-      const createdCoursePayload = await courseResponse
-        .json()
-        .catch(() => ({}));
-      createdCourseId =
-        String(createdCoursePayload?.course?._id || "").trim() ||
-        createdCourseId;
-      this.props.serverReply(`${courseName} ${NOGAPLANNER_TEXT.messages.courseAddedSuffix}`);
+      return;
     }
+    this.props.serverReply(
+      `${courseName} ${NOGAPLANNER_TEXT.messages.courseAddedSuffix}`,
+    );
     this.closeSavedCourseEditor();
     this.setState({
       selectedSavedCourseIds: [],
@@ -3607,6 +3855,11 @@ export default class NogaPlanner extends Component {
       plannerSettingsSaveMessage: "",
       plannerSettingsLogoMotionEnabled: true,
       plannerSettingsLogoFixedClock: "9",
+      plannerSettingsMessageFromFriendFromId: "",
+      plannerSettingsMessageFromFriendToId: "",
+      plannerSettingsMessageFromFriendToMessage: "",
+      plannerSettingsMessageFromFriendToList: [],
+      plannerSettingsMessageFromFriendSelectedToIndex: -1,
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
       savedCourseDraft: getDefaultSavedCourseDraft(),
@@ -4317,3 +4570,4 @@ export const getPlannerMusicSnapshot = () => ({});
 export const playNextSharedPlannerMusicTrack = () => {};
 export const playPreviousSharedPlannerMusicTrack = () => {};
 export const toggleSharedPlannerMusic = () => {};
+

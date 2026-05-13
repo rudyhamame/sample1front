@@ -167,11 +167,9 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
         <button
           key={`exam-wrapper-tab-${tabEntry.key}`}
           type="button"
-          className={
-            "nogaPlanner_wrapperTabBtn" +
-            (planner.state.wrapperTab === tabEntry.key
-              ? " nogaPlanner_wrapperTabBtn--active"
-              : "")
+          className="nogaPlanner_wrapperTabBtn"
+          data-wrapper-tab-active={
+            planner.state.wrapperTab === tabEntry.key ? "true" : "false"
           }
           onClick={() => planner.handleWrapperTabChange(tabEntry.key)}
           aria-label={tabEntry.label}

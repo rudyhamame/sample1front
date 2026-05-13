@@ -282,6 +282,16 @@ export const NOGAPLANNER_TEXT = {
     edit: "تعديل",
     logoMotionListener: "استماع حركة المؤشر",
     fixedLogoClock: "تثبيت اتجاه الشعار",
+    messageFromFriend: "رسالة من صديق",
+    messageFromFriendChoose: "اختر صديقاً",
+    messageFromFriendInput: "اكتب رسالة مشجعة",
+    messageFromFriendSave: "حفظ الرسائل",
+    messageFromFriendFrom: "من صديق (الاستماع)",
+    messageFromFriendTo: "إرسال إلى صديق",
+    messageFromFriendToList: "قائمة الإرسال",
+    messageFromFriendAddToList: "إضافة إلى القائمة",
+    messageFromFriendDeleteSelected: "حذف المحدد",
+    messageFromFriendNoEntries: "لا يوجد أي إدخال",
     motionOn: "مفعّل",
     motionOff: "متوقف",
     selectClock: "اختر الساعة",
@@ -1581,6 +1591,13 @@ export const buildDefaultPlannerSelectSettings = () => ({
   locationRoomOptionsByBuilding: [],
   logoMotionEnabled: true,
   logoFixedClock: "9",
+  messageFriend: {
+    from: {
+      friendID: "",
+      message: "",
+    },
+    to: [],
+  },
   fieldDefaults: {},
   relationships: [],
 });
@@ -1688,6 +1705,27 @@ export const normalizePlannerSelectSettings = (value) => {
   const logoFixedClock = /^[1-9]$|^1[0-2]$/.test(normalizedLogoFixedClock)
     ? normalizedLogoFixedClock
     : "9";
+  const rawMessageFriend =
+    nextValue?.messageFriend && typeof nextValue.messageFriend === "object"
+      ? nextValue.messageFriend
+      : nextValue?.messageFromFriend && typeof nextValue.messageFromFriend === "object"
+        ? { from: nextValue.messageFromFriend, to: [] }
+        : {};
+  const normalizedMessageFrom = {
+    friendID: String(rawMessageFriend?.from?.friendID || "").trim(),
+    message: String(rawMessageFriend?.from?.message || "").trim(),
+  };
+  const normalizedMessageTo = (Array.isArray(rawMessageFriend?.to)
+    ? rawMessageFriend.to
+    : rawMessageFriend?.to && typeof rawMessageFriend.to === "object"
+      ? [rawMessageFriend.to]
+      : []
+  )
+    .map((entry) => ({
+      friendID: String(entry?.friendID || "").trim(),
+      message: String(entry?.message || "").trim(),
+    }))
+    .filter((entry) => entry.friendID && entry.message);
   return {
     componentClassOptions: normalizePlannerSettingsStringList(
       nextValue.componentClassOptions,
@@ -1720,6 +1758,10 @@ export const normalizePlannerSelectSettings = (value) => {
         ? nextValue.logoMotionEnabled
         : true,
     logoFixedClock,
+    messageFriend: {
+      from: normalizedMessageFrom,
+      to: normalizedMessageTo,
+    },
     fieldDefaults: {
       ...(nextValue?.fieldDefaults &&
       typeof nextValue.fieldDefaults === "object"

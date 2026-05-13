@@ -135,6 +135,42 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       : planner.state?.wrapperTab === "exams"
         ? NOGAPLANNER_TEXT.examBoard.tabExams
         : "";
+  const messageFriendSettings = planner.state?.plannerSelectSettings?.messageFriend;
+  const messageFromFriendId = String(
+    messageFriendSettings?.from?.friendID || "",
+  ).trim();
+  const messageFromFriendText = (() => {
+    const outgoingList = Array.isArray(messageFriendSettings?.to)
+      ? messageFriendSettings.to
+      : [];
+    const matchedOutgoing = outgoingList.find(
+      (entry) => String(entry?.friendID || "").trim() === messageFromFriendId,
+    );
+    if (matchedOutgoing) {
+      return String(matchedOutgoing?.message || "").trim();
+    }
+    return String(messageFriendSettings?.from?.message || "").trim();
+  })();
+  const friendDisplayName = (() => {
+    const friends = Array.isArray(planner?.props?.state?.friends)
+      ? planner.props.state.friends
+      : [];
+    const match = friends.find((entry) => {
+      const candidateId = String(
+        entry?._id || entry?.id || entry?.user?._id || entry?.user?.id || "",
+      ).trim();
+      return candidateId && candidateId === messageFromFriendId;
+    });
+    if (!match) {
+      return "";
+    }
+    const info =
+      match?.info || match?.identity?.personal || match?.user?.info || match?.user || {};
+    const firstName = String(info?.firstname || "").trim();
+    const lastName = String(info?.lastname || "").trim();
+    const username = String(info?.username || "").trim();
+    return `${firstName} ${lastName}`.trim() || (username ? `@${username}` : "");
+  })();
   const showCourseEditor = isCoursesTab && savedCourseEditorVisible;
   const shouldShowSelectedCourseLectures =
     isLecturesTab && !savedCourseSelectionMode;
@@ -363,7 +399,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
         return;
       }
       const activeTabButton = tabsContainer.querySelector(
-        ".nogaPlanner_wrapperTabBtn--active",
+        '[data-wrapper-tab-active="true"]',
       );
       if (!activeTabButton) {
         setCoursesMiniBarActionsLeft("50%");
@@ -600,12 +636,21 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
 
   const renderSavedCourseSortLabel = (sortKey, label) => {
     const isActive = savedCourseSortKey === sortKey;
-    const marker = isActive
-      ? savedCourseSortDirection === "asc"
-        ? " ^"
-        : " v"
-      : "";
-    return `${label}${marker}`;
+    const markerClassName = !isActive
+      ? "fi fi-rr-arrows-up-down"
+      : savedCourseSortDirection === "asc"
+        ? "fi fi-rr-arrow-small-up"
+        : "fi fi-rr-arrow-small-down";
+    return (
+      <>
+        <span>{label}</span>
+        <i
+          className={markerClassName}
+          aria-hidden="true"
+          style={{ marginInlineStart: "6px", verticalAlign: "middle" }}
+        />
+      </>
+    );
   };
 
   const formatCourseWeightDisplay = (value) => {
@@ -621,12 +666,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     return normalizedValue || "-";
   };
 
-  const getDraftComponentOptions = () =>
-    planner.getSavedCourseDraftComponentPickerOptions(savedCourseDraft);
-  const renderMiniBarButtonContent = (iconClassName, label) => (
+  const renderMiniBarButtonContent = (iconClassName, label, metaLabel = "") => (
     <span className="nogaPlanner_coursesMiniBarBtnIconLabel">
       <i className={iconClassName} />
       <span>{label}</span>
+      {metaLabel ? (
+        <span className="nogaPlanner_coursesMiniBarBtnCounter">{metaLabel}</span>
+      ) : null}
     </span>
   );
 
@@ -778,21 +824,9 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const uniqueSavedCoursesCount = groupedRows.length;
   const totalSavedCourseComponentsCount = renderSavedCourses.length;
 
-  const selectedSavedCourseComponentPickerValue =
-    Number.isInteger(Number(selectedSavedCourseDraftComponentIndex)) &&
-    Number(selectedSavedCourseDraftComponentIndex) >= 0
-      ? String(selectedSavedCourseDraftComponentIndex)
-      : (() => {
-          const currentEntry = buildSavedCourseComponentEntryFromDraft({
-            ...savedCourseDraft,
-            course_class:
-              String(savedCourseDraft?.course_classSelection || "").trim() ||
-              String(savedCourseDraft?.course_class || "").trim(),
-          });
-          return String(currentEntry?.course_class || "").trim()
-            ? "__current__"
-            : "";
-        })();
+  const stagedDraftComponents = Array.isArray(savedCourseDraft?.course_components)
+    ? savedCourseDraft.course_components
+    : [];
 
   const locationEntries = Array.isArray(planner.state?.courses)
     ? planner.state.courses
@@ -996,47 +1030,83 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               id="nogaPlanner_savedCourseEditorLabelControls"
               className="nogaPlanner_savedCourseEditorLabelControls"
             >
-              <select
-                id="nogaPlanner_savedCourseSelect_componentPicker"
-                className="nogaPlanner_savedCoursesDetailsInput"
-                value={selectedSavedCourseComponentPickerValue}
-                onChange={(event) => {
-                  if (event.target.value === "__current__") return;
-                  planner.selectSavedCourseDraftComponent(event.target.value);
-                }}
+              <ul
+                id="nogaPlanner_savedCourse_componentCompactList"
+                className="nogaPlanner_savedCourse_componentCompactList"
               >
-                <option value="">{courseUi.editor.newComponent}</option>
-                {String(
-                  savedCourseDraft?.course_classSelection ||
-                    savedCourseDraft?.course_class ||
-                    "",
-                ).trim() ? (
-                  <option value="__current__">
-                    {String(
-                      savedCourseDraft?.course_classSelection ||
-                        savedCourseDraft?.course_class ||
-                        "",
-                    ).trim() || courseUi.editor.currentComponent}
-                  </option>
-                ) : null}
-                {getDraftComponentOptions().map((optionEntry) => (
-                  <option
-                    key={`saved-course-component-picker-${optionEntry.value}`}
-                    value={optionEntry.value}
-                  >
-                    {optionEntry.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                id="nogaPlanner_savedCourseBtn_addComponent"
-                type="button"
-                className="nogaPlanner_coursesMiniBarBtn"
-                onClick={planner.appendSavedCourseComponentEntry}
-                disabled={!hasSelectedComponentType}
+                {stagedDraftComponents.length === 0 ? (
+                  <li className="nogaPlanner_savedCourse_componentCompactListEmpty">
+                    {NOGAPLANNER_TEXT.common.noEntries}
+                  </li>
+                ) : (
+                  stagedDraftComponents.map((entry, entryIndex) => {
+                    const entryLabel =
+                      String(entry?.course_class || entry?.course_component || "").trim() ||
+                      `${courseUi.editor.currentComponent} ${entryIndex + 1}`;
+                    const isSelected =
+                      Number(selectedSavedCourseDraftComponentIndex) ===
+                      entryIndex;
+                    return (
+                      <li key={`saved-course-component-compact-${entryIndex}`}>
+                        <button
+                          type="button"
+                          className={
+                            "nogaPlanner_savedCourse_componentCompactItem" +
+                            (isSelected
+                              ? " nogaPlanner_savedCourse_componentCompactItem--active"
+                              : "")
+                          }
+                          onClick={() =>
+                            planner.selectSavedCourseDraftComponent(
+                              String(entryIndex),
+                            )
+                          }
+                        >
+                          {entryLabel}
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
+              <div
+                id="nogaPlanner_savedCourseComponentActionsWrapper"
+                className="nogaPlanner_savedCourseComponentActionsWrapper"
               >
-                +
-              </button>
+                <button
+                  id="nogaPlanner_savedCourseBtn_addComponent"
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={planner.appendSavedCourseComponentEntry}
+                  disabled={!hasSelectedComponentType}
+                  title={NOGAPLANNER_TEXT.common.save}
+                  aria-label={NOGAPLANNER_TEXT.common.save}
+                >
+                  <i className="fas fa-save" aria-hidden="true" />
+                </button>
+                <button
+                  id="nogaPlanner_savedCourseBtn_addMoreComponent"
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={planner.startAddingNewSavedCourseComponent}
+                  disabled={stagedDraftComponents.length === 0}
+                  title={courseUi.editor.newComponent}
+                  aria-label={courseUi.editor.newComponent}
+                >
+                  <i className="fi fi-rr-plus-small" aria-hidden="true" />
+                </button>
+                <button
+                  id="nogaPlanner_savedCourseBtn_deleteComponent"
+                  type="button"
+                  className="nogaPlanner_coursesMiniBarBtn"
+                  onClick={planner.deleteSelectedSavedCourseDraftComponent}
+                  disabled={Number(selectedSavedCourseDraftComponentIndex) < 0}
+                  title={NOGAPLANNER_TEXT.common.delete}
+                  aria-label={NOGAPLANNER_TEXT.common.delete}
+                >
+                  <i className="fas fa-trash" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
@@ -1451,10 +1521,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                     id={`nogaPlanner_wrapperTabBtn_${tabEntry.key}`}
                     type="button"
                     className={
-                      "nogaPlanner_wrapperTabBtn" +
-                      (planner.state.wrapperTab === tabEntry.key
-                        ? " nogaPlanner_wrapperTabBtn--active"
-                        : "")
+                      "nogaPlanner_wrapperTabBtn"
+                    }
+                    data-wrapper-tab-active={
+                      planner.state.wrapperTab === tabEntry.key ? "true" : "false"
                     }
                     onClick={() => handleWrapperTabButtonClick(tabEntry.key)}
                     aria-label={tabEntry.label}
@@ -1497,10 +1567,11 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               <button
                 id="nogaPlanner_wrapperTabsActions_activeTab"
                 type="button"
-                className="nogaPlanner_wrapperTabBtn nogaPlanner_wrapperTabBtn--active"
+                className="nogaPlanner_wrapperTabBtn"
                 aria-label={NOGAPLANNER_TEXT.settings.back}
                 title={NOGAPLANNER_TEXT.settings.back}
                 onClick={resetToUnmountedPlannerState}
+                data-wrapper-tab-active="true"
               >
                 <span className="nogaPlanner_wrapperTabBtnIconLabel">
                   <i className="fi fi-rr-lesson" />
@@ -1630,6 +1701,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       savedCourseSelectionMode
                         ? SAVED_TEXT.finishSelection
                         : SAVED_TEXT.select,
+                      `(${selectedGroupCount})`,
                     )}
                   </button>
                   <button
@@ -1857,8 +1929,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       `${buildSavedCourseGroupKey(course)}-${groupIndex}`
                     }
                     className={rowClassName}
-                    onMouseEnter={() => setHoveredCourseGroupKey(courseGroupKey)}
-                    onMouseLeave={() => setHoveredCourseGroupKey("")}
                   >
                     {groupIndex === 0 ? (
                       <>
@@ -1870,6 +1940,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                               ? " nogaPlanner_savedCoursesTableCell--mergedSelected"
                               : "")
                           }
+                          onMouseEnter={() =>
+                            setHoveredCourseGroupKey(courseGroupKey)
+                          }
+                          onMouseLeave={() => setHoveredCourseGroupKey("")}
                           onClick={() =>
                             !course.__draft &&
                             planner.handleSavedCourseGroupClick(course, group)
@@ -1989,6 +2063,14 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               className="nogaPlanner_savedCoursesWorkspaceTitle"
             >
               <p>{activeWorkspaceTabTitle}</p>
+              {messageFromFriendText ? (
+                <div className="nogaPlanner_savedCoursesWorkspaceFriendMessageWrapper">
+                  <p>
+                    {friendDisplayName ? `${friendDisplayName}: ` : ""}
+                    {messageFromFriendText}
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {!hasActivePlannerTab ? null : isLecturesTab ? (

@@ -49,6 +49,11 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsSelectedRelationshipId,
     plannerSettingsLogoMotionEnabled,
     plannerSettingsLogoFixedClock,
+    plannerSettingsMessageFromFriendFromId,
+    plannerSettingsMessageFromFriendToId,
+    plannerSettingsMessageFromFriendToMessage,
+    plannerSettingsMessageFromFriendToList,
+    plannerSettingsMessageFromFriendSelectedToIndex,
   } = planner.state;
   const logoClockOptions = Array.from({ length: 12 }, (_, index) => {
     const value = String(index + 1);
@@ -392,44 +397,45 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
         </button>
         <span className="nogaPlanner_selectSettingsTitle">{SETTINGS_TEXT.title}</span>
       </div>
-      <div className="nogaPlanner_selectSettingsFields">
-        <label className="nogaPlanner_selectSettingsCheckboxRow">
-          <input
-            type="checkbox"
-            checked={Boolean(plannerSettingsLogoMotionEnabled)}
+      <div className="nogaPlanner_selectSettingsContent">
+        <div className="nogaPlanner_selectSettingsFields">
+          <label className="nogaPlanner_selectSettingsCheckboxRow">
+            <input
+              type="checkbox"
+              checked={Boolean(plannerSettingsLogoMotionEnabled)}
+              onChange={(event) =>
+                planner.handlePlannerSettingsInputChange(
+                  "plannerSettingsLogoMotionEnabled",
+                  event.target.checked,
+                )
+              }
+            />
+            <span>
+              {SETTINGS_TEXT.logoMotionListener}:{" "}
+              {plannerSettingsLogoMotionEnabled
+                ? SETTINGS_TEXT.motionOn
+                : SETTINGS_TEXT.motionOff}
+            </span>
+          </label>
+          <select
+            className="nogaPlanner_savedCoursesDetailsInput"
+            value={String(plannerSettingsLogoFixedClock || "9")}
             onChange={(event) =>
               planner.handlePlannerSettingsInputChange(
-                "plannerSettingsLogoMotionEnabled",
-                event.target.checked,
+                "plannerSettingsLogoFixedClock",
+                event.target.value,
               )
             }
-          />
-          <span>
-            {SETTINGS_TEXT.logoMotionListener}:{" "}
-            {plannerSettingsLogoMotionEnabled
-              ? SETTINGS_TEXT.motionOn
-              : SETTINGS_TEXT.motionOff}
-          </span>
-        </label>
-        <select
-          className="nogaPlanner_savedCoursesDetailsInput"
-          value={String(plannerSettingsLogoFixedClock || "9")}
-          onChange={(event) =>
-            planner.handlePlannerSettingsInputChange(
-              "plannerSettingsLogoFixedClock",
-              event.target.value,
-            )
-          }
-        >
-          {logoClockOptions.map((entry) => (
-            <option key={`planner-logo-clock-${entry.value}`} value={entry.value}>
-              {SETTINGS_TEXT.fixedLogoClock} {entry.label}
-            </option>
-          ))}
-        </select>
-      </div>
+          >
+            {logoClockOptions.map((entry) => (
+              <option key={`planner-logo-clock-${entry.value}`} value={entry.value}>
+                {SETTINGS_TEXT.fixedLogoClock} {entry.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className="nogaPlanner_selectSettingsColumns">
+        <div className="nogaPlanner_selectSettingsColumns">
         <div className="nogaPlanner_selectSettingsColumn">
           <span className="nogaPlanner_selectSettingsColumnTitle">
             {SETTINGS_TEXT.lists}
@@ -824,29 +830,37 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
             </div>
 
             <ul className="nogaPlanner_selectSettingsList">
-              {plannerDefaultsWithValues.map((fieldConfig) => (
-                <li
-                  key={`planner-default-entry-${fieldConfig.key}`}
-                  className={
-                    "nogaPlanner_selectSettingsItem" +
-                    (String(
-                      plannerSettingsSelectedDefaultFieldKey || "",
-                    ).trim() === fieldConfig.key
-                      ? " nogaPlanner_selectSettingsItem--selected"
-                      : "")
-                  }
-                  onClick={() =>
-                    planner.togglePlannerDefaultFieldSelection(fieldConfig.key)
-                  }
-                >
+              {plannerDefaultsWithValues.length > 0 ? (
+                plannerDefaultsWithValues.map((fieldConfig) => (
+                  <li
+                    key={`planner-default-entry-${fieldConfig.key}`}
+                    className={
+                      "nogaPlanner_selectSettingsItem" +
+                      (String(
+                        plannerSettingsSelectedDefaultFieldKey || "",
+                      ).trim() === fieldConfig.key
+                        ? " nogaPlanner_selectSettingsItem--selected"
+                        : "")
+                    }
+                    onClick={() =>
+                      planner.togglePlannerDefaultFieldSelection(fieldConfig.key)
+                    }
+                  >
+                    <span className="nogaPlanner_selectSettingsItemLabel">
+                      {fieldConfig.label}
+                    </span>
+                    <span className="nogaPlanner_selectSettingsItemLabel">
+                      {fieldConfig.value}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="nogaPlanner_selectSettingsItem">
                   <span className="nogaPlanner_selectSettingsItemLabel">
-                    {fieldConfig.label}
-                  </span>
-                  <span className="nogaPlanner_selectSettingsItemLabel">
-                    {fieldConfig.value}
+                    لا يوجد أي إدخال
                   </span>
                 </li>
-              ))}
+              )}
             </ul>
           </div>
         </div>
@@ -1075,6 +1089,194 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
               )}
             </ul>
           </div>
+        </div>
+
+        <div className="nogaPlanner_selectSettingsColumn">
+          <span className="nogaPlanner_selectSettingsColumnTitle">
+            {SETTINGS_TEXT.messageFromFriend}
+          </span>
+          <div className="nogaPlanner_selectSettingsFields">
+            {(() => {
+              const friendOptions = (Array.isArray(planner?.props?.state?.friends)
+                ? planner.props.state.friends
+                : []
+              )
+                .map((entry, index) => {
+                  const info =
+                    entry?.info ||
+                    entry?.identity?.personal ||
+                    entry?.user?.info ||
+                    entry?.user ||
+                    {};
+                  const friendId = String(
+                    entry?._id ||
+                      entry?.id ||
+                      entry?.user?._id ||
+                      entry?.user?.id ||
+                      "",
+                  ).trim();
+                  const firstName = String(info?.firstname || "").trim();
+                  const lastName = String(info?.lastname || "").trim();
+                  const username = String(info?.username || "").trim();
+                  const fullName = `${firstName} ${lastName}`.trim();
+                  const label =
+                    fullName || (username ? `@${username}` : `صديق ${index + 1}`);
+                  return {
+                    id: friendId,
+                    label,
+                  };
+                })
+                .filter((entry) => Boolean(entry.id));
+              const toList = Array.isArray(plannerSettingsMessageFromFriendToList)
+                ? plannerSettingsMessageFromFriendToList
+                : [];
+              return (
+                <>
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {SETTINGS_TEXT.messageFromFriendFrom}
+                  </span>
+                  <select
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(plannerSettingsMessageFromFriendFromId || "").trim()}
+                    onChange={(event) =>
+                      planner.handlePlannerSettingsInputChange(
+                        "plannerSettingsMessageFromFriendFromId",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="">{SETTINGS_TEXT.messageFromFriendChoose}</option>
+                    {friendOptions.map((friend) => (
+                      <option key={`settings-friend-${friend.id}`} value={friend.id}>
+                        {friend.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {SETTINGS_TEXT.messageFromFriendTo}
+                  </span>
+                  <select
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(plannerSettingsMessageFromFriendToId || "").trim()}
+                    onChange={(event) =>
+                      planner.handlePlannerSettingsInputChange(
+                        "plannerSettingsMessageFromFriendToId",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="">{SETTINGS_TEXT.messageFromFriendChoose}</option>
+                    {friendOptions.map((friend) => (
+                      <option key={`settings-friend-to-${friend.id}`} value={friend.id}>
+                        {friend.label}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(plannerSettingsMessageFromFriendToMessage || "")}
+                    onChange={(event) =>
+                      planner.handlePlannerSettingsInputChange(
+                        "plannerSettingsMessageFromFriendToMessage",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={SETTINGS_TEXT.messageFromFriendInput}
+                    rows={4}
+                  />
+                  <div className="nogaPlanner_selectSettingsActions">
+                    <button
+                      type="button"
+                      className={
+                        "nogaPlanner_coursesMiniBarBtn" +
+                        (!String(plannerSettingsMessageFromFriendToId || "").trim() ||
+                        !String(plannerSettingsMessageFromFriendToMessage || "").trim()
+                          ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          : "")
+                      }
+                      onClick={planner.addPlannerSettingsMessageFriendRecipient}
+                      disabled={
+                        !String(plannerSettingsMessageFromFriendToId || "").trim() ||
+                        !String(plannerSettingsMessageFromFriendToMessage || "").trim()
+                      }
+                    >
+                      {SETTINGS_TEXT.messageFromFriendAddToList}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        "nogaPlanner_coursesMiniBarBtn" +
+                        (Number(plannerSettingsMessageFromFriendSelectedToIndex) < 0
+                          ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          : "")
+                      }
+                      onClick={planner.removeSelectedPlannerSettingsMessageFriendRecipient}
+                      disabled={Number(plannerSettingsMessageFromFriendSelectedToIndex) < 0}
+                    >
+                      {SETTINGS_TEXT.messageFromFriendDeleteSelected}
+                    </button>
+                    <button
+                      type="button"
+                      className="nogaPlanner_coursesMiniBarBtn"
+                      onClick={planner.savePlannerSettingsMessageFromFriend}
+                    >
+                      {SETTINGS_TEXT.messageFromFriendSave}
+                    </button>
+                  </div>
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {SETTINGS_TEXT.messageFromFriendToList}
+                  </span>
+                  <ul className="nogaPlanner_selectSettingsRelationshipsList">
+                    {toList.length > 0 ? (
+                      toList.map((entry, entryIndex) => {
+                        const friendLabel =
+                          friendOptions.find(
+                            (friend) =>
+                              String(friend.id) === String(entry?.friendID || ""),
+                          )?.label || String(entry?.friendID || "");
+                        return (
+                          <li
+                            key={`settings-message-to-${entryIndex}`}
+                            className={
+                              "nogaPlanner_selectSettingsRelationshipItem" +
+                              (Number(plannerSettingsMessageFromFriendSelectedToIndex) ===
+                              entryIndex
+                                ? " nogaPlanner_selectSettingsItem--selected"
+                                : "")
+                            }
+                            onClick={() =>
+                              planner.togglePlannerSettingsMessageFriendRecipientSelection(
+                                entryIndex,
+                              )
+                            }
+                          >
+                            <div className="nogaPlanner_selectSettingsRelationshipBody">
+                              <span className="nogaPlanner_selectSettingsRelationshipText">
+                                {friendLabel}
+                              </span>
+                              <span className="nogaPlanner_selectSettingsRelationshipText">
+                                {String(entry?.message || "")}
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="nogaPlanner_selectSettingsRelationshipItem nogaPlanner_selectSettingsRelationshipItem--empty">
+                        <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--empty">
+                          <span className="nogaPlanner_selectSettingsRelationshipText">
+                            {SETTINGS_TEXT.messageFromFriendNoEntries}
+                          </span>
+                        </div>
+                      </li>
+                    )}
+                  </ul>
+                </>
+              );
+            })()}
+          </div>
+        </div>
         </div>
       </div>
     </div>

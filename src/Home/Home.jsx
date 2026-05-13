@@ -3967,10 +3967,21 @@ function Home(props) {
                     src={friend.avatarUrl}
                     alt={`${friend.displayName} avatar`}
                     className="Home_socialFriendAvatarImage"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      if (fallbackIcon) {
+                        fallbackIcon.style.display = "inline-flex";
+                      }
+                    }}
                   />
-                ) : (
-                  <span aria-hidden="true">{friend.initials}</span>
-                )}
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  style={{ display: friend.avatarUrl ? "none" : "inline-flex" }}
+                >
+                  <i className="fas fa-user"></i>
+                </span>
               </div>
               <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">
@@ -4308,10 +4319,21 @@ function Home(props) {
                     src={candidate.avatarUrl}
                     alt={`${candidate.displayName} avatar`}
                     className="Home_socialFriendAvatarImage"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      if (fallbackIcon) {
+                        fallbackIcon.style.display = "inline-flex";
+                      }
+                    }}
                   />
-                ) : (
-                  <span aria-hidden="true">{candidate.initials}</span>
-                )}
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  style={{ display: candidate.avatarUrl ? "none" : "inline-flex" }}
+                >
+                  <i className="fas fa-user"></i>
+                </span>
               </div>
               <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">
@@ -4563,10 +4585,21 @@ function Home(props) {
                     src={user.avatarUrl}
                     alt={`${user.displayName} avatar`}
                     className="Home_socialFriendAvatarImage"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      if (fallbackIcon) {
+                        fallbackIcon.style.display = "inline-flex";
+                      }
+                    }}
                   />
-                ) : (
-                  <span aria-hidden="true">{user.initials}</span>
-                )}
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  style={{ display: user.avatarUrl ? "none" : "inline-flex" }}
+                >
+                  <i className="fas fa-user"></i>
+                </span>
               </div>
               <div className="Home_socialFriendCopy">
                 <span className="Home_socialFriendName">

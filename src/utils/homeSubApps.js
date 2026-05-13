@@ -1,6 +1,7 @@
 export const getHomeSubApps = (username = "") => {
   const normalizedUsername = String(username || "").trim().toLowerCase();
-  const isNogaPlanOwner = normalizedUsername === "naghamtrkmani";
+  const nogaPlanPermittedUsers = new Set(["naghamtrkmani", "rudyhamame"]);
+  const isNogaPlanOwner = nogaPlanPermittedUsers.has(normalizedUsername);
 
   return [
     {
