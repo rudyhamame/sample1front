@@ -54,7 +54,45 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsMessageFromFriendToMessage,
     plannerSettingsMessageFromFriendToList,
     plannerSettingsMessageFromFriendSelectedToIndex,
+    plannerSettingsPredictionToolEnabled,
+    plannerSettingsSelectedPredictionFieldId,
+    plannerSettingsSelectedPredictionTab,
   } = planner.state;
+  const predictionToolEntries = Array.isArray(
+    plannerSelectSettings?.predictionTool,
+  )
+    ? plannerSelectSettings.predictionTool
+    : [];
+  const predictionTabs = Array.from(
+    new Set(
+      predictionToolEntries
+        .map((entry) => String(entry?.tab || "").trim())
+        .filter(Boolean),
+    ),
+  ).sort((left, right) =>
+    left.localeCompare(right, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+  const predictionFieldEntries = Object.entries(
+    planner?.plannerInputHistory && typeof planner.plannerInputHistory === "object"
+      ? planner.plannerInputHistory
+      : {},
+  )
+    .map(([fieldId, list]) => ({
+      fieldId: String(fieldId || "").trim(),
+      list: Array.isArray(list)
+        ? list.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : [],
+    }))
+    .filter((entry) => entry.fieldId && entry.list.length > 0)
+    .sort((left, right) =>
+      left.fieldId.localeCompare(right.fieldId, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
   const logoClockOptions = Array.from({ length: 12 }, (_, index) => {
     const value = String(index + 1);
     return { value, label: `${value}` };
@@ -1097,6 +1135,15 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           </span>
           <div className="nogaPlanner_selectSettingsFields">
             {(() => {
+              const normalizeFriendId = (value) => {
+                if (!value) {
+                  return "";
+                }
+                if (typeof value === "object") {
+                  return String(value?._id || value?.id || "").trim();
+                }
+                return String(value || "").trim();
+              };
               const friendOptions = (Array.isArray(planner?.props?.state?.friends)
                 ? planner.props.state.friends
                 : []
@@ -1108,13 +1155,9 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     entry?.user?.info ||
                     entry?.user ||
                     {};
-                  const friendId = String(
-                    entry?._id ||
-                      entry?.id ||
-                      entry?.user?._id ||
-                      entry?.user?.id ||
-                      "",
-                  ).trim();
+                  const friendId = normalizeFriendId(
+                    entry?._id || entry?.id || entry?.user?._id || entry?.user?.id,
+                  );
                   const firstName = String(info?.firstname || "").trim();
                   const lastName = String(info?.lastname || "").trim();
                   const username = String(info?.username || "").trim();
@@ -1124,9 +1167,57 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   return {
                     id: friendId,
                     label,
+                    raw: entry,
                   };
                 })
                 .filter((entry) => Boolean(entry.id));
+              const myUserId = String(planner?.props?.state?.my_id || "").trim();
+              const messageFriendSettings =
+                planner.state?.plannerSelectSettings?.messageFriend;
+              const listeningFriendMessage = (() => {
+                const selectedFromId = String(
+                  plannerSettingsMessageFromFriendFromId || "",
+                ).trim();
+                if (!selectedFromId || !myUserId) {
+                  return "";
+                }
+                const selectedFriend = friendOptions.find(
+                  (friend) => String(friend.id || "").trim() === selectedFromId,
+                );
+                if (!selectedFriend?.raw) {
+                  return "";
+                }
+                const friendSettings =
+                  selectedFriend.raw?.memory?.studyPlanner?.studyOrganizer?.settings ||
+                  selectedFriend.raw?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+                  selectedFriend.raw?.settings ||
+                  selectedFriend.raw?.user?.memory?.studyPlanner?.studyOrganizer?.settings ||
+                  selectedFriend.raw?.user?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+                  {};
+                const outgoingToList = Array.isArray(friendSettings?.messageFriend?.to)
+                  ? friendSettings.messageFriend.to
+                  : [];
+                const matchedIncoming = outgoingToList.find(
+                  (toEntry) =>
+                    normalizeFriendId(toEntry?.friendID) === myUserId &&
+                    String(toEntry?.message || "").trim(),
+                );
+                if (matchedIncoming) {
+                  return String(matchedIncoming?.message || "").trim();
+                }
+                const outgoingList = Array.isArray(messageFriendSettings?.to)
+                  ? messageFriendSettings.to
+                  : [];
+                const matchedOutgoing = outgoingList.find(
+                  (entry) =>
+                    normalizeFriendId(entry?.friendID) === selectedFromId &&
+                    String(entry?.message || "").trim(),
+                );
+                if (matchedOutgoing) {
+                  return String(matchedOutgoing?.message || "").trim();
+                }
+                return String(messageFriendSettings?.from?.message || "").trim();
+              })();
               const toList = Array.isArray(plannerSettingsMessageFromFriendToList)
                 ? plannerSettingsMessageFromFriendToList
                 : [];
@@ -1139,8 +1230,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     className="nogaPlanner_savedCoursesDetailsInput"
                     value={String(plannerSettingsMessageFromFriendFromId || "").trim()}
                     onChange={(event) =>
-                      planner.handlePlannerSettingsInputChange(
-                        "plannerSettingsMessageFromFriendFromId",
+                      planner.savePlannerSettingsMessageFromFriendSelection(
                         event.target.value,
                       )
                     }
@@ -1152,6 +1242,13 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                       </option>
                     ))}
                   </select>
+                  <textarea
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={listeningFriendMessage}
+                    placeholder="رسالة الصديق المختار ستظهر هنا"
+                    rows={3}
+                    readOnly
+                  />
 
                   <span className="nogaPlanner_selectSettingsRelationshipText">
                     {SETTINGS_TEXT.messageFromFriendTo}
@@ -1275,6 +1372,128 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                 </>
               );
             })()}
+          </div>
+        </div>
+
+        <div className="nogaPlanner_selectSettingsColumn">
+          <span className="nogaPlanner_selectSettingsColumnTitle">
+            أداة التنبؤ
+          </span>
+          <div className="nogaPlanner_selectSettingsFields">
+            <label className="nogaPlanner_selectSettingsCheckboxRow">
+              <input
+                type="checkbox"
+                checked={Boolean(plannerSettingsPredictionToolEnabled)}
+                onChange={(event) =>
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsPredictionToolEnabled",
+                    event.target.checked,
+                  )
+                }
+              />
+              <span>
+                تفعيل أداة التنبؤ:{" "}
+                {plannerSettingsPredictionToolEnabled ? "مفعّل" : "متوقّف"}
+              </span>
+            </label>
+            <div className="nogaPlanner_selectSettingsActions">
+              <button
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn"
+                onClick={planner.savePlannerPredictionToolSettings}
+              >
+                حفظ
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (String(plannerSettingsSelectedPredictionFieldId || "").trim()
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.deleteSelectedPlannerPredictionField}
+                disabled={!String(plannerSettingsSelectedPredictionFieldId || "").trim()}
+              >
+                حذف الحقل المحدد
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (String(plannerSettingsSelectedPredictionTab || "").trim()
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.deletePlannerPredictionByTab}
+                disabled={!String(plannerSettingsSelectedPredictionTab || "").trim()}
+              >
+                حذف حسب التبويب
+              </button>
+              <button
+                type="button"
+                className={
+                  "nogaPlanner_coursesMiniBarBtn" +
+                  (predictionFieldEntries.length > 0
+                    ? ""
+                    : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                }
+                onClick={planner.deleteAllPlannerPredictionFields}
+                disabled={predictionFieldEntries.length === 0}
+              >
+                حذف كل الحقول
+              </button>
+            </div>
+            <label className="nogaPlanner_selectSettingsField">
+              <span>التبويب</span>
+              <select
+                value={String(plannerSettingsSelectedPredictionTab || "").trim()}
+                onChange={(event) =>
+                  planner.selectPlannerPredictionTab(event.target.value)
+                }
+              >
+                <option value="">اختر تبويباً</option>
+                {predictionTabs.map((tabName) => (
+                  <option key={`prediction-tab-${tabName}`} value={tabName}>
+                    {tabName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <ul className="nogaPlanner_selectSettingsRelationshipsList">
+              {predictionFieldEntries.length > 0 ? (
+                predictionFieldEntries.map((entry) => (
+                  <li
+                    key={`prediction-field-${entry.fieldId}`}
+                    className={
+                      "nogaPlanner_selectSettingsRelationshipItem" +
+                      (String(plannerSettingsSelectedPredictionFieldId || "").trim() ===
+                      entry.fieldId
+                        ? " nogaPlanner_selectSettingsItem--selected"
+                        : "")
+                    }
+                    onClick={() => planner.selectPlannerPredictionField(entry.fieldId)}
+                  >
+                    <div className="nogaPlanner_selectSettingsRelationshipBody">
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {entry.fieldId}
+                      </span>
+                      <span className="nogaPlanner_selectSettingsRelationshipText">
+                        {entry.list.length} إدخال
+                      </span>
+                    </div>
+                  </li>
+                ))
+              ) : (
+                <li className="nogaPlanner_selectSettingsRelationshipItem nogaPlanner_selectSettingsRelationshipItem--empty">
+                  <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--empty">
+                    <span className="nogaPlanner_selectSettingsRelationshipText">
+                      لا يوجد أي إدخال
+                    </span>
+                  </div>
+                </li>
+              )}
+            </ul>
           </div>
         </div>
         </div>

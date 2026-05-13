@@ -244,7 +244,8 @@ select {
   background-color: var(--white);
 }
 input::selection {
-  background-color: var(--green);
+  background-color: #841b2d;
+  color: white;
 }
 button {
   border: none;

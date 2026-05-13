@@ -115,6 +115,11 @@ const NOGAPLANNER_PANEL_RUNTIME = {
   ...plannerRuntimeHelpers,
 };
 export default class NogaPlanner extends Component {
+  plannerInputHistoryStorageKey = "nogaPlanner.inputHistory.v1";
+  plannerInputHistory = {};
+  plannerPendingInputHistory = {};
+  plannerPredictionToolSyncTimeout = null;
+  plannerPredictionToolActivityFieldId = "__activity__";
   savedCourseComponentDraftFieldNames = [
     "component_status",
     "normativeCourseYearNum",
@@ -220,6 +225,7 @@ export default class NogaPlanner extends Component {
     const normalizedValue = String(nextValue || "").trim();
     if (!normalizedValue) {
       this.setState((previousState) => ({
+        savedCourseComponentDraftActive: true,
         selectedSavedCourseDraftComponentIndex: -1,
         savedCourseDraft: this.getResetSavedCourseComponentDraftFields(
           previousState.savedCourseDraft,
@@ -243,6 +249,7 @@ export default class NogaPlanner extends Component {
       }
       return {
         selectedSavedCourseDraftComponentIndex: entryIndex,
+        savedCourseComponentDraftActive: false,
         savedCourseDraft: this.applySavedCourseDraftComponentEntryToDraft(
           previousState.savedCourseDraft,
           componentEntry,
@@ -636,6 +643,7 @@ export default class NogaPlanner extends Component {
     });
     const response = await fetch(req);
     if (response.status === 201) {
+      this.commitPlannerPendingInputMemory();
       this.closeInlineComponentRow();
       this.retrieveCourses(selectedCourseForLecturesId);
       this.retrieveLectures();
@@ -764,6 +772,442 @@ export default class NogaPlanner extends Component {
       .split(/\||\n|;/)
       .map((entry) => String(entry || "").trim())
       .filter(Boolean);
+  loadPlannerInputHistory = () => {
+    if (typeof window === "undefined" || !window?.localStorage) {
+      this.plannerInputHistory = {};
+      return;
+    }
+    try {
+      const rawValue = window.localStorage.getItem(
+        this.plannerInputHistoryStorageKey,
+      );
+      const parsed = rawValue ? JSON.parse(rawValue) : {};
+      this.plannerInputHistory =
+        parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      this.plannerInputHistory = {};
+    }
+  };
+  persistPlannerInputHistory = () => {
+    if (typeof window === "undefined" || !window?.localStorage) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        this.plannerInputHistoryStorageKey,
+        JSON.stringify(this.plannerInputHistory || {}),
+      );
+    } catch {
+      // Ignore localStorage errors.
+    }
+  };
+  rememberPlannerInputFieldValue = (fieldKey = "", value = "") => {
+    const normalizedFieldKey = String(fieldKey || "").trim();
+    const normalizedValue = String(value || "").trim();
+    if (!normalizedFieldKey || !normalizedValue || normalizedValue === "-") {
+      return;
+    }
+    const currentValues = Array.isArray(this.plannerInputHistory?.[normalizedFieldKey])
+      ? this.plannerInputHistory[normalizedFieldKey]
+      : [];
+    const nextValues = [
+      normalizedValue,
+      ...currentValues.filter((entry) => entry !== normalizedValue),
+    ].slice(0, 25);
+    this.plannerInputHistory = {
+      ...(this.plannerInputHistory || {}),
+      [normalizedFieldKey]: nextValues,
+    };
+  };
+  rememberPlannerInputEntries = (entryMap = {}) => {
+    if (!entryMap || typeof entryMap !== "object") {
+      return;
+    }
+    Object.entries(entryMap).forEach(([fieldKey, fieldValue]) => {
+      this.rememberPlannerInputFieldValue(fieldKey, fieldValue);
+    });
+    this.persistPlannerInputHistory();
+  };
+  serializePlannerInputHistoryToPredictionTool = (
+    history = {},
+    enabled = true,
+  ) => {
+    const normalizedHistory =
+      history && typeof history === "object" ? history : {};
+    const serializedEntries = Object.entries(normalizedHistory)
+      .map(([fieldKey, values]) => ({
+        tab: "nogaPlanner",
+        inputFieldID: String(fieldKey || "").trim(),
+        list: (Array.isArray(values) ? values : [])
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean),
+      }))
+      .filter((entry) => entry.inputFieldID && entry.list.length > 0);
+    return [
+      {
+        tab: "nogaPlanner",
+        inputFieldID: this.plannerPredictionToolActivityFieldId,
+        list: [enabled ? "on" : "off"],
+      },
+      ...serializedEntries,
+    ];
+  };
+  deserializePredictionToolToInputHistory = (predictionTool = []) => {
+    const rawEntries = Array.isArray(predictionTool) ? predictionTool : [];
+    const enabledEntry = rawEntries.find(
+      (entry) =>
+        String(entry?.inputFieldID || "").trim() ===
+        this.plannerPredictionToolActivityFieldId,
+    );
+    const enabled =
+      String(enabledEntry?.list?.[0] || "on").trim().toLowerCase() !== "off";
+    const history = rawEntries.reduce((accumulator, entry) => {
+      const fieldKey = String(entry?.inputFieldID || "").trim();
+      if (!fieldKey || fieldKey === this.plannerPredictionToolActivityFieldId) {
+        return accumulator;
+      }
+      const values = (Array.isArray(entry?.list) ? entry.list : [])
+        .map((item) => String(item || "").trim())
+        .filter((item) => item && item !== "-");
+      if (values.length === 0) {
+        return accumulator;
+      }
+      const currentValues = Array.isArray(accumulator[fieldKey])
+        ? accumulator[fieldKey]
+        : [];
+      accumulator[fieldKey] = [...currentValues, ...values.filter((item) => !currentValues.includes(item))].slice(
+        0,
+        25,
+      );
+      return accumulator;
+    }, {});
+    return { enabled, history };
+  };
+  schedulePlannerPredictionToolSync = () => {
+    if (this.plannerPredictionToolSyncTimeout) {
+      clearTimeout(this.plannerPredictionToolSyncTimeout);
+      this.plannerPredictionToolSyncTimeout = null;
+    }
+    this.plannerPredictionToolSyncTimeout = setTimeout(async () => {
+      const userId = String(this.props.state?.my_id || "").trim();
+      const token = String(this.props.state?.token || "").trim();
+      if (!userId || !token) {
+        return;
+      }
+      try {
+        const previousSettings = normalizePlannerSelectSettings(
+          this.state?.plannerSelectSettings,
+        );
+        const nextSettings = {
+          ...previousSettings,
+          predictionTool: this.serializePlannerInputHistoryToPredictionTool(
+            this.plannerInputHistory,
+            Boolean(this.state?.plannerSettingsPredictionToolEnabled),
+          ),
+        };
+        const persistedResult = await this.persistPlannerSelectSettings(nextSettings);
+        const persistedSettings = normalizePlannerSelectSettings(
+          persistedResult?.settings || nextSettings,
+        );
+        if (!this.isComponentMounted) {
+          return;
+        }
+        this.setState({
+          plannerSelectSettings: persistedSettings,
+        });
+      } catch (error) {
+        console.error("[prediction-tool] settings sync failed:", error);
+      }
+    }, 300);
+  };
+  isPlannerInputPredictionEligible = (inputElement) => {
+    if (!Boolean(this.state?.plannerSettingsPredictionToolEnabled)) {
+      return false;
+    }
+    if (!inputElement || inputElement.tagName !== "INPUT") {
+      return false;
+    }
+    const inputType = String(inputElement.type || "text").toLowerCase();
+    if (
+      [
+        "checkbox",
+        "radio",
+        "file",
+        "hidden",
+        "button",
+        "submit",
+        "reset",
+        "image",
+        "password",
+      ].includes(inputType)
+    ) {
+      return false;
+    }
+    if (inputElement.disabled || inputElement.readOnly) {
+      return false;
+    }
+    return true;
+  };
+  getPlannerInputPredictionFieldKey = (inputElement) => {
+    const fromData = String(inputElement?.dataset?.memoryField || "").trim();
+    if (fromData) {
+      return fromData;
+    }
+    const inputId = String(inputElement?.id || "").trim();
+    if (!inputId) {
+      return "";
+    }
+    const knownPrefixes = [
+      "nogaPlanner_savedCourseInput_",
+      "nogaPlanner_inlineCourseInput_",
+      "nogaPlanner_inlineLectureInput_",
+      "nogaPlanner_addLecture_",
+      "nogaPlanner_examInput_",
+      "nogaPlanner_settingsInput_",
+    ];
+    const matchedPrefix = knownPrefixes.find((prefix) => inputId.startsWith(prefix));
+    if (matchedPrefix) {
+      return inputId.slice(matchedPrefix.length);
+    }
+    return inputId;
+  };
+  refreshPlannerInputPredictionOptions = (inputElement) => {
+    if (!this.isPlannerInputPredictionEligible(inputElement)) {
+      return;
+    }
+    this.disablePlannerInputNativeSuggestions(inputElement);
+    if (inputElement.hasAttribute("list")) {
+      inputElement.removeAttribute("list");
+    }
+  };
+  disablePlannerInputNativeSuggestions = (inputElement) => {
+    if (!inputElement || inputElement.tagName !== "INPUT") {
+      return;
+    }
+    inputElement.setAttribute("autocomplete", "off");
+    inputElement.setAttribute("autocorrect", "off");
+    inputElement.setAttribute("autocapitalize", "off");
+    inputElement.setAttribute("spellcheck", "false");
+    if (!String(inputElement.getAttribute("name") || "").trim()) {
+      const memoryField = String(
+        this.getPlannerInputPredictionFieldKey(inputElement) || "",
+      ).trim();
+      if (memoryField) {
+        inputElement.setAttribute("name", `noga_no_autofill_${memoryField}`);
+      }
+    }
+  };
+  applyPlannerInlinePrediction = (inputElement, latestTypedChunk = "") => {
+    if (!this.isPlannerInputPredictionEligible(inputElement)) {
+      return;
+    }
+    const fieldKey = this.getPlannerInputPredictionFieldKey(inputElement);
+    if (!fieldKey) {
+      return;
+    }
+    const rawValue = String(inputElement.value || "");
+    const caretStart = Number(inputElement.selectionStart);
+    const caretEnd = Number(inputElement.selectionEnd);
+    if (!Number.isFinite(caretStart) || !Number.isFinite(caretEnd)) {
+      return;
+    }
+    if (caretStart !== caretEnd) {
+      return;
+    }
+    if (caretStart !== rawValue.length || caretEnd !== rawValue.length) {
+      return;
+    }
+    const beforeCaret = rawValue.slice(0, caretStart);
+    const tokenStart = (() => {
+      for (let index = beforeCaret.length - 1; index >= 0; index -= 1) {
+        if (/\s/.test(beforeCaret[index])) {
+          return index + 1;
+        }
+      }
+      return 0;
+    })();
+    const sentenceContext = beforeCaret.slice(0, tokenStart);
+    const tokenPrefix = beforeCaret.slice(tokenStart);
+    const normalizedTokenPrefix = tokenPrefix.trim().toLowerCase();
+    if (!normalizedTokenPrefix || normalizedTokenPrefix === "-") {
+      return;
+    }
+    const normalizedLatestTypedChunk = String(latestTypedChunk || "")
+      .trim()
+      .toLowerCase();
+    const options = this.getPlannerInputPredictions(fieldKey, normalizedTokenPrefix);
+    const normalizedSentenceContext = sentenceContext.toLowerCase();
+    let bestWordMatch = "";
+
+    // First pass: respect sentence context before the current token.
+    for (const optionEntry of options) {
+      const optionText = String(optionEntry || "");
+      const optionLower = optionText.toLowerCase();
+      if (
+        normalizedSentenceContext &&
+        !optionLower.startsWith(normalizedSentenceContext)
+      ) {
+        continue;
+      }
+      const optionContextWordStart = (() => {
+        const contextLength = sentenceContext.length;
+        for (let index = contextLength - 1; index >= 0; index -= 1) {
+          if (/\s/.test(optionText[index])) {
+            return index + 1;
+          }
+        }
+        return 0;
+      })();
+      const optionRemaining = optionText.slice(optionContextWordStart);
+      const nextWord = String(optionRemaining || "")
+        .split(/\s+/)
+        .map((word) => String(word || "").trim())
+        .find((word) => word.toLowerCase().startsWith(normalizedTokenPrefix));
+      if (nextWord) {
+        bestWordMatch = nextWord;
+        break;
+      }
+    }
+
+    // Fallback pass: token-only match when strict context match is unavailable.
+    if (!bestWordMatch) {
+      for (const optionEntry of options) {
+        const words = String(optionEntry || "")
+          .split(/\s+/)
+          .map((word) => String(word || "").trim())
+          .filter(Boolean);
+        const matchedWord = words.find((word) =>
+          word.toLowerCase().startsWith(normalizedTokenPrefix),
+        );
+        if (matchedWord) {
+          bestWordMatch = matchedWord;
+          break;
+        }
+      }
+    }
+    if (!bestWordMatch) {
+      return;
+    }
+    if (bestWordMatch.toLowerCase() === normalizedTokenPrefix) {
+      return;
+    }
+    if (normalizedLatestTypedChunk) {
+      const expectedIndex = normalizedTokenPrefix.length - normalizedLatestTypedChunk.length;
+      if (expectedIndex >= 0) {
+        const expectedChunk = bestWordMatch
+          .slice(expectedIndex, expectedIndex + normalizedLatestTypedChunk.length)
+          .toLowerCase();
+        if (expectedChunk !== normalizedLatestTypedChunk) {
+          return;
+        }
+      }
+    }
+    const nextValue =
+      rawValue.slice(0, tokenStart) + bestWordMatch + rawValue.slice(caretEnd);
+    inputElement.value = nextValue;
+    try {
+      inputElement.setSelectionRange(
+        tokenStart + tokenPrefix.length,
+        tokenStart + bestWordMatch.length,
+      );
+    } catch {
+      // Ignore selection errors on unsupported inputs.
+    }
+  };
+  capturePlannerPendingInputValue = (inputElement) => {
+    if (!this.isPlannerInputPredictionEligible(inputElement)) {
+      return;
+    }
+    const fieldKey = this.getPlannerInputPredictionFieldKey(inputElement);
+    const fieldValue = String(inputElement.value || "").trim();
+    if (!fieldKey || !fieldValue || fieldValue === "-") {
+      return;
+    }
+    this.plannerPendingInputHistory = {
+      ...(this.plannerPendingInputHistory || {}),
+      [fieldKey]: fieldValue,
+    };
+  };
+  handlePlannerInputPredictionFocus = (event) => {
+    const targetInput = event?.target;
+    if (!this.isPlannerInputPredictionEligible(targetInput)) {
+      return;
+    }
+    this.disablePlannerInputNativeSuggestions(targetInput);
+    this.refreshPlannerInputPredictionOptions(targetInput);
+  };
+  handlePlannerInputPredictionInput = (event) => {
+    const targetInput = event?.target;
+    if (!this.isPlannerInputPredictionEligible(targetInput)) {
+      return;
+    }
+    const sourceEvent =
+      event && typeof event === "object" && event.nativeEvent
+        ? event.nativeEvent
+        : event;
+    const inputType = String(sourceEvent?.inputType || "");
+    const isInsertEvent = inputType.startsWith("insert");
+    const typedChunk =
+      isInsertEvent && typeof sourceEvent?.data === "string"
+        ? sourceEvent.data
+        : "";
+    if (isInsertEvent) {
+      this.applyPlannerInlinePrediction(targetInput, typedChunk);
+    }
+    this.capturePlannerPendingInputValue(targetInput);
+    this.refreshPlannerInputPredictionOptions(targetInput);
+  };
+  commitPlannerPendingInputMemory = () => {
+    if (!Boolean(this.state?.plannerSettingsPredictionToolEnabled)) {
+      this.plannerPendingInputHistory = {};
+      return;
+    }
+    const pendingEntries =
+      this.plannerPendingInputHistory &&
+      typeof this.plannerPendingInputHistory === "object"
+        ? this.plannerPendingInputHistory
+        : {};
+    if (Object.keys(pendingEntries).length === 0) {
+      return;
+    }
+    this.rememberPlannerInputEntries(pendingEntries);
+    this.plannerPendingInputHistory = {};
+    const predictionPayloadEntries = Object.entries(pendingEntries)
+      .map(([inputFieldID, value]) => ({
+        tab: "nogaPlanner",
+        inputFieldID: String(inputFieldID || "").trim(),
+        value: String(value || "").trim(),
+      }))
+      .filter((entry) => entry.inputFieldID && entry.value);
+    this.persistPlannerPredictionToolInputs(predictionPayloadEntries)
+      .then((result) => {
+        if (!this.isComponentMounted) {
+          return;
+        }
+        const persistedSettings = normalizePlannerSelectSettings(
+          result?.settings || this.state?.plannerSelectSettings,
+        );
+        this.setState({
+          plannerSelectSettings: persistedSettings,
+        });
+      })
+      .catch((error) => {
+        console.error("[prediction-tool] incremental save failed:", error);
+      });
+  };
+  getPlannerInputPredictions = (fieldKey = "", query = "") => {
+    const normalizedFieldKey = String(fieldKey || "").trim();
+    const normalizedQuery = String(query || "").trim().toLowerCase();
+    const options = Array.isArray(this.plannerInputHistory?.[normalizedFieldKey])
+      ? this.plannerInputHistory[normalizedFieldKey]
+      : [];
+    if (!normalizedQuery) {
+      return options.slice(0, 10);
+    }
+    return options
+      .filter((entry) => String(entry || "").toLowerCase().includes(normalizedQuery))
+      .slice(0, 10);
+  };
   submitInlineCourseRow = async () => {
     const { inlineCourseDraft } = this.state;
     const trimmedName = String(inlineCourseDraft?.course_name || "").trim();
@@ -791,6 +1235,11 @@ export default class NogaPlanner extends Component {
     });
     const response = await fetch(req);
     if (response.status === 201) {
+      this.commitPlannerPendingInputMemory();
+      this.rememberPlannerInputEntries({
+        course_name: payload.course_name,
+        course_code: payload.course_code,
+      });
       this.closeInlineCourseRow();
       this.retrieveCourses();
       return;
@@ -935,6 +1384,43 @@ export default class NogaPlanner extends Component {
       selectedTabItemId: null,
     });
   };
+  toggleLectureSelectionMode = () => {
+    this.setState((previousState) => ({
+      deleteSelectionMode: !previousState.deleteSelectionMode,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+    }));
+  };
+  deleteSelectedLectures = async () => {
+    const selectedLectureIds = (
+      Array.isArray(this.state?.deleteSelectionIds) ? this.state.deleteSelectionIds : []
+    )
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    if (selectedLectureIds.length === 0) {
+      return;
+    }
+    await this.deleteLecturesByIds(selectedLectureIds);
+    this.setState({
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+    });
+  };
+  deleteAllVisibleLectures = async () => {
+    const allVisibleLectureIds = (this.getLecturesForSelectedCourse() || [])
+      .map((entry) => String(entry?._id || "").trim())
+      .filter(Boolean);
+    if (allVisibleLectureIds.length === 0) {
+      return;
+    }
+    await this.deleteLecturesByIds(allVisibleLectureIds);
+    this.setState({
+      deleteSelectionMode: false,
+      deleteSelectionIds: [],
+      selectedTabItemId: null,
+    });
+  };
   openSavedCourseComponentDetails = (course = {}) => {
     const componentId = String(course?._id || "").trim();
     if (!componentId) {
@@ -982,6 +1468,51 @@ export default class NogaPlanner extends Component {
       message: String(payload?.message || "").trim(),
     };
   };
+  persistPlannerPredictionToolInputs = async (entries = []) => {
+    const userId = String(this.props.state?.my_id || "").trim();
+    const token = String(this.props.state?.token || "").trim();
+    if (!userId || !token) {
+      throw new Error("Missing auth context for planner prediction save.");
+    }
+    const normalizedEntries = (Array.isArray(entries) ? entries : [])
+      .map((entry) => ({
+        tab: String(entry?.tab || "").trim(),
+        inputFieldID: String(entry?.inputFieldID || "").trim(),
+        value: String(entry?.value || "").trim(),
+      }))
+      .filter(
+        (entry) =>
+          Boolean(entry.tab) &&
+          Boolean(entry.inputFieldID) &&
+          Boolean(entry.value) &&
+          entry.value !== "-",
+      );
+    if (normalizedEntries.length === 0) {
+      return null;
+    }
+    const response = await fetch(apiUrl("/api/user/studyOrganizer/settings/") + userId, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        predictionToolInputs: normalizedEntries,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const backendMessage = String(payload?.message || "").trim();
+      throw new Error(
+        backendMessage || `Prediction tool save failed: ${response.status}`,
+      );
+    }
+    return {
+      settings: payload?.settings || null,
+      message: String(payload?.message || "").trim(),
+    };
+  };
   loadPlannerSelectSettings = async () => {
     const userId = String(this.props.state?.my_id || "").trim();
     const token = String(this.props.state?.token || "").trim();
@@ -1003,8 +1534,42 @@ export default class NogaPlanner extends Component {
       const nextSettings = normalizePlannerSelectSettings(
         payload?.memory?.studyPlanner?.studyOrganizer?.settings || {},
       );
+      const dbPredictionTool = this.deserializePredictionToolToInputHistory(
+        nextSettings?.predictionTool,
+      );
+      const dbPredictionHistory = dbPredictionTool?.history || {};
+      const localPredictionHistory =
+        this.plannerInputHistory && typeof this.plannerInputHistory === "object"
+          ? this.plannerInputHistory
+          : {};
+      const mergedPredictionHistory = {
+        ...dbPredictionHistory,
+      };
+      Object.entries(localPredictionHistory).forEach(([fieldKey, values]) => {
+        const normalizedValues = Array.isArray(values)
+          ? values.map((entry) => String(entry || "").trim()).filter(Boolean)
+          : [];
+        if (normalizedValues.length === 0) {
+          return;
+        }
+        const baseValues = Array.isArray(mergedPredictionHistory[fieldKey])
+          ? mergedPredictionHistory[fieldKey]
+          : [];
+        mergedPredictionHistory[fieldKey] = [
+          ...baseValues,
+          ...normalizedValues.filter((entry) => !baseValues.includes(entry)),
+        ].slice(0, 25);
+      });
+      this.plannerInputHistory = mergedPredictionHistory;
+      this.persistPlannerInputHistory();
       this.setState({
         plannerSelectSettings: nextSettings,
+        plannerSettingsPredictionToolEnabled:
+          typeof dbPredictionTool?.enabled === "boolean"
+            ? dbPredictionTool.enabled
+            : true,
+        plannerSettingsSelectedPredictionFieldId: "",
+        plannerSettingsSelectedPredictionTab: "",
         plannerSettingsLogoMotionEnabled:
           typeof nextSettings?.logoMotionEnabled === "boolean"
             ? nextSettings.logoMotionEnabled
@@ -1465,7 +2030,99 @@ export default class NogaPlanner extends Component {
     this.setState({
       [fieldName]: nextValue,
     });
-  };  addPlannerSettingsMessageFriendRecipient = () => {
+  };
+  savePlannerPredictionToolSettings = async () => {
+    const enabled = Boolean(this.state?.plannerSettingsPredictionToolEnabled);
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => ({
+        ...previousSettings,
+        predictionTool: this.serializePlannerInputHistoryToPredictionTool(
+          this.plannerInputHistory,
+          enabled,
+        ),
+      }),
+    );
+    this.setState({
+      plannerSettingsPredictionToolEnabled: enabled,
+      plannerSettingsSelectedPredictionFieldId: "",
+      plannerSettingsSelectedPredictionTab: "",
+      plannerSelectSettings: persistedSettings,
+    });
+  };
+  selectPlannerPredictionTab = (tab = "") => {
+    const normalizedTab = String(tab || "").trim();
+    this.setState((previousState) => ({
+      plannerSettingsSelectedPredictionTab:
+        String(previousState?.plannerSettingsSelectedPredictionTab || "").trim() ===
+        normalizedTab
+          ? ""
+          : normalizedTab,
+    }));
+  };
+  selectPlannerPredictionField = (fieldId = "") => {
+    const normalizedFieldId = String(fieldId || "").trim();
+    if (!normalizedFieldId) {
+      return;
+    }
+    this.setState((previousState) => ({
+      plannerSettingsSelectedPredictionFieldId:
+        String(previousState?.plannerSettingsSelectedPredictionFieldId || "").trim() ===
+        normalizedFieldId
+          ? ""
+          : normalizedFieldId,
+    }));
+  };
+  deleteSelectedPlannerPredictionField = async () => {
+    const selectedFieldId = String(
+      this.state?.plannerSettingsSelectedPredictionFieldId || "",
+    ).trim();
+    if (!selectedFieldId) {
+      return;
+    }
+    if (this.plannerInputHistory && typeof this.plannerInputHistory === "object") {
+      delete this.plannerInputHistory[selectedFieldId];
+      this.persistPlannerInputHistory();
+    }
+    await this.savePlannerPredictionToolSettings();
+  };
+  deleteAllPlannerPredictionFields = async () => {
+    this.plannerInputHistory = {};
+    this.persistPlannerInputHistory();
+    await this.savePlannerPredictionToolSettings();
+  };
+  deletePlannerPredictionByTab = async () => {
+    const selectedTab = String(
+      this.state?.plannerSettingsSelectedPredictionTab || "",
+    ).trim();
+    if (!selectedTab) {
+      return;
+    }
+    const predictionToolEntries = Array.isArray(
+      this.state?.plannerSelectSettings?.predictionTool,
+    )
+      ? this.state.plannerSelectSettings.predictionTool
+      : [];
+    const fieldIdsForTab = new Set(
+      predictionToolEntries
+        .filter((entry) => String(entry?.tab || "").trim() === selectedTab)
+        .map((entry) => String(entry?.inputFieldID || "").trim())
+        .filter(Boolean),
+    );
+    if (fieldIdsForTab.size === 0) {
+      return;
+    }
+    const nextHistory =
+      this.plannerInputHistory && typeof this.plannerInputHistory === "object"
+        ? { ...this.plannerInputHistory }
+        : {};
+    fieldIdsForTab.forEach((fieldId) => {
+      delete nextHistory[fieldId];
+    });
+    this.plannerInputHistory = nextHistory;
+    this.persistPlannerInputHistory();
+    await this.savePlannerPredictionToolSettings();
+  };
+  addPlannerSettingsMessageFriendRecipient = () => {
     const friendID = String(
       this.state?.plannerSettingsMessageFromFriendToId || "",
     ).trim();
@@ -1526,6 +2183,42 @@ export default class NogaPlanner extends Component {
         ),
         plannerSettingsMessageFromFriendSelectedToIndex: -1,
       };
+    });
+  };
+  savePlannerSettingsMessageFromFriendSelection = async (nextFromFriendId) => {
+    const fromFriendID = String(nextFromFriendId || "").trim();
+    this.setState({
+      plannerSettingsMessageFromFriendFromId: fromFriendID,
+    });
+    const previousFromMessage = String(
+      this.state?.plannerSelectSettings?.messageFriend?.from?.message || "",
+    ).trim();
+    const toList = Array.isArray(this.state?.plannerSettingsMessageFromFriendToList)
+      ? this.state.plannerSettingsMessageFromFriendToList
+          .map((entry) => ({
+            friendID: String(entry?.friendID || "").trim(),
+            message: String(entry?.message || "").trim(),
+          }))
+          .filter((entry) => entry.friendID && entry.message)
+      : [];
+    const matchedOutgoingMessage =
+      toList.find((entry) => entry.friendID === fromFriendID)?.message || "";
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => ({
+        ...previousSettings,
+        messageFriend: {
+          from: {
+            friendID: fromFriendID,
+            message: matchedOutgoingMessage || previousFromMessage,
+          },
+          to: toList,
+        },
+      }),
+    );
+    this.setState({
+      plannerSettingsMessageFromFriendFromId: String(
+        persistedSettings?.messageFriend?.from?.friendID || fromFriendID,
+      ).trim(),
     });
   };
   savePlannerSettingsMessageFromFriend = async () => {
@@ -2284,6 +2977,26 @@ export default class NogaPlanner extends Component {
       plannerSettingsSaveStatus: "",
       plannerSettingsSaveMessage: "",
     });
+    this.setState((previousState) => {
+      const activeDraft = previousState?.savedCourseDraft || getDefaultSavedCourseDraft();
+      const matchingRelationship = this.getPlannerRelationshipForClass(
+        persistedSettings,
+        activeDraft,
+      );
+      if (!matchingRelationship) {
+        return null;
+      }
+      const nextDraft = this.applyPlannerRelationshipToSavedCourseDraft(
+        activeDraft,
+        matchingRelationship,
+        true,
+      );
+      nextDraft.component_status = this.deriveSavedCourseComponentStatus(nextDraft);
+      nextDraft.course_status = nextDraft.component_status;
+      return {
+        savedCourseDraft: nextDraft,
+      };
+    });
   };
   togglePlannerSettingsRelationshipSelection = (relationshipId) => {
     const normalizedId = String(relationshipId || "").trim();
@@ -2780,12 +3493,14 @@ export default class NogaPlanner extends Component {
       );
       return {
         selectedSavedCourseDraftComponentIndex: nextSelectedComponentIndex,
+        savedCourseComponentDraftActive: false,
         savedCourseDraft: nextDraft,
       };
     });
   };
   startAddingNewSavedCourseComponent = () => {
     this.setState((previousState) => ({
+      savedCourseComponentDraftActive: true,
       selectedSavedCourseDraftComponentIndex: -1,
       savedCourseDraft: this.getResetSavedCourseComponentDraftFields(
         previousState.savedCourseDraft,
@@ -2794,10 +3509,48 @@ export default class NogaPlanner extends Component {
   };
   deleteSelectedSavedCourseDraftComponent = () => {
     const selectedIndex = Number(this.state?.selectedSavedCourseDraftComponentIndex);
-    if (!Number.isInteger(selectedIndex) || selectedIndex < 0) {
+    const stagedComponents = Array.isArray(this.state?.savedCourseDraft?.course_components)
+      ? this.state.savedCourseDraft.course_components
+      : [];
+    if (stagedComponents.length === 0) {
       return;
     }
-    this.removeSavedCourseComponentEntry(selectedIndex);
+    if (Number.isInteger(selectedIndex) && selectedIndex >= 0) {
+      this.removeSavedCourseComponentEntry(selectedIndex);
+      return;
+    }
+    this.removeSavedCourseComponentEntry(stagedComponents.length - 1);
+  };
+  cancelSavedCourseComponentDraftEdit = () => {
+    this.setState((previousState) => {
+      const selectedIndex = Number(
+        previousState?.selectedSavedCourseDraftComponentIndex,
+      );
+      const stagedComponents = Array.isArray(
+        previousState?.savedCourseDraft?.course_components,
+      )
+        ? previousState.savedCourseDraft.course_components
+        : [];
+      if (Number.isInteger(selectedIndex) && selectedIndex >= 0) {
+        const selectedEntry = stagedComponents[selectedIndex] || null;
+        if (selectedEntry) {
+          return {
+            savedCourseComponentDraftActive: false,
+            savedCourseDraft: this.applySavedCourseDraftComponentEntryToDraft(
+              previousState.savedCourseDraft,
+              selectedEntry,
+            ),
+          };
+        }
+      }
+      return {
+        savedCourseComponentDraftActive: false,
+        selectedSavedCourseDraftComponentIndex: -1,
+        savedCourseDraft: this.getResetSavedCourseComponentDraftFields(
+          previousState.savedCourseDraft,
+        ),
+      };
+    });
   };
   removeSavedCourseComponentEntry = (entryIndexToRemove) => {
     this.setState((previousState) => {
@@ -2897,6 +3650,9 @@ export default class NogaPlanner extends Component {
           ? courseEntry.course_location
           : {};
       return {
+        course_componentId: String(
+          courseEntry?.primaryComponentId || courseEntry?._id || "",
+        ).trim(),
         course_class: String(
           courseEntry?.course_class || courseEntry?.course_component || "",
         ).trim(),
@@ -3068,6 +3824,7 @@ export default class NogaPlanner extends Component {
       plannerTab: safeMode === "edit" ? "courses" : this.state.plannerTab,
       savedCourseEditorVisible: true,
       savedCourseEditorMode: safeMode,
+      savedCourseComponentDraftActive: safeMode !== "edit",
       savedCourseDraft: {
         ...hydratedDraft,
         course_status: this.deriveSavedCourseComponentStatus(hydratedDraft),
@@ -3181,6 +3938,7 @@ export default class NogaPlanner extends Component {
     this.setState({
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
+      savedCourseComponentDraftActive: true,
       savedCourseDraft: getDefaultSavedCourseDraft(),
       selectedSavedCourseDraftComponentIndex: -1,
     });
@@ -3425,17 +4183,8 @@ export default class NogaPlanner extends Component {
     const courseTotalWeight = String(
       savedCourseDraft?.course_totalWeight || "",
     ).trim();
-    const componentToPersist =
-      this.getSavedCourseDraftComponentEntryFromDraft(savedCourseDraft);
     if (!courseName) {
       this.props.serverReply(NOGAPLANNER_TEXT.messages.genericRetry);
-      return;
-    }
-    if (
-      !componentToPersist ||
-      !String(componentToPersist?.course_class || "").trim()
-    ) {
-      this.props.serverReply(NOGAPLANNER_TEXT.messages.componentTypeRequired);
       return;
     }
     if (savedCourseEditorMode === "edit") {
@@ -3460,8 +4209,15 @@ export default class NogaPlanner extends Component {
       if (!editTargetId) {
         return;
       }
+      const stagedComponents = Array.isArray(savedCourseDraft?.course_components)
+        ? [...savedCourseDraft.course_components]
+        : [];
+      if (stagedComponents.length === 0) {
+        this.props.serverReply(NOGAPLANNER_TEXT.messages.componentTypeRequired);
+        return;
+      }
       await fetch(
-        apiUrl("/api/user/editCourse/") +
+        apiUrl("/api/user/editCourseBundle/") +
           this.props.state.my_id +
           "/" +
           editTargetId,
@@ -3476,38 +4232,51 @@ export default class NogaPlanner extends Component {
             course_name: courseName,
             course_code: courseCode,
             course_totalWeight: courseTotalWeight || "",
-            course_class: componentToPersist.course_class || "",
-            normativeCourseYearNum: componentToPersist.normativeCourseYearNum
-              ? Number(componentToPersist.normativeCourseYearNum)
-              : null,
-            normativeCourseYearInterval:
-              componentToPersist.normativeCourseYearInterval || "",
-            normativeCourseTerm: componentToPersist.normativeCourseTerm || "",
-            actualCourseYearNum: componentToPersist.actualCourseYearNum
-              ? Number(componentToPersist.actualCourseYearNum)
-              : null,
-            actualCourseYearInterval:
-              componentToPersist.actualCourseYearInterval || "",
-            actualCourseTerm: componentToPersist.actualCourseTerm || "",
-            programYear: componentToPersist.programYear
-              ? Number(componentToPersist.programYear)
-              : null,
-            course_dayAndTime: Array.isArray(
-              componentToPersist.course_dayAndTime,
-            )
-              ? componentToPersist.course_dayAndTime
-              : [],
-            course_year: componentToPersist.course_year || "",
-            academicYear: componentToPersist.course_year || "",
-            course_term: componentToPersist.course_term || "",
-            term: componentToPersist.course_term || "",
-            course_grade: componentToPersist.course_grade || "",
-            course_locationBuilding:
-              componentToPersist.course_locationBuilding || "",
-            course_locationRoom: componentToPersist.course_locationRoom || "",
+            components: stagedComponents.map((componentEntry) => ({
+              course_componentId:
+                String(componentEntry?.course_componentId || "").trim() || undefined,
+              course_class: componentEntry?.course_class || "",
+              normativeCourseYearNum: componentEntry?.normativeCourseYearNum
+                ? Number(componentEntry.normativeCourseYearNum)
+                : null,
+              normativeCourseYearInterval:
+                componentEntry?.normativeCourseYearInterval || "",
+              normativeCourseTerm: componentEntry?.normativeCourseTerm || "",
+              actualCourseYearNum: componentEntry?.actualCourseYearNum
+                ? Number(componentEntry.actualCourseYearNum)
+                : null,
+              actualCourseYearInterval:
+                componentEntry?.actualCourseYearInterval || "",
+              actualCourseTerm: componentEntry?.actualCourseTerm || "",
+              programYear: componentEntry?.programYear
+                ? Number(componentEntry.programYear)
+                : null,
+              course_dayAndTime: Array.isArray(componentEntry?.course_dayAndTime)
+                ? componentEntry.course_dayAndTime
+                : [],
+              course_year: componentEntry?.course_year || "",
+              academicYear: componentEntry?.course_year || "",
+              course_term: componentEntry?.course_term || "",
+              term: componentEntry?.course_term || "",
+              course_grade: componentEntry?.course_grade || "",
+              course_locationBuilding:
+                componentEntry?.course_locationBuilding || "",
+              course_locationRoom: componentEntry?.course_locationRoom || "",
+            })),
           }),
         },
       );
+      this.commitPlannerPendingInputMemory();
+      this.rememberPlannerInputEntries({
+        course_name: courseName,
+        course_code: courseCode,
+        course_totalWeight: courseTotalWeight,
+      });
+      stagedComponents.forEach((componentEntry) => {
+        this.rememberPlannerInputEntries({
+          course_grade: componentEntry?.course_grade || "",
+        });
+      });
       this.closeSavedCourseEditor();
       this.retrieveCourses(editTargetId);
       return;
@@ -3515,49 +4284,6 @@ export default class NogaPlanner extends Component {
     const stagedComponents = Array.isArray(savedCourseDraft?.course_components)
       ? [...savedCourseDraft.course_components]
       : [];
-    if (
-      Number.isInteger(selectedSavedCourseDraftComponentIndex) &&
-      selectedSavedCourseDraftComponentIndex >= 0
-    ) {
-      stagedComponents[selectedSavedCourseDraftComponentIndex] = {
-        ...(stagedComponents[selectedSavedCourseDraftComponentIndex] || {}),
-        ...componentToPersist,
-      };
-    } else if (
-      !stagedComponents.some(
-        (entry) =>
-          String(entry?.course_class || "").trim() ===
-            String(componentToPersist.course_class || "").trim() &&
-          String(
-            entry?.normativeCourseYearNum || entry?.programYear || "",
-          ).trim() ===
-            String(
-              componentToPersist.normativeCourseYearNum ||
-                componentToPersist.programYear ||
-                "",
-            ).trim() &&
-          String(entry?.normativeCourseTerm || "").trim() ===
-            String(componentToPersist.normativeCourseTerm || "").trim() &&
-          String(entry?.actualCourseYearNum || "").trim() ===
-            String(componentToPersist.actualCourseYearNum || "").trim() &&
-          String(
-            entry?.actualCourseYearInterval || entry?.course_year || "",
-          ).trim() ===
-            String(
-              componentToPersist.actualCourseYearInterval ||
-                componentToPersist.course_year ||
-                "",
-            ).trim() &&
-          String(entry?.actualCourseTerm || entry?.course_term || "").trim() ===
-            String(
-              componentToPersist.actualCourseTerm ||
-                componentToPersist.course_term ||
-                "",
-            ).trim(),
-      )
-    ) {
-      stagedComponents.push(componentToPersist);
-    }
     if (stagedComponents.length === 0) {
       this.props.serverReply(NOGAPLANNER_TEXT.messages.componentTypeRequired);
       return;
@@ -3599,8 +4325,8 @@ export default class NogaPlanner extends Component {
             course_dayAndTime: componentEntry.course_dayAndTime || "-",
             course_grade: componentEntry.course_grade || "-",
             course_locationBuilding:
-              componentEntry.course_locationBuilding || "-",
-            course_locationRoom: componentEntry.course_locationRoom || "-",
+              componentEntry.course_locationBuilding || "",
+            course_locationRoom: componentEntry.course_locationRoom || "",
           })),
         }),
       },
@@ -3613,9 +4339,20 @@ export default class NogaPlanner extends Component {
       );
       return;
     }
+    this.commitPlannerPendingInputMemory();
     this.props.serverReply(
       `${courseName} ${NOGAPLANNER_TEXT.messages.courseAddedSuffix}`,
     );
+    this.rememberPlannerInputEntries({
+      course_name: courseName,
+      course_code: courseCode,
+      course_totalWeight: courseTotalWeight,
+    });
+    stagedComponents.forEach((componentEntry) => {
+      this.rememberPlannerInputEntries({
+        course_grade: componentEntry?.course_grade || "",
+      });
+    });
     this.closeSavedCourseEditor();
     this.setState({
       selectedSavedCourseIds: [],
@@ -3665,11 +4402,12 @@ export default class NogaPlanner extends Component {
     });
     this.retrieveCourses();
   };
-  renderSelectedCourseLecturesTable = () => {
+  renderSelectedCourseLecturesTable = (renderMode = "full") => {
     return (
       <NogaPlannerLecturesTablePanel
         planner={this}
         runtime={NOGAPLANNER_PANEL_RUNTIME}
+        renderMode={renderMode}
       />
     );
   };
@@ -3860,6 +4598,10 @@ export default class NogaPlanner extends Component {
       plannerSettingsMessageFromFriendToMessage: "",
       plannerSettingsMessageFromFriendToList: [],
       plannerSettingsMessageFromFriendSelectedToIndex: -1,
+      plannerSettingsPredictionToolEnabled: true,
+      plannerSettingsSelectedPredictionFieldId: "",
+      plannerSettingsSelectedPredictionTab: "",
+      savedCourseComponentDraftActive: true,
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
       savedCourseDraft: getDefaultSavedCourseDraft(),
@@ -3899,6 +4641,27 @@ export default class NogaPlanner extends Component {
   }
   componentDidMount() {
     this.isComponentMounted = true;
+    this.loadPlannerInputHistory();
+    const plannerArticleElement = this.plannerArticleRef?.current;
+    if (plannerArticleElement) {
+      plannerArticleElement
+        .querySelectorAll("input")
+        .forEach((inputElement) =>
+          this.disablePlannerInputNativeSuggestions(inputElement),
+        );
+      plannerArticleElement.addEventListener(
+        "focusin",
+        this.handlePlannerInputPredictionFocus,
+      );
+      plannerArticleElement.addEventListener(
+        "input",
+        this.handlePlannerInputPredictionInput,
+      );
+      plannerArticleElement.addEventListener(
+        "change",
+        this.handlePlannerInputPredictionInput,
+      );
+    }
     window.addEventListener(
       "resize",
       this.handleSavedCourseFloatingBarViewportChange,
@@ -3955,6 +4718,21 @@ export default class NogaPlanner extends Component {
   }
   componentWillUnmount() {
     this.isComponentMounted = false;
+    const plannerArticleElement = this.plannerArticleRef?.current;
+    if (plannerArticleElement) {
+      plannerArticleElement.removeEventListener(
+        "focusin",
+        this.handlePlannerInputPredictionFocus,
+      );
+      plannerArticleElement.removeEventListener(
+        "input",
+        this.handlePlannerInputPredictionInput,
+      );
+      plannerArticleElement.removeEventListener(
+        "change",
+        this.handlePlannerInputPredictionInput,
+      );
+    }
     window.removeEventListener(
       "resize",
       this.handleSavedCourseFloatingBarViewportChange,
@@ -3967,6 +4745,10 @@ export default class NogaPlanner extends Component {
     if (this.savedCourseFloatingBarRaf) {
       cancelAnimationFrame(this.savedCourseFloatingBarRaf);
       this.savedCourseFloatingBarRaf = null;
+    }
+    if (this.plannerPredictionToolSyncTimeout) {
+      clearTimeout(this.plannerPredictionToolSyncTimeout);
+      this.plannerPredictionToolSyncTimeout = null;
     }
   }
   handleSavedCourseFloatingBarViewportChange = () => {
@@ -4457,6 +5239,7 @@ export default class NogaPlanner extends Component {
     if (response.status !== 201) {
       throw new Error("Unable to save exam changes.");
     }
+    this.commitPlannerPendingInputMemory();
   };
   submitExamForm = async () => {
     const selectedCourse =

@@ -289,7 +289,7 @@ export const NOGAPLANNER_TEXT = {
     messageFromFriendFrom: "من صديق (الاستماع)",
     messageFromFriendTo: "إرسال إلى صديق",
     messageFromFriendToList: "قائمة الإرسال",
-    messageFromFriendAddToList: "إضافة إلى القائمة",
+    messageFromFriendAddToList: "إضافة",
     messageFromFriendDeleteSelected: "حذف المحدد",
     messageFromFriendNoEntries: "لا يوجد أي إدخال",
     motionOn: "مفعّل",
@@ -1600,6 +1600,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
   },
   fieldDefaults: {},
   relationships: [],
+  predictionTool: [],
 });
 export const getDefaultPlannerRelationshipDraft = () => ({
   relationScope: "innerComponent",
@@ -1708,24 +1709,33 @@ export const normalizePlannerSelectSettings = (value) => {
   const rawMessageFriend =
     nextValue?.messageFriend && typeof nextValue.messageFriend === "object"
       ? nextValue.messageFriend
-      : nextValue?.messageFromFriend && typeof nextValue.messageFromFriend === "object"
-        ? { from: nextValue.messageFromFriend, to: [] }
-        : {};
+      : {};
   const normalizedMessageFrom = {
     friendID: String(rawMessageFriend?.from?.friendID || "").trim(),
     message: String(rawMessageFriend?.from?.message || "").trim(),
   };
-  const normalizedMessageTo = (Array.isArray(rawMessageFriend?.to)
-    ? rawMessageFriend.to
-    : rawMessageFriend?.to && typeof rawMessageFriend.to === "object"
-      ? [rawMessageFriend.to]
-      : []
+  const normalizedMessageTo = (
+    Array.isArray(rawMessageFriend?.to)
+      ? rawMessageFriend.to
+      : rawMessageFriend?.to && typeof rawMessageFriend.to === "object"
+        ? [rawMessageFriend.to]
+        : []
   )
     .map((entry) => ({
       friendID: String(entry?.friendID || "").trim(),
       message: String(entry?.message || "").trim(),
     }))
     .filter((entry) => entry.friendID && entry.message);
+  const normalizedPredictionTool = (Array.isArray(nextValue?.predictionTool)
+    ? nextValue.predictionTool
+    : []
+  )
+    .map((entry) => ({
+      tab: String(entry?.tab || "").trim(),
+      inputFieldID: String(entry?.inputFieldID || "").trim(),
+      list: normalizePlannerSettingsStringList(entry?.list, []),
+    }))
+    .filter((entry) => Boolean(entry.inputFieldID));
   return {
     componentClassOptions: normalizePlannerSettingsStringList(
       nextValue.componentClassOptions,
@@ -1775,6 +1785,7 @@ export const normalizePlannerSelectSettings = (value) => {
           )
         : {}),
     },
+    predictionTool: normalizedPredictionTool,
     relationships: Array.isArray(nextValue?.relationships)
       ? nextValue.relationships
           .map((entry) => normalizePlannerRelationshipEntry(entry))
