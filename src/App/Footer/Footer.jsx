@@ -21,7 +21,8 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     typeof window !== "undefined" ? window.location.pathname : "";
   const isHomeNogaFooterRoute =
     currentPath === "/phenomed/home/noga" ||
-    currentPath === "/phenomed/home/noga/";
+    currentPath === "/phenomed/home/noga/" ||
+    currentPath.startsWith("/phenomed/home/noga/");
   const isHomeFooterRoute =
     currentPath === "/phenomed/home" || currentPath === "/phenomed/home/";
   const isTelegramControlRoute =
@@ -34,9 +35,11 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   const isNaghamNogaFooter =
     isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
   const isNogaFooterThemeRoute =
-    isHomeNogaFooterRoute || isNogaPlanRoute || isNaghamNogaFooter;
+    !isHomeNogaFooterRoute && (isNogaPlanRoute || isNaghamNogaFooter);
   const footerThemeClass = [
-    isNogaFooterThemeRoute
+    isHomeNogaFooterRoute
+      ? "server_answer--home-noga"
+      : isNogaFooterThemeRoute
       ? "server_answer--noga"
       : isHomeFooterRoute
         ? "server_answer--home"

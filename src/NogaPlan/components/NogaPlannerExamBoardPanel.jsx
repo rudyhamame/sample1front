@@ -226,7 +226,21 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
     <div className="nogaPlanner_savedCourseEditor nogaPlanner_examEditor">
       <div className="nogaPlanner_savedCourseEditorGrid">
         <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--course">
-          <p className="nogaPlanner_savedCourseEditorLabel">{EXAM_UI_TEXT.linkedCourseLabel}</p>
+          <div className="nogaPlanner_formCardTitleRow">
+            <p className="nogaPlanner_savedCourseEditorLabel">{EXAM_UI_TEXT.linkedCourseLabel}</p>
+            {Boolean(planner.state?.plannerSettingsVisible) ? (
+              <button
+                id="nogaPlanner_examFormCloseBtn"
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn nogaPlanner_formCardCloseBtn"
+                onClick={planner.closeAddExamForm}
+                aria-label={NOGAPLANNER_TEXT.settings.back}
+                title={NOGAPLANNER_TEXT.settings.back}
+              >
+                <i className="fi fi-rc-arrow-alt-circle-left" />
+              </button>
+            ) : null}
+          </div>
           <select
             className="nogaPlanner_savedCoursesDetailsInput"
             value={examDraft.selectedCourseId}

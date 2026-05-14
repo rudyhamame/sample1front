@@ -11,6 +11,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const [hoveredCourseGroupKey, setHoveredCourseGroupKey] = useState("");
   const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
+  const previousWrapperTabRef = useRef(String(planner.state?.wrapperTab || ""));
   const savedCoursesWorkspacePointerRafRef = useRef(0);
   const logoClockPositionRef = useRef("9");
   const savedCoursesWorkspacePointerStateRef = useRef({
@@ -224,8 +225,14 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       return;
     }
     planner.handleWrapperTabChange(tabKey);
-    setIsMiniBarActionsVisible(true);
   };
+  useEffect(() => {
+    const currentWrapperTab = String(planner.state?.wrapperTab || "");
+    if (previousWrapperTabRef.current !== currentWrapperTab) {
+      setIsMiniBarActionsVisible(Boolean(currentWrapperTab));
+      previousWrapperTabRef.current = currentWrapperTab;
+    }
+  }, [planner.state?.wrapperTab]);
   const updateSavedCoursesWorkspacePointerTarget = (clientX, clientY) => {
     if (!isLogoMotionListenerEnabled) {
       return;
@@ -977,12 +984,26 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           id="nogaPlanner_savedCourseEditor_courseCard"
           className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--courseCard"
         >
-          <p
-            id="nogaPlanner_savedCourseEditor_courseCardTitle"
-            className="nogaPlanner_savedCourseEditorLabel"
-          >
-            {courseUi.editor.courseCardTitle}
-          </p>
+          <div className="nogaPlanner_formCardTitleRow">
+            <p
+              id="nogaPlanner_savedCourseEditor_courseCardTitle"
+              className="nogaPlanner_savedCourseEditorLabel"
+            >
+              {courseUi.editor.courseCardTitle}
+            </p>
+            {plannerSettingsVisible ? (
+              <button
+                id="nogaPlanner_savedCourseEditor_closeFormBtn"
+                type="button"
+                className="nogaPlanner_coursesMiniBarBtn nogaPlanner_formCardCloseBtn"
+                onClick={planner.closeSavedCourseEditor}
+                aria-label={NOGAPLANNER_TEXT.settings.back}
+                title={NOGAPLANNER_TEXT.settings.back}
+              >
+                <i className="fi fi-rc-arrow-alt-circle-left" />
+              </button>
+            ) : null}
+          </div>
           <div
             id="nogaPlanner_savedCourseEditor_courseFormFieldsWrapper"
             className="nogaPlanner_savedCourseEditor_courseFormFieldsWrapper"
@@ -1598,7 +1619,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           id="nogaPlanner_coursesMiniBar"
           className="nogaPlanner_coursesMiniBar"
         >
-          {!planner.state.wrapperTab ? (
+          {!planner.state.wrapperTab && !plannerSettingsVisible ? (
             <div
               id="nogaPlanner_coursesMiniBar_tabs"
               className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--tabs"
@@ -1650,6 +1671,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             </div>
           ) : null}
           {isMiniBarActionsVisible &&
+          !plannerSettingsVisible &&
           (planner.state.wrapperTab === "courses" ||
             planner.state.wrapperTab === "lectures") ? (
             <>
@@ -1691,82 +1713,109 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                 </>
               ) : isLecturesTab ? (
                 <>
-                  <button
-                    id="nogaPlanner_coursesMiniBarBtn_addLecture"
-                    type="button"
-                    className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--add"
-                    onClick={planner.openInlineLectureRow}
-                    aria-label={SAVED_TEXT.addLecture}
-                    title={SAVED_TEXT.addLecture}
-                  >
-                    {renderMiniBarButtonContent(
-                      "fi fi-sr-rectangle-history-circle-plus",
-                      SAVED_TEXT.add,
-                    )}
-                  </button>
-                  <button
-                    id="nogaPlanner_coursesMiniBarBtn_deleteAllLectures"
-                    type="button"
-                    className="nogaPlanner_coursesMiniBarBtn"
-                    onClick={planner.deleteAllVisibleLectures}
-                    aria-label={SAVED_TEXT.deleteAll}
-                    title={SAVED_TEXT.deleteAll}
-                  >
-                    {renderMiniBarButtonContent(
-                      "fas fa-trash-alt",
-                      SAVED_TEXT.deleteAll,
-                    )}
-                  </button>
-                  <button
-                    id="nogaPlanner_coursesMiniBarBtn_toggleLectureSelectionMode"
-                    type="button"
-                    className="nogaPlanner_coursesMiniBarBtn"
-                    onClick={planner.toggleLectureSelectionMode}
-                    aria-pressed={deleteSelectionMode}
-                    aria-label={
-                      deleteSelectionMode
-                        ? SAVED_TEXT.finishSelection
-                        : SAVED_TEXT.select
-                    }
-                    title={
-                      deleteSelectionMode
-                        ? SAVED_TEXT.finishSelection
-                        : SAVED_TEXT.select
-                    }
-                  >
-                    {renderMiniBarButtonContent(
-                      "fi fi-rr-choose",
-                      deleteSelectionMode
-                        ? SAVED_TEXT.finishSelection
-                        : SAVED_TEXT.select,
-                      `(${lectureSelectionIds.length})`,
-                    )}
-                  </button>
-                  <button
-                    id="nogaPlanner_coursesMiniBarBtn_deleteSelectedLecture"
-                    type="button"
-                    className="nogaPlanner_coursesMiniBarBtn"
-                    onClick={planner.deleteSelectedLectures}
-                    disabled={!canDeleteSelectedLectures}
-                    aria-label={NOGAPLANNER_TEXT.common.delete}
-                    title={NOGAPLANNER_TEXT.common.delete}
-                  >
-                    {renderMiniBarButtonContent(
-                      "fas fa-trash",
-                      NOGAPLANNER_TEXT.common.delete,
-                    )}
-                  </button>
-                  <button
-                    id="nogaPlanner_coursesMiniBarBtn_editSelectedLecture"
-                    type="button"
-                    className="nogaPlanner_coursesMiniBarBtn"
-                    onClick={planner.handleMiniBarEdit}
-                    disabled={!canEditSelectedLecture}
-                    aria-label={SAVED_TEXT.edit}
-                    title={SAVED_TEXT.edit}
-                  >
-                    {renderMiniBarButtonContent("fas fa-pen", SAVED_TEXT.edit)}
-                  </button>
+                  {inlineLectureRowVisible ? (
+                    <>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_saveLecture"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.submitInlineLectureRow}
+                        aria-label={SAVED_TEXT.save}
+                        title={SAVED_TEXT.save}
+                      >
+                        {renderMiniBarButtonContent("fas fa-save", SAVED_TEXT.save)}
+                      </button>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_cancelLecture"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.closeInlineLectureRow}
+                        aria-label={SAVED_TEXT.close}
+                        title={SAVED_TEXT.close}
+                      >
+                        {renderMiniBarButtonContent("fas fa-times", SAVED_TEXT.close)}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_addLecture"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--add"
+                        onClick={planner.openInlineLectureRow}
+                        aria-label={SAVED_TEXT.addLecture}
+                        title={SAVED_TEXT.addLecture}
+                      >
+                        {renderMiniBarButtonContent(
+                          "fi fi-sr-rectangle-history-circle-plus",
+                          SAVED_TEXT.add,
+                        )}
+                      </button>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_deleteAllLectures"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.deleteAllVisibleLectures}
+                        aria-label={SAVED_TEXT.deleteAll}
+                        title={SAVED_TEXT.deleteAll}
+                      >
+                        {renderMiniBarButtonContent(
+                          "fas fa-trash-alt",
+                          SAVED_TEXT.deleteAll,
+                        )}
+                      </button>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_toggleLectureSelectionMode"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.toggleLectureSelectionMode}
+                        aria-pressed={deleteSelectionMode}
+                        aria-label={
+                          deleteSelectionMode
+                            ? SAVED_TEXT.finishSelection
+                            : SAVED_TEXT.select
+                        }
+                        title={
+                          deleteSelectionMode
+                            ? SAVED_TEXT.finishSelection
+                            : SAVED_TEXT.select
+                        }
+                      >
+                        {renderMiniBarButtonContent(
+                          "fi fi-rr-choose",
+                          deleteSelectionMode
+                            ? SAVED_TEXT.finishSelection
+                            : SAVED_TEXT.select,
+                          `(${lectureSelectionIds.length})`,
+                        )}
+                      </button>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_deleteSelectedLecture"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.deleteSelectedLectures}
+                        disabled={!canDeleteSelectedLectures}
+                        aria-label={NOGAPLANNER_TEXT.common.delete}
+                        title={NOGAPLANNER_TEXT.common.delete}
+                      >
+                        {renderMiniBarButtonContent(
+                          "fas fa-trash",
+                          NOGAPLANNER_TEXT.common.delete,
+                        )}
+                      </button>
+                      <button
+                        id="nogaPlanner_coursesMiniBarBtn_editSelectedLecture"
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.handleMiniBarEdit}
+                        disabled={!canEditSelectedLecture}
+                        aria-label={SAVED_TEXT.edit}
+                        title={SAVED_TEXT.edit}
+                      >
+                        {renderMiniBarButtonContent("fas fa-pen", SAVED_TEXT.edit)}
+                      </button>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -1841,6 +1890,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
         </div>
         <div id="nogaPlanner_wrapperTabsAside" className="nogaPlanner_wrapperTabsAside">
           {isMiniBarActionsVisible &&
+          !plannerSettingsVisible &&
           (planner.state.wrapperTab === "courses" ||
             planner.state.wrapperTab === "lectures") ? (
             <button
@@ -1853,11 +1903,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               data-wrapper-tab-active="true"
             >
               <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                <i
-                  className={
-                    isLecturesTab ? "fi fi-rc-leader-speech" : "fi fi-rr-lesson"
-                  }
-                />
+                <i className="fi fi-rc-arrow-alt-circle-left" />
                 <span>{NOGAPLANNER_TEXT.settings.back}</span>
               </span>
             </button>
@@ -1866,14 +1912,31 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             id="nogaPlanner_coursesMiniBarBtn_settings"
             type="button"
             className="nogaPlanner_wrapperTabBtn"
-            onClick={planner.togglePlannerSettings}
-            aria-label={SAVED_TEXT.plannerSettings}
-            title={SAVED_TEXT.plannerSettings}
+            onClick={
+              plannerSettingsVisible
+                ? planner.handleBackFromPlannerSettings
+                : planner.togglePlannerSettings
+            }
+            aria-label={
+              plannerSettingsVisible
+                ? NOGAPLANNER_TEXT.settings.back
+                : SAVED_TEXT.plannerSettings
+            }
+            title={
+              plannerSettingsVisible
+                ? NOGAPLANNER_TEXT.settings.back
+                : SAVED_TEXT.plannerSettings
+            }
           >
-            {renderMiniBarButtonContent(
-              "fi fi-rr-holding-hand-gear",
-              SAVED_TEXT.plannerSettings,
-            )}
+            {plannerSettingsVisible
+              ? renderMiniBarButtonContent(
+                  "fi fi-rc-arrow-alt-circle-left",
+                  NOGAPLANNER_TEXT.settings.back,
+                )
+              : renderMiniBarButtonContent(
+                  "fi fi-rr-holding-hand-gear",
+                  SAVED_TEXT.plannerSettings,
+                )}
           </button>
         </div>
       </div>

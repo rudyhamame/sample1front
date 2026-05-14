@@ -281,6 +281,7 @@ export const NOGAPLANNER_TEXT = {
     deleteAll: "حذف الكل",
     edit: "تعديل",
     logoMotionListener: "استماع حركة المؤشر",
+    voiceControlListener: "التحكم الصوتي",
     fixedLogoClock: "تثبيت اتجاه الشعار",
     messageFromFriend: "رسالة من صديق",
     messageFromFriendChoose: "اختر صديقاً",
@@ -1590,6 +1591,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
   locationRoomOptions: [],
   locationRoomOptionsByBuilding: [],
   logoMotionEnabled: true,
+  voiceControlEnabled: false,
   logoFixedClock: "9",
   messageFriend: {
     from: {
@@ -1601,6 +1603,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
   fieldDefaults: {},
   relationships: [],
   predictionTool: [],
+  voiceCommands: [],
 });
 export const getDefaultPlannerRelationshipDraft = () => ({
   relationScope: "innerComponent",
@@ -1736,6 +1739,30 @@ export const normalizePlannerSelectSettings = (value) => {
       list: normalizePlannerSettingsStringList(entry?.list, []),
     }))
     .filter((entry) => Boolean(entry.inputFieldID));
+  const normalizedVoiceCommands = (Array.isArray(nextValue?.voiceCommands)
+    ? nextValue.voiceCommands
+    : Array.isArray(nextValue?.voiceCommandEntries)
+      ? nextValue.voiceCommandEntries
+      : []
+  )
+    .map((entry) => ({
+      tab: String(entry?.tab || "").trim(),
+      button: String(entry?.button || "").trim(),
+      command: String(entry?.command || "").trim(),
+    }))
+    .filter((entry) => entry.tab && entry.button && entry.command)
+    .reduce((accumulator, entry) => {
+      const exists = accumulator.some(
+        (item) =>
+          item.tab === entry.tab &&
+          item.button === entry.button &&
+          item.command === entry.command,
+      );
+      if (!exists) {
+        accumulator.push(entry);
+      }
+      return accumulator;
+    }, []);
   return {
     componentClassOptions: normalizePlannerSettingsStringList(
       nextValue.componentClassOptions,
@@ -1767,6 +1794,10 @@ export const normalizePlannerSelectSettings = (value) => {
       typeof nextValue?.logoMotionEnabled === "boolean"
         ? nextValue.logoMotionEnabled
         : true,
+    voiceControlEnabled:
+      typeof nextValue?.voiceControlEnabled === "boolean"
+        ? nextValue.voiceControlEnabled
+        : false,
     logoFixedClock,
     messageFriend: {
       from: normalizedMessageFrom,
@@ -1786,6 +1817,7 @@ export const normalizePlannerSelectSettings = (value) => {
         : {}),
     },
     predictionTool: normalizedPredictionTool,
+    voiceCommands: normalizedVoiceCommands,
     relationships: Array.isArray(nextValue?.relationships)
       ? nextValue.relationships
           .map((entry) => normalizePlannerRelationshipEntry(entry))
