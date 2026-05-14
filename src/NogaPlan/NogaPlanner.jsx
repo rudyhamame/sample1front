@@ -1574,6 +1574,10 @@ export default class NogaPlanner extends Component {
           typeof nextSettings?.logoMotionEnabled === "boolean"
             ? nextSettings.logoMotionEnabled
             : true,
+        plannerSettingsVoiceControlEnabled:
+          typeof nextSettings?.voiceControlEnabled === "boolean"
+            ? nextSettings.voiceControlEnabled
+            : false,
         plannerSettingsLogoFixedClock: String(
           nextSettings?.logoFixedClock || "9",
         ).trim(),
@@ -1593,6 +1597,13 @@ export default class NogaPlanner extends Component {
               }))
               .filter((entry) => entry.friendID && entry.message)
           : [],
+        plannerSettingsVoiceCommandTab: String(
+          this.state?.plannerSettingsVoiceCommandTab || "المقررات",
+        ).trim(),
+        plannerSettingsVoiceCommandButton: "",
+        plannerSettingsVoiceCommandInput: "",
+        plannerSettingsSelectedVoiceCommandIndex: -1,
+        plannerSettingsEditingVoiceCommandIndex: -1,
       });
     } catch (error) {
       console.error("[planner-select-settings] db read failed:", error);
@@ -1984,7 +1995,8 @@ export default class NogaPlanner extends Component {
   handlePlannerSettingsInputChange = (fieldName, nextValue) => {
     if (
       fieldName === "plannerSettingsLogoMotionEnabled" ||
-      fieldName === "plannerSettingsLogoFixedClock"
+      fieldName === "plannerSettingsLogoFixedClock" ||
+      fieldName === "plannerSettingsVoiceControlEnabled"
     ) {
       const normalizedClock = String(nextValue || "9")
         .trim()
@@ -1993,7 +2005,8 @@ export default class NogaPlanner extends Component {
         ? normalizedClock
         : "9";
       const normalizedValue =
-        fieldName === "plannerSettingsLogoMotionEnabled"
+        fieldName === "plannerSettingsLogoMotionEnabled" ||
+        fieldName === "plannerSettingsVoiceControlEnabled"
           ? Boolean(nextValue)
           : safeClock;
       this.setState(
@@ -2007,6 +2020,10 @@ export default class NogaPlanner extends Component {
               fieldName === "plannerSettingsLogoMotionEnabled"
                 ? normalizedValue
                 : Boolean(this.state?.plannerSettingsLogoMotionEnabled),
+            voiceControlEnabled:
+              fieldName === "plannerSettingsVoiceControlEnabled"
+                ? normalizedValue
+                : Boolean(this.state?.plannerSettingsVoiceControlEnabled),
             logoFixedClock:
               fieldName === "plannerSettingsLogoFixedClock"
                 ? normalizedValue
@@ -2121,6 +2138,97 @@ export default class NogaPlanner extends Component {
     this.plannerInputHistory = nextHistory;
     this.persistPlannerInputHistory();
     await this.savePlannerPredictionToolSettings();
+  };
+  addOrUpdatePlannerVoiceCommandEntry = async () => {
+    const tab = String(this.state?.plannerSettingsVoiceCommandTab || "").trim();
+    const button = String(this.state?.plannerSettingsVoiceCommandButton || "").trim();
+    const command = String(this.state?.plannerSettingsVoiceCommandInput || "").trim();
+    if (!tab || !button || !command) {
+      this.props.serverReply("يرجى إكمال حقول الأمر الصوتي.");
+      return;
+    }
+    const currentEntries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+      ? this.state.plannerSelectSettings.voiceCommands
+      : [];
+    const editingIndex = Number(this.state?.plannerSettingsEditingVoiceCommandIndex ?? -1);
+    const nextEntry = { tab, button, command };
+    const nextEntries =
+      editingIndex >= 0 && editingIndex < currentEntries.length
+        ? currentEntries.map((entry, index) => (index === editingIndex ? nextEntry : entry))
+        : [...currentEntries, nextEntry];
+    const persistedSettings = await this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      voiceCommands: nextEntries,
+    }));
+    if (!persistedSettings) {
+      return;
+    }
+    this.setState({
+      plannerSettingsVoiceCommandButton: "",
+      plannerSettingsVoiceCommandInput: "",
+      plannerSettingsSelectedVoiceCommandIndex: -1,
+      plannerSettingsEditingVoiceCommandIndex: -1,
+    });
+  };
+  togglePlannerVoiceCommandSelection = (entryIndex) => {
+    this.setState((previousState) => ({
+      plannerSettingsSelectedVoiceCommandIndex:
+        Number(previousState?.plannerSettingsSelectedVoiceCommandIndex ?? -1) === entryIndex
+          ? -1
+          : entryIndex,
+    }));
+  };
+  editSelectedPlannerVoiceCommandEntry = () => {
+    const selectedIndex = Number(this.state?.plannerSettingsSelectedVoiceCommandIndex ?? -1);
+    const entries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+      ? this.state.plannerSelectSettings.voiceCommands
+      : [];
+    const selectedEntry = entries[selectedIndex];
+    if (!selectedEntry) {
+      return;
+    }
+    this.setState({
+      plannerSettingsVoiceCommandTab: String(selectedEntry?.tab || "المقررات").trim(),
+      plannerSettingsVoiceCommandButton: String(selectedEntry?.button || "").trim(),
+      plannerSettingsVoiceCommandInput: String(selectedEntry?.command || "").trim(),
+      plannerSettingsEditingVoiceCommandIndex: selectedIndex,
+    });
+  };
+  deleteSelectedPlannerVoiceCommandEntry = async () => {
+    const selectedIndex = Number(this.state?.plannerSettingsSelectedVoiceCommandIndex ?? -1);
+    if (selectedIndex < 0) {
+      return;
+    }
+    const entries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+      ? this.state.plannerSelectSettings.voiceCommands
+      : [];
+    const nextEntries = entries.filter((_, index) => index !== selectedIndex);
+    const persistedSettings = await this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      voiceCommands: nextEntries,
+    }));
+    if (!persistedSettings) {
+      return;
+    }
+    this.setState({
+      plannerSettingsSelectedVoiceCommandIndex: -1,
+      plannerSettingsEditingVoiceCommandIndex: -1,
+    });
+  };
+  clearPlannerVoiceCommandEntries = async () => {
+    const persistedSettings = await this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      voiceCommands: [],
+    }));
+    if (!persistedSettings) {
+      return;
+    }
+    this.setState({
+      plannerSettingsSelectedVoiceCommandIndex: -1,
+      plannerSettingsEditingVoiceCommandIndex: -1,
+      plannerSettingsVoiceCommandButton: "",
+      plannerSettingsVoiceCommandInput: "",
+    });
   };
   addPlannerSettingsMessageFriendRecipient = () => {
     const friendID = String(
@@ -4592,6 +4700,7 @@ export default class NogaPlanner extends Component {
       plannerSettingsSaveStatus: "",
       plannerSettingsSaveMessage: "",
       plannerSettingsLogoMotionEnabled: true,
+      plannerSettingsVoiceControlEnabled: false,
       plannerSettingsLogoFixedClock: "9",
       plannerSettingsMessageFromFriendFromId: "",
       plannerSettingsMessageFromFriendToId: "",
@@ -4601,6 +4710,11 @@ export default class NogaPlanner extends Component {
       plannerSettingsPredictionToolEnabled: true,
       plannerSettingsSelectedPredictionFieldId: "",
       plannerSettingsSelectedPredictionTab: "",
+      plannerSettingsVoiceCommandTab: "المقررات",
+      plannerSettingsVoiceCommandButton: "",
+      plannerSettingsVoiceCommandInput: "",
+      plannerSettingsSelectedVoiceCommandIndex: -1,
+      plannerSettingsEditingVoiceCommandIndex: -1,
       savedCourseComponentDraftActive: true,
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
@@ -4638,6 +4752,9 @@ export default class NogaPlanner extends Component {
     this.telegramPdfObjectUrl = "";
     this.telegramCourseSuggestionStatusTimeout = null;
     this.savedCourseFloatingBarRaf = null;
+    this.plannerVoiceRecognition = null;
+    this.plannerVoiceStopRequested = false;
+    this.plannerVoiceRestartTimeout = null;
   }
   componentDidMount() {
     this.isComponentMounted = true;
@@ -4676,6 +4793,7 @@ export default class NogaPlanner extends Component {
       this.retrieveCourses();
       this.retrieveLectures();
     }
+    this.syncPlannerVoiceControl();
   }
   componentDidUpdate(prevProps, prevState) {
     if (
@@ -4715,6 +4833,12 @@ export default class NogaPlanner extends Component {
     ) {
       this.scheduleSavedCourseFloatingBarPositionUpdate();
     }
+    if (
+      prevState?.plannerSettingsVoiceControlEnabled !==
+      this.state?.plannerSettingsVoiceControlEnabled
+    ) {
+      this.syncPlannerVoiceControl();
+    }
   }
   componentWillUnmount() {
     this.isComponentMounted = false;
@@ -4750,7 +4874,256 @@ export default class NogaPlanner extends Component {
       clearTimeout(this.plannerPredictionToolSyncTimeout);
       this.plannerPredictionToolSyncTimeout = null;
     }
+    this.stopPlannerVoiceControl();
   }
+  normalizePlannerVoiceText = (value = "") =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[\u064B-\u065F\u0670]/g, "")
+      .replace(/[^\u0600-\u06FFa-z0-9\s]/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  plannerVoiceTextContainsAny = (text = "", terms = []) => {
+    const normalizedText = this.normalizePlannerVoiceText(text);
+    return (Array.isArray(terms) ? terms : []).some((term) =>
+      normalizedText.includes(this.normalizePlannerVoiceText(term)),
+    );
+  };
+  mapVoiceTabToPlannerTab = (tabLabel = "") => {
+    const normalized = this.normalizePlannerVoiceText(tabLabel);
+    if (!normalized) {
+      return "";
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalized, [
+        "\u0645\u062d\u0627\u0636\u0631\u0627\u062a",
+        "lectures",
+      ])
+    ) {
+      return "lectures";
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalized, [
+        "\u0627\u0645\u062a\u062d\u0627\u0646\u0627\u062a",
+        "\u0627\u0644\u0627\u0645\u062a\u062d\u0627\u0646\u0627\u062a",
+        "exams",
+      ])
+    ) {
+      return "exams";
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalized, [
+        "\u0645\u0642\u0631\u0631\u0627\u062a",
+        "\u0645\u0648\u0627\u062f",
+        "courses",
+      ])
+    ) {
+      return "courses";
+    }
+    return "";
+  };
+  executePlannerVoiceAction = (tabLabel = "", buttonLabel = "") => {
+    const normalizedTab = this.normalizePlannerVoiceText(tabLabel);
+    const normalizedButton = this.normalizePlannerVoiceText(buttonLabel);
+    const plannerTabFromTarget = this.mapVoiceTabToPlannerTab(tabLabel);
+    const plannerTabFromButton = this.mapVoiceTabToPlannerTab(buttonLabel);
+    const targetPlannerTab =
+      plannerTabFromTarget || this.state?.plannerTab || "courses";
+
+    if (
+      this.plannerVoiceTextContainsAny(normalizedTab, [
+        "\u0627\u0639\u062f\u0627\u062f\u0627\u062a",
+        "settings",
+      ]) ||
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u0627\u0639\u062f\u0627\u062f\u0627\u062a",
+        "settings",
+      ])
+    ) {
+      this.setState({ plannerSettingsVisible: true });
+      return true;
+    }
+    if (plannerTabFromTarget) {
+      this.handleWrapperTabChange(plannerTabFromTarget);
+    }
+    if (plannerTabFromButton) {
+      this.handleWrapperTabChange(plannerTabFromButton);
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u0631\u062c\u0648\u0639",
+        "\u0639\u0648\u062f\u0629",
+        "back",
+      ])
+    ) {
+      if (this.state?.plannerSettingsVisible) {
+        this.handleBackFromPlannerSettings();
+        return true;
+      }
+      if (targetPlannerTab === "lectures") {
+        this.handleBackToCoursesTab();
+      }
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u0627\u0636\u0627\u0641\u0629",
+        "\u0627\u0636\u0641",
+        "add",
+      ])
+    ) {
+      if (targetPlannerTab === "exams") {
+        this.openAddExamForm("Add");
+      } else {
+        this.handleMiniBarAction();
+      }
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u062a\u062d\u062f\u064a\u062f",
+        "select",
+      ])
+    ) {
+      if (targetPlannerTab === "lectures") {
+        this.toggleLectureSelectionMode();
+      } else if (targetPlannerTab === "courses") {
+        this.enableSavedCourseSelectionMode();
+      }
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u062d\u0630\u0641 \u0627\u0644\u0645\u062d\u062f\u062f",
+        "delete selected",
+      ])
+    ) {
+      if (targetPlannerTab === "lectures") {
+        this.deleteSelectedLectures();
+      } else if (targetPlannerTab === "courses") {
+        this.deleteSelectedSavedCourse();
+      } else if (targetPlannerTab === "exams") {
+        this.deleteSelectedExam();
+      }
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u062a\u0639\u062f\u064a\u0644",
+        "edit",
+      ])
+    ) {
+      if (targetPlannerTab === "exams") {
+        this.openAddExamForm("Edit");
+      } else {
+        this.handleMiniBarEdit();
+      }
+      return true;
+    }
+    if (
+      this.plannerVoiceTextContainsAny(normalizedButton, [
+        "\u062d\u0630\u0641 \u0627\u0644\u0643\u0644",
+        "delete all",
+      ])
+    ) {
+      if (targetPlannerTab === "lectures") {
+        this.deleteAllVisibleLectures();
+      }
+      return true;
+    }
+
+    return false;
+  };
+  runPlannerVoiceCommand = (rawTranscript = "") => {
+    const transcript = this.normalizePlannerVoiceText(rawTranscript);
+    if (!transcript) {
+      return;
+    }
+    const customEntries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+      ? this.state.plannerSelectSettings.voiceCommands
+      : [];
+    const matchedEntry = customEntries
+      .map((entry) => ({
+        entry,
+        normalizedCommand: this.normalizePlannerVoiceText(entry?.command || ""),
+      }))
+      .filter((entry) => entry.normalizedCommand)
+      .sort((first, second) => second.normalizedCommand.length - first.normalizedCommand.length)
+      .find((entry) => transcript.includes(entry.normalizedCommand));
+    if (matchedEntry?.entry) {
+      this.executePlannerVoiceAction(
+        matchedEntry.entry?.tab || "",
+        matchedEntry.entry?.button || "",
+      );
+    }
+  };
+  syncPlannerVoiceControl = () => {
+    if (this.state?.plannerSettingsVoiceControlEnabled) {
+      this.startPlannerVoiceControl();
+      return;
+    }
+    this.stopPlannerVoiceControl();
+  };
+  startPlannerVoiceControl = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const RecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!RecognitionCtor || this.plannerVoiceRecognition) {
+      return;
+    }
+    this.plannerVoiceStopRequested = false;
+    const recognition = new RecognitionCtor();
+    recognition.lang = "ar";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const result = event?.results?.[event.resultIndex];
+      const transcript = String(result?.[0]?.transcript || "").trim();
+      if (transcript) {
+        this.runPlannerVoiceCommand(transcript);
+      }
+    };
+    recognition.onend = () => {
+      this.plannerVoiceRecognition = null;
+      if (
+        this.isComponentMounted &&
+        !this.plannerVoiceStopRequested &&
+        this.state?.plannerSettingsVoiceControlEnabled
+      ) {
+        if (this.plannerVoiceRestartTimeout) {
+          clearTimeout(this.plannerVoiceRestartTimeout);
+        }
+        this.plannerVoiceRestartTimeout = setTimeout(
+          () => this.startPlannerVoiceControl(),
+          350,
+        );
+      }
+    };
+    recognition.onerror = () => {};
+    this.plannerVoiceRecognition = recognition;
+    try {
+      recognition.start();
+    } catch {
+      this.plannerVoiceRecognition = null;
+    }
+  };
+  stopPlannerVoiceControl = () => {
+    this.plannerVoiceStopRequested = true;
+    if (this.plannerVoiceRestartTimeout) {
+      clearTimeout(this.plannerVoiceRestartTimeout);
+      this.plannerVoiceRestartTimeout = null;
+    }
+    if (!this.plannerVoiceRecognition) {
+      return;
+    }
+    try {
+      this.plannerVoiceRecognition.stop();
+    } catch {}
+    this.plannerVoiceRecognition = null;
+  };
   handleSavedCourseFloatingBarViewportChange = () => {
     this.scheduleSavedCourseFloatingBarPositionUpdate();
   };
@@ -5353,4 +5726,3 @@ export const getPlannerMusicSnapshot = () => ({});
 export const playNextSharedPlannerMusicTrack = () => {};
 export const playPreviousSharedPlannerMusicTrack = () => {};
 export const toggleSharedPlannerMusic = () => {};
-
