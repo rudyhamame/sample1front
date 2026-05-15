@@ -51,6 +51,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsSelectedRelationshipId,
     plannerSettingsLogoMotionEnabled,
     plannerSettingsVoiceControlEnabled,
+    plannerSettingsVoiceDictationEnabled,
     plannerSettingsLogoFixedClock,
     plannerSettingsMessageFromFriendFromId,
     plannerSettingsMessageFromFriendToId,
@@ -63,9 +64,14 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsVoiceCommandTab,
     plannerSettingsVoiceCommandButton,
     plannerSettingsVoiceCommandInput,
+    plannerSettingsVoiceDictationLetter,
+    plannerSettingsVoiceDictationNormalizedLetter,
+    plannerSettingsVoiceDictationCondition,
+    plannerSettingsSelectedVoiceDictationNormalizationIndex,
     plannerSettingsVoiceCommandEntries,
     plannerSettingsSelectedVoiceCommandIndex,
     plannerSettingsEditingVoiceCommandIndex,
+    plannerVoiceCommandCaptureMode,
   } = planner.state;
   const predictionToolEntries = Array.isArray(
     plannerSelectSettings?.predictionTool,
@@ -1220,50 +1226,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
               {activeSettingsSection === "voice" ? (
                 <div id="nogaPlanner_selectSettingsFields_voice" className="nogaPlanner_selectSettingsFields">
               {(() => {
-                const voiceTabOptions = [
-                  "NogaPlanner",
-                  "المقررات",
-                  "المحاضرات",
-                  "الامتحانات",
-                  "الإعدادات",
-                  "Settings",
-                ];
-                const voiceButtonsByTab = {
-                  // Global app-level buttons only (not tab-local actions).
-                  NogaPlanner: [
-                    "المقررات",
-                    "المحاضرات",
-                    "الامتحانات",
-                    "الإعدادات",
-                    "رجوع",
-                  ],
-                  المقررات: [
-                    "إضافة",
-                    "تعديل المحدد",
-                    "حذف المحدد",
-                    "حذف الكل",
-                    "تحديد",
-                  ],
-                  المحاضرات: [
-                    "إضافة",
-                    "تعديل المحدد",
-                    "حذف المحدد",
-                    "حذف الكل",
-                    "تحديد",
-                  ],
-                  الامتحانات: [
-                    "إضافة",
-                    "تعديل المحدد",
-                    "حذف المحدد",
-                    "حذف الكل",
-                  ],
-                  الإعدادات: ["رجوع", "حفظ", "تعديل", "حذف المحدد", "حذف الكل"],
-                  Settings: ["رجوع", "حفظ", "تعديل", "حذف المحدد", "حذف الكل"],
-                };
-                const buttonOptions =
-                  voiceButtonsByTab[
-                    String(plannerSettingsVoiceCommandTab || "").trim()
-                  ] || [];
                 const selectedVoiceIndex = Number(
                   plannerSettingsSelectedVoiceCommandIndex ?? -1,
                 );
@@ -1283,18 +1245,53 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   voiceEntriesFromState.length > 0
                     ? voiceEntriesFromState
                     : voiceEntriesFromSettings;
+                const voiceDictationNormalizations = Array.isArray(
+                  plannerSelectSettings?.voiceDictationNormalizations,
+                )
+                  ? plannerSelectSettings.voiceDictationNormalizations
+                  : [];
                 return (
-                  <>
-                    <div id="nogaPlanner_selectSettingsVoiceCommandsCard" className="nogaPlanner_selectSettingsVoiceCommandsCard">
-                      <div id="nogaPlanner_selectSettingsActions_voice" className="nogaPlanner_selectSettingsActions">
+                  <div id="nogaPlanner_selectSettingsVoiceCommandsCard" className="nogaPlanner_selectSettingsVoiceCommandsCard">
+                      <label
+                        id="nogaPlanner_selectSettingsRow_voiceDictation"
+                        className="nogaPlanner_selectSettingsCheckboxRow"
+                      >
+                        <input
+                          id="nogaPlanner_selectSettingsInput_voiceDictation"
+                          type="checkbox"
+                          checked={Boolean(plannerSettingsVoiceDictationEnabled)}
+                          onChange={(event) =>
+                            planner.handlePlannerSettingsInputChange(
+                              "plannerSettingsVoiceDictationEnabled",
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span>
+                          الإملاء الصوتي:{" "}
+                          {plannerSettingsVoiceDictationEnabled
+                            ? SETTINGS_TEXT.motionOn
+                            : SETTINGS_TEXT.motionOff}
+                        </span>
+                      </label>
+                      <div
+                        id="nogaPlanner_selectSettingsActions_voice"
+                        className="nogaPlanner_selectSettingsActions"
+                      >
                         <button
                           type="button"
-                          className="nogaPlanner_coursesMiniBarBtn"
-                          onClick={planner.addOrUpdatePlannerVoiceCommandEntry}
+                          data-voice-capture-control="true"
+                          className={
+                            "nogaPlanner_coursesMiniBarBtn" +
+                            (plannerVoiceCommandCaptureMode
+                              ? ""
+                              : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                          }
+                          onClick={planner.togglePlannerVoiceCommandCaptureMode}
                         >
-                          {Number(plannerSettingsEditingVoiceCommandIndex) >= 0
-                            ? "تحديث"
-                            : "إضافة"}
+                          {plannerVoiceCommandCaptureMode
+                            ? "إيقاف التقاط الأزرار"
+                            : "التقاط الأزرار"}
                         </button>
                         <button
                           type="button"
@@ -1307,7 +1304,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                           onClick={planner.editSelectedPlannerVoiceCommandEntry}
                           disabled={selectedVoiceIndex < 0}
                         >
-                          تعديل
+                          تعديل الأمر
                         </button>
                         <button
                           type="button"
@@ -1317,104 +1314,183 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                               ? ""
                               : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
                           }
-                          onClick={
-                            planner.deleteSelectedPlannerVoiceCommandEntry
-                          }
+                          onClick={planner.deleteSelectedPlannerVoiceCommandEntry}
                           disabled={selectedVoiceIndex < 0}
                         >
-                          حذف المحدد
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            "nogaPlanner_coursesMiniBarBtn" +
-                            (voiceEntries.length > 0
-                              ? ""
-                              : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
-                          }
-                          onClick={planner.clearPlannerVoiceCommandEntries}
-                          disabled={voiceEntries.length === 0}
-                        >
-                          حذف الكل
+                          حذف الأمر
                         </button>
                       </div>
-                      <select
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={String(
-                          plannerSettingsVoiceCommandTab || "المقررات",
-                        )}
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            "plannerSettingsVoiceCommandTab",
-                            event.target.value,
-                          )
-                        }
-                      >
-                        {voiceTabOptions.map((tabName) => (
-                          <option key={`voice-tab-${tabName}`} value={tabName}>
-                            {tabName}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={String(plannerSettingsVoiceCommandButton || "")}
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            "plannerSettingsVoiceCommandButton",
-                            event.target.value,
-                          )
-                        }
-                      >
-                        <option value="">اختر الزر</option>
-                        {buttonOptions.map((buttonName) => (
-                          <option
-                            key={`voice-btn-${buttonName}`}
-                            value={buttonName}
-                          >
-                            {buttonName}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        type="text"
-                        value={String(plannerSettingsVoiceCommandInput || "")}
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            "plannerSettingsVoiceCommandInput",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="الأمر الصوتي"
-                      />
                       <ul id="nogaPlanner_selectSettingsList_voice" className="nogaPlanner_selectSettingsVoiceCommandsList">
                         {voiceEntries.length > 0 ? (
-                          voiceEntries.map((entry, entryIndex) => (
-                            <li
-                              key={entry?.id || `voice-entry-${entryIndex}`}
-                              className={
-                                Number(
-                                  plannerSettingsSelectedVoiceCommandIndex,
-                                ) === entryIndex
-                                  ? "nogaPlanner_selectSettingsItem--selected"
-                                  : ""
-                              }
-                              onClick={() =>
-                                planner.togglePlannerVoiceCommandSelection(
-                                  entryIndex,
-                                )
-                              }
-                            >
-                              {`${entry?.tab || "-"} • ${entry?.button || "-"} • ${entry?.command || "-"}`}
-                            </li>
-                          ))
+                          voiceEntries.map((entry, entryIndex) => {
+                            const idTreeEntries = Array.isArray(entry?.idTree)
+                              ? entry.idTree
+                                  .map((treeEntry) =>
+                                    String(treeEntry || "").trim(),
+                                  )
+                                  .filter(Boolean)
+                              : [];
+                            const elementID = String(
+                              entry?.elementID || entry?.button || "-",
+                            ).trim() || "-";
+                            const elementName =
+                              typeof document !== "undefined" &&
+                              elementID !== "-"
+                                ? String(
+                                    document.getElementById(elementID)
+                                      ?.textContent || "",
+                                  )
+                                    .replace(/\s+/g, " ")
+                                    .trim()
+                                : "";
+                            const voiceCommand = String(
+                              entry?.voiceCommand || entry?.command || "-",
+                            ).trim() || "-";
+                            return (
+                              <li
+                                key={entry?._id || `voice-entry-${entryIndex}`}
+                                className={
+                                  Number(
+                                    plannerSettingsSelectedVoiceCommandIndex,
+                                  ) === entryIndex
+                                    ? "nogaPlanner_selectSettingsItem--selected"
+                                    : ""
+                                }
+                                onClick={() =>
+                                  planner.togglePlannerVoiceCommandSelection(
+                                    entryIndex,
+                                  )
+                                }
+                              >
+                                <span>{`idTree: [${idTreeEntries.join(" -> ") || "-"}]`}</span>
+                                <span>{`elementID: ${elementID}${elementName ? ` (${elementName})` : ""}`}</span>
+                                <span>{`voiceCommand: ${voiceCommand}`}</span>
+                              </li>
+                            );
+                          })
                         ) : (
                           <li>لا يوجد أي إدخال</li>
                         )}
                       </ul>
+                      <div id="nogaPlanner_selectSettingsVoiceDictationNormalizerCard" className="nogaPlanner_selectSettingsFields">
+                        <span className="nogaPlanner_selectSettingsRelationshipText">
+                          تطبيع الإملاء الصوتي
+                        </span>
+                        <div className="nogaPlanner_selectSettingsRelationshipInlineFields">
+                          <input
+                            id="nogaPlanner_selectSettingsVoiceDictationLetterInput"
+                            className="nogaPlanner_savedCoursesDetailsInput"
+                            type="text"
+                            value={plannerSettingsVoiceDictationLetter || ""}
+                            onChange={(event) =>
+                              planner.setState({
+                                plannerSettingsVoiceDictationLetter: String(
+                                  event?.target?.value || "",
+                                ),
+                              })
+                            }
+                            placeholder="الحرف"
+                          />
+                          <input
+                            id="nogaPlanner_selectSettingsVoiceDictationNormalizedLetterInput"
+                            className="nogaPlanner_savedCoursesDetailsInput"
+                            type="text"
+                            value={plannerSettingsVoiceDictationNormalizedLetter || ""}
+                            onChange={(event) =>
+                              planner.setState({
+                                plannerSettingsVoiceDictationNormalizedLetter: String(
+                                  event?.target?.value || "",
+                                ),
+                              })
+                            }
+                            placeholder="الحرف المطبّع"
+                          />
+                          <select
+                            id="nogaPlanner_selectSettingsVoiceDictationConditionSelect"
+                            className="nogaPlanner_savedCoursesDetailsInput"
+                            value={plannerSettingsVoiceDictationCondition || "endOfWord"}
+                            onChange={(event) =>
+                              planner.setState({
+                                plannerSettingsVoiceDictationCondition: String(
+                                  event?.target?.value || "endOfWord",
+                                ),
+                              })
+                            }
+                          >
+                            <option value="endOfWord">في نهاية الكلمة</option>
+                            <option value="startOfWord">في بداية الكلمة</option>
+                            <option value="anywhere">في أي مكان داخل الكلمة</option>
+                          </select>
+                        </div>
+                        <div className="nogaPlanner_selectSettingsActions">
+                          <button
+                            type="button"
+                            className="nogaPlanner_coursesMiniBarBtn"
+                            onClick={planner.addPlannerVoiceDictationNormalizationEntry}
+                          >
+                            إضافة قاعدة
+                          </button>
+                          <button
+                            type="button"
+                            className={
+                              "nogaPlanner_coursesMiniBarBtn" +
+                              (Number(
+                                plannerSettingsSelectedVoiceDictationNormalizationIndex,
+                              ) >= 0
+                                ? ""
+                                : " nogaPlanner_coursesMiniBarBtn--disabledBlack")
+                            }
+                            onClick={
+                              planner.deleteSelectedPlannerVoiceDictationNormalizationEntry
+                            }
+                            disabled={
+                              Number(
+                                plannerSettingsSelectedVoiceDictationNormalizationIndex,
+                              ) < 0
+                            }
+                          >
+                            حذف القاعدة
+                          </button>
+                        </div>
+                        <ul id="nogaPlanner_selectSettingsList_voiceDictationNormalizations" className="nogaPlanner_selectSettingsVoiceCommandsList">
+                          {voiceDictationNormalizations.length > 0 ? (
+                            voiceDictationNormalizations.map((entry, entryIndex) => (
+                              <li
+                                key={`voice-dictation-normalization-${entryIndex}`}
+                                className={
+                                  Number(
+                                    plannerSettingsSelectedVoiceDictationNormalizationIndex,
+                                  ) === entryIndex
+                                    ? "nogaPlanner_selectSettingsItem--selected"
+                                    : ""
+                                }
+                                onClick={() =>
+                                  planner.togglePlannerVoiceDictationNormalizationSelection(
+                                    entryIndex,
+                                  )
+                                }
+                              >
+                                <span>{`الحرف: ${String(entry?.letter || "-")} •`}</span>
+                                <span>{`الحرف المطبّع: ${String(entry?.normalizedLetter || "-")} •`}</span>
+                                <span>
+                                  {`الشرط: ${
+                                    String(entry?.condition || "endOfWord") ===
+                                    "startOfWord"
+                                      ? "في بداية الكلمة"
+                                      : String(entry?.condition || "endOfWord") ===
+                                          "anywhere"
+                                        ? "في أي مكان داخل الكلمة"
+                                        : "في نهاية الكلمة"
+                                  }`}
+                                </span>
+                              </li>
+                            ))
+                          ) : (
+                            <li>لا يوجد أي إدخال</li>
+                          )}
+                        </ul>
+                      </div>
                     </div>
-                  </>
                 );
               })()}
             </div>

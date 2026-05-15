@@ -137,278 +137,306 @@ const NogaPlannerLecturesTablePanel = ({
           className="nogaPlanner_lecturesFormCourseFieldsWrapperLayout"
         >
           <div
-            id="nogaPlanner_lecturesFieldCluster_course"
-            className="nogaPlanner_lecturesFormFieldCluster"
+            id="nogaPlanner_lecturesFormCourseFieldsColumn_primary"
+            className="nogaPlanner_lecturesFormFieldsColumn"
           >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_course"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.courseName}
-            </span>
-            <select
-              id="nogaPlanner_lecturesSelect_course"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={inlineLectureDraft?.lecture_courseId || ""}
-              onChange={(event) =>
-                planner.handleInlineLectureCourseChange(event.target.value)
-              }
-            >
-              <option
-                id="nogaPlanner_lecturesSelect_course_option_default"
-                value=""
-              >
-                {NOGAPLANNER_TEXT.lectures.chooseCourse}
-              </option>
-              {lectureCourseOptions.map((entry, entryIndex) => (
-                <option
-                  id={`nogaPlanner_lecturesSelect_course_option_${entryIndex}`}
-                  key={entry.id}
-                  value={entry.id}
-                >
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div
-            id="nogaPlanner_lecturesFieldCluster_component"
-            className="nogaPlanner_lecturesFormFieldCluster"
-          >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_component"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.componentType}
-            </span>
-            <select
-              id="nogaPlanner_lecturesSelect_component"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={inlineLectureDraft?.lecture_componentId || ""}
-              onChange={(event) => {
-                const nextId = event.target.value;
-                const matched =
-                  lectureComponentOptions.find(
-                    (entry) => entry.id === nextId,
-                  ) || null;
-                planner.handleInlineLectureDraftChange(
-                  "lecture_componentId",
-                  nextId,
-                );
-                planner.handleInlineLectureDraftChange(
-                  "lecture_component",
-                  matched ? matched.label : "",
-                );
-              }}
-            >
-              <option
-                id="nogaPlanner_lecturesSelect_component_option_default"
-                value=""
-              >
-                {NOGAPLANNER_TEXT.lectures.chooseComponent}
-              </option>
-              {lectureComponentOptions.map((entry, entryIndex) => (
-                <option
-                  id={`nogaPlanner_lecturesSelect_component_option_${entryIndex}`}
-                  key={entry.id}
-                  value={entry.id}
-                >
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div
-            id="nogaPlanner_lecturesFieldCluster_title"
-            className="nogaPlanner_lecturesFormFieldCluster"
-          >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_title"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.lectureTitle}
-            </span>
-            <input
-              id="nogaPlanner_lecturesInput_title"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              type="text"
-              value={inlineLectureDraft?.lecture_name || ""}
-              onChange={(event) =>
-                planner.handleInlineLectureDraftChange(
-                  "lecture_name",
-                  event.target.value,
-                )
-              }
-            />
-          </div>
-          <div
-            id="nogaPlanner_lecturesFieldCluster_instructors"
-            className="nogaPlanner_lecturesFormFieldCluster"
-          >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_instructors"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.instructors}
-            </span>
-            <select
-              id="nogaPlanner_lecturesSelect_instructors"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={inlineLectureDraft?.lecture_instructors || ""}
-              onChange={(event) =>
-                planner.handleInlineLectureDraftChange(
-                  "lecture_instructors",
-                  event.target.value,
-                )
-              }
-            >
-              <option
-                id="nogaPlanner_lecturesSelect_instructors_option_default"
-                value=""
-              >
-                {NOGAPLANNER_TEXT.lectures.chooseInstructor}
-              </option>
-              {lectureInstructorOptions.map((entry, entryIndex) => (
-                <option
-                  id={`nogaPlanner_lecturesSelect_instructors_option_${entryIndex}`}
-                  key={entry}
-                  value={entry}
-                >
-                  {entry}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div
-            id="nogaPlanner_lecturesFieldCluster_writers"
-            className="nogaPlanner_lecturesFormFieldCluster"
-          >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_writers"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.writers}
-            </span>
-            <select
-              id="nogaPlanner_lecturesSelect_writers"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              value={inlineLectureDraft?.lecture_writers || ""}
-              onChange={(event) =>
-                planner.handleInlineLectureDraftChange(
-                  "lecture_writers",
-                  event.target.value,
-                )
-              }
-            >
-              <option
-                id="nogaPlanner_lecturesSelect_writers_option_default"
-                value=""
-              >
-                {NOGAPLANNER_TEXT.lectures.chooseWriter}
-              </option>
-              {lectureWriterOptions.map((entry, entryIndex) => (
-                <option
-                  id={`nogaPlanner_lecturesSelect_writers_option_${entryIndex}`}
-                  key={entry}
-                  value={entry}
-                >
-                  {entry}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div
-            id="nogaPlanner_lecturesFieldCluster_date"
-            className="nogaPlanner_lecturesFormFieldCluster"
-          >
-            <span
-              id="nogaPlanner_lecturesFieldLabel_date"
-              className="nogaPlanner_lecturesFieldEyebrow"
-            >
-              {NOGAPLANNER_TEXT.lectures.publishDate}
-            </span>
-            <input
-              id="nogaPlanner_lecturesInput_date"
-              className="nogaPlanner_savedCoursesDetailsInput"
-              type="date"
-              value={inlineLectureDraft?.lecture_date || ""}
-              onChange={(event) =>
-                planner.handleInlineLectureDraftChange(
-                  "lecture_date",
-                  event.target.value,
-                )
-              }
-            />
-          </div>
-          <div
-            id="nogaPlanner_lecturesFormContentFieldsWrapper"
-            className="nogaPlanner_lecturesFormContentFieldsWrapperLayout"
-          >
-            <p
-              id="nogaPlanner_lecturesUploadListEmpty"
-              className="nogaPlanner_inlineUploadListEmpty"
-            >
-              {NOGAPLANNER_TEXT.lectures.uploadedList}
-            </p>
-            <button
-              id="nogaPlanner_lecturesUploadButton"
-              type="button"
-              className="nogaPlanner_inlineUploadButton"
-              onClick={() => {
-                const uploadInput = document.getElementById(
-                  "nogaPlanner_lecturesUploadInput",
-                );
-                if (uploadInput) {
-                  uploadInput.click();
-                }
-              }}
-            >
-              {NOGAPLANNER_TEXT.lectures.uploadContent}
-            </button>
-            <input
-              id="nogaPlanner_lecturesUploadInput"
-              type="file"
-              multiple
-              hidden
-              onChange={(event) =>
-                planner.handleInlineLectureContentFiles(event.target.files)
-              }
-            />
             <div
-              id="nogaPlanner_lecturesUploadList"
-              className="nogaPlanner_inlineUploadList"
+              id="nogaPlanner_lecturesFieldCluster_course"
+              className="nogaPlanner_lecturesFormFieldCluster"
             >
-              {lectureContentUploads.length === 0 ? (
-                <p
-                  id="nogaPlanner_lecturesUploadListNoFiles"
-                  className="nogaPlanner_inlineUploadListEmpty"
+              <span
+                id="nogaPlanner_lecturesFieldLabel_course"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.courseName}
+              </span>
+              <select
+                id="nogaPlanner_lecturesSelect_course"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={inlineLectureDraft?.lecture_courseId || ""}
+                onChange={(event) =>
+                  planner.handleInlineLectureCourseChange(event.target.value)
+                }
+              >
+                <option
+                  id="nogaPlanner_lecturesSelect_course_option_default"
+                  value=""
                 >
-                  {NOGAPLANNER_TEXT.lectures.noUploadedFiles}
-                </p>
-              ) : null}
-              <ul id="nogaPlanner_lecturesUploadListItems">
-                {lectureContentUploads.map((entry, entryIndex) => (
-                  <li
-                    id={`nogaPlanner_lecturesUploadListItem_${entryIndex}`}
+                  {NOGAPLANNER_TEXT.lectures.chooseCourse}
+                </option>
+                {lectureCourseOptions.map((entry, entryIndex) => (
+                  <option
+                    id={`nogaPlanner_lecturesSelect_course_option_${entryIndex}`}
                     key={entry.id}
+                    value={entry.id}
                   >
-                    <span
-                      id={`nogaPlanner_lecturesUploadListItemName_${entryIndex}`}
-                    >
-                      {entry.name}
-                    </span>
-                    <button
-                      id={`nogaPlanner_lecturesUploadListItemDeleteBtn_${entryIndex}`}
-                      type="button"
-                      onClick={() =>
-                        planner.removeInlineLectureContentFile(entry.id)
-                      }
-                    >
-                      {NOGAPLANNER_TEXT.common.delete}
-                    </button>
-                  </li>
+                    {entry.label}
+                  </option>
                 ))}
-              </ul>
+              </select>
+            </div>
+            <div
+              id="nogaPlanner_lecturesFieldCluster_component"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_component"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.componentType}
+              </span>
+              <select
+                id="nogaPlanner_lecturesSelect_component"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={inlineLectureDraft?.lecture_componentId || ""}
+                onChange={(event) => {
+                  const nextId = event.target.value;
+                  const matched =
+                    lectureComponentOptions.find(
+                      (entry) => entry.id === nextId,
+                    ) || null;
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_componentId",
+                    nextId,
+                  );
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_component",
+                    matched ? matched.label : "",
+                  );
+                }}
+              >
+                <option
+                  id="nogaPlanner_lecturesSelect_component_option_default"
+                  value=""
+                >
+                  {NOGAPLANNER_TEXT.lectures.chooseComponent}
+                </option>
+                {lectureComponentOptions.map((entry, entryIndex) => (
+                  <option
+                    id={`nogaPlanner_lecturesSelect_component_option_${entryIndex}`}
+                    key={entry.id}
+                    value={entry.id}
+                  >
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              id="nogaPlanner_lecturesBtn_completeByAi"
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn nogaPlanner_lecturesBtnCompleteByAi"
+              onClick={planner.completeInlineLectureByAi}
+              disabled={
+                Boolean(planner.state?.inlineLectureAiCompleting) ||
+                !String(inlineLectureDraft?.lecture_courseId || "").trim() ||
+                !String(inlineLectureDraft?.lecture_componentId || "").trim()
+              }
+            >
+              <i className="fas fa-robot" aria-hidden="true" />
+              <span>
+                {planner.state?.inlineLectureAiCompleting
+                  ? "loading..."
+                  : "complete by AI"}
+              </span>
+            </button>
+          </div>
+          <div
+            id="nogaPlanner_lecturesFormCourseFieldsColumn_secondary"
+            className="nogaPlanner_lecturesFormFieldsColumn"
+          >
+            <div
+              id="nogaPlanner_lecturesFieldCluster_title"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_title"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.lectureTitle}
+              </span>
+              <input
+                id="nogaPlanner_lecturesInput_title"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={inlineLectureDraft?.lecture_name || ""}
+                onChange={(event) =>
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_name",
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
+            <div
+              id="nogaPlanner_lecturesFieldCluster_instructors"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_instructors"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.instructors}
+              </span>
+              <select
+                id="nogaPlanner_lecturesSelect_instructors"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={inlineLectureDraft?.lecture_instructors || ""}
+                onChange={(event) =>
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_instructors",
+                    event.target.value,
+                  )
+                }
+              >
+                <option
+                  id="nogaPlanner_lecturesSelect_instructors_option_default"
+                  value=""
+                >
+                  {NOGAPLANNER_TEXT.lectures.chooseInstructor}
+                </option>
+                {lectureInstructorOptions.map((entry, entryIndex) => (
+                  <option
+                    id={`nogaPlanner_lecturesSelect_instructors_option_${entryIndex}`}
+                    key={entry}
+                    value={entry}
+                  >
+                    {entry}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div
+              id="nogaPlanner_lecturesFieldCluster_writers"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_writers"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.writers}
+              </span>
+              <select
+                id="nogaPlanner_lecturesSelect_writers"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={inlineLectureDraft?.lecture_writers || ""}
+                onChange={(event) =>
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_writers",
+                    event.target.value,
+                  )
+                }
+              >
+                <option
+                  id="nogaPlanner_lecturesSelect_writers_option_default"
+                  value=""
+                >
+                  {NOGAPLANNER_TEXT.lectures.chooseWriter}
+                </option>
+                {lectureWriterOptions.map((entry, entryIndex) => (
+                  <option
+                    id={`nogaPlanner_lecturesSelect_writers_option_${entryIndex}`}
+                    key={entry}
+                    value={entry}
+                  >
+                    {entry}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div
+              id="nogaPlanner_lecturesFieldCluster_date"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_date"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                {NOGAPLANNER_TEXT.lectures.publishDate}
+              </span>
+              <input
+                id="nogaPlanner_lecturesInput_date"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="date"
+                value={inlineLectureDraft?.lecture_date || ""}
+                onChange={(event) =>
+                  planner.handleInlineLectureDraftChange(
+                    "lecture_date",
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
+            <div
+              id="nogaPlanner_lecturesFormContentFieldsWrapper"
+              className="nogaPlanner_lecturesFormContentFieldsWrapperLayout"
+            >
+              <p
+                id="nogaPlanner_lecturesUploadListEmpty"
+                className="nogaPlanner_inlineUploadListEmpty"
+              >
+                {NOGAPLANNER_TEXT.lectures.uploadedList}
+              </p>
+              <button
+                id="nogaPlanner_lecturesUploadButton"
+                type="button"
+                className="nogaPlanner_inlineUploadButton"
+                onClick={() => {
+                  const uploadInput = document.getElementById(
+                    "nogaPlanner_lecturesUploadInput",
+                  );
+                  if (uploadInput) {
+                    uploadInput.click();
+                  }
+                }}
+              >
+                {NOGAPLANNER_TEXT.lectures.uploadContent}
+              </button>
+              <input
+                id="nogaPlanner_lecturesUploadInput"
+                type="file"
+                multiple
+                hidden
+                onChange={(event) =>
+                  planner.handleInlineLectureContentFiles(event.target.files)
+                }
+              />
+              <div
+                id="nogaPlanner_lecturesUploadList"
+                className="nogaPlanner_inlineUploadList"
+              >
+                {lectureContentUploads.length === 0 ? (
+                  <p
+                    id="nogaPlanner_lecturesUploadListNoFiles"
+                    className="nogaPlanner_inlineUploadListEmpty"
+                  >
+                    {NOGAPLANNER_TEXT.lectures.noUploadedFiles}
+                  </p>
+                ) : null}
+                <ul id="nogaPlanner_lecturesUploadListItems">
+                  {lectureContentUploads.map((entry, entryIndex) => (
+                    <li
+                      id={`nogaPlanner_lecturesUploadListItem_${entryIndex}`}
+                      key={entry.id}
+                    >
+                      <span
+                        id={`nogaPlanner_lecturesUploadListItemName_${entryIndex}`}
+                      >
+                        {entry.name}
+                      </span>
+                      <button
+                        id={`nogaPlanner_lecturesUploadListItemDeleteBtn_${entryIndex}`}
+                        type="button"
+                        onClick={() =>
+                          planner.removeInlineLectureContentFile(entry.id)
+                        }
+                      >
+                        {NOGAPLANNER_TEXT.common.delete}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </div>

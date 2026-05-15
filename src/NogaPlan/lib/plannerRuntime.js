@@ -1582,6 +1582,7 @@ export const PLANNER_SELECT_SETTINGS_STORAGE_KEY =
 export const buildDefaultPlannerWeekdayOptions = () => [...WEEKDAY_OPTIONS];
 
 export const buildDefaultPlannerSelectSettings = () => ({
+  defaultSection: "المقررات",
   componentClassOptions: [...SAVED_COMPONENT_CLASS_OPTIONS],
   weekdayOptions: buildDefaultPlannerWeekdayOptions(),
   hourOptions: [...HOUR_OPTIONS],
@@ -1592,6 +1593,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
   locationRoomOptionsByBuilding: [],
   logoMotionEnabled: true,
   voiceControlEnabled: false,
+  voiceDictationEnabled: false,
   logoFixedClock: "9",
   messageFriend: {
     from: {
@@ -1604,6 +1606,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
   relationships: [],
   predictionTool: [],
   voiceCommands: [],
+  voiceDictationNormalizations: [],
 });
 export const getDefaultPlannerRelationshipDraft = () => ({
   relationScope: "innerComponent",
@@ -1746,17 +1749,52 @@ export const normalizePlannerSelectSettings = (value) => {
       : []
   )
     .map((entry) => ({
-      tab: String(entry?.tab || "").trim(),
-      button: String(entry?.button || "").trim(),
-      command: String(entry?.command || "").trim(),
+      idTree: Array.isArray(entry?.idTree)
+        ? entry.idTree
+            .map((treeEntry) => String(treeEntry || "").trim())
+            .filter(Boolean)
+        : [],
+      elementID: String(entry?.elementID || entry?.button || "").trim(),
+      voiceCommand: String(entry?.voiceCommand || entry?.command || "").trim(),
     }))
-    .filter((entry) => entry.tab && entry.button && entry.command)
+    .filter((entry) => entry.elementID && entry.voiceCommand)
     .reduce((accumulator, entry) => {
       const exists = accumulator.some(
         (item) =>
-          item.tab === entry.tab &&
-          item.button === entry.button &&
-          item.command === entry.command,
+          item.elementID === entry.elementID &&
+          item.voiceCommand === entry.voiceCommand,
+      );
+      if (!exists) {
+        accumulator.push(entry);
+      }
+      return accumulator;
+    }, []);
+  const normalizedVoiceDictationNormalizations = (
+    Array.isArray(nextValue?.voiceDictationNormalizations)
+      ? nextValue.voiceDictationNormalizations
+      : []
+  )
+    .map((entry) => {
+      const conditionRaw = String(entry?.condition || "").trim().toLowerCase();
+      const condition =
+        conditionRaw === "startofword"
+          ? "startOfWord"
+          : conditionRaw === "anywhere"
+            ? "anywhere"
+            : "endOfWord";
+      return {
+        letter: String(entry?.letter || "").trim(),
+        normalizedLetter: String(entry?.normalizedLetter || "").trim(),
+        condition,
+      };
+    })
+    .filter((entry) => entry.letter && entry.normalizedLetter)
+    .reduce((accumulator, entry) => {
+      const exists = accumulator.some(
+        (item) =>
+          item.letter === entry.letter &&
+          item.normalizedLetter === entry.normalizedLetter &&
+          item.condition === entry.condition,
       );
       if (!exists) {
         accumulator.push(entry);
@@ -1764,6 +1802,8 @@ export const normalizePlannerSelectSettings = (value) => {
       return accumulator;
     }, []);
   return {
+    defaultSection:
+      String(nextValue?.defaultSection || "").trim() || "المقررات",
     componentClassOptions: normalizePlannerSettingsStringList(
       nextValue.componentClassOptions,
       fallbackSettings.componentClassOptions,
@@ -1798,6 +1838,10 @@ export const normalizePlannerSelectSettings = (value) => {
       typeof nextValue?.voiceControlEnabled === "boolean"
         ? nextValue.voiceControlEnabled
         : false,
+    voiceDictationEnabled:
+      typeof nextValue?.voiceDictationEnabled === "boolean"
+        ? nextValue.voiceDictationEnabled
+        : false,
     logoFixedClock,
     messageFriend: {
       from: normalizedMessageFrom,
@@ -1818,6 +1862,7 @@ export const normalizePlannerSelectSettings = (value) => {
     },
     predictionTool: normalizedPredictionTool,
     voiceCommands: normalizedVoiceCommands,
+    voiceDictationNormalizations: normalizedVoiceDictationNormalizations,
     relationships: Array.isArray(nextValue?.relationships)
       ? nextValue.relationships
           .map((entry) => normalizePlannerRelationshipEntry(entry))

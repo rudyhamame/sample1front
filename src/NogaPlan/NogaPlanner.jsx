@@ -1,4 +1,4 @@
-//..............IMPORT................
+﻿//..............IMPORT................
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import "./nogaPlanner.css";
@@ -1104,7 +1104,13 @@ export default class NogaPlanner extends Component {
     }
     const nextValue =
       rawValue.slice(0, tokenStart) + bestWordMatch + rawValue.slice(caretEnd);
-    inputElement.value = nextValue;
+    this.plannerInlinePredictionMutating = true;
+    this.setPlannerInputValue(inputElement, nextValue, {
+      dispatchInput: true,
+      inputType: "insertReplacementText",
+      data: bestWordMatch,
+    });
+    this.plannerInlinePredictionMutating = false;
     try {
       inputElement.setSelectionRange(
         tokenStart + tokenPrefix.length,
@@ -1137,6 +1143,9 @@ export default class NogaPlanner extends Component {
     this.refreshPlannerInputPredictionOptions(targetInput);
   };
   handlePlannerInputPredictionInput = (event) => {
+    if (this.plannerInlinePredictionMutating) {
+      return;
+    }
     const targetInput = event?.target;
     if (!this.isPlannerInputPredictionEligible(targetInput)) {
       return;
@@ -1564,6 +1573,9 @@ export default class NogaPlanner extends Component {
       this.persistPlannerInputHistory();
       this.setState({
         plannerSelectSettings: nextSettings,
+        plannerSettingsDefaultSection: String(
+          nextSettings?.defaultSection || "المقررات",
+        ).trim() || "المقررات",
         plannerSettingsPredictionToolEnabled:
           typeof dbPredictionTool?.enabled === "boolean"
             ? dbPredictionTool.enabled
@@ -1577,6 +1589,10 @@ export default class NogaPlanner extends Component {
         plannerSettingsVoiceControlEnabled:
           typeof nextSettings?.voiceControlEnabled === "boolean"
             ? nextSettings.voiceControlEnabled
+            : false,
+        plannerSettingsVoiceDictationEnabled:
+          typeof nextSettings?.voiceDictationEnabled === "boolean"
+            ? nextSettings.voiceDictationEnabled
             : false,
         plannerSettingsLogoFixedClock: String(
           nextSettings?.logoFixedClock || "9",
@@ -1602,6 +1618,10 @@ export default class NogaPlanner extends Component {
         ).trim(),
         plannerSettingsVoiceCommandButton: "",
         plannerSettingsVoiceCommandInput: "",
+        plannerSettingsVoiceDictationLetter: "",
+        plannerSettingsVoiceDictationNormalizedLetter: "",
+        plannerSettingsVoiceDictationCondition: "endOfWord",
+        plannerSettingsSelectedVoiceDictationNormalizationIndex: -1,
         plannerSettingsSelectedVoiceCommandIndex: -1,
         plannerSettingsEditingVoiceCommandIndex: -1,
       });
@@ -1880,13 +1900,23 @@ export default class NogaPlanner extends Component {
     }));
   };
   handlePlannerSettingsDefaultSectionChange = (nextSection) => {
-    this.setState({
-      plannerSettingsDefaultSection: nextSection,
-      plannerSettingsDefaultFieldKey: "",
-      plannerSettingsDefaultValueInput: "",
-      plannerSettingsEditingDefaultFieldKey: "",
-      plannerSettingsSelectedDefaultFieldKey: "",
-    });
+    const normalizedSection =
+      String(nextSection || "").trim() || "المقررات";
+    this.setState(
+      {
+        plannerSettingsDefaultSection: normalizedSection,
+        plannerSettingsDefaultFieldKey: "",
+        plannerSettingsDefaultValueInput: "",
+        plannerSettingsEditingDefaultFieldKey: "",
+        plannerSettingsSelectedDefaultFieldKey: "",
+      },
+      () => {
+        this.updatePlannerSelectSettings((previousSettings) => ({
+          ...previousSettings,
+          defaultSection: normalizedSection,
+        }));
+      },
+    );
   };
   addOrUpdatePlannerDefaultField = async () => {
     const fieldKey = String(
@@ -1996,7 +2026,8 @@ export default class NogaPlanner extends Component {
     if (
       fieldName === "plannerSettingsLogoMotionEnabled" ||
       fieldName === "plannerSettingsLogoFixedClock" ||
-      fieldName === "plannerSettingsVoiceControlEnabled"
+      fieldName === "plannerSettingsVoiceControlEnabled" ||
+      fieldName === "plannerSettingsVoiceDictationEnabled"
     ) {
       const normalizedClock = String(nextValue || "9")
         .trim()
@@ -2006,7 +2037,8 @@ export default class NogaPlanner extends Component {
         : "9";
       const normalizedValue =
         fieldName === "plannerSettingsLogoMotionEnabled" ||
-        fieldName === "plannerSettingsVoiceControlEnabled"
+        fieldName === "plannerSettingsVoiceControlEnabled" ||
+        fieldName === "plannerSettingsVoiceDictationEnabled"
           ? Boolean(nextValue)
           : safeClock;
       this.setState(
@@ -2024,6 +2056,10 @@ export default class NogaPlanner extends Component {
               fieldName === "plannerSettingsVoiceControlEnabled"
                 ? normalizedValue
                 : Boolean(this.state?.plannerSettingsVoiceControlEnabled),
+            voiceDictationEnabled:
+              fieldName === "plannerSettingsVoiceDictationEnabled"
+                ? normalizedValue
+                : Boolean(this.state?.plannerSettingsVoiceDictationEnabled),
             logoFixedClock:
               fieldName === "plannerSettingsLogoFixedClock"
                 ? normalizedValue
@@ -2229,6 +2265,253 @@ export default class NogaPlanner extends Component {
       plannerSettingsVoiceCommandButton: "",
       plannerSettingsVoiceCommandInput: "",
     });
+  };
+  addPlannerVoiceDictationNormalizationEntry = async () => {
+    const letter = String(
+      this.state?.plannerSettingsVoiceDictationLetter || "",
+    ).trim();
+    const normalizedLetter = String(
+      this.state?.plannerSettingsVoiceDictationNormalizedLetter || "",
+    ).trim();
+    const conditionRaw = String(
+      this.state?.plannerSettingsVoiceDictationCondition || "endOfWord",
+    )
+      .trim()
+      .toLowerCase();
+    const condition =
+      conditionRaw === "startofword"
+        ? "startOfWord"
+        : conditionRaw === "anywhere"
+          ? "anywhere"
+          : "endOfWord";
+    if (!letter || !normalizedLetter) {
+      this.props.serverReply("يرجى إدخال الحرف والحرف المطبّع.");
+      return;
+    }
+    const currentEntries = Array.isArray(
+      this.state?.plannerSelectSettings?.voiceDictationNormalizations,
+    )
+      ? this.state.plannerSelectSettings.voiceDictationNormalizations
+      : [];
+    const nextEntry = {
+      letter,
+      normalizedLetter,
+      condition,
+    };
+    const duplicateExists = currentEntries.some(
+      (entry) =>
+        String(entry?.letter || "").trim() === nextEntry.letter &&
+        String(entry?.normalizedLetter || "").trim() ===
+          nextEntry.normalizedLetter &&
+        String(entry?.condition || "").trim() === nextEntry.condition,
+    );
+    if (duplicateExists) {
+      this.props.serverReply("قاعدة التطبيع موجودة مسبقاً.");
+      return;
+    }
+    const nextEntries = [...currentEntries, nextEntry];
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => ({
+        ...previousSettings,
+        voiceDictationNormalizations: nextEntries,
+      }),
+    );
+    if (!persistedSettings) {
+      return;
+    }
+    this.setState({
+      plannerSettingsVoiceDictationLetter: "",
+      plannerSettingsVoiceDictationNormalizedLetter: "",
+      plannerSettingsVoiceDictationCondition: "endOfWord",
+      plannerSettingsSelectedVoiceDictationNormalizationIndex: -1,
+    });
+  };
+  togglePlannerVoiceDictationNormalizationSelection = (entryIndex) => {
+    this.setState((previousState) => ({
+      plannerSettingsSelectedVoiceDictationNormalizationIndex:
+        Number(
+          previousState?.plannerSettingsSelectedVoiceDictationNormalizationIndex ??
+            -1,
+        ) === entryIndex
+          ? -1
+          : entryIndex,
+    }));
+  };
+  deleteSelectedPlannerVoiceDictationNormalizationEntry = async () => {
+    const selectedIndex = Number(
+      this.state?.plannerSettingsSelectedVoiceDictationNormalizationIndex ?? -1,
+    );
+    if (selectedIndex < 0) {
+      return;
+    }
+    const entries = Array.isArray(
+      this.state?.plannerSelectSettings?.voiceDictationNormalizations,
+    )
+      ? this.state.plannerSelectSettings.voiceDictationNormalizations
+      : [];
+    const nextEntries = entries.filter((_, index) => index !== selectedIndex);
+    const persistedSettings = await this.updatePlannerSelectSettings(
+      (previousSettings) => ({
+        ...previousSettings,
+        voiceDictationNormalizations: nextEntries,
+      }),
+    );
+    if (!persistedSettings) {
+      return;
+    }
+    this.setState({
+      plannerSettingsSelectedVoiceDictationNormalizationIndex: -1,
+    });
+  };
+  togglePlannerVoiceCommandCaptureMode = () => {
+    this.setState((previousState) => ({
+      plannerVoiceCommandCaptureMode: !Boolean(
+        previousState?.plannerVoiceCommandCaptureMode,
+      ),
+    }));
+  };
+  getPlannerVoiceCaptureTabLabel = () => {
+    if (this.state?.plannerSettingsVisible) {
+      return "settings";
+    }
+    const wrapperTab = String(this.state?.wrapperTab || "").trim();
+    if (wrapperTab === "lectures") return "lectures";
+    if (wrapperTab === "exams") return "exams";
+    if (wrapperTab === "courses") return "courses";
+    return "nogaPlanner";
+  };
+  openPlannerVoiceCommandFooterPrompt = ({ tab = "", button = "" } = {}) => {
+    if (typeof window === "undefined" || !tab || !button) {
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent("noga-voice-command-prompt-open", {
+        detail: { tab, button, command: "" },
+      }),
+    );
+  };
+  handlePlannerVoiceCommandCaptureMouseDown = (event) => {
+    if (!this.state?.plannerVoiceCommandCaptureMode) {
+      return;
+    }
+    const root = this.plannerArticleRef?.current;
+    const target = event?.target;
+    const buttonNode =
+      target && typeof target.closest === "function"
+        ? target.closest("button")
+        : null;
+    if (!root || !buttonNode || !root.contains(buttonNode)) {
+      return;
+    }
+    if (
+      buttonNode.dataset?.voiceCaptureControl === "true" ||
+      buttonNode.id === "server_answer_voicePromptSubmit" ||
+      buttonNode.id === "server_answer_voicePromptCancel"
+    ) {
+      return;
+    }
+    const elementID = String(buttonNode.id || "").trim();
+    const buttonLabel = String(
+      buttonNode.getAttribute("aria-label") || buttonNode.textContent || "",
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!elementID || !buttonLabel) {
+      return;
+    }
+    if (this.voiceCapturePressTimer) {
+      clearTimeout(this.voiceCapturePressTimer);
+      this.voiceCapturePressTimer = null;
+    }
+    this.voiceCapturePressMeta = { elementID, buttonLabel };
+    this.voiceCapturePressTimer = setTimeout(() => {
+      const pressMeta = this.voiceCapturePressMeta;
+      if (!pressMeta) {
+        return;
+      }
+      this.voiceCaptureSuppressClickElementId = String(
+        pressMeta.elementID || "",
+      ).trim();
+      this.pendingVoiceCommandCaptureMeta = {
+        idTree: [this.getPlannerVoiceCaptureTabLabel(), pressMeta.buttonLabel],
+        elementID: pressMeta.elementID,
+        buttonLabel: pressMeta.buttonLabel,
+      };
+      this.openPlannerVoiceCommandFooterPrompt({
+        tab: this.getPlannerVoiceCaptureTabLabel(),
+        button: pressMeta.buttonLabel,
+      });
+      this.voiceCapturePressMeta = null;
+      this.voiceCapturePressTimer = null;
+    }, 550);
+  };
+  handlePlannerVoiceCommandCaptureMouseUp = () => {
+    if (this.voiceCapturePressTimer) {
+      clearTimeout(this.voiceCapturePressTimer);
+      this.voiceCapturePressTimer = null;
+    }
+    this.voiceCapturePressMeta = null;
+  };
+  handlePlannerVoiceCommandCaptureClick = (event) => {
+    if (!this.state?.plannerVoiceCommandCaptureMode) {
+      return;
+    }
+    const root = this.plannerArticleRef?.current;
+    const target = event?.target;
+    const buttonNode =
+      target && typeof target.closest === "function"
+        ? target.closest("button")
+        : null;
+    if (!root || !buttonNode || !root.contains(buttonNode)) {
+      return;
+    }
+    const buttonId = String(buttonNode.id || "").trim();
+    if (
+      buttonNode.dataset?.voiceCaptureControl === "true" ||
+      buttonId === "server_answer_voicePromptSubmit" ||
+      buttonId === "server_answer_voicePromptCancel"
+    ) {
+      return;
+    }
+    const suppressId = String(this.voiceCaptureSuppressClickElementId || "").trim();
+    if (suppressId && buttonId === suppressId) {
+      this.voiceCaptureSuppressClickElementId = "";
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+  handlePlannerVoiceCommandFooterSubmit = async (event) => {
+    const command = String(event?.detail?.command || "").trim();
+    const meta = this.pendingVoiceCommandCaptureMeta;
+    if (!meta || !command) {
+      return;
+    }
+    const currentEntries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+      ? this.state.plannerSelectSettings.voiceCommands
+      : [];
+    const nextEntry = {
+      idTree: Array.isArray(meta.idTree) ? meta.idTree : [],
+      elementID: String(meta.elementID || "").trim(),
+      voiceCommand: command,
+    };
+    const exists = currentEntries.some(
+      (entry) =>
+        String(entry?.elementID || "").trim() === nextEntry.elementID &&
+        String(entry?.voiceCommand || "").trim() === nextEntry.voiceCommand,
+    );
+    if (exists) {
+      this.pendingVoiceCommandCaptureMeta = null;
+      return;
+    }
+    await this.updatePlannerSelectSettings((previousSettings) => ({
+      ...previousSettings,
+      voiceCommands: [...currentEntries, nextEntry],
+    }));
+    this.pendingVoiceCommandCaptureMeta = null;
+    this.setState({ plannerVoiceCommandCaptureMode: false });
+  };
+  handlePlannerVoiceCommandFooterCancel = () => {
+    this.pendingVoiceCommandCaptureMeta = null;
   };
   addPlannerSettingsMessageFriendRecipient = () => {
     const friendID = String(
@@ -3322,38 +3605,82 @@ export default class NogaPlanner extends Component {
       inlineLectureDraft: getDefaultInlineLectureDraft(),
     });
   };
-  getLectureCourseOptions = () =>
-    (Array.isArray(this.state?.courses) ? this.state.courses : [])
-      .map((course) => ({
-        id: String(course?._id || "").trim(),
-        label: String(course?.course_name || "").trim(),
-      }))
-      .filter((entry) => entry.id && entry.label);
+  getLectureCourseOptions = () => {
+    const uniqueByName = new Map();
+    (Array.isArray(this.state?.courses) ? this.state.courses : []).forEach(
+      (course) => {
+        const courseName = String(course?.course_name || "").trim();
+        const courseId = String(course?._id || "").trim();
+        const hasComponents = Array.isArray(course?.course_components)
+          ? course.course_components.length > 0
+          : false;
+        if (!courseName || !courseId) {
+          return;
+        }
+        const existing = uniqueByName.get(courseName);
+        if (existing) {
+          if (!existing.hasComponents && hasComponents) {
+            uniqueByName.set(courseName, {
+              id: courseId,
+              label: courseName,
+              hasComponents,
+            });
+          }
+          return;
+        }
+        uniqueByName.set(courseName, {
+          id: courseId,
+          label: courseName,
+          hasComponents,
+        });
+      },
+    );
+    return Array.from(uniqueByName.values()).map(({ id, label }) => ({
+      id,
+      label,
+    }));
+  };
   getLectureComponentOptionsByCourseId = (courseId = "") => {
-    const selectedCourse =
-      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
-        (course) =>
-          String(course?._id || "").trim() === String(courseId || "").trim(),
-      ) || null;
-    if (!selectedCourse) {
+    const normalizedCourseValue = String(courseId || "").trim();
+    if (!normalizedCourseValue) {
       return [];
     }
-    const components = Array.isArray(selectedCourse?.course_components)
-      ? selectedCourse.course_components
-      : [];
+    const matchedCourses = (Array.isArray(this.state?.courses)
+      ? this.state.courses
+      : []
+    ).filter(
+      (course) => String(course?._id || "").trim() === normalizedCourseValue,
+    );
+    if (matchedCourses.length === 0) {
+      return [];
+    }
+    const components = matchedCourses.flatMap((course) => {
+      const sourceCourseId = String(course?._id || "").trim();
+      const sourceItems = Array.isArray(course?.course_components)
+        ? course.course_components
+        : [];
+      return sourceItems.map((component, index) => ({
+        component,
+        sourceCourseId,
+        index,
+      }));
+    });
     return components
-      .map((component, index) => {
-        const label = String(
-          component?.course_class || component?.course_component || "",
-        ).trim();
-        const id = String(component?._id || `component-${index}`).trim();
-        return {
-          id,
-          label,
-        };
+      .map(({ component, sourceCourseId, index }) => {
+        const label = String(component?.course_class || "").trim();
+        const id = String(component?._id || "").trim() || `${sourceCourseId}:${index}`;
+        return { id, label };
       })
-      .filter((entry) => entry.label);
+      .filter((entry) => entry.label)
+      .reduce((accumulator, entry) => {
+        if (!accumulator.some((item) => item.label === entry.label)) {
+          accumulator.push(entry);
+        }
+        return accumulator;
+      }, []);
   };
+  getLectureComponentOptionsByCourseName = (courseId = "") =>
+    this.getLectureComponentOptionsByCourseId(courseId);
   getLectureSettingsOptions = (type = "instructor") => {
     const settings =
       this.state?.plannerSelectSettings &&
@@ -3411,11 +3738,123 @@ export default class NogaPlanner extends Component {
       inlineLectureDraft: {
         ...previousState.inlineLectureDraft,
         lecture_courseId: normalizedCourseId,
-        lecture_course: selectedCourse ? buildCourseLectureMatchLabel(selectedCourse) : "",
+        lecture_course: selectedCourse
+          ? buildCourseLectureMatchLabel(selectedCourse)
+          : "",
         lecture_componentId: firstComponent ? firstComponent.id : "",
         lecture_component: firstComponent ? firstComponent.label : "",
       },
     }));
+  };
+  completeInlineLectureByAi = async () => {
+    const userId = String(this.props?.state?.my_id || "").trim();
+    const token = String(this.props?.state?.token || "").trim();
+    const selectedCourseId = String(
+      this.state?.inlineLectureDraft?.lecture_courseId || "",
+    ).trim();
+    const selectedComponentId = String(
+      this.state?.inlineLectureDraft?.lecture_componentId || "",
+    ).trim();
+    if (!userId || !token) {
+      this.props.serverReply("AI preview failed: missing auth context.");
+      return;
+    }
+    const selectedCourse =
+      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+        (course) => String(course?._id || "").trim() === selectedCourseId,
+      ) || null;
+    const courseName = String(selectedCourse?.course_name || "").trim();
+    const componentOptions =
+      this.getLectureComponentOptionsByCourseId(selectedCourseId);
+    const selectedComponent =
+      componentOptions.find(
+        (entry) => String(entry?.id || "").trim() === selectedComponentId,
+      ) || null;
+    const courseComponent = String(selectedComponent?.label || "").trim();
+    if (!courseName) {
+      this.props.serverReply("Please select course name first.");
+      return;
+    }
+    if (!courseComponent) {
+      this.props.serverReply("Please select component class first.");
+      return;
+    }
+    this.setState({
+      inlineLectureAiCompleting: true,
+    });
+    try {
+      const response = await fetch(apiUrl("/api/telegram/ai/lecture-suggestions"), {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          allGroups: true,
+          courseName,
+          courseComponent,
+          chatLanguage: "ar",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        this.props.serverReply(
+          String(payload?.message || `AI preview failed: ${response.status}`),
+        );
+        return;
+      }
+      const lectures = Array.isArray(payload?.lectures) ? payload.lectures : [];
+      const firstSuggestion = lectures[0] || null;
+      if (!firstSuggestion) {
+        this.props.serverReply("No AI suggestions found for this selection.");
+        return;
+      }
+      const lecturePayload =
+        firstSuggestion?.lecture && typeof firstSuggestion.lecture === "object"
+          ? firstSuggestion.lecture
+          : firstSuggestion;
+      const lectureName = String(
+        lecturePayload?.lecture_name || firstSuggestion?.lectureName || "",
+      ).trim();
+      const instructors = Array.isArray(lecturePayload?.lecture_instructors)
+        ? lecturePayload.lecture_instructors
+        : Array.isArray(firstSuggestion?.instructors)
+          ? firstSuggestion.instructors
+          : [];
+      const writers = Array.isArray(lecturePayload?.lecture_writers)
+        ? lecturePayload.lecture_writers
+        : Array.isArray(firstSuggestion?.writer)
+          ? firstSuggestion.writer
+          : [];
+      const lectureDate = String(
+        lecturePayload?.lecture_date || firstSuggestion?.publishDate || "",
+      ).trim();
+      this.setState((previousState) => ({
+        inlineLectureDraft: {
+          ...previousState.inlineLectureDraft,
+          lecture_name: lectureName || previousState.inlineLectureDraft?.lecture_name || "",
+          lecture_instructors:
+            formatPlannerTextList(instructors) ||
+            previousState.inlineLectureDraft?.lecture_instructors ||
+            "",
+          lecture_writers:
+            formatPlannerTextList(writers) ||
+            previousState.inlineLectureDraft?.lecture_writers ||
+            "",
+          lecture_date: lectureDate || previousState.inlineLectureDraft?.lecture_date || "",
+        },
+      }));
+      this.props.serverReply(`AI preview ready: ${lectures.length} suggestion(s).`);
+    } catch (error) {
+      this.props.serverReply(
+        String(error?.message || "AI preview failed while fetching suggestions."),
+      );
+    } finally {
+      this.setState({
+        inlineLectureAiCompleting: false,
+      });
+    }
   };
   handleInlineLectureContentFiles = (fileList) => {
     const files = Array.from(fileList || []);
@@ -3493,6 +3932,103 @@ export default class NogaPlanner extends Component {
       lecture_partOfPlan: true,
       lecture_hidden: false,
     });
+  };
+  addLecture = async (lecturePayload = {}) => {
+    const userId = String(this.props?.state?.my_id || "").trim();
+    const token = String(this.props?.state?.token || "").trim();
+    if (!userId || !token) {
+      this.props.serverReply("تعذّر حفظ المحاضرة: بيانات الدخول غير مكتملة.");
+      return false;
+    }
+    try {
+      const response = await fetch(apiUrl("/api/user/addLecture/") + userId, {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(lecturePayload),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        this.props.serverReply(
+          String(payload?.message || `تعذّر حفظ المحاضرة (${response.status}).`),
+        );
+        return false;
+      }
+      this.setState(
+        {
+          inlineLectureRowVisible: false,
+          inlineLectureDraft: getDefaultInlineLectureDraft(),
+        },
+        () => {
+          this.retrieveLectures();
+          this.retrieveCourses();
+        },
+      );
+      this.props.serverReply(String(payload?.message || "تم حفظ المحاضرة."));
+      return true;
+    } catch (error) {
+      this.props.serverReply(
+        String(error?.message || "تعذّر حفظ المحاضرة بسبب خطأ في الشبكة."),
+      );
+      return false;
+    }
+  };
+  deleteLecture = async () => {
+    const userId = String(this.props?.state?.my_id || "").trim();
+    const token = String(this.props?.state?.token || "").trim();
+    if (!userId || !token) {
+      this.props.serverReply("تعذّر حذف المحاضرة: بيانات الدخول غير مكتملة.");
+      return false;
+    }
+    const lectureIds = (Array.isArray(checkedLectures) ? checkedLectures : [])
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    if (lectureIds.length === 0) {
+      return false;
+    }
+    try {
+      for (let index = 0; index < lectureIds.length; index += 1) {
+        const lectureId = lectureIds[index];
+        const response = await fetch(
+          apiUrl("/api/user/deleteLecture/") + userId + "/" + lectureId,
+          {
+            method: "DELETE",
+            mode: "cors",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          this.props.serverReply(
+            String(payload?.message || `تعذّر حذف المحاضرة (${response.status}).`),
+          );
+          return false;
+        }
+      }
+      checkedLectures = [];
+      this.setState(
+        {
+          selectedTabItemId: null,
+        },
+        () => {
+          this.retrieveLectures();
+          this.retrieveCourses();
+        },
+      );
+      this.props.serverReply("تم حذف المحاضرة.");
+      return true;
+    } catch (error) {
+      this.props.serverReply(
+        String(error?.message || "تعذّر حذف المحاضرة بسبب خطأ في الشبكة."),
+      );
+      return false;
+    }
   };
   appendSavedCourseScheduleEntry = () => {
     const dayValue = String(
@@ -4701,6 +5237,7 @@ export default class NogaPlanner extends Component {
       plannerSettingsSaveMessage: "",
       plannerSettingsLogoMotionEnabled: true,
       plannerSettingsVoiceControlEnabled: false,
+      plannerSettingsVoiceDictationEnabled: false,
       plannerSettingsLogoFixedClock: "9",
       plannerSettingsMessageFromFriendFromId: "",
       plannerSettingsMessageFromFriendToId: "",
@@ -4713,8 +5250,13 @@ export default class NogaPlanner extends Component {
       plannerSettingsVoiceCommandTab: "المقررات",
       plannerSettingsVoiceCommandButton: "",
       plannerSettingsVoiceCommandInput: "",
+      plannerSettingsVoiceDictationLetter: "",
+      plannerSettingsVoiceDictationNormalizedLetter: "",
+      plannerSettingsVoiceDictationCondition: "endOfWord",
+      plannerSettingsSelectedVoiceDictationNormalizationIndex: -1,
       plannerSettingsSelectedVoiceCommandIndex: -1,
       plannerSettingsEditingVoiceCommandIndex: -1,
+      plannerVoiceCommandCaptureMode: false,
       savedCourseComponentDraftActive: true,
       savedCourseEditorVisible: false,
       savedCourseEditorMode: "add",
@@ -4755,6 +5297,18 @@ export default class NogaPlanner extends Component {
     this.plannerVoiceRecognition = null;
     this.plannerVoiceStopRequested = false;
     this.plannerVoiceRestartTimeout = null;
+    this.plannerInputVoiceRecognition = null;
+    this.plannerInputVoiceStopRequested = false;
+    this.plannerInputVoiceRestartTimeout = null;
+    this.plannerInputVoiceSessionToken = 0;
+    this.plannerInputVoiceListeningShown = false;
+    this.plannerInputVoiceActiveElement = null;
+    this.plannerVoiceWasRunningBeforeInputFocus = false;
+    this.plannerInlinePredictionMutating = false;
+    this.pendingVoiceCommandCaptureMeta = null;
+    this.voiceCapturePressTimer = null;
+    this.voiceCapturePressMeta = null;
+    this.voiceCaptureSuppressClickElementId = "";
   }
   componentDidMount() {
     this.isComponentMounted = true;
@@ -4771,12 +5325,35 @@ export default class NogaPlanner extends Component {
         this.handlePlannerInputPredictionFocus,
       );
       plannerArticleElement.addEventListener(
+        "focusin",
+        this.handlePlannerInputVoiceFocusIn,
+      );
+      plannerArticleElement.addEventListener(
+        "focusout",
+        this.handlePlannerInputVoiceFocusOut,
+      );
+      plannerArticleElement.addEventListener(
         "input",
         this.handlePlannerInputPredictionInput,
       );
       plannerArticleElement.addEventListener(
         "change",
         this.handlePlannerInputPredictionInput,
+      );
+      plannerArticleElement.addEventListener(
+        "mousedown",
+        this.handlePlannerVoiceCommandCaptureMouseDown,
+        true,
+      );
+      plannerArticleElement.addEventListener(
+        "mouseup",
+        this.handlePlannerVoiceCommandCaptureMouseUp,
+        true,
+      );
+      plannerArticleElement.addEventListener(
+        "click",
+        this.handlePlannerVoiceCommandCaptureClick,
+        true,
       );
     }
     window.addEventListener(
@@ -4787,6 +5364,14 @@ export default class NogaPlanner extends Component {
       "scroll",
       this.handleSavedCourseFloatingBarViewportChange,
       true,
+    );
+    window.addEventListener(
+      "noga-voice-command-prompt-submit",
+      this.handlePlannerVoiceCommandFooterSubmit,
+    );
+    window.addEventListener(
+      "noga-voice-command-prompt-cancel",
+      this.handlePlannerVoiceCommandFooterCancel,
     );
     if (this.props.state?.my_id) {
       this.loadPlannerSelectSettings();
@@ -4849,12 +5434,35 @@ export default class NogaPlanner extends Component {
         this.handlePlannerInputPredictionFocus,
       );
       plannerArticleElement.removeEventListener(
+        "focusin",
+        this.handlePlannerInputVoiceFocusIn,
+      );
+      plannerArticleElement.removeEventListener(
+        "focusout",
+        this.handlePlannerInputVoiceFocusOut,
+      );
+      plannerArticleElement.removeEventListener(
         "input",
         this.handlePlannerInputPredictionInput,
       );
       plannerArticleElement.removeEventListener(
         "change",
         this.handlePlannerInputPredictionInput,
+      );
+      plannerArticleElement.removeEventListener(
+        "mousedown",
+        this.handlePlannerVoiceCommandCaptureMouseDown,
+        true,
+      );
+      plannerArticleElement.removeEventListener(
+        "mouseup",
+        this.handlePlannerVoiceCommandCaptureMouseUp,
+        true,
+      );
+      plannerArticleElement.removeEventListener(
+        "click",
+        this.handlePlannerVoiceCommandCaptureClick,
+        true,
       );
     }
     window.removeEventListener(
@@ -4866,6 +5474,18 @@ export default class NogaPlanner extends Component {
       this.handleSavedCourseFloatingBarViewportChange,
       true,
     );
+    window.removeEventListener(
+      "noga-voice-command-prompt-submit",
+      this.handlePlannerVoiceCommandFooterSubmit,
+    );
+    window.removeEventListener(
+      "noga-voice-command-prompt-cancel",
+      this.handlePlannerVoiceCommandFooterCancel,
+    );
+    if (this.voiceCapturePressTimer) {
+      clearTimeout(this.voiceCapturePressTimer);
+      this.voiceCapturePressTimer = null;
+    }
     if (this.savedCourseFloatingBarRaf) {
       cancelAnimationFrame(this.savedCourseFloatingBarRaf);
       this.savedCourseFloatingBarRaf = null;
@@ -4875,14 +5495,247 @@ export default class NogaPlanner extends Component {
       this.plannerPredictionToolSyncTimeout = null;
     }
     this.stopPlannerVoiceControl();
+    this.stopPlannerInputVoiceTranscription(false);
   }
+  isPlannerVoiceTranscriptionInput = (inputElement) => {
+    if (!inputElement || inputElement.tagName !== "INPUT") {
+      return false;
+    }
+    if (inputElement.disabled || inputElement.readOnly) {
+      return false;
+    }
+    const inputType = String(inputElement.type || "text").toLowerCase();
+    return (
+      inputType === "text" ||
+      inputType === "search" ||
+      inputType === "email" ||
+      inputType === "tel" ||
+      inputType === "url"
+    );
+  };
+  handlePlannerInputVoiceFocusIn = (event) => {
+    if (!this.state?.plannerSettingsVoiceDictationEnabled) {
+      return;
+    }
+    const target = event?.target;
+    if (!this.isPlannerVoiceTranscriptionInput(target)) {
+      return;
+    }
+    if (this.plannerInputVoiceRecognition) {
+      // Handoff between inputs while dictation is running: keep one session.
+      this.plannerInputVoiceActiveElement = target;
+      return;
+    }
+    this.plannerInputVoiceActiveElement = target;
+    this.plannerInputVoiceListeningShown = false;
+    this.startPlannerInputVoiceTranscription();
+  };
+  handlePlannerInputVoiceFocusOut = (event) => {
+    const nextFocusedElement = event?.relatedTarget;
+    if (
+      this.state?.plannerSettingsVoiceDictationEnabled &&
+      this.isPlannerVoiceTranscriptionInput(nextFocusedElement)
+    ) {
+      // Let focus move to another eligible input without stopping dictation.
+      this.plannerInputVoiceActiveElement = nextFocusedElement;
+      return;
+    }
+    const target = event?.target;
+    if (target && target === this.plannerInputVoiceActiveElement) {
+      this.stopPlannerInputVoiceTranscription(true);
+      this.plannerInputVoiceActiveElement = null;
+    }
+  };
+  setPlannerInputValue = (
+    inputElement,
+    nextValue,
+    { dispatchInput = false, inputType = "insertText", data = "" } = {},
+  ) => {
+    if (!inputElement) {
+      return;
+    }
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    if (valueSetter) {
+      valueSetter.call(inputElement, String(nextValue ?? ""));
+    } else {
+      inputElement.value = String(nextValue ?? "");
+    }
+    if (!dispatchInput) {
+      return;
+    }
+    try {
+      inputElement.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          inputType,
+          data,
+        }),
+      );
+    } catch {
+      inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  };
+  appendTranscriptToPlannerInput = (inputElement, transcript = "") => {
+    if (!inputElement || !transcript) {
+      return;
+    }
+    const normalizedTranscript = this.normalizePlannerVoiceText(transcript);
+    if (!normalizedTranscript) {
+      return;
+    }
+    const currentValue = String(inputElement.value || "");
+    const nextValue = currentValue
+      ? `${currentValue} ${normalizedTranscript}`.replace(/\s+/g, " ").trim()
+      : normalizedTranscript;
+    this.setPlannerInputValue(inputElement, nextValue);
+    try {
+      inputElement.setSelectionRange(nextValue.length, nextValue.length);
+    } catch {
+      // Ignore selection errors on unsupported input types.
+    }
+    this.setPlannerInputValue(inputElement, nextValue, {
+      dispatchInput: true,
+      inputType: "insertText",
+      data: normalizedTranscript,
+    });
+  };
+  startPlannerInputVoiceTranscription = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const inputElement = this.plannerInputVoiceActiveElement;
+    if (!this.isPlannerVoiceTranscriptionInput(inputElement)) {
+      return;
+    }
+    const RecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!RecognitionCtor || this.plannerInputVoiceRecognition) {
+      return;
+    }
+    const sessionToken = ++this.plannerInputVoiceSessionToken;
+    this.plannerVoiceWasRunningBeforeInputFocus = Boolean(
+      this.plannerVoiceRecognition,
+    );
+    if (this.plannerVoiceWasRunningBeforeInputFocus) {
+      this.stopPlannerVoiceControl();
+    }
+    this.plannerInputVoiceStopRequested = false;
+    if (!this.plannerInputVoiceListeningShown) {
+      this.props.serverReply("listening ...");
+      this.plannerInputVoiceListeningShown = true;
+    }
+    const recognition = new RecognitionCtor();
+    recognition.lang = "ar";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const activeInput = this.plannerInputVoiceActiveElement;
+      if (!this.isPlannerVoiceTranscriptionInput(activeInput)) {
+        return;
+      }
+      const result = event?.results?.[event.resultIndex];
+      const transcript = String(result?.[0]?.transcript || "").trim();
+      if (transcript) {
+        this.appendTranscriptToPlannerInput(activeInput, transcript);
+      }
+    };
+    recognition.onend = () => {
+      this.plannerInputVoiceRecognition = null;
+      if (
+        sessionToken === this.plannerInputVoiceSessionToken &&
+        this.isComponentMounted &&
+        !this.plannerInputVoiceStopRequested &&
+        document?.activeElement === this.plannerInputVoiceActiveElement &&
+        this.isPlannerVoiceTranscriptionInput(this.plannerInputVoiceActiveElement)
+      ) {
+        if (this.plannerInputVoiceRestartTimeout) {
+          clearTimeout(this.plannerInputVoiceRestartTimeout);
+        }
+        this.plannerInputVoiceRestartTimeout = setTimeout(
+          () => this.startPlannerInputVoiceTranscription(),
+          300,
+        );
+      }
+    };
+    recognition.onerror = () => {};
+    this.plannerInputVoiceRecognition = recognition;
+    try {
+      recognition.start();
+    } catch {
+      this.plannerInputVoiceRecognition = null;
+    }
+  };
+  stopPlannerInputVoiceTranscription = (resumeCommandVoice = true) => {
+    this.plannerInputVoiceSessionToken += 1;
+    this.plannerInputVoiceStopRequested = true;
+    if (this.plannerInputVoiceRestartTimeout) {
+      clearTimeout(this.plannerInputVoiceRestartTimeout);
+      this.plannerInputVoiceRestartTimeout = null;
+    }
+    if (this.plannerInputVoiceRecognition) {
+      try {
+        this.plannerInputVoiceRecognition.stop();
+      } catch {}
+      this.plannerInputVoiceRecognition = null;
+    }
+    this.props.serverReply("");
+    this.plannerInputVoiceListeningShown = false;
+    if (
+      resumeCommandVoice &&
+      this.plannerVoiceWasRunningBeforeInputFocus &&
+      this.state?.plannerSettingsVoiceControlEnabled
+    ) {
+      this.startPlannerVoiceControl();
+    }
+    this.plannerVoiceWasRunningBeforeInputFocus = false;
+  };
   normalizePlannerVoiceText = (value = "") =>
-    String(value || "")
-      .toLowerCase()
-      .replace(/[\u064B-\u065F\u0670]/g, "")
-      .replace(/[^\u0600-\u06FFa-z0-9\s]/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    (() => {
+      const baseNormalize = (nextValue = "") =>
+        String(nextValue || "")
+          .toLowerCase()
+          .replace(/[\u0623\u0625\u0622\u0671]/g, "\u0627")
+          .replace(/\u0629/g, "\u0647")
+          .replace(/\u0649/g, "\u064A")
+          .replace(/\u0647(?=\s|$)/g, "\u0629")
+          .replace(/[\u064B-\u065F\u0670]/g, "")
+          .replace(/[^\u0600-\u06FFa-z0-9\s]/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      const baseValue = baseNormalize(value);
+      const rules = Array.isArray(
+        this.state?.plannerSelectSettings?.voiceDictationNormalizations,
+      )
+        ? this.state.plannerSelectSettings.voiceDictationNormalizations
+        : [];
+      const escapeRegExp = (text = "") =>
+        String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const normalizedByRules = rules.reduce((accumulator, rule) => {
+        const letter = escapeRegExp(baseNormalize(rule?.letter || ""));
+        const normalizedLetter = baseNormalize(rule?.normalizedLetter || "");
+        if (!letter || !normalizedLetter) {
+          return accumulator;
+        }
+        const condition = String(rule?.condition || "endOfWord").trim();
+        if (condition === "startOfWord") {
+          return accumulator.replace(
+            new RegExp(`(^|\\s)${letter}`, "g"),
+            `$1${normalizedLetter}`,
+          );
+        }
+        if (condition === "anywhere") {
+          return accumulator.replace(new RegExp(letter, "g"), normalizedLetter);
+        }
+        return accumulator.replace(
+          new RegExp(`${letter}(?=\\s|$)`, "g"),
+          normalizedLetter,
+        );
+      }, baseValue);
+      return normalizedByRules.replace(/\s+/g, " ").trim();
+    })();
   plannerVoiceTextContainsAny = (text = "", terms = []) => {
     const normalizedText = this.normalizePlannerVoiceText(text);
     return (Array.isArray(terms) ? terms : []).some((term) =>
@@ -5035,27 +5888,142 @@ export default class NogaPlanner extends Component {
 
     return false;
   };
+  executePlannerVoiceCommandByElementId = (elementID = "") => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    const normalizedElementId = String(elementID || "").trim();
+    if (!normalizedElementId) {
+      return false;
+    }
+    const targetButton = document.getElementById(normalizedElementId);
+    if (!targetButton || typeof targetButton.click !== "function") {
+      return false;
+    }
+    targetButton.click();
+    return true;
+  };
+  executePlannerVoiceCommandByIdTree = (idTree = []) => {
+    const normalizedTree = Array.isArray(idTree)
+      ? idTree.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [];
+    if (normalizedTree.length === 0) {
+      return false;
+    }
+    for (let index = normalizedTree.length - 1; index >= 0; index -= 1) {
+      if (this.executePlannerVoiceCommandByElementId(normalizedTree[index])) {
+        return true;
+      }
+    }
+    return false;
+  };
+  executePlannerVoiceActionByIdHints = (idTree = [], elementID = "") => {
+    const hints = [
+      ...((Array.isArray(idTree) ? idTree : []).map((entry) =>
+        this.normalizePlannerVoiceText(entry),
+      )),
+      this.normalizePlannerVoiceText(elementID),
+    ].filter(Boolean);
+    const joinedHints = hints.join(" ");
+    const hasCourseHint =
+      joinedHints.includes("courses") ||
+      joinedHints.includes("course") ||
+      joinedHints.includes("المقررات");
+    const hasLectureHint =
+      joinedHints.includes("lectures") || joinedHints.includes("المحاضرات");
+    const hasExamHint = joinedHints.includes("exams") || joinedHints.includes("الامتحانات");
+    const hasAddHint =
+      joinedHints.includes("add") || joinedHints.includes("اضاف") || joinedHints.includes("إضاف");
+
+    if (hasCourseHint) {
+      this.handleWrapperTabChange("courses");
+    } else if (hasLectureHint) {
+      this.handleWrapperTabChange("lectures");
+    } else if (hasExamHint) {
+      this.handleWrapperTabChange("exams");
+    }
+    if (hasAddHint) {
+      if (hasExamHint) {
+        this.openAddExamForm("Add");
+      } else {
+        this.handleMiniBarAction();
+      }
+      return true;
+    }
+    return false;
+  };
   runPlannerVoiceCommand = (rawTranscript = "") => {
     const transcript = this.normalizePlannerVoiceText(rawTranscript);
     if (!transcript) {
       return;
     }
-    const customEntries = Array.isArray(this.state?.plannerSelectSettings?.voiceCommands)
+    const customEntries = Array.isArray(
+      this.state?.plannerSelectSettings?.voiceCommands,
+    )
       ? this.state.plannerSelectSettings.voiceCommands
       : [];
-    const matchedEntry = customEntries
+    const normalizedEntries = customEntries
       .map((entry) => ({
         entry,
-        normalizedCommand: this.normalizePlannerVoiceText(entry?.command || ""),
+        normalizedCommand: this.normalizePlannerVoiceText(
+          entry?.voiceCommand || entry?.command || "",
+        ),
       }))
-      .filter((entry) => entry.normalizedCommand)
-      .sort((first, second) => second.normalizedCommand.length - first.normalizedCommand.length)
-      .find((entry) => transcript.includes(entry.normalizedCommand));
+      .filter((entry) => entry.normalizedCommand);
+    const matchedEntry =
+      normalizedEntries.find(
+        (entry) => transcript === entry.normalizedCommand,
+      ) ||
+      normalizedEntries
+        .sort(
+          (first, second) =>
+            second.normalizedCommand.length - first.normalizedCommand.length,
+        )
+        .find((entry) => transcript.includes(entry.normalizedCommand));
+    if (!matchedEntry?.entry) {
+      this.props.serverReply(`Voice: no match for "${transcript}"`);
+      return;
+    }
     if (matchedEntry?.entry) {
-      this.executePlannerVoiceAction(
-        matchedEntry.entry?.tab || "",
-        matchedEntry.entry?.button || "",
+      const idTree = Array.isArray(matchedEntry.entry?.idTree)
+        ? matchedEntry.entry.idTree
+        : [];
+      const elementId = String(matchedEntry.entry?.elementID || "").trim();
+      this.props.serverReply(
+        `Voice matched "${matchedEntry.normalizedCommand}" | elementID="${elementId || "-"}" | idTree=[${idTree.join(" > ")}]`,
       );
+      const didRunByElementId = this.executePlannerVoiceCommandByElementId(
+        matchedEntry.entry?.elementID,
+      );
+      if (didRunByElementId) {
+        this.props.serverReply("Voice executed by elementID click.");
+        return;
+      }
+      const didRunByIdTree = this.executePlannerVoiceCommandByIdTree(idTree);
+      if (didRunByIdTree) {
+        this.props.serverReply("Voice executed by idTree id click.");
+        return;
+      }
+      const didRunByIdHints = this.executePlannerVoiceActionByIdHints(
+        idTree,
+        matchedEntry.entry?.elementID,
+      );
+      if (didRunByIdHints) {
+        this.props.serverReply("Voice executed by id hints fallback.");
+        return;
+      }
+      const idTreeTabLabel =
+        idTree.find((entry) => this.mapVoiceTabToPlannerTab(entry)) || "";
+      const fallbackButtonLabel =
+        idTree[idTree.length - 1] ||
+        matchedEntry.entry?.button ||
+        matchedEntry.entry?.elementID ||
+        "";
+      this.executePlannerVoiceAction(
+        idTreeTabLabel || matchedEntry.entry?.tab || "",
+        fallbackButtonLabel,
+      );
+      this.props.serverReply("Voice executed by legacy tab/button fallback.");
     }
   };
   syncPlannerVoiceControl = () => {
@@ -5289,7 +6257,7 @@ export default class NogaPlanner extends Component {
     });
     try {
       const response = await fetch(
-        apiUrl("/api/user/update/") + this.props.state.my_id,
+        apiUrl("/api/user/planner-courses/") + this.props.state.my_id,
         {
           method: "GET",
           mode: "cors",
@@ -5305,8 +6273,7 @@ export default class NogaPlanner extends Component {
         throw new Error(`Failed to retrieve courses: ${response.status}`);
       }
       const payload = await response.json();
-      const memory = normalizeMemoryPayload(payload);
-      const nextCourses = getSafePlannerCourses(memory);
+      const nextCourses = Array.isArray(payload?.courses) ? payload.courses : [];
       if (!this.isComponentMounted) {
         return;
       }
@@ -5726,3 +6693,6 @@ export const getPlannerMusicSnapshot = () => ({});
 export const playNextSharedPlannerMusicTrack = () => {};
 export const playPreviousSharedPlannerMusicTrack = () => {};
 export const toggleSharedPlannerMusic = () => {};
+
+
+

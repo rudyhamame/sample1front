@@ -139,6 +139,46 @@ body.dark #server_answer_message.server_answer_message--idle {
   opacity: 0.72;
 }
 
+#server_answer_voicePromptWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+#server_answer_voicePromptMeta {
+  font-size: 0.72rem;
+  color: #6d3f49;
+  white-space: nowrap;
+}
+
+#server_answer_voicePromptInput {
+  flex: 1 1 auto;
+  min-width: 140px;
+  border: 1px solid rgba(132, 27, 45, 0.45);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #2f1a1e;
+  font-size: 0.72rem;
+}
+
+#server_answer_voicePromptSubmit,
+#server_answer_voicePromptCancel {
+  border: 1px solid rgba(132, 27, 45, 0.55);
+  border-radius: 8px;
+  padding: 3px 8px;
+  background: #ef0662;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+#server_answer_voicePromptCancel {
+  background: #8e5866;
+}
+
 .server_answer_locale_button {
   margin-left: auto;
   flex: 0 0 auto;

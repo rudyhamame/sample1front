@@ -17,6 +17,12 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   );
   const [isHomeNogaVideoMinimized, setIsHomeNogaVideoMinimized] =
     React.useState(false);
+  const [voicePromptState, setVoicePromptState] = React.useState({
+    isOpen: false,
+    tab: "",
+    button: "",
+    command: "",
+  });
   const currentPath =
     typeof window !== "undefined" ? window.location.pathname : "";
   const isHomeNogaFooterRoute =
@@ -117,6 +123,68 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
 
     return () => observer.disconnect();
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const handleOpenPrompt = (event) => {
+      const detail =
+        event?.detail && typeof event.detail === "object" ? event.detail : {};
+      setVoicePromptState({
+        isOpen: true,
+        tab: String(detail?.tab || "").trim(),
+        button: String(detail?.button || "").trim(),
+        command: String(detail?.command || "").trim(),
+      });
+    };
+    window.addEventListener(
+      "noga-voice-command-prompt-open",
+      handleOpenPrompt,
+    );
+    return () => {
+      window.removeEventListener(
+        "noga-voice-command-prompt-open",
+        handleOpenPrompt,
+      );
+    };
+  }, []);
+
+  const submitVoicePrompt = () => {
+    const command = String(voicePromptState?.command || "").trim();
+    if (!voicePromptState?.isOpen || !command) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("noga-voice-command-prompt-submit", {
+          detail: {
+            tab: String(voicePromptState?.tab || "").trim(),
+            button: String(voicePromptState?.button || "").trim(),
+            command,
+          },
+        }),
+      );
+    }
+    setVoicePromptState({
+      isOpen: false,
+      tab: "",
+      button: "",
+      command: "",
+    });
+  };
+
+  const cancelVoicePrompt = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("noga-voice-command-prompt-cancel"));
+    }
+    setVoicePromptState({
+      isOpen: false,
+      tab: "",
+      button: "",
+      command: "",
+    });
+  };
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -257,7 +325,49 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
                 : ""
             }
           >
-            {appState.server_answer}
+            {voicePromptState?.isOpen ? (
+              <span id="server_answer_voicePromptWrap">
+                <span id="server_answer_voicePromptMeta">
+                  {`${voicePromptState?.tab || "NogaPlanner"} • ${
+                    voicePromptState?.button || "-"
+                  }`}
+                </span>
+                <input
+                  id="server_answer_voicePromptInput"
+                  type="text"
+                  value={voicePromptState.command}
+                  onChange={(event) =>
+                    setVoicePromptState((previousState) => ({
+                      ...previousState,
+                      command: event.target.value,
+                    }))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      submitVoicePrompt();
+                    }
+                  }}
+                  placeholder="اكتب الأمر الصوتي"
+                />
+                <button
+                  id="server_answer_voicePromptSubmit"
+                  type="button"
+                  onClick={submitVoicePrompt}
+                >
+                  حفظ
+                </button>
+                <button
+                  id="server_answer_voicePromptCancel"
+                  type="button"
+                  onClick={cancelVoicePrompt}
+                >
+                  إلغاء
+                </button>
+              </span>
+            ) : (
+              appState.server_answer
+            )}
           </p>
         </div>
       </div>

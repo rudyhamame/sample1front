@@ -2222,7 +2222,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                 }
                 alt={NOGAPLANNER_TEXT.common.appEyebrow}
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
                 decoding="async"
               />
             ) : (
