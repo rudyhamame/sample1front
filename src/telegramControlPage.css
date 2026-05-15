@@ -260,6 +260,53 @@
   gap: 10px;
 }
 
+.telegramControlPage_messageTypeTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+}
+
+.telegramControlPage_streamToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 14px 10px;
+}
+
+.telegramControlPage_streamInterval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telegramControlPage_streamInterval .telegramControlPage_input {
+  min-width: 142px;
+  padding: 4px 8px;
+}
+
+.telegramControlPage_streamIntervalDash {
+  color: rgba(22, 72, 80, 0.8);
+  font-weight: 700;
+}
+
+.telegramControlPage_messageTypeTab {
+  border: 1px solid rgba(102, 140, 149, 0.34);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(22, 72, 80, 0.9);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.telegramControlPage_messageTypeTab.is-active {
+  background: rgba(28, 199, 180, 0.18);
+  border-color: rgba(20, 136, 122, 0.5);
+  color: rgba(15, 87, 78, 0.98);
+}
+
 .telegramControlPage_predictionTable td,
 .telegramControlPage_predictionTable th {
   vertical-align: top;
@@ -1136,10 +1183,24 @@
   background: rgba(255, 255, 255, 0.96);
 }
 
+.telegramControlPage_scopeMiniBar--inline {
+  position: absolute;
+  top: -34px;
+  inset-inline-start: 0;
+  z-index: 9;
+  margin-bottom: 0;
+}
+
 .telegramControlPage_scopeMiniBar--floating {
   position: absolute;
   z-index: 8;
   transform: translateY(-100%);
+}
+
+.telegramControlPage_scopeGroupCell {
+  position: relative;
+  vertical-align: top;
+  padding-top: 34px;
 }
 
 .telegramControlPage_scopeMiniBarButton {
@@ -1298,12 +1359,72 @@
 }
 
 .telegramControlPage_stream {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(220px, 0.75fr);
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-height: 0;
   overflow: visible;
+}
+
+.telegramControlPage_streamMessagesPane {
+  min-height: 0;
+}
+
+.telegramControlPage_streamMembersPane {
+  min-height: 0;
+  border: 1px solid rgba(112, 158, 168, 0.18);
+  border-radius: 12px;
+  background: rgba(246, 251, 251, 0.82);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.telegramControlPage_streamMembersTitle {
+  margin: 0;
+  color: rgba(17, 72, 81, 0.9);
+  font-size: 0.72rem;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.telegramControlPage_streamMembersList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.telegramControlPage_streamMemberItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(112, 158, 168, 0.14);
+}
+
+.telegramControlPage_streamMemberName {
+  color: rgba(16, 63, 71, 0.94);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.telegramControlPage_streamMemberRole,
+.telegramControlPage_streamMemberCount {
+  color: rgba(24, 113, 118, 0.8);
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .telegramControlPage_dayGroup {
@@ -1448,4 +1569,14 @@
   color: rgba(24, 113, 118, 0.72);
   font-size: 0.62rem;
   font-family: "IBM Plex Mono", monospace;
+}
+
+.telegramControlPage_messagePhoto {
+  display: block;
+  width: min(100%, 360px);
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(95, 138, 148, 0.22);
+  margin-top: 8px;
 }

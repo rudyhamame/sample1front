@@ -2794,6 +2794,7 @@ class App extends React.Component {
                 memory={this.memory}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
+                serverReply={this.serverReply}
               />
             </main>
             {showServerAnswerFooter ? (

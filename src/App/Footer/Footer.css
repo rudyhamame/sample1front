@@ -510,4 +510,34 @@ body:not(.dark) #server_answer.server_answer--home #server_answer_musicTrack {
   margin-top: 0;
   flex: 0 0 auto;
   align-self: stretch;
+  background: linear-gradient(
+    180deg,
+    rgba(243, 251, 252, 0.98) 0%,
+    rgba(223, 239, 241, 0.96) 56%,
+    rgba(202, 228, 231, 0.94) 100%
+  );
+  border-top: 1px solid rgba(48, 96, 108, 0.22);
+}
+
+#server_answer.server_answer--telegram #server_answer_message {
+  color: rgba(19, 56, 66, 0.94);
+  text-shadow: none;
+}
+
+#server_answer.server_answer--telegram #server_answer_message.server_answer_message--idle {
+  color: rgba(28, 72, 83, 0.72);
+}
+
+#server_answer.server_answer--telegram .server_answer_locale_button,
+#server_answer.server_answer--telegram .server_answer_noga_playerButton {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(40, 98, 110, 0.28);
+  color: rgba(19, 60, 70, 0.92);
+}
+
+#server_answer.server_answer--telegram .server_answer_locale_button:hover:not(:disabled),
+#server_answer.server_answer--telegram .server_answer_noga_playerButton:hover:not(:disabled) {
+  background: rgba(226, 244, 246, 0.98);
+  border-color: rgba(32, 121, 135, 0.44);
+  color: rgba(13, 74, 84, 0.96);
 }
