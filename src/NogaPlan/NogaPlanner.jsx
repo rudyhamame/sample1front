@@ -259,10 +259,24 @@ export default class NogaPlanner extends Component {
   };
   handleWrapperTabChange = (tab) => {
     const nextWrapperTab =
-      tab === "exams" ? "exams" : tab === "lectures" ? "lectures" : "courses";
+      tab === "settings"
+        ? "settings"
+        : tab === "exams"
+          ? "exams"
+          : tab === "lectures"
+            ? "lectures"
+            : "courses";
     this.setState({
       wrapperTab: nextWrapperTab,
-      plannerTab: nextWrapperTab === "lectures" ? "lectures" : "courses",
+      plannerTab:
+        nextWrapperTab === "lectures"
+          ? "lectures"
+          : nextWrapperTab === "exams"
+            ? "exams"
+            : nextWrapperTab === "settings"
+              ? "settings"
+              : "courses",
+      plannerSettingsVisible: nextWrapperTab === "settings",
       deleteSelectionMode: false,
       deleteSelectionIds: [],
       inlineCourseRowVisible: false,
@@ -1477,6 +1491,88 @@ export default class NogaPlanner extends Component {
       message: String(payload?.message || "").trim(),
     };
   };
+  persistPlannerSettingsPatch = async (settingsPatch = {}) => {
+    const userId = String(this.props.state?.my_id || "").trim();
+    const token = String(this.props.state?.token || "").trim();
+    if (!userId || !token) {
+      throw new Error("Missing auth context for planner settings save.");
+    }
+    const response = await fetch(apiUrl("/api/user/studyOrganizer/settings/") + userId, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        settingsPatch,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const backendMessage = String(payload?.message || "").trim();
+      throw new Error(
+        backendMessage || `Planner settings patch save failed: ${response.status}`,
+      );
+    }
+    return {
+      settings: payload?.settings || this.state?.plannerSelectSettings || {},
+      message: String(payload?.message || "").trim(),
+    };
+  };
+  persistPlannerFieldDefaults = async (fieldDefaults = {}) => {
+    const userId = String(this.props.state?.my_id || "").trim();
+    const token = String(this.props.state?.token || "").trim();
+    if (!userId || !token) {
+      throw new Error("Missing auth context for planner defaults save.");
+    }
+    const normalizedFieldDefaultsEntries = Object.entries(
+      fieldDefaults && typeof fieldDefaults === "object" ? fieldDefaults : {},
+    )
+      .map(([fieldKey, value]) => ({
+        fieldKey: String(fieldKey || "").trim(),
+        value: String(value ?? "").trim(),
+      }))
+      .filter((entry) => Boolean(entry.fieldKey));
+    const response = await fetch(
+      apiUrl("/api/user/studyOrganizer/settings/defaults/") + userId,
+      {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fieldDefaults: normalizedFieldDefaultsEntries,
+        }),
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const backendMessage = String(payload?.message || "").trim();
+      throw new Error(
+        backendMessage || `Planner defaults save failed: ${response.status}`,
+      );
+    }
+    return {
+      settings: payload?.settings || this.state?.plannerSelectSettings || {},
+      fieldDefaults:
+        Array.isArray(payload?.fieldDefaults)
+          ? Object.fromEntries(
+              payload.fieldDefaults
+                .map((entry) => [
+                  String(entry?.fieldKey || "").trim(),
+                  String(entry?.value || "").trim(),
+                ])
+                .filter(([fieldKey]) => Boolean(fieldKey)),
+            )
+          : payload?.fieldDefaults && typeof payload.fieldDefaults === "object"
+            ? payload.fieldDefaults
+            : {},
+      message: String(payload?.message || "").trim(),
+    };
+  };
   persistPlannerPredictionToolInputs = async (entries = []) => {
     const userId = String(this.props.state?.my_id || "").trim();
     const token = String(this.props.state?.token || "").trim();
@@ -1574,7 +1670,7 @@ export default class NogaPlanner extends Component {
       this.setState({
         plannerSelectSettings: nextSettings,
         plannerSettingsDefaultSection: String(
-          nextSettings?.defaultSection || "المقررات",
+          this.state?.plannerSettingsDefaultSection || "المقررات",
         ).trim() || "المقررات",
         plannerSettingsPredictionToolEnabled:
           typeof dbPredictionTool?.enabled === "boolean"
@@ -1891,32 +1987,61 @@ export default class NogaPlanner extends Component {
     return persistedSettings;
   };
   handlePlannerFieldDefaultChange = async (fieldKey, nextValue) => {
-    return this.updatePlannerSelectSettings((previousSettings) => ({
-      ...previousSettings,
-      fieldDefaults: {
-        ...(previousSettings.fieldDefaults || {}),
-        [fieldKey]: nextValue,
-      },
-    }));
+    const normalizedFieldKey = String(fieldKey || "").trim();
+    const normalizedFieldValue = String(nextValue ?? "").trim();
+    if (!normalizedFieldKey) {
+      return this.state?.plannerSelectSettings || null;
+    }
+    const previousSettings = normalizePlannerSelectSettings(
+      this.state?.plannerSelectSettings,
+    );
+    const nextDefaults = {
+      ...(previousSettings?.fieldDefaults || {}),
+      [normalizedFieldKey]: normalizedFieldValue,
+    };
+    let persistedSettings = previousSettings;
+    let backendReplyMessage = "";
+    try {
+      const saveResult = await this.persistPlannerFieldDefaults(nextDefaults);
+      persistedSettings =
+        normalizePlannerSelectSettings(saveResult?.settings) || previousSettings;
+      backendReplyMessage = String(saveResult?.message || "").trim();
+    } catch (error) {
+      const rawFailureMessage = String(
+        error?.message || NOGAPLANNER_TEXT.messages.settingsSaveFailed,
+      ).trim();
+      const failureMessage =
+        rawFailureMessage.toLowerCase().includes("failed to fetch")
+          ? NOGAPLANNER_TEXT.messages.settingsServerUnreachable
+          : rawFailureMessage;
+      this.props.serverReply(failureMessage);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: failureMessage,
+      });
+      return previousSettings;
+    }
+    this.setState({
+      plannerSelectSettings: persistedSettings,
+      plannerSettingsSaveStatus: "success",
+      plannerSettingsSaveMessage:
+        backendReplyMessage || NOGAPLANNER_TEXT.messages.settingsSaved,
+    });
+    this.props.serverReply(
+      backendReplyMessage || NOGAPLANNER_TEXT.messages.settingsSaved,
+    );
+    return persistedSettings;
   };
   handlePlannerSettingsDefaultSectionChange = (nextSection) => {
     const normalizedSection =
       String(nextSection || "").trim() || "المقررات";
-    this.setState(
-      {
-        plannerSettingsDefaultSection: normalizedSection,
-        plannerSettingsDefaultFieldKey: "",
-        plannerSettingsDefaultValueInput: "",
-        plannerSettingsEditingDefaultFieldKey: "",
-        plannerSettingsSelectedDefaultFieldKey: "",
-      },
-      () => {
-        this.updatePlannerSelectSettings((previousSettings) => ({
-          ...previousSettings,
-          defaultSection: normalizedSection,
-        }));
-      },
-    );
+    this.setState({
+      plannerSettingsDefaultSection: normalizedSection,
+      plannerSettingsDefaultFieldKey: "",
+      plannerSettingsDefaultValueInput: "",
+      plannerSettingsEditingDefaultFieldKey: "",
+      plannerSettingsSelectedDefaultFieldKey: "",
+    });
   };
   addOrUpdatePlannerDefaultField = async () => {
     const fieldKey = String(
@@ -1985,23 +2110,46 @@ export default class NogaPlanner extends Component {
     if (sectionFieldKeys.length === 0) {
       return;
     }
-    await this.updatePlannerSelectSettings((previousSettings) => {
-      const currentDefaults =
-        previousSettings?.fieldDefaults &&
-        typeof previousSettings.fieldDefaults === "object"
-          ? previousSettings.fieldDefaults
-          : {};
-      const nextDefaults = {
-        ...currentDefaults,
-      };
-      sectionFieldKeys.forEach((fieldKey) => {
-        nextDefaults[fieldKey] = "";
-      });
-      return {
-        ...previousSettings,
-        fieldDefaults: nextDefaults,
-      };
+    const currentSettings = normalizePlannerSelectSettings(
+      this.state?.plannerSelectSettings,
+    );
+    const currentDefaults =
+      currentSettings?.fieldDefaults &&
+      typeof currentSettings.fieldDefaults === "object"
+        ? currentSettings.fieldDefaults
+        : {};
+    const nextDefaults = {
+      ...currentDefaults,
+    };
+    sectionFieldKeys.forEach((fieldKey) => {
+      nextDefaults[String(fieldKey || "").trim()] = "";
     });
+    try {
+      const saveResult = await this.persistPlannerFieldDefaults(nextDefaults);
+      const persistedSettings = normalizePlannerSelectSettings(
+        saveResult?.settings,
+      );
+      this.setState({
+        plannerSelectSettings: persistedSettings,
+        plannerSettingsSaveStatus: "success",
+        plannerSettingsSaveMessage:
+          String(saveResult?.message || "").trim() ||
+          NOGAPLANNER_TEXT.messages.settingsSaved,
+      });
+    } catch (error) {
+      const rawFailureMessage = String(
+        error?.message || NOGAPLANNER_TEXT.messages.settingsSaveFailed,
+      ).trim();
+      const failureMessage =
+        rawFailureMessage.toLowerCase().includes("failed to fetch")
+          ? NOGAPLANNER_TEXT.messages.settingsServerUnreachable
+          : rawFailureMessage;
+      this.props.serverReply(failureMessage);
+      this.setState({
+        plannerSettingsSaveStatus: "error",
+        plannerSettingsSaveMessage: failureMessage,
+      });
+    }
     this.setState({
       plannerSettingsSelectedDefaultFieldKey: "",
       plannerSettingsEditingDefaultFieldKey: "",
@@ -3021,8 +3169,10 @@ export default class NogaPlanner extends Component {
       ).trim();
       nextSettings.fieldDefaults = Object.fromEntries(
         Object.entries(currentFieldDefaults).map(([fieldKey, fieldValue]) => [
-          fieldKey,
-          String(fieldValue || "").trim() === removedValue ? "" : fieldValue,
+          String(fieldKey || "").trim(),
+          String(fieldValue || "").trim() === removedValue
+            ? ""
+            : String(fieldValue || "").trim(),
         ]),
       );
       return nextSettings;
@@ -3197,7 +3347,10 @@ export default class NogaPlanner extends Component {
               fieldConfig?.optionsKey === "locationBuildingOptions") ||
             (listKey === "locationRoomOptions" &&
               fieldConfig?.optionsKey === "locationRoomOptions");
-          return [fieldKey, shouldClear ? "" : fieldValue];
+          return [
+            String(fieldKey || "").trim(),
+            shouldClear ? "" : String(fieldValue || "").trim(),
+          ];
         }),
       );
       return nextSettings;
@@ -3555,12 +3708,125 @@ export default class NogaPlanner extends Component {
     });
   };
   handleInlineLectureDraftChange = (fieldName, nextValue) => {
-    this.setState((previousState) => ({
-      inlineLectureDraft: {
-        ...previousState.inlineLectureDraft,
-        [fieldName]: nextValue,
-      },
-    }));
+    this.setState((previousState) => {
+      const hasSelectionContext =
+        String(previousState.inlineLectureDraft?.lecture_courseId || "").trim()
+          .length > 0 &&
+        String(previousState.inlineLectureDraft?.lecture_componentId || "").trim()
+          .length > 0;
+      const requiresSelectionContext = new Set([
+        "lecture_name",
+        "lecture_instructors",
+        "lecture_writers",
+        "lecture_date",
+        "lecture_volume_total",
+        "lecture_volume_done",
+        "lecture_volume_remaining",
+      ]);
+      if (
+        requiresSelectionContext.has(String(fieldName || "").trim()) &&
+        !hasSelectionContext
+      ) {
+        return null;
+      }
+      return {
+        inlineLectureDraft: {
+          ...previousState.inlineLectureDraft,
+          [fieldName]: nextValue,
+        },
+      };
+    });
+  };
+  handleInlineLectureVolumeTotalChange = (nextValue) => {
+    const normalizedTotal = Math.max(0, Number(nextValue || 0) || 0);
+    this.setState((previousState) => {
+      const hasSelectionContext =
+        String(previousState.inlineLectureDraft?.lecture_courseId || "").trim()
+          .length > 0 &&
+        String(previousState.inlineLectureDraft?.lecture_componentId || "").trim()
+          .length > 0;
+      if (!hasSelectionContext) {
+        return null;
+      }
+      const previousFinished = Array.isArray(
+        previousState.inlineLectureDraft?.lecture_pagesFinished,
+      )
+        ? previousState.inlineLectureDraft.lecture_pagesFinished
+        : [];
+      const lecturePagesFinished = previousFinished
+        .map((entry) => Number(entry))
+        .filter(
+          (pageNumber) =>
+            Number.isFinite(pageNumber) &&
+            pageNumber >= 1 &&
+            pageNumber <= normalizedTotal,
+        )
+        .sort((left, right) => left - right);
+      return {
+        inlineLectureDraft: {
+          ...previousState.inlineLectureDraft,
+          lecture_volume_total: nextValue,
+          lecture_pagesFinished: lecturePagesFinished,
+          lecture_volume_done: String(lecturePagesFinished.length),
+          lecture_volume_remaining: String(
+            Math.max(normalizedTotal - lecturePagesFinished.length, 0),
+          ),
+        },
+      };
+    });
+  };
+  toggleInlineLecturePageFinished = (pageNumber) => {
+    const normalizedPage = Number(pageNumber || 0);
+    if (!Number.isFinite(normalizedPage) || normalizedPage < 1) {
+      return;
+    }
+    this.setState((previousState) => {
+      const hasSelectionContext =
+        String(previousState.inlineLectureDraft?.lecture_courseId || "").trim()
+          .length > 0 &&
+        String(previousState.inlineLectureDraft?.lecture_componentId || "").trim()
+          .length > 0;
+      if (!hasSelectionContext) {
+        return null;
+      }
+      const total = Math.max(
+        0,
+        Number(previousState.inlineLectureDraft?.lecture_volume_total || 0) || 0,
+      );
+      if (normalizedPage > total) {
+        return null;
+      }
+      const previousFinished = Array.isArray(
+        previousState.inlineLectureDraft?.lecture_pagesFinished,
+      )
+        ? previousState.inlineLectureDraft.lecture_pagesFinished
+        : [];
+      const nextSet = new Set(
+        previousFinished
+          .map((entry) => Number(entry))
+          .filter(
+            (entry) => Number.isFinite(entry) && entry >= 1 && entry <= total,
+          ),
+      );
+      if (nextSet.has(normalizedPage)) {
+        nextSet.delete(normalizedPage);
+      } else {
+        nextSet.add(normalizedPage);
+      }
+      const lecturePagesFinished = Array.from(nextSet).sort(
+        (left, right) => left - right,
+      );
+      return {
+        inlineLectureDraft: {
+          ...previousState.inlineLectureDraft,
+          lecture_pagesFinished: lecturePagesFinished,
+          lecture_volume_done: String(lecturePagesFinished.length),
+          lecture_volume_remaining: String(
+            Math.max(total - lecturePagesFinished.length, 0),
+          ),
+        },
+      };
+    });
   };
   togglePlannerSettings = () => {
     this.setState((previousState) => ({
@@ -3580,10 +3846,6 @@ export default class NogaPlanner extends Component {
       (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
         (course) => String(course?._id || "").trim() === selectedCourseId,
       ) || null;
-    const componentOptions = this.getLectureComponentOptionsByCourseId(
-      selectedCourseId,
-    );
-    const firstComponent = componentOptions[0] || null;
     const defaultCourseLabel = selectedCourse
       ? buildCourseLectureMatchLabel(selectedCourse)
       : "";
@@ -3592,8 +3854,8 @@ export default class NogaPlanner extends Component {
       inlineLectureDraft: this.applyPlannerFieldDefaultsToDraft("inlineLecture", {
         ...getDefaultInlineLectureDraft(),
         lecture_courseId: selectedCourseId,
-        lecture_componentId: firstComponent ? firstComponent.id : "",
-        lecture_component: firstComponent ? firstComponent.label : "",
+        lecture_componentId: "",
+        lecture_component: "",
         lecture_course: defaultCourseLabel,
       }),
       selectedTabItemId: null,
@@ -3730,10 +3992,6 @@ export default class NogaPlanner extends Component {
       (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
         (course) => String(course?._id || "").trim() === normalizedCourseId,
       ) || null;
-    const components = this.getLectureComponentOptionsByCourseId(
-      normalizedCourseId,
-    );
-    const firstComponent = components[0] || null;
     this.setState((previousState) => ({
       inlineLectureDraft: {
         ...previousState.inlineLectureDraft,
@@ -3741,120 +3999,10 @@ export default class NogaPlanner extends Component {
         lecture_course: selectedCourse
           ? buildCourseLectureMatchLabel(selectedCourse)
           : "",
-        lecture_componentId: firstComponent ? firstComponent.id : "",
-        lecture_component: firstComponent ? firstComponent.label : "",
+        lecture_componentId: "",
+        lecture_component: "",
       },
     }));
-  };
-  completeInlineLectureByAi = async () => {
-    const userId = String(this.props?.state?.my_id || "").trim();
-    const token = String(this.props?.state?.token || "").trim();
-    const selectedCourseId = String(
-      this.state?.inlineLectureDraft?.lecture_courseId || "",
-    ).trim();
-    const selectedComponentId = String(
-      this.state?.inlineLectureDraft?.lecture_componentId || "",
-    ).trim();
-    if (!userId || !token) {
-      this.props.serverReply("AI preview failed: missing auth context.");
-      return;
-    }
-    const selectedCourse =
-      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
-        (course) => String(course?._id || "").trim() === selectedCourseId,
-      ) || null;
-    const courseName = String(selectedCourse?.course_name || "").trim();
-    const componentOptions =
-      this.getLectureComponentOptionsByCourseId(selectedCourseId);
-    const selectedComponent =
-      componentOptions.find(
-        (entry) => String(entry?.id || "").trim() === selectedComponentId,
-      ) || null;
-    const courseComponent = String(selectedComponent?.label || "").trim();
-    if (!courseName) {
-      this.props.serverReply("Please select course name first.");
-      return;
-    }
-    if (!courseComponent) {
-      this.props.serverReply("Please select component class first.");
-      return;
-    }
-    this.setState({
-      inlineLectureAiCompleting: true,
-    });
-    try {
-      const response = await fetch(apiUrl("/api/telegram/ai/lecture-suggestions"), {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          allGroups: true,
-          courseName,
-          courseComponent,
-          chatLanguage: "ar",
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        this.props.serverReply(
-          String(payload?.message || `AI preview failed: ${response.status}`),
-        );
-        return;
-      }
-      const lectures = Array.isArray(payload?.lectures) ? payload.lectures : [];
-      const firstSuggestion = lectures[0] || null;
-      if (!firstSuggestion) {
-        this.props.serverReply("No AI suggestions found for this selection.");
-        return;
-      }
-      const lecturePayload =
-        firstSuggestion?.lecture && typeof firstSuggestion.lecture === "object"
-          ? firstSuggestion.lecture
-          : firstSuggestion;
-      const lectureName = String(
-        lecturePayload?.lecture_name || firstSuggestion?.lectureName || "",
-      ).trim();
-      const instructors = Array.isArray(lecturePayload?.lecture_instructors)
-        ? lecturePayload.lecture_instructors
-        : Array.isArray(firstSuggestion?.instructors)
-          ? firstSuggestion.instructors
-          : [];
-      const writers = Array.isArray(lecturePayload?.lecture_writers)
-        ? lecturePayload.lecture_writers
-        : Array.isArray(firstSuggestion?.writer)
-          ? firstSuggestion.writer
-          : [];
-      const lectureDate = String(
-        lecturePayload?.lecture_date || firstSuggestion?.publishDate || "",
-      ).trim();
-      this.setState((previousState) => ({
-        inlineLectureDraft: {
-          ...previousState.inlineLectureDraft,
-          lecture_name: lectureName || previousState.inlineLectureDraft?.lecture_name || "",
-          lecture_instructors:
-            formatPlannerTextList(instructors) ||
-            previousState.inlineLectureDraft?.lecture_instructors ||
-            "",
-          lecture_writers:
-            formatPlannerTextList(writers) ||
-            previousState.inlineLectureDraft?.lecture_writers ||
-            "",
-          lecture_date: lectureDate || previousState.inlineLectureDraft?.lecture_date || "",
-        },
-      }));
-      this.props.serverReply(`AI preview ready: ${lectures.length} suggestion(s).`);
-    } catch (error) {
-      this.props.serverReply(
-        String(error?.message || "AI preview failed while fetching suggestions."),
-      );
-    } finally {
-      this.setState({
-        inlineLectureAiCompleting: false,
-      });
-    }
   };
   handleInlineLectureContentFiles = (fileList) => {
     const files = Array.from(fileList || []);
@@ -3902,6 +4050,23 @@ export default class NogaPlanner extends Component {
     const contentUploads = Array.isArray(inlineLectureDraft?.lecture_contentUploads)
       ? inlineLectureDraft.lecture_contentUploads
       : [];
+    const totalVolume = Math.max(
+      0,
+      Number(inlineLectureDraft?.lecture_volume_total || 0) || 0,
+    );
+    const lecturePagesFinished = Array.isArray(
+      inlineLectureDraft?.lecture_pagesFinished,
+    )
+      ? inlineLectureDraft.lecture_pagesFinished
+          .map((entry) => Number(entry))
+          .filter(
+            (pageNumber) =>
+              Number.isFinite(pageNumber) &&
+              pageNumber >= 1 &&
+              pageNumber <= totalVolume,
+          )
+          .sort((left, right) => left - right)
+      : [];
     await this.addLecture({
       lecture_name: lectureName,
       lecture_course:
@@ -3918,7 +4083,18 @@ export default class NogaPlanner extends Component {
       lecture_writer: splitPlannerTextList(inlineLectureDraft?.lecture_writers),
       lecture_writers: splitPlannerTextList(inlineLectureDraft?.lecture_writers),
       lecture_date: String(inlineLectureDraft?.lecture_date || "").trim(),
-      lecture_length: contentUploads.length,
+      volume: {
+        total: totalVolume,
+        done: lecturePagesFinished.length,
+        remaining: Math.max(totalVolume - lecturePagesFinished.length, 0),
+      },
+      lecture_volume_total: totalVolume,
+      lecture_volume_done: lecturePagesFinished.length,
+      lecture_volume_remaining: Math.max(
+        totalVolume - lecturePagesFinished.length,
+        0,
+      ),
+      lecture_length: totalVolume,
       lecture_content: contentUploads.map((entry, index) => ({
         order: index + 1,
         name: String(entry?.name || "").trim(),
@@ -3926,7 +4102,7 @@ export default class NogaPlanner extends Component {
         bytes: Number(entry?.size) || 0,
       })),
       lecture_progress: {},
-      lecture_pagesFinished: [],
+      lecture_pagesFinished: lecturePagesFinished,
       lecture_outlines: [],
       lecture_corrections: [],
       lecture_partOfPlan: true,
@@ -5294,6 +5470,7 @@ export default class NogaPlanner extends Component {
     this.telegramPdfObjectUrl = "";
     this.telegramCourseSuggestionStatusTimeout = null;
     this.savedCourseFloatingBarRaf = null;
+    this.plannerAutoGeneratedIdCounter = 0;
     this.plannerVoiceRecognition = null;
     this.plannerVoiceStopRequested = false;
     this.plannerVoiceRestartTimeout = null;
@@ -5310,8 +5487,27 @@ export default class NogaPlanner extends Component {
     this.voiceCapturePressMeta = null;
     this.voiceCaptureSuppressClickElementId = "";
   }
+  assignMissingPlannerElementIds = () => {
+    const plannerRoot = this.plannerArticleRef?.current;
+    if (!plannerRoot || typeof plannerRoot.querySelectorAll !== "function") {
+      return;
+    }
+    if (!plannerRoot.id) {
+      plannerRoot.id = "nogaPlanner_article";
+    }
+    const elementsWithoutIds = plannerRoot.querySelectorAll("*:not([id])");
+    elementsWithoutIds.forEach((element) => {
+      const tagName = String(element?.tagName || "node").toLowerCase();
+      if (!tagName || tagName === "script" || tagName === "style") {
+        return;
+      }
+      this.plannerAutoGeneratedIdCounter += 1;
+      element.id = `nogaPlanner_auto_${tagName}_${this.plannerAutoGeneratedIdCounter}`;
+    });
+  };
   componentDidMount() {
     this.isComponentMounted = true;
+    this.assignMissingPlannerElementIds();
     this.loadPlannerInputHistory();
     const plannerArticleElement = this.plannerArticleRef?.current;
     if (plannerArticleElement) {
@@ -5381,6 +5577,7 @@ export default class NogaPlanner extends Component {
     this.syncPlannerVoiceControl();
   }
   componentDidUpdate(prevProps, prevState) {
+    this.assignMissingPlannerElementIds();
     if (
       this.props.state?.my_id &&
       prevProps.state?.my_id !== this.props.state?.my_id
@@ -6646,11 +6843,12 @@ export default class NogaPlanner extends Component {
       />
     );
   };
-  renderSelectedCourseExamBoard = () => {
+  renderSelectedCourseExamBoard = (embedded = false) => {
     return (
       <NogaPlannerExamBoardPanel
         planner={this}
         runtime={NOGAPLANNER_PANEL_RUNTIME}
+        embedded={embedded}
       />
     );
   };
@@ -6680,9 +6878,7 @@ export default class NogaPlanner extends Component {
           }}
         >
           {wrapperTab === "exams" || wrapperTab === "lectures" || wrapperTab === "courses"
-            ? wrapperTab === "exams"
-              ? this.renderSelectedCourseExamBoard()
-              : this.renderSavedCoursesColumn()
+            ? this.renderSavedCoursesColumn()
             : this.renderSavedCoursesColumn()}
         </article>
       </React.Fragment>

@@ -35,10 +35,17 @@ const readStoredStartMenuLayout = () => {
   }
 };
 
-const normalizeStartMenuLayout = (layout, appItemIds) => {
+const normalizeStartMenuLayout = (
+  layout,
+  appItemIds,
+  defaultSettingsItemIds = [],
+) => {
+  const safeDefaultSettingsItems = Array.isArray(defaultSettingsItemIds)
+    ? defaultSettingsItemIds.filter((itemId) => typeof itemId === "string")
+    : [];
   const fallbackLayout = {
     main: appItemIds,
-    settings: ["appHealth", "aiControl"],
+    settings: ["appHealth", "aiControl", ...safeDefaultSettingsItems],
   };
   const nextLayout = START_MENU_LISTS.reduce((lists, listId) => {
     const listItems = Array.isArray(layout?.[listId]) ? layout[listId] : [];
@@ -105,7 +112,13 @@ const SubApps = (props) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [startWindows, setStartWindows] = useState({});
   const [startMenuLayout, setStartMenuLayout] = useState(() =>
-    normalizeStartMenuLayout(readStoredStartMenuLayout(), []),
+    normalizeStartMenuLayout(
+      readStoredStartMenuLayout(),
+      [],
+      Array.isArray(props.startSettingsItemIds)
+        ? props.startSettingsItemIds
+        : [],
+    ),
   );
   const [draggedStartItem, setDraggedStartItem] = useState(null);
   const articleRef = useRef(null);
@@ -247,6 +260,10 @@ const SubApps = (props) => {
   const appItemIds = apps.map((app) => `app:${app.id}`);
   const actions = Array.isArray(props.startActions) ? props.startActions : [];
   const actionItemIds = actions.map((action) => `action:${action.id}`);
+  const startSettingsItemIds = Array.isArray(props.startSettingsItemIds)
+    ? props.startSettingsItemIds
+    : [];
+  const startSettingsLayoutKey = startSettingsItemIds.join("|");
   const startMenuItems = apps.reduce(
     (items, app) => ({
       ...items,
@@ -344,9 +361,9 @@ const SubApps = (props) => {
       normalizeStartMenuLayout(currentLayout, [
         ...appItemIds,
         ...actionItemIds,
-      ]),
+      ], startSettingsItemIds),
     );
-  }, [appLayoutKey, actionLayoutKey]);
+  }, [actionLayoutKey, appLayoutKey, startSettingsLayoutKey]);
 
   useEffect(() => {
     let shouldIgnore = false;
@@ -371,7 +388,7 @@ const SubApps = (props) => {
         const serverLayout = normalizeStartMenuLayout(data.startMenuLayout, [
           ...appItemIds,
           ...actionItemIds,
-        ]);
+        ], startSettingsItemIds);
         lastSavedStartMenuLayoutRef.current = JSON.stringify(serverLayout);
         setStartMenuLayout(serverLayout);
       })
@@ -385,7 +402,7 @@ const SubApps = (props) => {
     return () => {
       shouldIgnore = true;
     };
-  }, [authToken, appLayoutKey, actionLayoutKey, isStartMenuReady]);
+  }, [actionLayoutKey, appLayoutKey, authToken, isStartMenuReady, startSettingsLayoutKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

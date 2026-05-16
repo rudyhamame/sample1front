@@ -676,6 +676,10 @@ export const getDefaultInlineLectureDraft = () => ({
   lecture_courseId: "",
   lecture_componentId: "",
   lecture_component: "",
+  lecture_volume_total: "",
+  lecture_volume_done: "",
+  lecture_volume_remaining: "",
+  lecture_pagesFinished: [],
   lecture_name: "",
   lecture_instructors: "",
   lecture_writers: "",
@@ -1523,6 +1527,22 @@ export const PLANNER_FORM_FIELD_REGISTRY = {
   ],
   inlineLecture: [
     {
+      key: "inlineLecture.lecture_course",
+      formKey: "inlineLecture",
+      fieldName: "lecture_course",
+      label: NOGAPLANNER_TEXT.lectures.courseName,
+      control: "select",
+      options: [],
+    },
+    {
+      key: "inlineLecture.lecture_component",
+      formKey: "inlineLecture",
+      fieldName: "lecture_component",
+      label: NOGAPLANNER_TEXT.lectures.componentType,
+      control: "select",
+      optionsKey: "componentClassOptions",
+    },
+    {
       key: "inlineLecture.lecture_name",
       formKey: "inlineLecture",
       fieldName: "lecture_name",
@@ -1576,13 +1596,25 @@ export const PLANNER_DEFAULT_FIELD_REGISTRY = Object.values(
     : [],
 );
 
+export const NOGAPLANNER_TAB_SELECT_FIELDS = {
+  courses: getPlannerDefaultFieldsForForm("savedCourse").filter(
+    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
+  ),
+  lectures: getPlannerDefaultFieldsForForm("inlineLecture").filter(
+    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
+  ),
+  exams: getPlannerDefaultFieldsForForm("exam").filter(
+    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
+  ),
+  settings: [],
+};
+
 export const PLANNER_SELECT_SETTINGS_STORAGE_KEY =
   "nogaPlanner.selectSettings.v1";
 
 export const buildDefaultPlannerWeekdayOptions = () => [...WEEKDAY_OPTIONS];
 
 export const buildDefaultPlannerSelectSettings = () => ({
-  defaultSection: "المقررات",
   componentClassOptions: [...SAVED_COMPONENT_CLASS_OPTIONS],
   weekdayOptions: buildDefaultPlannerWeekdayOptions(),
   hourOptions: [...HOUR_OPTIONS],
@@ -1802,8 +1834,6 @@ export const normalizePlannerSelectSettings = (value) => {
       return accumulator;
     }, []);
   return {
-    defaultSection:
-      String(nextValue?.defaultSection || "").trim() || "المقررات",
     componentClassOptions: normalizePlannerSettingsStringList(
       nextValue.componentClassOptions,
       fallbackSettings.componentClassOptions,
@@ -1848,17 +1878,25 @@ export const normalizePlannerSelectSettings = (value) => {
       to: normalizedMessageTo,
     },
     fieldDefaults: {
-      ...(nextValue?.fieldDefaults &&
-      typeof nextValue.fieldDefaults === "object"
+      ...(Array.isArray(nextValue?.fieldDefaults)
         ? Object.fromEntries(
-            Object.entries(nextValue.fieldDefaults)
-              .map(([fieldKey, fieldValue]) => [
-                String(fieldKey || "").trim(),
-                String(fieldValue || "").trim(),
+            nextValue.fieldDefaults
+              .map((entry) => [
+                String(entry?.fieldKey || "").trim(),
+                String(entry?.value || "").trim(),
               ])
               .filter(([fieldKey]) => Boolean(fieldKey)),
           )
-        : {}),
+        : nextValue?.fieldDefaults && typeof nextValue.fieldDefaults === "object"
+          ? Object.fromEntries(
+              Object.entries(nextValue.fieldDefaults)
+                .map(([fieldKey, fieldValue]) => [
+                  String(fieldKey || "").trim(),
+                  String(fieldValue || "").trim(),
+                ])
+                .filter(([fieldKey]) => Boolean(fieldKey)),
+            )
+          : {}),
     },
     predictionTool: normalizedPredictionTool,
     voiceCommands: normalizedVoiceCommands,

@@ -20,7 +20,7 @@ const DEPENDENCY_OPTIONS = [
   { key: "important_messages", label: "Pins" },
 ];
 
-const TELEGRAM_MESSAGES_FETCH_LIMIT = "all";
+const TELEGRAM_MESSAGES_FETCH_LIMIT = 20;
 const TELEGRAM_MESSAGE_TYPE_TABS = [
   { key: "all", labelEn: "All", labelAr: "الكل" },
   { key: "texts", labelEn: "Texts", labelAr: "نصوص" },
@@ -28,6 +28,17 @@ const TELEGRAM_MESSAGE_TYPE_TABS = [
   { key: "videos", labelEn: "Videos", labelAr: "فيديو" },
   { key: "audios", labelEn: "Audios", labelAr: "صوتيات" },
   { key: "documents", labelEn: "Documents", labelAr: "ملفات" },
+];
+
+const TELEGRAM_DOCUMENT_TYPE_TABS = [
+  { key: "all", labelEn: "All", labelAr: "Ø§Ù„ÙƒÙ„" },
+  { key: "pdf", labelEn: "PDF", labelAr: "PDF" },
+  { key: "word", labelEn: "Word", labelAr: "Word" },
+  { key: "excel", labelEn: "Excel", labelAr: "Excel" },
+  { key: "powerpoint", labelEn: "PowerPoint", labelAr: "PowerPoint" },
+  { key: "archive", labelEn: "Archive", labelAr: "Ø£Ø±Ø´ÙŠÙ" },
+  { key: "code", labelEn: "Code", labelAr: "ÙƒÙˆØ¯" },
+  { key: "other", labelEn: "Other", labelAr: "Ø£Ø®Ø±Ù‰" },
 ];
 
 const classifyTelegramMemberRole = (sender = "") => {
@@ -43,7 +54,65 @@ const classifyTelegramMemberRole = (sender = "") => {
   }
   return "Member";
 };
+const classifyTelegramDocumentType = (message = {}) => {
+  const mime = String(message?.attachmentMimeType || "").toLowerCase();
+  const extension = String(message?.attachmentFileExtension || "")
+    .toLowerCase()
+    .replace(/^\./, "");
+  const fileName = String(message?.attachmentFileName || "").toLowerCase();
+  const ext =
+    extension ||
+    (fileName.includes(".") ? fileName.split(".").pop().trim() : "");
+
+  if (mime.includes("pdf") || ext === "pdf") return "pdf";
+  if (
+    mime.includes("word") ||
+    mime.includes("officedocument.wordprocessingml") ||
+    ext === "doc" ||
+    ext === "docx"
+  ) return "word";
+  if (
+    mime.includes("excel") ||
+    mime.includes("officedocument.spreadsheetml") ||
+    ext === "xls" ||
+    ext === "xlsx" ||
+    ext === "csv"
+  ) return "excel";
+  if (
+    mime.includes("powerpoint") ||
+    mime.includes("presentationml") ||
+    ext === "ppt" ||
+    ext === "pptx"
+  ) return "powerpoint";
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "archive";
+  if (
+    [
+      "js",
+      "ts",
+      "jsx",
+      "tsx",
+      "py",
+      "java",
+      "cpp",
+      "c",
+      "cs",
+      "go",
+      "php",
+      "rb",
+      "rs",
+      "json",
+      "xml",
+      "yml",
+      "yaml",
+      "sql",
+      "html",
+      "css",
+    ].includes(ext)
+  ) return "code";
+  return "other";
+};
 const ALL_IMPORTANT_MESSAGES_VALUE = "__all_important_messages__";
+const TELEGRAM_AI_ENDPOINTS_ENABLED = false;
 const CONCEPT_PROGRESS_STAGES = {
   lecture: [
     "Preparing stored Telegram message context...",
@@ -366,28 +435,7 @@ const getTelegramGroupOptionGroups = (
   options = [],
   configuredReference = "",
 ) => {
-  const trimmedReference = String(configuredReference || "").trim();
-  const hasConfiguredReference =
-    trimmedReference.length > 0 &&
-    !isNumericTelegramReference(trimmedReference);
-  const mergedOptions = hasConfiguredReference
-    ? [
-        ...options,
-        ...(!options.some(
-          (group) =>
-            String(group?.groupReference || "").trim() === trimmedReference,
-        )
-          ? [
-              {
-                groupReference: trimmedReference,
-                title: trimmedReference,
-                username: "",
-                type: "group",
-              },
-            ]
-          : []),
-      ]
-    : options;
+  const mergedOptions = Array.isArray(options) ? options : [];
 
   return mergedOptions.reduce(
     (accumulator, group) => {
@@ -740,10 +788,18 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   );
   const [migrationToDate, setMigrationToDate] = React.useState("");
   const [isMigrationToPresent, setIsMigrationToPresent] = React.useState(true);
+  const [storeContentSelection, setStoreContentSelection] = React.useState({
+    texts: true,
+    photos: true,
+    videos: true,
+    audios: true,
+    documents: true,
+  });
   const [activeScopeTableGroupReference, setActiveScopeTableGroupReference] =
     React.useState("");
   const [feedback, setFeedback] = React.useState("");
   const [telegramImportSummary, setTelegramImportSummary] = React.useState(null);
+  const [telegramSyncLiveStatus, setTelegramSyncLiveStatus] = React.useState(null);
   const [storageFeedback, setStorageFeedback] = React.useState("");
   const [storageDebugFeedback, setStorageDebugFeedback] = React.useState("");
   const [telegramConfigFeedback, setTelegramConfigFeedback] =
@@ -759,16 +815,27 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     [serverReply],
   );
   const [messages, setMessages] = React.useState([]);
-  const [photoPreviewUrls, setPhotoPreviewUrls] = React.useState({});
+  const [messagesOffset, setMessagesOffset] = React.useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = React.useState(false);
+  const [mediaPreviewUrls, setMediaPreviewUrls] = React.useState({});
+  const [mediaPreviewLoadingKeys, setMediaPreviewLoadingKeys] = React.useState(
+    {},
+  );
+  const [activePhotoMiniBarKey, setActivePhotoMiniBarKey] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState("");
   const [groupOptions, setGroupOptions] = React.useState([]);
+  const [isMigrationGroupsLoading, setIsMigrationGroupsLoading] = React.useState(false);
   const [storedGroupOptions, setStoredGroupOptions] = React.useState([]);
   const [courses, setCourses] = React.useState([]);
   const [importantMessages, setImportantMessages] = React.useState([]);
   const [streamTitle, setStreamTitle] = React.useState("Telegram messages");
   const [activeMessageTypeTab, setActiveMessageTypeTab] = React.useState("all");
+  const [activeDocumentTypeTab, setActiveDocumentTypeTab] = React.useState("all");
+  const [isTelegramLoginWindowOpen, setIsTelegramLoginWindowOpen] =
+    React.useState(false);
   const [storageRangeStartDate, setStorageRangeStartDate] = React.useState("");
   const [storageRangeEndDate, setStorageRangeEndDate] = React.useState("");
   const [storageSearchQuery, setStorageSearchQuery] = React.useState("");
@@ -851,13 +918,17 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const [telegramPhoneCodeInput, setTelegramPhoneCodeInput] =
     React.useState("");
   const [telegramPasswordInput, setTelegramPasswordInput] = React.useState("");
+  const [isTelegramConfigChecking, setIsTelegramConfigChecking] =
+    React.useState(true);
   const storedGroupOptionsRef = React.useRef([]);
+  const hasHydratedMigrationAfterRefreshRef = React.useRef(false);
   const telegramShellRef = React.useRef(null);
   const telegramGridRef = React.useRef(null);
   const leftColumnRef = React.useRef(null);
   const predictionsColumnRef = React.useRef(null);
   const streamColumnRef = React.useRef(null);
   const gridDragStateRef = React.useRef(null);
+  const hasInitializedGridColumnsRef = React.useRef(false);
   const [gridColumnWidths, setGridColumnWidths] = React.useState({
     left: 420,
     center: 420,
@@ -872,6 +943,23 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const fallbackImportantMessages = Array.isArray(memory?.importantMessages)
     ? memory.importantMessages
     : EMPTY_TELEGRAM_ARRAY;
+  const fetchJsonWithTimeout = React.useCallback(
+    async (url, { method = "GET", headers = {}, body, timeoutMs = 10000 } = {}) => {
+      try {
+        const response = await fetch(url, {
+          method,
+          mode: "cors",
+          headers,
+          body,
+        });
+        const payload = await response.json().catch(() => ({}));
+        return { response, payload };
+      } catch (error) {
+        throw error;
+      }
+    },
+    [],
+  );
 
   React.useEffect(() => {
     storedGroupOptionsRef.current = Array.isArray(storedGroupOptions)
@@ -990,9 +1078,20 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       return;
     }
 
+    const measuredLeftContentWidth = Math.ceil(
+      Number(leftColumnRef.current?.scrollWidth || 0),
+    );
+    const maxLeft = Math.max(260, totalAvailableWidth - 320);
     const equalWidth = Math.max(260, Math.floor(totalAvailableWidth / 3));
+    const fitContentLeft = Math.max(
+      260,
+      Math.min(
+        maxLeft,
+        measuredLeftContentWidth > 0 ? measuredLeftContentWidth : equalWidth,
+      ),
+    );
     setGridColumnWidths({
-      left: equalWidth,
+      left: fitContentLeft,
       center: equalWidth,
     });
   }, []);
@@ -1019,7 +1118,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       const currentCenter = Number(currentValue?.center || MIN_CENTER_WIDTH);
 
       if (dragState.type === "left") {
-        const rawLeft = clientX - gridRect.left - HANDLE_WIDTH / 2;
+        const pointerOffset = Number(dragState.pointerOffset || 0);
+        const rawLeft =
+          clientX - gridRect.left - HANDLE_WIDTH / 2 - pointerOffset;
         const maxLeft = Math.max(
           MIN_LEFT_WIDTH,
           totalAvailableWidth - MIN_CENTER_WIDTH - MIN_RIGHT_WIDTH,
@@ -1036,8 +1137,14 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         };
       }
 
+      const pointerOffset = Number(dragState.pointerOffset || 0);
       const rawCenterBoundary =
-        clientX - gridRect.left - currentLeft - HANDLE_WIDTH - HANDLE_WIDTH / 2;
+        clientX -
+        gridRect.left -
+        currentLeft -
+        HANDLE_WIDTH -
+        HANDLE_WIDTH / 2 -
+        pointerOffset;
       const maxCenter = Math.max(
         MIN_CENTER_WIDTH,
         totalAvailableWidth - currentLeft - MIN_RIGHT_WIDTH,
@@ -1057,7 +1164,25 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       event.preventDefault();
       event.stopPropagation();
 
-      gridDragStateRef.current = { type };
+      const HANDLE_WIDTH = 12;
+      const gridRect = telegramGridRef.current?.getBoundingClientRect?.();
+      const currentLeft = Number(gridColumnWidths?.left || 0);
+      const currentCenter = Number(gridColumnWidths?.center || 0);
+      let pointerOffset = 0;
+
+      if (gridRect) {
+        if (type === "left") {
+          const leftHandleCenterX =
+            gridRect.left + currentLeft + HANDLE_WIDTH / 2;
+          pointerOffset = event.clientX - leftHandleCenterX;
+        } else {
+          const rightHandleCenterX =
+            gridRect.left + currentLeft + HANDLE_WIDTH + currentCenter + HANDLE_WIDTH / 2;
+          pointerOffset = event.clientX - rightHandleCenterX;
+        }
+      }
+
+      gridDragStateRef.current = { type, pointerOffset };
       setActiveGridResizer(type);
 
       const handlePointerMove = (moveEvent) => {
@@ -1074,7 +1199,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       window.addEventListener("pointermove", handlePointerMove);
       window.addEventListener("pointerup", handlePointerUp);
     },
-    [applyGridDrag],
+    [applyGridDrag, gridColumnWidths?.center, gridColumnWidths?.left],
   );
 
   const telegramGridStyle = React.useMemo(
@@ -1090,6 +1215,24 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       setActiveLeftPanel("migration");
     }
   }, [activeLeftPanel]);
+
+  React.useEffect(() => {
+    if (hasInitializedGridColumnsRef.current) {
+      return;
+    }
+    const gridRect = telegramGridRef.current?.getBoundingClientRect?.();
+    const totalWidth = Number(gridRect?.width || 0);
+    if (totalWidth <= 0) {
+      return;
+    }
+    const HANDLE_WIDTH = 12;
+    const halfWidth = Math.max(260, Math.round((totalWidth - HANDLE_WIDTH) / 2));
+    hasInitializedGridColumnsRef.current = true;
+    setGridColumnWidths((currentValue) => ({
+      ...currentValue,
+      left: halfWidth,
+    }));
+  }, []);
 
   React.useEffect(() => {
     const activeStages = isLecturePredicting
@@ -1116,20 +1259,26 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     };
   }, [isConceptualizing, isLecturePredicting, storageCopy.thinking]);
 
-  const fetchTelegramGroups = React.useCallback(async () => {
+  const fetchTelegramGroups = React.useCallback(async ({ quiet = false } = {}) => {
     if (!token) {
-      return;
+      return false;
     }
 
     try {
-      const response = await fetch(apiUrl("/api/telegram/groups"), {
-        method: "GET",
-        mode: "cors",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      setIsMigrationGroupsLoading(true);
+      const slowNoticeTimer = window.setTimeout(() => {
+        setStorageFeedback("Loading Telegram groups is taking more time...");
+      }, 4500);
+      const { response, payload } = await fetchJsonWithTimeout(
+        apiUrl("/api/telegram/groups?live=true"),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeoutMs: 12000,
         },
-      });
-      const payload = await response.json().catch(() => ({}));
+      );
+      window.clearTimeout(slowNoticeTimer);
 
       if (!response.ok) {
         throw new Error(
@@ -1144,11 +1293,8 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         Array.isArray(payload?.courses) && payload.courses.length > 0
           ? payload.courses
           : null;
-      const fallbackStoredOptions = storedGroupOptionsRef.current;
-      const resolvedOptions =
-        nextOptions.length > 0 ? nextOptions : fallbackStoredOptions;
-
-      setGroupOptions(resolvedOptions);
+      const hasRealGroups = nextOptions.length > 0;
+      setGroupOptions(nextOptions);
       if (nextCourses) {
         setCourses(nextCourses);
         const nextCourseOptions = buildCourseSelectOptionsFromEntries(nextCourses);
@@ -1165,24 +1311,28 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       }
       setGroupInput((currentValue) => {
         const currentReference = String(currentValue || "").trim();
-        const matchingOption = resolvedOptions.find(
+        const matchingOption = nextOptions.find(
           (group) =>
             String(group?.groupReference || "").trim() === currentReference,
         );
-        const fallbackOption = matchingOption || resolvedOptions[0] || null;
+        const fallbackOption = matchingOption || nextOptions[0] || null;
 
         return fallbackOption
           ? String(fallbackOption.groupReference || currentValue)
           : currentValue;
       });
+      setStorageFeedback(hasRealGroups ? "" : "Waiting for live Telegram groups...");
+      setIsMigrationGroupsLoading(!hasRealGroups);
+      return hasRealGroups;
     } catch (nextError) {
-      if (storedGroupOptionsRef.current.length > 0) {
-        setGroupOptions(storedGroupOptionsRef.current);
-      } else {
+      if (!quiet) {
         setError(nextError?.message || "Unable to load Telegram groups.");
       }
+      setStorageFeedback("Waiting for live Telegram groups...");
+      setIsMigrationGroupsLoading(true);
+      return false;
     }
-  }, [token]);
+  }, [fetchJsonWithTimeout, token]);
 
   const fetchStorageContext = React.useCallback(async () => {
     if (!token) {
@@ -1196,14 +1346,20 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       let nextCourses = [];
       let nextImportantMessages = [];
 
-      const response = await fetch(apiUrl("/api/telegram/storage/context"), {
-        method: "GET",
-        mode: "cors",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const slowNoticeTimer = window.setTimeout(() => {
+        setStorageFeedback("Loading Telegram storage is taking more time...");
+      }, 4500);
+      const { response, payload: nextPayload } = await fetchJsonWithTimeout(
+        apiUrl("/api/telegram/storage/context"),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeoutMs: 12000,
         },
-      });
-      payload = await response.json().catch(() => ({}));
+      );
+      window.clearTimeout(slowNoticeTimer);
+      payload = nextPayload;
 
       if (response.ok) {
         nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
@@ -1226,7 +1382,32 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         throw new Error(payload?.message || "Unable to load Telegram storage.");
       }
 
-      setStoredGroupOptions(nextGroups);
+      setStoredGroupOptions((currentValue) => {
+        const currentGroups = Array.isArray(currentValue) ? currentValue : [];
+        const backendGroups = Array.isArray(nextGroups) ? nextGroups : [];
+        const backendRefs = new Set(
+          backendGroups.map((group) =>
+            String(group?.groupReference || "").trim(),
+          ),
+        );
+        const pendingGroups = currentGroups.filter((group) => {
+          const rowKey = String(group?.rowKey || "");
+          const groupReferenceValue = String(group?.groupReference || "").trim();
+          return (
+            rowKey.startsWith("group-pending-") &&
+            groupReferenceValue &&
+            !backendRefs.has(groupReferenceValue)
+          );
+        });
+
+        return pendingGroups.length > 0
+          ? [...pendingGroups, ...backendGroups]
+          : backendGroups;
+      });
+      setGroupOptions((currentValue) => {
+        const existingGroups = Array.isArray(currentValue) ? currentValue : [];
+        return nextGroups.length > 0 ? nextGroups : existingGroups;
+      });
       setCourses(nextCourses);
       setImportantMessages(nextImportantMessages);
       const nextCourseOptions = buildCourseSelectOptionsFromEntries(nextCourses);
@@ -1270,6 +1451,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           ? currentValue
           : String(nextCourseOptions[0]?.identity || "");
       });
+      setStorageFeedback("");
     } catch (nextError) {
       setCourses(fallbackPlannerCourses);
       setImportantMessages(fallbackImportantMessages);
@@ -1277,22 +1459,31 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         nextError?.message || "Unable to load Telegram storage context.",
       );
     }
-  }, [fallbackImportantMessages, fallbackPlannerCourses, token]);
+  }, [fallbackImportantMessages, fallbackPlannerCourses, fetchJsonWithTimeout, token]);
 
   const fetchTelegramConfig = React.useCallback(async () => {
     if (!token) {
+      setIsTelegramConfigChecking(false);
       return;
     }
 
     try {
-      const response = await fetch(apiUrl("/api/telegram/config"), {
-        method: "GET",
-        mode: "cors",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      setIsTelegramConfigChecking(true);
+      const slowNoticeTimer = window.setTimeout(() => {
+        setTelegramConfigFeedback(
+          "Loading Telegram config is taking more time...",
+        );
+      }, 4500);
+      const { response, payload } = await fetchJsonWithTimeout(
+        apiUrl("/api/telegram/config"),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeoutMs: 12000,
         },
-      });
-      const payload = await response.json().catch(() => ({}));
+      );
+      window.clearTimeout(slowNoticeTimer);
 
       if (!response.ok) {
         throw new Error(payload?.message || "Unable to load Telegram config.");
@@ -1320,13 +1511,59 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       setMigrationToDate(nextHistoryEndDate);
       setIsMigrationToPresent(!nextHistoryEndDate);
       setMigrationGroupTitle(nextReference || "Telegram Migration");
+      const storeContent = payload?.storeContent && typeof payload.storeContent === "object"
+        ? payload.storeContent
+        : {};
+      setStoreContentSelection({
+        texts: storeContent.texts !== false,
+        photos: storeContent.photos !== false,
+        videos: storeContent.videos !== false,
+        audios: storeContent.audios !== false,
+        documents: storeContent.documents !== false,
+      });
+      setTelegramConfigFeedback("");
     } catch (nextError) {
       setError(nextError?.message || "Unable to load Telegram configuration.");
       setTelegramConfigFeedback(
         nextError?.message || "Unable to load Telegram config status.",
       );
+      setTelegramConfigStatus((currentStatus) => ({
+        ...currentStatus,
+        configured: false,
+        hasStringSession: false,
+      }));
+    } finally {
+      setIsTelegramConfigChecking(false);
     }
-  }, [token]);
+  }, [fetchJsonWithTimeout, token]);
+
+  const fetchTelegramSyncStatus = React.useCallback(async () => {
+    if (!token) {
+      return null;
+    }
+    try {
+      const { response, payload } = await fetchJsonWithTimeout(
+        apiUrl("/api/telegram/status"),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeoutMs: 10000,
+        },
+      );
+      if (!response.ok) {
+        return null;
+      }
+      const nextSyncStatus =
+        payload?.syncStatus && typeof payload.syncStatus === "object"
+          ? payload.syncStatus
+          : null;
+      setTelegramSyncLiveStatus(nextSyncStatus);
+      return nextSyncStatus;
+    } catch {
+      return null;
+    }
+  }, [fetchJsonWithTimeout, token]);
 
   const startTelegramAuth = React.useCallback(async () => {
     if (!token) {
@@ -1504,22 +1741,75 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     }
 
     fetchStorageContext();
-    fetchTelegramGroups();
     fetchTelegramConfig();
-  }, [token]);
+  }, [fetchStorageContext, fetchTelegramConfig, token]);
+
+  React.useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+    let isCancelled = false;
+
+    const run = async () => {
+      while (!isCancelled) {
+        const loaded = await fetchTelegramGroups({ quiet: true });
+        if (loaded) {
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 3000));
+      }
+    };
+
+    run();
+    return () => {
+      isCancelled = true;
+    };
+  }, [fetchTelegramGroups, token]);
+
+  React.useEffect(() => {
+    const handleOpenLoginWindow = () => {
+      setIsTelegramLoginWindowOpen(true);
+    };
+
+    window.addEventListener(
+      "telegram-control-open-login-window",
+      handleOpenLoginWindow,
+    );
+    return () => {
+      window.removeEventListener(
+        "telegram-control-open-login-window",
+        handleOpenLoginWindow,
+      );
+    };
+  }, []);
 
   const loadStoredMessages = React.useCallback(
-    async (nextLimit = TELEGRAM_MESSAGES_FETCH_LIMIT, scopeOverride = null) => {
+    async (
+      nextLimit = TELEGRAM_MESSAGES_FETCH_LIMIT,
+      scopeOverride = null,
+      { append = false, offsetOverride = null } = {},
+    ) => {
       if (!token) {
         setIsLoading(false);
         setError("Telegram messages need a valid login token.");
         setMessages([]);
+        setMessagesOffset(0);
+        setHasMoreMessages(false);
         return;
       }
 
       const nextScope = scopeOverride || activeStorageScope;
+      const nextOffset = Number(
+        offsetOverride === null || offsetOverride === undefined
+          ? append
+            ? messagesOffset
+            : 0
+          : offsetOverride,
+      ) || 0;
+      setActiveStorageScope(nextScope);
       const searchParams = new URLSearchParams();
       searchParams.set("limit", String(nextLimit));
+      searchParams.set("offset", String(Math.max(0, nextOffset)));
 
       if (String(nextScope?.query || "").trim()) {
         searchParams.set("q", String(nextScope.query).trim());
@@ -1537,7 +1827,11 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         searchParams.set("end", String(nextScope.end).trim());
       }
 
-      setIsLoading(true);
+      if (append) {
+        setIsLoadingMoreMessages(true);
+      } else {
+        setIsLoading(true);
+      }
       setError("");
       setStorageFeedback("");
 
@@ -1566,20 +1860,94 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           ? payload.messages
           : [];
 
-        setMessages(nextMessages);
+        if (append) {
+          setMessages((currentValue) => [
+            ...(Array.isArray(currentValue) ? currentValue : []),
+            ...nextMessages,
+          ]);
+        } else {
+          setMessages(nextMessages);
+        }
+        setMessagesOffset(
+          Math.max(0, Number(payload?.nextOffset || nextOffset + nextMessages.length) || 0),
+        );
+        setHasMoreMessages(Boolean(payload?.hasMore));
         setStreamTitle(String(payload?.group?.title || "Telegram messages"));
-        setActiveStorageScope(nextScope);
       } catch (nextError) {
         setError(
           nextError?.message || "Unable to load stored Telegram messages.",
         );
-        setMessages([]);
+        if (!append) {
+          setMessages([]);
+          setMessagesOffset(0);
+          setHasMoreMessages(false);
+        }
       } finally {
-        setIsLoading(false);
+        if (append) {
+          setIsLoadingMoreMessages(false);
+        } else {
+          setIsLoading(false);
+        }
       }
     },
-    [activeStorageScope, token],
+    [activeStorageScope, messagesOffset, token],
   );
+
+  React.useEffect(() => {
+    if (!token || hasHydratedMigrationAfterRefreshRef.current) {
+      return;
+    }
+
+    hasHydratedMigrationAfterRefreshRef.current = true;
+    let isCancelled = false;
+
+    const hydrateMigrationState = async () => {
+      const status = await fetchTelegramSyncStatus();
+      if (isCancelled || !status) {
+        return;
+      }
+
+      const normalizedSyncReference = String(status?.groupReference || "").trim();
+      const isRunning = Boolean(status?.running);
+      const hasAnySyncSnapshot = Boolean(
+        status?.startedAt ||
+          status?.finishedAt ||
+          status?.scannedCount ||
+          status?.importedCount,
+      );
+
+      if (isRunning || hasAnySyncSnapshot) {
+        setTelegramImportSummary((currentValue) => ({
+          started: true,
+          succeeded: isRunning ? false : Boolean(status?.synced),
+          reason: isRunning
+            ? "running"
+            : String(status?.reason || "").trim(),
+          importedCount: Number(status?.importedCount || 0),
+          scannedCount: Number(status?.scannedCount || 0),
+          storedCount: Number(currentValue?.storedCount || 0),
+        }));
+      }
+
+      if (isRunning && normalizedSyncReference) {
+        setSelectedStoredGroupReference(normalizedSyncReference);
+        const resumedScope = {
+          query: "",
+          allGroups: false,
+          groupReference: normalizedSyncReference,
+          start: "",
+          end: "",
+        };
+        await loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, resumedScope);
+      }
+    };
+
+    hydrateMigrationState();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [fetchTelegramSyncStatus, loadStoredMessages, token]);
 
   const handleSaveTelegramConfig = async () => {
     if (!token || isSaving) {
@@ -1615,6 +1983,13 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           syncMode: "one-time",
           historyStartDate: nextHistoryStartDate,
           historyEndDate: nextHistoryEndDate,
+          storeContent: {
+            texts: Boolean(storeContentSelection?.texts),
+            photos: Boolean(storeContentSelection?.photos),
+            videos: Boolean(storeContentSelection?.videos),
+            audios: Boolean(storeContentSelection?.audios),
+            documents: Boolean(storeContentSelection?.documents),
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -1629,6 +2004,36 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
 
       const nextReference = String(payload?.groupReference || "");
       publishFeedback(payload?.message || "");
+      if (nextReference) {
+        setStoredGroupOptions((currentValue) => {
+          const currentGroups = Array.isArray(currentValue) ? currentValue : [];
+          const exists = currentGroups.some(
+            (group) =>
+              String(group?.groupReference || "").trim() ===
+              String(nextReference).trim(),
+          );
+          if (exists) {
+            return currentGroups;
+          }
+          return [
+            {
+              id: null,
+              rowKey: `group-pending-${nextReference}`,
+              title: String(migrationGroupTitle || nextReference).trim() || nextReference,
+              username: "",
+              groupReference: nextReference,
+              pageUrl: "",
+              memberCount: 0,
+              description: "",
+              storedCount: 0,
+              latestDateMs: 0,
+              type: "group",
+              synced: false,
+            },
+            ...currentGroups,
+          ];
+        });
+      }
       setTelegramImportSummary(
         Boolean(payload?.importStarted ?? payload?.syncStarted)
           ? {
@@ -1657,6 +2062,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       fetchStorageContext();
       fetchTelegramGroups();
       fetchTelegramConfig();
+      fetchTelegramSyncStatus();
     } catch (nextError) {
       publishFeedback(
         nextError?.message ||
@@ -1669,6 +2075,52 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     }
   };
 
+  React.useEffect(() => {
+    const hasActiveViewedScope = Boolean(
+      activeStorageScope &&
+        activeStorageScope.allGroups === false &&
+        String(activeStorageScope.groupReference || "").trim(),
+    );
+    const isBackgroundRunning = Boolean(telegramSyncLiveStatus?.running);
+
+    if (!hasActiveViewedScope || !isBackgroundRunning) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const intervalId = window.setInterval(async () => {
+      if (isCancelled) {
+        return;
+      }
+      await loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, activeStorageScope);
+    }, 2500);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [activeStorageScope, loadStoredMessages, telegramSyncLiveStatus?.running]);
+
+  React.useEffect(() => {
+    const hasActiveViewedScope = Boolean(
+      activeStorageScope &&
+        activeStorageScope.allGroups === false &&
+        String(activeStorageScope.groupReference || "").trim(),
+    );
+    const isBackgroundRunning = Boolean(telegramSyncLiveStatus?.running);
+    if (!hasActiveViewedScope || !isBackgroundRunning) {
+      return;
+    }
+
+    loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, activeStorageScope);
+  }, [
+    activeStorageScope,
+    loadStoredMessages,
+    telegramSyncLiveStatus?.running,
+    telegramSyncLiveStatus?.scannedCount,
+    telegramSyncLiveStatus?.importedCount,
+  ]);
+
   const handleStorageSearch = () => {
     const nextScope = {
       query: storageSearchQuery,
@@ -1678,8 +2130,28 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       end: storageRangeEndDate,
     };
 
-    loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, nextScope);
+    loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, nextScope, {
+      append: false,
+      offsetOverride: 0,
+    });
   };
+
+  const handleLoadMoreStoredMessages = React.useCallback(() => {
+    if (!hasMoreMessages || isLoadingMoreMessages || isLoading) {
+      return;
+    }
+    loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, activeStorageScope, {
+      append: true,
+      offsetOverride: messagesOffset,
+    });
+  }, [
+    activeStorageScope,
+    hasMoreMessages,
+    isLoading,
+    isLoadingMoreMessages,
+    loadStoredMessages,
+    messagesOffset,
+  ]);
 
   const handleAddDependency = () => {
     const nextDependency = String(manualDependencyInput || "").trim();
@@ -2702,6 +3174,12 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   };
 
   const fetchCoursePredictionBuckets = React.useCallback(async () => {
+    if (!TELEGRAM_AI_ENDPOINTS_ENABLED) {
+      setStoredCourseSuggestions([]);
+      setRejectedCourseSuggestions([]);
+      setAcceptedCourseSuggestions([]);
+      return;
+    }
     if (!token) {
       return;
     }
@@ -2769,6 +3247,12 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   }, [predictionScope, token]);
 
   const fetchLecturePredictionBuckets = React.useCallback(async () => {
+    if (!TELEGRAM_AI_ENDPOINTS_ENABLED) {
+      setStoredLectureSuggestions([]);
+      setRejectedLectureSuggestions([]);
+      setAcceptedLectureSuggestions([]);
+      return;
+    }
     if (!token) {
       return;
     }
@@ -2828,6 +3312,12 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   }, [buildLecturePredictionScopeParams, token]);
 
   const fetchInstructorPredictionBuckets = React.useCallback(async () => {
+    if (!TELEGRAM_AI_ENDPOINTS_ENABLED) {
+      setStoredInstructorSuggestions([]);
+      setRejectedInstructorSuggestions([]);
+      setAcceptedInstructorSuggestions([]);
+      return;
+    }
     if (!token) {
       return;
     }
@@ -2921,11 +3411,17 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         return kind === "audio";
       }
       if (activeMessageTypeTab === "documents") {
-        return kind === "document" || kind === "pdf";
+        if (!(kind === "document" || kind === "pdf")) {
+          return false;
+        }
+        if (activeDocumentTypeTab === "all") {
+          return true;
+        }
+        return classifyTelegramDocumentType(message) === activeDocumentTypeTab;
       }
       return true;
     });
-  }, [activeMessageTypeTab, messages]);
+  }, [activeDocumentTypeTab, activeMessageTypeTab, messages]);
 
   const messageTypeCounts = React.useMemo(() => {
     const source = Array.isArray(messages) ? messages : [];
@@ -2956,6 +3452,36 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     return counts;
   }, [messages]);
 
+  const documentTypeCounts = React.useMemo(() => {
+    const source = (Array.isArray(messages) ? messages : []).filter((message) => {
+      const kind = String(message?.attachmentKind || "").toLowerCase();
+      return kind === "document" || kind === "pdf";
+    });
+    const counts = {
+      all: source.length,
+      pdf: 0,
+      word: 0,
+      excel: 0,
+      powerpoint: 0,
+      archive: 0,
+      code: 0,
+      other: 0,
+    };
+
+    source.forEach((message) => {
+      const typeKey = classifyTelegramDocumentType(message);
+      counts[typeKey] = Number(counts[typeKey] || 0) + 1;
+    });
+
+    return counts;
+  }, [messages]);
+
+  React.useEffect(() => {
+    if (activeMessageTypeTab !== "documents" && activeDocumentTypeTab !== "all") {
+      setActiveDocumentTypeTab("all");
+    }
+  }, [activeDocumentTypeTab, activeMessageTypeTab]);
+
   const groupedMessages = React.useMemo(
     () => groupTelegramMessagesByDay(filteredMessages),
     [filteredMessages],
@@ -2983,10 +3509,19 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   }, [filteredMessages]);
 
   React.useEffect(() => {
-    const photoMessages = (Array.isArray(messages) ? messages : []).filter(
-      (message) => String(message?.attachmentKind || "").toLowerCase() === "photo",
+    const mediaMessages = (Array.isArray(filteredMessages) ? filteredMessages : []).filter(
+      (message) => {
+        const kind = String(message?.attachmentKind || "").toLowerCase();
+        return (
+          kind === "photo" ||
+          kind === "video" ||
+          kind === "document" ||
+          kind === "pdf"
+        );
+      },
     );
-    if (!token || photoMessages.length === 0) {
+    const limitedMediaMessages = mediaMessages.slice(0, 24);
+    if (!token || limitedMediaMessages.length === 0) {
       return undefined;
     }
 
@@ -2995,55 +3530,76 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
 
     const run = async () => {
       const nextEntries = {};
-      await Promise.all(
-        photoMessages.map(async (message) => {
+      for (const message of limitedMediaMessages) {
           const groupReference = String(message?.groupReference || "").trim();
           const messageId = Number(message?.id || 0);
           if (!groupReference || !messageId) {
-            return;
+            continue;
           }
           const key = `${groupReference}::${messageId}`;
-          if (photoPreviewUrls[key]) {
-            return;
+          if (mediaPreviewUrls[key]) {
+            continue;
           }
+          const kind = String(message?.attachmentKind || "").toLowerCase();
           const inlinePhotoDataUrl = String(message?.photoDataUrl || "").trim();
-          if (inlinePhotoDataUrl) {
+          if (kind === "photo" && inlinePhotoDataUrl) {
             nextEntries[key] = inlinePhotoDataUrl;
-            return;
+            continue;
           }
 
           try {
+            setMediaPreviewLoadingKeys((current) => ({
+              ...current,
+              [key]: true,
+            }));
             const params = new URLSearchParams({
               groupReference,
               messageId: String(messageId),
             });
-            const response = await fetch(
-              apiUrl(`/api/telegram/stored-media?${params.toString()}`),
-              {
-                method: "GET",
-                mode: "cors",
-                headers: {
-                  Authorization: `Bearer ${token}`,
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 9000);
+            let response;
+            try {
+              response = await fetch(
+                apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+                {
+                  method: "GET",
+                  mode: "cors",
+                  signal: controller.signal,
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
                 },
-              },
-            );
+              );
+            } finally {
+              window.clearTimeout(timeoutId);
+            }
             if (!response.ok) {
-              return;
+              continue;
             }
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             createdUrls.push(url);
             nextEntries[key] = url;
           } catch {}
-        }),
-      );
+          finally {
+            setMediaPreviewLoadingKeys((current) => {
+              if (!current[key]) {
+                return current;
+              }
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+          }
+      }
 
       if (isCancelled || Object.keys(nextEntries).length === 0) {
         createdUrls.forEach((url) => URL.revokeObjectURL(url));
         return;
       }
 
-      setPhotoPreviewUrls((current) => ({
+      setMediaPreviewUrls((current) => ({
         ...current,
         ...nextEntries,
       }));
@@ -3054,17 +3610,17 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     return () => {
       isCancelled = true;
     };
-  }, [messages, photoPreviewUrls, token]);
+  }, [filteredMessages, mediaPreviewUrls, token]);
 
   React.useEffect(() => {
     return () => {
-      Object.values(photoPreviewUrls).forEach((url) => {
+      Object.values(mediaPreviewUrls).forEach((url) => {
         if (typeof url === "string" && url) {
           URL.revokeObjectURL(url);
         }
       });
     };
-  }, [photoPreviewUrls]);
+  }, [mediaPreviewUrls]);
 
   const migrationOptionGroups = React.useMemo(
     () =>
@@ -3392,6 +3948,32 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     storageCopy,
   ]);
 
+  const getStoredGroupContentsLabel = React.useCallback(
+    (group = {}) => {
+      const labelByKey = {
+        texts: "Text",
+        photos: "Photos",
+        videos: "Videos",
+        audios: "Audios",
+        documents: "Documents",
+      };
+      const contentSource =
+        group?.storeContent && typeof group.storeContent === "object"
+          ? group.storeContent
+          : group?.contentSelection && typeof group.contentSelection === "object"
+            ? group.contentSelection
+            : null;
+      const selectedKeys = Object.keys(labelByKey).filter((key) =>
+        Boolean(contentSource ? contentSource[key] : storeContentSelection?.[key]),
+      );
+      if (selectedKeys.length === 0) {
+        return "-";
+      }
+      return selectedKeys.map((key) => labelByKey[key] || key).join(", ");
+    },
+    [storeContentSelection],
+  );
+
   const handleScopeTableRowClick = React.useCallback(
     (_event, groupReference) => {
       const normalizedGroupReference = String(groupReference || "");
@@ -3446,6 +4028,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     };
 
     setSelectedStoredGroupReference(targetReference);
+    setActiveStorageScope(nextScope);
     setActiveScopeTableGroupReference("");
     await loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, nextScope);
   }, [activeScopeTableGroupReference, activeStorageScope, loadStoredMessages]);
@@ -3491,6 +4074,91 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     fetchTelegramGroups,
     token,
   ]);
+
+  const handleControlScopeStoredGroup = React.useCallback(
+    async (groupReference, action) => {
+      const targetReference = String(groupReference || "").trim();
+      const normalizedAction = String(action || "").trim().toLowerCase();
+      if (!token || !targetReference || !normalizedAction) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          apiUrl(
+            `/api/telegram/stored-groups/${encodeURIComponent(targetReference)}/control`,
+          ),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action: normalizedAction }),
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.message || "Unable to control migration.");
+        }
+        if (payload?.syncStatus && typeof payload.syncStatus === "object") {
+          setTelegramSyncLiveStatus(payload.syncStatus);
+        } else {
+          fetchTelegramSyncStatus();
+        }
+        publishFeedback(payload?.message || "");
+      } catch (nextError) {
+        publishFeedback(nextError?.message || "Unable to control migration.");
+      }
+    },
+    [fetchTelegramSyncStatus, token],
+  );
+  const handleContinueScopeStoredGroup = React.useCallback(
+    async (groupReference) => {
+      const targetReference = String(groupReference || "").trim();
+      if (!token || !targetReference) {
+        return;
+      }
+      try {
+        const response = await fetch(
+          apiUrl(
+            `/api/telegram/stored-groups/${encodeURIComponent(targetReference)}/sync`,
+          ),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ continueMigration: true }),
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.message || "Unable to continue migration.");
+        }
+        setStoredGroupOptions(Array.isArray(payload?.groups) ? payload.groups : []);
+        setTelegramImportSummary(
+          payload
+            ? {
+                started: true,
+                succeeded: Boolean(payload?.syncSucceeded),
+                reason: String(payload?.syncReason || "").trim(),
+                importedCount: Number(payload?.importedCount || 0),
+                scannedCount: Number(payload?.scannedCount || 0),
+                storedCount: Number(payload?.storedCount || 0),
+              }
+            : null,
+        );
+        publishFeedback(payload?.message || "");
+        fetchStorageContext();
+        fetchTelegramSyncStatus();
+      } catch (nextError) {
+        publishFeedback(nextError?.message || "Unable to continue migration.");
+      }
+    },
+    [fetchStorageContext, fetchTelegramSyncStatus, token],
+  );
 
   const renderTelegramConnectionCard = () => (
     <div className="telegramControlPage_connectionCard">
@@ -3647,8 +4315,10 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                   <span>{token ? "Signed in" : "No token"}</span>
                 </div>
                 <div className="telegramControlPage_leftPool" id="left-pool">
-                  <div className="telegramControlPage_controlCardBody">
-                    {renderTelegramConnectionCard()}
+                  <div
+                    className={`telegramControlPage_controlCardBody${isTelegramConfigChecking ? " is-blurred" : ""}`}
+                    aria-busy={isTelegramConfigChecking}
+                  >
                     <label
                       className="telegramControlPage_label"
                       htmlFor="telegramControlPage_groupInput"
@@ -3658,6 +4328,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                     <select
                       id="telegramControlPage_groupInput"
                       value={groupInput}
+                      disabled={isMigrationGroupsLoading}
                       onChange={(event) => {
                         const nextGroupReference = String(event.target.value || "");
                         setGroupInput(nextGroupReference);
@@ -3670,7 +4341,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                       migrationOptionGroups.supergroups.length === 0 &&
                       migrationOptionGroups.channels.length === 0 ? (
                         <option value="">
-                          No new Telegram groups available for migration
+                          {isMigrationGroupsLoading
+                            ? "Loading live Telegram groups..."
+                            : "No new Telegram groups available for migration"}
                         </option>
                       ) : (
                         <>
@@ -3724,40 +4397,113 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                       )}
                     </select>
 
-                    <div className="telegramControlPage_migrationModeBlock">
-                      <span className="telegramControlPage_label">
-                        Migration mode
-                      </span>
-                      <div className="telegramControlPage_storeModeTabs">
-                        <button
-                          type="button"
-                          className={`telegramControlPage_migrationModeButton${storeMessagesMode === "all" ? " is-active" : ""}`}
-                          onClick={() => {
-                            setStoreMessagesMode("all");
-                            setFeedback("");
-                            setTelegramImportSummary(null);
-                          }}
-                        >
-                          All messages
-                        </button>
-                        <button
-                          type="button"
-                          className={`telegramControlPage_migrationModeButton${storeMessagesMode === "interval" ? " is-active" : ""}`}
-                          onClick={() => {
-                            setStoreMessagesMode("interval");
-                            setFeedback("");
-                            setTelegramImportSummary(null);
-                          }}
-                        >
-                          Messages within interval
-                        </button>
+                    <div className="telegramControlPage_migrationModeRow">
+                      <div className="telegramControlPage_migrationModeBlock">
+                        <span className="telegramControlPage_label">
+                          Migration mode
+                        </span>
+                        <div className="telegramControlPage_storeModeTabs">
+                          <button
+                            type="button"
+                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "all" ? " is-active" : ""}`}
+                            onClick={() => {
+                              setStoreMessagesMode("all");
+                              setFeedback("");
+                              setTelegramImportSummary(null);
+                            }}
+                          >
+                            All messages
+                          </button>
+                          <button
+                            type="button"
+                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "interval" ? " is-active" : ""}`}
+                            onClick={() => {
+                              setStoreMessagesMode("interval");
+                              setFeedback("");
+                              setTelegramImportSummary(null);
+                            }}
+                          >
+                            Messages within interval
+                          </button>
+                        </div>
+                        <p className="telegramControlPage_hint">
+                          Save this group's messages within the selected scope.
+                        </p>
                       </div>
-                      <p className="telegramControlPage_hint">
-                        Save this group's messages within the selected scope.
-                      </p>
-                    </div>
+                      <div className="telegramControlPage_migrationModeBlock">
+                        <span className="telegramControlPage_label">
+                          Content to store
+                        </span>
+                        <div className="telegramControlPage_migrationContentLabels">
+                          <label className="telegramControlPage_checkboxRow">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(storeContentSelection.texts)}
+                              onChange={(event) =>
+                                setStoreContentSelection((currentValue) => ({
+                                  ...currentValue,
+                                  texts: Boolean(event.target.checked),
+                                }))
+                              }
+                            />
+                            Text
+                          </label>
+                          <label className="telegramControlPage_checkboxRow">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(storeContentSelection.photos)}
+                              onChange={(event) =>
+                                setStoreContentSelection((currentValue) => ({
+                                  ...currentValue,
+                                  photos: Boolean(event.target.checked),
+                                }))
+                              }
+                            />
+                            Photos
+                          </label>
+                          <label className="telegramControlPage_checkboxRow">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(storeContentSelection.videos)}
+                              onChange={(event) =>
+                                setStoreContentSelection((currentValue) => ({
+                                  ...currentValue,
+                                  videos: Boolean(event.target.checked),
+                                }))
+                              }
+                            />
+                            Videos
+                          </label>
+                          <label className="telegramControlPage_checkboxRow">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(storeContentSelection.audios)}
+                              onChange={(event) =>
+                                setStoreContentSelection((currentValue) => ({
+                                  ...currentValue,
+                                  audios: Boolean(event.target.checked),
+                                }))
+                              }
+                            />
+                            Audios
+                          </label>
+                          <label className="telegramControlPage_checkboxRow">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(storeContentSelection.documents)}
+                              onChange={(event) =>
+                                setStoreContentSelection((currentValue) => ({
+                                  ...currentValue,
+                                  documents: Boolean(event.target.checked),
+                                }))
+                              }
+                            />
+                            Documents
+                          </label>
+                        </div>
+                      </div>
 
-                    <div className="telegramControlPage_dateGrid">
+                      <div className="telegramControlPage_dateGrid">
                       {storeMessagesMode === "interval" ? (
                         <>
                           <label className="telegramControlPage_dateField">
@@ -3815,25 +4561,44 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                           </p>
                         </div>
                       )}
-                      <div className="telegramControlPage_actions telegramControlPage_actions--dateGrid">
+                    <div className="telegramControlPage_actions telegramControlPage_actions--dateGrid">
                         <button
                           type="button"
                           className="telegramControlPage_button telegramControlPage_button--primary"
                           onClick={handleSaveTelegramConfig}
-                          disabled={isSaving || !token}
+                          disabled={isSaving || !token || !groupInput || isMigrationGroupsLoading}
                         >
                           {isSaving ? "Storing..." : "Store group"}
                         </button>
                       </div>
+                      </div>
                     </div>
-
                     {feedback ? (
                       <p className="telegramControlPage_feedback">{feedback}</p>
                     ) : null}
+                    {isTelegramConfigChecking ? (
+                      <div className="telegramControlPage_controlCardOverlay">
+                        <span className="telegramControlPage_controlCardLoader" />
+                        <p className="telegramControlPage_controlCardOverlayText">
+                          Telegram is getting ready...
+                        </p>
+                      </div>
+                    ) : null}
                     {telegramImportSummary?.started ? (
                       <p className="telegramControlPage_status">
-                        {telegramImportSummary.reason === "background-started" ? (
-                          <>Import started in background. Refresh shortly to see updated stored counts.</>
+                        {telegramImportSummary.reason === "running" ? (
+                          <>
+                            Import is running.
+                            {telegramSyncLiveStatus?.running ? (
+                              <>
+                                {" "}
+                                Scanned {Number(telegramSyncLiveStatus?.scannedCount || 0)} message(s),
+                                imported {Number(telegramSyncLiveStatus?.importedCount || 0)}.
+                              </>
+                            ) : (
+                              <> Waiting for completion...</>
+                            )}
+                          </>
                         ) : (
                           <>
                             Import {telegramImportSummary.succeeded ? "succeeded" : "failed"}.
@@ -3854,8 +4619,10 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                         <thead>
                           <tr>
                             <th>{storageCopy.storedGroup}</th>
+                            <th>Contents</th>
                             <th>{storageCopy.interval}</th>
                             <th>{storageCopy.storedMessagesNumber}</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3864,6 +4631,20 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                               const groupReference = String(
                                 group?.groupReference || "",
                               );
+                              const liveSyncGroupReference = String(
+                                telegramSyncLiveStatus?.groupReference || "",
+                              ).trim();
+                              const isRowSyncTarget =
+                                liveSyncGroupReference &&
+                                liveSyncGroupReference === groupReference.trim();
+                              const isRowSyncRunning =
+                                isRowSyncTarget && Boolean(telegramSyncLiveStatus?.running);
+                              const isRowSyncDisrupted =
+                                isRowSyncTarget &&
+                                !telegramSyncLiveStatus?.running &&
+                                ["error", "stopped"].includes(
+                                  String(telegramSyncLiveStatus?.reason || "").trim(),
+                                );
                               const rowKey = String(
                                 group?.rowKey ||
                                   group?.groupReference ||
@@ -3922,20 +4703,64 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                                             }}
                                           >
                                             {storageCopy.editAction}
-                                          </button>
+                                          </button>{isRowSyncDisrupted ? (
+                                            <button
+                                              type="button"
+                                              className="telegramControlPage_scopeMiniBarButton"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleContinueScopeStoredGroup(groupReference);
+                                              }}
+                                            >
+                                              Continue
+                                            </button>
+                                          ) : null}
                                         </div>
                                       ) : null}
                                       {formatTelegramGroupOptionLabel(group)}
+                                      {isRowSyncRunning ? (
+                                        <span className="telegramControlPage_status">
+                                          {" "}
+                                          {String(telegramSyncLiveStatus?.reason || "").trim() ===
+                                          "paused"
+                                            ? "Paused"
+                                            : String(telegramSyncLiveStatus?.reason || "").trim() ===
+                                                "stopping"
+                                              ? "Stopping..."
+                                              : "Migrating..."}
+                                        </span>
+                                      ) : null}
+                                      {isRowSyncDisrupted ? (
+                                        <span className="telegramControlPage_feedback">
+                                          {" "}Migration disrupted
+                                        </span>
+                                      ) : null}
                                     </td>
+                                    <td>{getStoredGroupContentsLabel(group)}</td>
                                     <td>{migrationIntervalLabel}</td>
                                     <td>{Number(group?.storedCount || 0)}</td>
+                                    <td>
+                                      {isRowSyncRunning
+                                        ? String(telegramSyncLiveStatus?.reason || "").trim() ===
+                                          "paused"
+                                          ? "Paused"
+                                          : String(telegramSyncLiveStatus?.reason || "").trim() ===
+                                              "stopping"
+                                            ? "Stopping..."
+                                            : "Migrating..."
+                                        : isRowSyncDisrupted
+                                          ? "Migration disrupted"
+                                          : Number(group?.storedCount || 0) > 0
+                                            ? "Synced"
+                                            : "Idle"}
+                                    </td>
                                   </tr>
                                 </React.Fragment>
                               );
                             })
                           ) : (
                             <tr>
-                              <td colSpan={3}>{storageCopy.noStoredGroups}</td>
+                              <td colSpan={5}>{storageCopy.noStoredGroups}</td>
                             </tr>
                           )}
                         </tbody>
@@ -3949,9 +4774,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           <button
             type="button"
             aria-label="Resize migration and messages columns"
-            className={`telegramControlPage_gridResizer telegramControlPage_gridResizer--right${activeGridResizer === "right" ? " is-active" : ""}`}
+            className={`telegramControlPage_gridResizer telegramControlPage_gridResizer--right${activeGridResizer === "left" ? " is-active" : ""}`}
             onPointerDown={(event) =>
-              handleGridResizerPointerDown(event, "right")
+              handleGridResizerPointerDown(event, "left")
             }
           />
           <section
@@ -3963,21 +4788,41 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
               <span>{`${filteredMessages.length} ${storageCopy.shown}`}</span>
             </div>
             <div className="telegramControlPage_streamToolbar">
-              <div className="telegramControlPage_messageTypeTabs">
-                {TELEGRAM_MESSAGE_TYPE_TABS.map((tab) => {
-                  const isActive = activeMessageTypeTab === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      className={`telegramControlPage_messageTypeTab${isActive ? " is-active" : ""}`}
-                      onClick={() => setActiveMessageTypeTab(tab.key)}
-                    >
-                      {(storageLanguage === "ar" ? tab.labelAr : tab.labelEn) +
-                        ` (${Number(messageTypeCounts?.[tab.key] || 0)})`}
-                    </button>
-                  );
-                })}
+              <div className="telegramControlPage_messageTypeTabsWrap">
+                <div className="telegramControlPage_messageTypeTabs">
+                  {TELEGRAM_MESSAGE_TYPE_TABS.map((tab) => {
+                    const isActive = activeMessageTypeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        className={`telegramControlPage_messageTypeTab${isActive ? " is-active" : ""}`}
+                        onClick={() => setActiveMessageTypeTab(tab.key)}
+                      >
+                        {(storageLanguage === "ar" ? tab.labelAr : tab.labelEn) +
+                          ` (${Number(messageTypeCounts?.[tab.key] || 0)})`}
+                      </button>
+                    );
+                  })}
+                </div>
+                {activeMessageTypeTab === "documents" ? (
+                  <div className="telegramControlPage_messageTypeSubTabs">
+                  {TELEGRAM_DOCUMENT_TYPE_TABS.map((tab) => {
+                    const isActive = activeDocumentTypeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        className={`telegramControlPage_messageTypeSubTab${isActive ? " is-active" : ""}`}
+                        onClick={() => setActiveDocumentTypeTab(tab.key)}
+                      >
+                        {(storageLanguage === "ar" ? tab.labelAr : tab.labelEn) +
+                          ` (${Number(documentTypeCounts?.[tab.key] || 0)})`}
+                      </button>
+                    );
+                  })}
+                  </div>
+                ) : null}
               </div>
               <div className="telegramControlPage_streamInterval">
                 <input
@@ -4042,7 +4887,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
 
               <div className="telegramControlPage_stream">
                 <div className="telegramControlPage_streamMessagesPane">
-                  {isLoading ? (
+                  {isLoading && groupedMessages.length === 0 ? (
                     <p className="telegramControlPage_status">
                       {storageCopy.loadingStored}
                     </p>
@@ -4053,26 +4898,128 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                       {storageCopy.loadStoredPrompt}
                     </p>
                   ) : (
-                    groupedMessages.map((messageGroup) => (
-                      <div
-                        key={messageGroup.dayLabel}
-                        className="telegramControlPage_dayGroup"
-                      >
-                        <p className="telegramControlPage_dayLabel">
-                          {messageGroup.dayLabel}
-                        </p>
-                        <div className="telegramControlPage_messageStack">
-                          {messageGroup.items.map((message) => {
+                    <>
+                      {groupedMessages.map((messageGroup) => (
+                        <div
+                          key={messageGroup.dayLabel}
+                          className="telegramControlPage_dayGroup"
+                        >
+                          <p className="telegramControlPage_dayLabel">
+                            {messageGroup.dayLabel}
+                          </p>
+                          <div className="telegramControlPage_messageStack">
+                            {messageGroup.items.map((message) => {
                           const messageDirection =
                             getTelegramMessageTextDirection(message?.text);
-                          const photoPreviewKey = `${String(
+                          const mediaPreviewKey = `${String(
                             message?.groupReference || "",
                           ).trim()}::${Number(message?.id || 0)}`;
-                          const photoPreviewUrl =
-                            photoPreviewUrls[photoPreviewKey] || "";
-                          const isPhotoMessage =
-                            String(message?.attachmentKind || "").toLowerCase() ===
-                            "photo";
+                          const mediaPreviewUrl =
+                            mediaPreviewUrls[mediaPreviewKey] || "";
+                          const messageAttachmentKind = String(
+                            message?.attachmentKind || "",
+                          ).toLowerCase();
+                          const isPhotoMessage = messageAttachmentKind === "photo";
+                          const isVideoMessage = messageAttachmentKind === "video";
+                          const isDocumentMessage =
+                            messageAttachmentKind === "document" ||
+                            messageAttachmentKind === "pdf";
+                          const messagePhotoUrls = isPhotoMessage
+                            ? [
+                                ...(
+                                  Array.isArray(message?.photoDataUrls)
+                                    ? message.photoDataUrls
+                                    : []
+                                )
+                                  .map((url) => String(url || "").trim())
+                                  .filter(Boolean),
+                                ...(
+                                  mediaPreviewUrl
+                                    ? [String(mediaPreviewUrl || "").trim()]
+                                    : []
+                                ),
+                              ].filter(
+                                (url, index, arr) => arr.indexOf(url) === index,
+                              )
+                            : [];
+                          const messageVideoUrl = isVideoMessage
+                            ? String(mediaPreviewUrl || "").trim()
+                            : "";
+                          const messageDocumentUrl = isDocumentMessage
+                            ? String(mediaPreviewUrl || "").trim()
+                            : "";
+                          const hasMessagePhotos = messagePhotoUrls.length > 0;
+                          const hasMessageVideo = Boolean(messageVideoUrl);
+                          const hasMessageDocument = Boolean(messageDocumentUrl);
+                          const hasAnyMessageMedia =
+                            hasMessagePhotos || hasMessageVideo || hasMessageDocument;
+                          const isMediaPreviewLoading = Boolean(
+                            mediaPreviewLoadingKeys[mediaPreviewKey],
+                          );
+                          const isMediaMessageType =
+                            isPhotoMessage || isVideoMessage || isDocumentMessage;
+                          const shouldRenderMessageMediaCol =
+                            hasAnyMessageMedia || (isMediaMessageType && isMediaPreviewLoading);
+                          const isPhotoMiniBarVisible =
+                            activePhotoMiniBarKey === mediaPreviewKey;
+                          const handleViewMessagePhotos = () => {
+                            const firstPhotoUrl = String(messagePhotoUrls[0] || "").trim();
+                            if (!firstPhotoUrl) {
+                              return;
+                            }
+                            window.open(firstPhotoUrl, "_blank", "noopener,noreferrer");
+                          };
+                          const handleSaveMessagePhotos = () => {
+                            messagePhotoUrls.forEach((url, idx) => {
+                              const href = String(url || "").trim();
+                              if (!href) {
+                                return;
+                              }
+                              const link = document.createElement("a");
+                              link.href = href;
+                              link.download = `telegram-photo-${Number(message?.id || 0)}-${idx + 1}.jpg`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            });
+                          };
+                          const handleViewMessageVideo = () => {
+                            if (!messageVideoUrl) {
+                              return;
+                            }
+                            window.open(messageVideoUrl, "_blank", "noopener,noreferrer");
+                          };
+                          const handleSaveMessageVideo = () => {
+                            if (!messageVideoUrl) {
+                              return;
+                            }
+                            const link = document.createElement("a");
+                            link.href = messageVideoUrl;
+                            link.download = `telegram-video-${Number(message?.id || 0)}.mp4`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          };
+                          const handleViewMessageDocument = () => {
+                            if (!messageDocumentUrl) {
+                              return;
+                            }
+                            window.open(messageDocumentUrl, "_blank", "noopener,noreferrer");
+                          };
+                          const handleSaveMessageDocument = () => {
+                            if (!messageDocumentUrl) {
+                              return;
+                            }
+                            const fileName =
+                              String(message?.attachmentFileName || "").trim() ||
+                              `telegram-document-${Number(message?.id || 0)}`;
+                            const link = document.createElement("a");
+                            link.href = messageDocumentUrl;
+                            link.download = fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          };
 
                             return (
                               <article
@@ -4091,63 +5038,214 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                                       : "flex-start",
                                 }}
                               >
-                              <div className="telegramControlPage_messageMeta">
-                                <span>
-                                  {message.groupTitle ||
-                                    message.groupReference ||
-                                    storageCopy.storedGroup}
-                                </span>
-                                <span>
-                                  {formatTelegramDateTime(message.date)}
-                                </span>
-                              </div>
-                              <div className="telegramControlPage_messageMeta">
-                                <span>{message.sender || "Unknown"}</span>
-                                <button
-                                  type="button"
-                                  className={`telegramControlPage_pinButton${
-                                    message?.isPinned ? " is-active" : ""
-                                  }`}
-                                  onClick={() =>
-                                    handleToggleImportantMessage(message)
-                                  }
-                                >
-                                  {message?.isPinned
-                                    ? storageCopy.pinned
-                                    : storageCopy.pin}
-                                </button>
-                              </div>
-                              <p
-                                className={`telegramControlPage_messageText telegramControlPage_messageText--${messageDirection}`}
-                                dir={messageDirection}
-                                style={{
-                                  direction: messageDirection,
-                                  textAlign:
-                                    messageDirection === "rtl"
-                                      ? "right"
-                                      : "left",
-                                }}
+                              <div
+                                className={`telegramControlPage_messageContent${
+                                  shouldRenderMessageMediaCol
+                                    ? " telegramControlPage_messageContent--withPhotos"
+                                    : ""
+                                }`}
                               >
-                                {message.text || "[No text]"}
-                              </p>
-                              {isPhotoMessage && photoPreviewUrl ? (
-                                <img
-                                  src={photoPreviewUrl}
-                                  alt={message.attachmentFileName || "Telegram photo"}
-                                  className="telegramControlPage_messagePhoto"
-                                />
-                              ) : null}
-                              {message.attachmentFileName ? (
-                                <span className="telegramControlPage_attachmentLabel">
-                                  {message.attachmentFileName}
-                                </span>
-                              ) : null}
+                                {shouldRenderMessageMediaCol ? (
+                                  <div
+                                    className={`telegramControlPage_messagePhotosCol${
+                                      messagePhotoUrls.length > 1
+                                        ? " is-grid"
+                                        : ""
+                                    }`}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setActivePhotoMiniBarKey((currentValue) =>
+                                        currentValue === mediaPreviewKey
+                                          ? ""
+                                          : mediaPreviewKey,
+                                      );
+                                    }}
+                                  >
+                                    <div
+                                      className={`telegramControlPage_messagePhotoMiniBar${
+                                        isPhotoMiniBarVisible ? " is-visible" : ""
+                                      }`}
+                                    >
+                                      {hasMessagePhotos ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleViewMessagePhotos();
+                                            }}
+                                          >
+                                            {storageCopy.viewAction}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleSaveMessagePhotos();
+                                            }}
+                                          >
+                                            Save photos
+                                          </button>
+                                        </>
+                                      ) : null}
+                                      {hasMessageVideo ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleViewMessageVideo();
+                                            }}
+                                          >
+                                            {storageCopy.viewAction}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleSaveMessageVideo();
+                                            }}
+                                          >
+                                            Save video
+                                          </button>
+                                        </>
+                                      ) : null}
+                                      {hasMessageDocument ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleViewMessageDocument();
+                                            }}
+                                          >
+                                            {storageCopy.viewAction}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="telegramControlPage_scopeMiniBarButton"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              handleSaveMessageDocument();
+                                            }}
+                                          >
+                                            Save file
+                                          </button>
+                                        </>
+                                      ) : null}
+                                    </div>
+                                    {messagePhotoUrls.map((url, idx) => (
+                                      <img
+                                        key={`${mediaPreviewKey}-photo-${idx + 1}`}
+                                        src={url}
+                                        alt={
+                                          message.attachmentFileName ||
+                                          `Telegram photo ${idx + 1}`
+                                        }
+                                        className="telegramControlPage_messagePhoto"
+                                      />
+                                    ))}
+                                    {hasMessageVideo ? (
+                                      <video
+                                        src={messageVideoUrl}
+                                        controls
+                                        className="telegramControlPage_messageVideo"
+                                      />
+                                    ) : null}
+                                    {hasMessageDocument ? (
+                                      <a
+                                        href={messageDocumentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="telegramControlPage_messageDocument"
+                                      >
+                                        <i
+                                          className="fas fa-file-alt telegramControlPage_messageDocumentIcon"
+                                          aria-hidden="true"
+                                        />
+                                        {message.attachmentFileName || "Open document"}
+                                      </a>
+                                    ) : null}
+                                    {!hasAnyMessageMedia && isMediaPreviewLoading ? (
+                                      <div className="telegramControlPage_messageMediaLoaderWrap">
+                                        <span className="telegramControlPage_messageMediaLoader" />
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                <div className="telegramControlPage_messageBodyCol">
+                                  <div className="telegramControlPage_messageMeta">
+                                    <span>
+                                      {message.groupTitle ||
+                                        message.groupReference ||
+                                        storageCopy.storedGroup}
+                                    </span>
+                                    <span>
+                                      {formatTelegramDateTime(message.date)}
+                                    </span>
+                                  </div>
+                                  <div className="telegramControlPage_messageMeta">
+                                    <span>{message.sender || "Unknown"}</span>
+                                    <button
+                                      type="button"
+                                      className={`telegramControlPage_pinButton${
+                                        message?.isPinned ? " is-active" : ""
+                                      }`}
+                                      onClick={() =>
+                                        handleToggleImportantMessage(message)
+                                      }
+                                    >
+                                      {message?.isPinned
+                                        ? storageCopy.pinned
+                                        : storageCopy.pin}
+                                    </button>
+                                  </div>
+                                  {String(message.text || "").trim() ? (
+                                    <p
+                                      className={`telegramControlPage_messageText telegramControlPage_messageText--${messageDirection}`}
+                                      dir={messageDirection}
+                                      style={{
+                                        direction: messageDirection,
+                                        textAlign:
+                                          messageDirection === "rtl"
+                                            ? "right"
+                                            : "left",
+                                      }}
+                                    >
+                                      {message.text}
+                                    </p>
+                                  ) : null}
+                                  {message.attachmentFileName ? (
+                                    <span className="telegramControlPage_attachmentLabel">
+                                      {message.attachmentFileName}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
                               </article>
                             );
-                          })}
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                      {hasMoreMessages ? (
+                        <div className="telegramControlPage_streamLoadMore">
+                          <button
+                            type="button"
+                            className="telegramControlPage_button"
+                            onClick={handleLoadMoreStoredMessages}
+                            disabled={isLoadingMoreMessages || isLoading}
+                          >
+                            {isLoadingMoreMessages ? "Loading more..." : "Load more"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                 </div>
                 <aside className="telegramControlPage_streamMembersPane">
@@ -4184,8 +5282,35 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           {/* close telegramControlPage_card--stream */}
         </section>{" "}
         {/* close telegramControlPage_grid */}
+        {isTelegramLoginWindowOpen ? (
+          <section
+            className="telegramControlPage_loginWindow"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="telegramControlPage_loginWindowMiniBar fr">
+              <h4>Telegram Login</h4>
+              <button
+                type="button"
+                className="telegramControlPage_loginWindowClose"
+                aria-label="Close Telegram Login window"
+                onClick={() => setIsTelegramLoginWindowOpen(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            {renderTelegramConnectionCard()}
+          </section>
+        ) : null}
     </section>
   );
 };
 
 export default TelegramControlPage;
+
+
+
+
+
+
+
+

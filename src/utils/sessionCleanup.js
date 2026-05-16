@@ -34,6 +34,14 @@ export const clearStoredSession = () => {
 
 export const notifyBackendLogout = ({ userId, token } = {}) => {
   if (token && typeof fetch === "function") {
+    const controller =
+      typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = globalThis.setTimeout(() => {
+      try {
+        controller?.abort();
+      } catch {}
+    }, 1200);
+
     return fetch(apiUrl("/api/user/logout"), {
       method: "POST",
       mode: "cors",
@@ -41,10 +49,14 @@ export const notifyBackendLogout = ({ userId, token } = {}) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      keepalive: true,
+      keepalive: false,
+      signal: controller?.signal,
     })
       .then(() => undefined)
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        globalThis.clearTimeout(timeoutId);
+      });
   }
 
   if (!userId) {
@@ -88,12 +100,12 @@ export const notifyBackendLogout = ({ userId, token } = {}) => {
     .catch(() => undefined);
 };
 
-export const logoutStoredSession = ({ clear = true } = {}) => {
+export const logoutStoredSession = ({ clear = true, tokenless = false } = {}) => {
   const storedSession = readStoredSession();
 
   return notifyBackendLogout({
     userId: storedSession?.my_id,
-    token: storedSession?.token,
+    token: tokenless ? "" : storedSession?.token,
   }).finally(() => {
     if (clear) {
       clearStoredSession();

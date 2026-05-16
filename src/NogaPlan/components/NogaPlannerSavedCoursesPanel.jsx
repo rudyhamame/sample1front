@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import NogaPlannerSettings from "./NogaPlannerSettings";
+import { apiUrl } from "../../config/api";
+import "../../telegramControlPage.css";
 
 const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const [coursesMiniBarActionsLeft, setCoursesMiniBarActionsLeft] =
@@ -9,6 +11,31 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const [logoAssetsReady, setLogoAssetsReady] = useState(false);
   const [noAttendanceForComponent, setNoAttendanceForComponent] = useState(false);
   const [hoveredCourseGroupKey, setHoveredCourseGroupKey] = useState("");
+  const [telegramChatOpen, setTelegramChatOpen] = useState(false);
+  const [telegramStoredGroups, setTelegramStoredGroups] = useState([]);
+  const [telegramSelectedGroupReference, setTelegramSelectedGroupReference] =
+    useState("");
+  const [telegramSearchQuery, setTelegramSearchQuery] = useState("");
+  const [telegramMessages, setTelegramMessages] = useState([]);
+  const [telegramChatLoading, setTelegramChatLoading] = useState(false);
+  const [telegramChatError, setTelegramChatError] = useState("");
+  const [telegramChatFrame, setTelegramChatFrame] = useState({
+    top: 84,
+    right: 16,
+    width: 480,
+    height: 620,
+    zIndex: 28,
+  });
+  const telegramChatFrameRef = useRef({
+    top: 84,
+    right: 16,
+    width: 480,
+    height: 620,
+    zIndex: 28,
+  });
+  const telegramChatDragRef = useRef(null);
+  const telegramChatResizeRef = useRef(null);
+  const telegramChatZCounterRef = useRef(28);
   const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
   const previousWrapperTabRef = useRef(String(planner.state?.wrapperTab || ""));
@@ -36,10 +63,31 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     buildDefaultPlannerWeekdayOptions,
     PLANNER_COURSE_UI,
     getPlannerDefaultFieldsForForm,
-    NOGAPLANNER_WRAPPER_TABS,
     NOGAPLANNER_TEXT,
   } = runtime;
   const SAVED_TEXT = NOGAPLANNER_TEXT.savedCourses;
+  const WRAPPER_TABS = [
+    {
+      key: "courses",
+      label: NOGAPLANNER_TEXT.savedCourses.coursesTitle,
+      icon: "fi fi-rr-lesson",
+    },
+    {
+      key: "lectures",
+      label: NOGAPLANNER_TEXT.savedCourses.lecturesTitle,
+      icon: "fi fi-rc-leader-speech",
+    },
+    {
+      key: "exams",
+      label: NOGAPLANNER_TEXT.examBoard.tabExams,
+      icon: "fi fi-rr-test",
+    },
+    {
+      key: "settings",
+      label: SAVED_TEXT.plannerSettings,
+      icon: "fi fi-rr-holding-hand-gear",
+    },
+  ];
   const LOGO_BY_CLOCK_POSITION = {
     "12": "/img/NP12.png",
     "1": "/img/NP1.png",
@@ -125,6 +173,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const selectedDetailsComponent = String(
     savedCourseDetailsComponentId || "",
   ).trim();
+  const hasSelectedExam = Boolean(
+    String(planner.state?.selected_course_id || "").trim() &&
+      Number(planner.state?.selected_exam_index) >= 0,
+  );
   const lectureSelectionIds = Array.isArray(planner.state?.deleteSelectionIds)
     ? planner.state.deleteSelectionIds
         .map((entry) => String(entry || "").trim())
@@ -134,8 +186,12 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     String(course?.course_name || "").trim().toLowerCase();
   const isLecturesTab = plannerTab === "lectures";
   const isCoursesTab = plannerTab === "courses";
+  const isSettingsTab = String(planner.state?.wrapperTab || "").trim() === "settings";
   const hasActivePlannerTab =
-    isCoursesTab || isLecturesTab || planner.state?.wrapperTab === "exams";
+    isCoursesTab ||
+    isLecturesTab ||
+    planner.state?.wrapperTab === "exams" ||
+    isSettingsTab;
   const activeWorkspaceTabTitle = isCoursesTab
     ? SAVED_TEXT.coursesTitle
     : isLecturesTab
@@ -144,6 +200,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
         ? NOGAPLANNER_TEXT.examBoard.tabExams
         : "";
   const messageFriendSettings = planner.state?.plannerSelectSettings?.messageFriend;
+  const plannerToken = String(planner?.props?.state?.token || "").trim();
   const normalizeFriendId = (value) => {
     if (!value) {
       return "";
@@ -213,12 +270,189 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   const showComponentSaveCancelActions =
     Boolean(savedCourseComponentDraftActive) && hasSelectedComponentType;
   const hasPendingUnsavedComponentDraft = Boolean(savedCourseComponentDraftActive);
+  const syncTelegramChatFrame = (nextFrame) => {
+    telegramChatFrameRef.current = nextFrame;
+    setTelegramChatFrame(nextFrame);
+  };
+  const bringTelegramChatToFront = () => {
+    telegramChatZCounterRef.current += 1;
+    const nextFrame = {
+      ...telegramChatFrameRef.current,
+      zIndex: telegramChatZCounterRef.current,
+    };
+    syncTelegramChatFrame(nextFrame);
+  };
+  const formatStoredGroupOptionLabel = (group = {}) => {
+    const title = String(group?.title || "").trim();
+    const reference = String(
+      group?.groupReference || group?.reference || group?.username || "",
+    ).trim();
+    if (title && reference) {
+      return `${title} (${reference})`;
+    }
+    return title || reference || "Telegram group";
+  };
+
+  const formatTelegramMessageDate = (value) => {
+    const nextDate = value ? new Date(value) : null;
+    if (!nextDate || Number.isNaN(nextDate.getTime())) {
+      return "";
+    }
+    return nextDate.toLocaleString();
+  };
+
+  const fetchTelegramStoredGroups = async () => {
+    if (!plannerToken) {
+      setTelegramChatError("Telegram login token is missing.");
+      setTelegramStoredGroups([]);
+      return [];
+    }
+    try {
+      const response = await fetch(apiUrl("/api/telegram/stored-groups"), {
+        headers: {
+          Authorization: `Bearer ${plannerToken}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load Telegram groups.");
+      }
+      const nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
+      setTelegramStoredGroups(nextGroups);
+      setTelegramSelectedGroupReference((currentValue) => {
+        const currentRef = String(currentValue || "").trim();
+        if (
+          currentRef &&
+          nextGroups.some(
+            (group) =>
+              String(group?.groupReference || "").trim() === currentRef,
+          )
+        ) {
+          return currentValue;
+        }
+        return String(nextGroups[0]?.groupReference || "");
+      });
+      return nextGroups;
+    } catch (nextError) {
+      setTelegramStoredGroups([]);
+      setTelegramChatError(
+        nextError?.message || "Unable to load Telegram groups.",
+      );
+      return [];
+    }
+  };
+
+  const searchTelegramStoredMessages = async (groupReferenceOverride = "") => {
+    const groupReference = String(
+      groupReferenceOverride || telegramSelectedGroupReference || "",
+    ).trim();
+    if (!plannerToken) {
+      setTelegramChatError("Telegram login token is missing.");
+      return;
+    }
+    if (!groupReference) {
+      setTelegramMessages([]);
+      setTelegramChatError("Choose a stored group first.");
+      return;
+    }
+    setTelegramChatLoading(true);
+    setTelegramChatError("");
+    try {
+      const searchParams = new URLSearchParams();
+      searchParams.set("limit", "120");
+      searchParams.set("offset", "0");
+      searchParams.set("group", groupReference);
+      if (String(telegramSearchQuery || "").trim()) {
+        searchParams.set("q", String(telegramSearchQuery).trim());
+      }
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+        {
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load Telegram messages.");
+      }
+      setTelegramMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+    } catch (nextError) {
+      setTelegramMessages([]);
+      setTelegramChatError(
+        nextError?.message || "Unable to load Telegram messages.",
+      );
+    } finally {
+      setTelegramChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     setNoAttendanceForComponent(false);
   }, [selectedSavedCourseDraftComponentIndex, hasSelectedComponentType]);
 
+  useEffect(() => {
+    if (!telegramChatOpen) {
+      return;
+    }
+    fetchTelegramStoredGroups();
+  }, [telegramChatOpen]);
+
+  useEffect(() => {
+    if (!telegramChatOpen) {
+      return;
+    }
+    if (!String(telegramSelectedGroupReference || "").trim()) {
+      setTelegramMessages([]);
+      return;
+    }
+    searchTelegramStoredMessages(telegramSelectedGroupReference);
+  }, [telegramChatOpen, telegramSelectedGroupReference]);
+
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      const dragState = telegramChatDragRef.current;
+      if (dragState) {
+        const nextTop = Math.max(20, dragState.startTop + (event.clientY - dragState.startY));
+        const nextRight = Math.max(8, dragState.startRight - (event.clientX - dragState.startX));
+        syncTelegramChatFrame({
+          ...telegramChatFrameRef.current,
+          top: Math.round(nextTop),
+          right: Math.round(nextRight),
+        });
+        return;
+      }
+      const resizeState = telegramChatResizeRef.current;
+      if (!resizeState) {
+        return;
+      }
+      const nextWidth = Math.max(320, resizeState.startWidth + (event.clientX - resizeState.startX));
+      const nextHeight = Math.max(280, resizeState.startHeight + (event.clientY - resizeState.startY));
+      syncTelegramChatFrame({
+        ...telegramChatFrameRef.current,
+        width: Math.round(nextWidth),
+        height: Math.round(nextHeight),
+      });
+    };
+    const handlePointerUp = () => {
+      telegramChatDragRef.current = null;
+      telegramChatResizeRef.current = null;
+    };
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, []);
+
   const handleWrapperTabButtonClick = (tabKey) => {
+    if (tabKey === "settings") {
+      planner.handleWrapperTabChange("settings");
+      setIsMiniBarActionsVisible(false);
+      return;
+    }
     const isActiveTab = planner.state.wrapperTab === tabKey;
     if (isActiveTab) {
       setIsMiniBarActionsVisible((previousValue) => !previousValue);
@@ -419,6 +653,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     planner.setState({
       wrapperTab: "",
       plannerTab: "",
+      plannerSettingsVisible: false,
       selectedTabItemId: null,
       selectedCourseForLecturesId: "",
       selectedCourseForLecturesName: "",
@@ -1619,16 +1854,12 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           id="nogaPlanner_coursesMiniBar"
           className="nogaPlanner_coursesMiniBar"
         >
-          {!planner.state.wrapperTab && !plannerSettingsVisible ? (
             <div
               id="nogaPlanner_coursesMiniBar_tabs"
               className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--tabs"
               ref={coursesMiniBarTabsRef}
             >
-                {(Array.isArray(NOGAPLANNER_WRAPPER_TABS)
-                  ? NOGAPLANNER_WRAPPER_TABS
-                  : []
-                ).map((tabEntry) => (
+                {WRAPPER_TABS.map((tabEntry) => (
                   <button
                     key={`wrapper-tab-${tabEntry.key}`}
                     id={`nogaPlanner_wrapperTabBtn_${tabEntry.key}`}
@@ -1648,32 +1879,18 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                         : false
                     }
                   >
-                    {tabEntry.key === "courses" ? (
-                      <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                        <i className="fi fi-rr-lesson" />
-                        <span>{NOGAPLANNER_TEXT.savedCourses.coursesTitle}</span>
-                      </span>
-                    ) : tabEntry.key === "lectures" ? (
-                      <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                        <i className="fi fi-rc-leader-speech" />
-                        <span>{NOGAPLANNER_TEXT.savedCourses.lecturesTitle}</span>
-                      </span>
-                    ) : tabEntry.key === "exams" ? (
-                      <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                        <i className="fi fi-rr-test" />
-                        <span>{NOGAPLANNER_TEXT.examBoard.tabExams}</span>
-                      </span>
-                    ) : (
-                      tabEntry.label
-                    )}
+                    <span className="nogaPlanner_wrapperTabBtnIconLabel">
+                      <i className={tabEntry.icon} />
+                      <span>{tabEntry.label}</span>
+                    </span>
                   </button>
                 ))}
             </div>
-          ) : null}
           {isMiniBarActionsVisible &&
           !plannerSettingsVisible &&
           (planner.state.wrapperTab === "courses" ||
-            planner.state.wrapperTab === "lectures") ? (
+            planner.state.wrapperTab === "lectures" ||
+            planner.state.wrapperTab === "exams") ? (
             <>
               <div
                 id="nogaPlanner_wrapperTabsActions"
@@ -1817,6 +2034,50 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                     </>
                   )}
                 </>
+              ) : planner.state.wrapperTab === "exams" ? (
+                <>
+                  <button
+                    id="nogaPlanner_coursesMiniBarBtn_addExam"
+                    type="button"
+                    className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--add"
+                    onClick={() => planner.openAddExamForm("Add")}
+                    aria-label={NOGAPLANNER_TEXT.examBoard.add}
+                    title={NOGAPLANNER_TEXT.examBoard.add}
+                  >
+                    {renderMiniBarButtonContent(
+                      "fi fi-sr-rectangle-history-circle-plus",
+                      NOGAPLANNER_TEXT.examBoard.add,
+                    )}
+                  </button>
+                  <button
+                    id="nogaPlanner_coursesMiniBarBtn_editExam"
+                    type="button"
+                    className="nogaPlanner_coursesMiniBarBtn"
+                    onClick={() => planner.openAddExamForm("Edit")}
+                    disabled={!hasSelectedExam}
+                    aria-label={NOGAPLANNER_TEXT.examBoard.edit}
+                    title={NOGAPLANNER_TEXT.examBoard.edit}
+                  >
+                    {renderMiniBarButtonContent(
+                      "fas fa-pen",
+                      NOGAPLANNER_TEXT.examBoard.edit,
+                    )}
+                  </button>
+                  <button
+                    id="nogaPlanner_coursesMiniBarBtn_deleteExam"
+                    type="button"
+                    className="nogaPlanner_coursesMiniBarBtn"
+                    onClick={planner.deleteSelectedExam}
+                    disabled={!hasSelectedExam}
+                    aria-label={NOGAPLANNER_TEXT.examBoard.delete}
+                    title={NOGAPLANNER_TEXT.examBoard.delete}
+                  >
+                    {renderMiniBarButtonContent(
+                      "fas fa-trash",
+                      NOGAPLANNER_TEXT.examBoard.delete,
+                    )}
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -1889,10 +2150,28 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           ) : null}
         </div>
         <div id="nogaPlanner_wrapperTabsAside" className="nogaPlanner_wrapperTabsAside">
+          <button
+            id="nogaPlanner_coursesMiniBarBtn_telegramChat"
+            type="button"
+            className={
+              "nogaPlanner_wrapperTabBtn" +
+              (telegramChatOpen ? " nogaPlanner_coursesMiniBarBtn--active" : "")
+            }
+            onClick={() => setTelegramChatOpen((currentValue) => !currentValue)}
+            aria-pressed={telegramChatOpen}
+            aria-label="Telegram chat"
+            title="Telegram chat"
+          >
+            <span className="nogaPlanner_wrapperTabBtnIconLabel">
+              <i className="fi fi-brands-telegram" />
+              <span>Telegram</span>
+            </span>
+          </button>
           {isMiniBarActionsVisible &&
           !plannerSettingsVisible &&
           (planner.state.wrapperTab === "courses" ||
-            planner.state.wrapperTab === "lectures") ? (
+            planner.state.wrapperTab === "lectures" ||
+            planner.state.wrapperTab === "exams") ? (
             <button
               id="backToTabs_button"
               type="button"
@@ -1908,39 +2187,116 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               </span>
             </button>
           ) : null}
-          <button
-            id="nogaPlanner_coursesMiniBarBtn_settings"
-            type="button"
-            className="nogaPlanner_wrapperTabBtn"
-            onClick={
-              plannerSettingsVisible
-                ? planner.handleBackFromPlannerSettings
-                : planner.togglePlannerSettings
-            }
-            aria-label={
-              plannerSettingsVisible
-                ? NOGAPLANNER_TEXT.settings.back
-                : SAVED_TEXT.plannerSettings
-            }
-            title={
-              plannerSettingsVisible
-                ? NOGAPLANNER_TEXT.settings.back
-                : SAVED_TEXT.plannerSettings
-            }
-          >
-            {plannerSettingsVisible
-              ? renderMiniBarButtonContent(
-                  "fi fi-rc-arrow-alt-circle-left",
-                  NOGAPLANNER_TEXT.settings.back,
-                )
-              : renderMiniBarButtonContent(
-                  "fi fi-rr-holding-hand-gear",
-                  SAVED_TEXT.plannerSettings,
-                )}
-          </button>
         </div>
       </div>
   );
+
+  const renderTelegramChatPanel = () => {
+    if (!telegramChatOpen) {
+      return null;
+    }
+    return (
+      <div
+        id="nogaPlanner_telegramMiniChat"
+        className="telegramControlPage_card telegramControlPage_card--stream nogaPlanner_telegramMiniChat"
+        style={{
+          top: `${telegramChatFrame.top}px`,
+          right: `${telegramChatFrame.right}px`,
+          width: `${telegramChatFrame.width}px`,
+          height: `${telegramChatFrame.height}px`,
+          zIndex: telegramChatFrame.zIndex,
+        }}
+      >
+        <div className="telegramControlPage_cardHeader">
+          <h2>Telegram messages</h2>
+          <span>{`${telegramMessages.length} shown`}</span>
+        </div>
+        <div className="telegramControlPage_streamToolbar">
+          <select
+            id="nogaPlanner_telegramMiniChatGroupSelect"
+            className="telegramControlPage_input"
+            value={telegramSelectedGroupReference}
+            onChange={(event) =>
+              setTelegramSelectedGroupReference(event.target.value)
+            }
+          >
+            <option value="">Select stored group</option>
+            {(Array.isArray(telegramStoredGroups) ? telegramStoredGroups : []).map(
+              (group) => {
+                const reference = String(group?.groupReference || "").trim();
+                if (!reference) {
+                  return null;
+                }
+                return (
+                  <option key={`telegram-mini-group-${reference}`} value={reference}>
+                    {formatStoredGroupOptionLabel(group)}
+                  </option>
+                );
+              },
+            )}
+          </select>
+          <div className="telegramControlPage_streamControlsRow">
+            <input
+              id="nogaPlanner_telegramMiniChatSearch"
+              className="telegramControlPage_input"
+              type="text"
+              value={telegramSearchQuery}
+              onChange={(event) => setTelegramSearchQuery(event.target.value)}
+              placeholder="Search stored messages"
+            />
+            <button
+              id="nogaPlanner_telegramMiniChatSearchBtn"
+              type="button"
+              className="telegramControlPage_button telegramControlPage_button--primary"
+              onClick={() => searchTelegramStoredMessages()}
+              disabled={telegramChatLoading}
+            >
+              Search
+            </button>
+          </div>
+        </div>
+        <div id="nogaPlanner_telegramMiniChatViewer" className="telegramControlPage_streamMessagesPane">
+          {telegramChatLoading ? (
+            <p className="telegramControlPage_status">Loading messages...</p>
+          ) : telegramChatError ? (
+            <p className="telegramControlPage_feedback">{telegramChatError}</p>
+          ) : telegramMessages.length === 0 ? (
+            <p className="telegramControlPage_status">No messages found.</p>
+          ) : (
+            <div className="telegramControlPage_messageStack">
+              {telegramMessages.map((message, index) => {
+                const messageKey = String(
+                  message?._id || message?.id || `${message?.date || ""}-${index}`,
+                );
+                const sender = String(
+                  message?.senderName ||
+                    message?.sender ||
+                    message?.from ||
+                    message?.author ||
+                    "Unknown sender",
+                ).trim();
+                const text = String(message?.text || "").trim();
+                return (
+                  <article
+                    key={`telegram-mini-message-${messageKey}`}
+                    className="telegramControlPage_message telegramControlPage_message--ltr"
+                  >
+                    <div className="telegramControlPage_messageMeta">
+                      <strong>{sender || "Unknown sender"}</strong>
+                      <span>{formatTelegramMessageDate(message?.date)}</span>
+                    </div>
+                    <p className="telegramControlPage_messageText">
+                      {text || "(No text content)"}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderTable = () => (
     <div
@@ -2235,7 +2591,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
         </div>
         {renderWrapperTabs()}
       </div>
-      {plannerSettingsVisible ? (
+      {renderTelegramChatPanel()}
+      {isSettingsTab || plannerSettingsVisible ? (
         <NogaPlannerSettings planner={planner} runtime={runtime} />
       ) : (
         <div
@@ -2264,6 +2621,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             planner.renderSelectedCourseLecturesTable(
               inlineLectureRowVisible ? "table" : "full",
             )
+          ) : planner.state?.wrapperTab === "exams" ? (
+            planner.renderSelectedCourseExamBoard(true)
           ) : (
             <>
               {shouldShowSelectedCourseLectures

@@ -1,0 +1,113 @@
+.deezerPlayerPage {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  padding: 18px;
+  gap: 14px;
+  background: linear-gradient(180deg, #f6fbfb 0%, #eaf4f6 100%);
+}
+
+.deezerPlayerPage_header h1,
+.deezerPlayerPage_header p {
+  margin: 0;
+}
+
+.deezerPlayerPage_controls {
+  display: flex;
+  gap: 8px;
+}
+
+.deezerPlayer_input {
+  flex: 1 1 auto;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(112, 158, 168, 0.28);
+  padding: 0 12px;
+}
+
+.deezerPlayer_btn {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(112, 158, 168, 0.28);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.deezerPlayerPage_layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.deezerPlayer_list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.deezerPlayer_trackItem {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    "cover title"
+    "cover artist";
+  gap: 0 8px;
+  align-items: center;
+  border: 1px solid rgba(112, 158, 168, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.deezerPlayer_trackItem.is-active {
+  border-color: rgba(24, 113, 118, 0.6);
+}
+
+.deezerPlayer_trackItem img {
+  grid-area: cover;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.deezerPlayer_trackItem span {
+  grid-area: title;
+  font-size: 0.84rem;
+}
+
+.deezerPlayer_trackItem small {
+  grid-area: artist;
+  color: rgba(20, 67, 75, 0.75);
+}
+
+.deezerPlayer_nowPlaying {
+  border: 1px solid rgba(112, 158, 168, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deezerPlayer_cover {
+  width: min(280px, 100%);
+  border-radius: 14px;
+}
+
+.deezerPlayer_transport {
+  display: flex;
+  gap: 8px;
+}
+
+.deezerPlayer_audio {
+  width: 100%;
+}

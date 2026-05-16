@@ -105,6 +105,31 @@ const NogaPlannerLecturesTablePanel = ({
   )
     ? inlineLectureDraft.lecture_contentUploads
     : [];
+  const lectureVolumeTotal = Math.max(
+    0,
+    Number(inlineLectureDraft?.lecture_volume_total || 0) || 0,
+  );
+  const hasLectureSelectionContext =
+    String(inlineLectureDraft?.lecture_courseId || "").trim().length > 0 &&
+    String(inlineLectureDraft?.lecture_componentId || "").trim().length > 0;
+  const hasLectureCourseSelection =
+    String(inlineLectureDraft?.lecture_courseId || "").trim().length > 0;
+  const lecturePagesFinishedSet = new Set(
+    (Array.isArray(inlineLectureDraft?.lecture_pagesFinished)
+      ? inlineLectureDraft.lecture_pagesFinished
+      : []
+    )
+      .map((entry) => Number(entry))
+      .filter(
+        (entry) =>
+          Number.isFinite(entry) && entry >= 1 && entry <= lectureVolumeTotal,
+      ),
+  );
+  const lectureVolumeDone = lecturePagesFinishedSet.size;
+  const lectureVolumeRemaining = Math.max(
+    lectureVolumeTotal - lectureVolumeDone,
+    0,
+  );
 
   const lecturesFormEditor =
     inlineLectureRowVisible && renderMode !== "table" ? (
@@ -188,6 +213,7 @@ const NogaPlannerLecturesTablePanel = ({
               <select
                 id="nogaPlanner_lecturesSelect_component"
                 className="nogaPlanner_savedCoursesDetailsInput"
+                disabled={!hasLectureCourseSelection}
                 value={inlineLectureDraft?.lecture_componentId || ""}
                 onChange={(event) => {
                   const nextId = event.target.value;
@@ -222,24 +248,6 @@ const NogaPlannerLecturesTablePanel = ({
                 ))}
               </select>
             </div>
-            <button
-              id="nogaPlanner_lecturesBtn_completeByAi"
-              type="button"
-              className="nogaPlanner_coursesMiniBarBtn nogaPlanner_lecturesBtnCompleteByAi"
-              onClick={planner.completeInlineLectureByAi}
-              disabled={
-                Boolean(planner.state?.inlineLectureAiCompleting) ||
-                !String(inlineLectureDraft?.lecture_courseId || "").trim() ||
-                !String(inlineLectureDraft?.lecture_componentId || "").trim()
-              }
-            >
-              <i className="fas fa-robot" aria-hidden="true" />
-              <span>
-                {planner.state?.inlineLectureAiCompleting
-                  ? "loading..."
-                  : "complete by AI"}
-              </span>
-            </button>
           </div>
           <div
             id="nogaPlanner_lecturesFormCourseFieldsColumn_secondary"
@@ -259,6 +267,7 @@ const NogaPlannerLecturesTablePanel = ({
                 id="nogaPlanner_lecturesInput_title"
                 className="nogaPlanner_savedCoursesDetailsInput"
                 type="text"
+                disabled={!hasLectureSelectionContext}
                 value={inlineLectureDraft?.lecture_name || ""}
                 onChange={(event) =>
                   planner.handleInlineLectureDraftChange(
@@ -281,6 +290,7 @@ const NogaPlannerLecturesTablePanel = ({
               <select
                 id="nogaPlanner_lecturesSelect_instructors"
                 className="nogaPlanner_savedCoursesDetailsInput"
+                disabled={!hasLectureSelectionContext}
                 value={inlineLectureDraft?.lecture_instructors || ""}
                 onChange={(event) =>
                   planner.handleInlineLectureDraftChange(
@@ -319,6 +329,7 @@ const NogaPlannerLecturesTablePanel = ({
               <select
                 id="nogaPlanner_lecturesSelect_writers"
                 className="nogaPlanner_savedCoursesDetailsInput"
+                disabled={!hasLectureSelectionContext}
                 value={inlineLectureDraft?.lecture_writers || ""}
                 onChange={(event) =>
                   planner.handleInlineLectureDraftChange(
@@ -345,6 +356,62 @@ const NogaPlannerLecturesTablePanel = ({
               </select>
             </div>
             <div
+              id="nogaPlanner_lecturesFieldCluster_volume"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_volume"
+                className="nogaPlanner_lecturesFieldEyebrow"
+              >
+                الحجم
+              </span>
+              <div className="nogaPlanner_savedCourseDetailGroupsGrid">
+                <input
+                  id="nogaPlanner_lecturesInput_volume_total"
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  type="number"
+                  min="1"
+                  disabled={!hasLectureSelectionContext}
+                  value={inlineLectureDraft?.lecture_volume_total || ""}
+                  onChange={(event) =>
+                    planner.handleInlineLectureVolumeTotalChange(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="الكلي"
+                />
+              </div>
+              <div
+                id="nogaPlanner_lecturesVolumePageGrid"
+                className="nogaPlanner_lecturesVolumePageGrid"
+              >
+                {Array.from({ length: lectureVolumeTotal }, (_, index) => {
+                  const pageNumber = index + 1;
+                  const isDone = lecturePagesFinishedSet.has(pageNumber);
+                  return (
+                    <button
+                      id={`nogaPlanner_lecturesVolumePageCube_${pageNumber}`}
+                      key={`nogaPlanner_lecturesVolumePageCube_${pageNumber}`}
+                      type="button"
+                      className={
+                        "nogaPlanner_lecturesVolumePageCube" +
+                        (isDone ? " is-done" : "")
+                      }
+                      disabled={!hasLectureSelectionContext}
+                      onClick={() =>
+                        planner.toggleInlineLecturePageFinished(pageNumber)
+                      }
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+              </div>
+              <p id="nogaPlanner_lecturesVolumeStats" className="nogaPlanner_lecturesVolumeStats">
+                {`المنتهي: ${lectureVolumeDone} | الباقي: ${lectureVolumeRemaining}`}
+              </p>
+            </div>
+            <div
               id="nogaPlanner_lecturesFieldCluster_date"
               className="nogaPlanner_lecturesFormFieldCluster"
             >
@@ -358,6 +425,7 @@ const NogaPlannerLecturesTablePanel = ({
                 id="nogaPlanner_lecturesInput_date"
                 className="nogaPlanner_savedCoursesDetailsInput"
                 type="date"
+                disabled={!hasLectureSelectionContext}
                 value={inlineLectureDraft?.lecture_date || ""}
                 onChange={(event) =>
                   planner.handleInlineLectureDraftChange(
@@ -381,6 +449,7 @@ const NogaPlannerLecturesTablePanel = ({
                 id="nogaPlanner_lecturesUploadButton"
                 type="button"
                 className="nogaPlanner_inlineUploadButton"
+                disabled={!hasLectureSelectionContext}
                 onClick={() => {
                   const uploadInput = document.getElementById(
                     "nogaPlanner_lecturesUploadInput",
@@ -397,6 +466,7 @@ const NogaPlannerLecturesTablePanel = ({
                 type="file"
                 multiple
                 hidden
+                disabled={!hasLectureSelectionContext}
                 onChange={(event) =>
                   planner.handleInlineLectureContentFiles(event.target.files)
                 }
@@ -427,6 +497,7 @@ const NogaPlannerLecturesTablePanel = ({
                       <button
                         id={`nogaPlanner_lecturesUploadListItemDeleteBtn_${entryIndex}`}
                         type="button"
+                        disabled={!hasLectureSelectionContext}
                         onClick={() =>
                           planner.removeInlineLectureContentFile(entry.id)
                         }

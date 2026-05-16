@@ -29,6 +29,12 @@ export const getHomeSubApps = (username = "") => {
       path: "/phenomed/telegram-control",
     },
     {
+      id: "deezer-player",
+      label: "Deezer Player",
+      icon: "fas fa-music",
+      path: "/phenomed/deezer-player",
+    },
+    {
       id: "school",
       label: isNogaPlanOwner ? "Noga Plan" : "School Planner",
       icon: "fas fa-layer-group",

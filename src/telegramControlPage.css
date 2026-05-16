@@ -121,8 +121,10 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  cursor: default;
+  cursor: col-resize;
   touch-action: none;
+  pointer-events: auto;
+  z-index: 30;
 }
 
 .telegramControlPage_gridResizer::before {
@@ -260,11 +262,31 @@
   gap: 10px;
 }
 
+
+.telegramControlPage_messageTypeTabsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.telegramControlPage_messageTypeTabsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .telegramControlPage_messageTypeTabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 0;
+}
+
+.telegramControlPage_messageTypeSubTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin-top: 8px;
 }
 
 .telegramControlPage_streamToolbar {
@@ -307,6 +329,22 @@
   color: rgba(15, 87, 78, 0.98);
 }
 
+.telegramControlPage_messageTypeSubTab {
+  border: 1px solid rgba(102, 140, 149, 0.3);
+  background: rgba(255, 255, 255, 0.82);
+  color: rgba(22, 72, 80, 0.88);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.69rem;
+  cursor: pointer;
+}
+
+.telegramControlPage_messageTypeSubTab.is-active {
+  background: rgba(28, 199, 180, 0.16);
+  border-color: rgba(20, 136, 122, 0.5);
+  color: rgba(15, 87, 78, 0.98);
+}
+
 .telegramControlPage_predictionTable td,
 .telegramControlPage_predictionTable th {
   vertical-align: top;
@@ -338,11 +376,69 @@
 }
 
 .telegramControlPage_controlCardBody {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   gap: 14px;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: visible;
+  padding-right: 2px;
+}
+
+.telegramControlPage_leftPool {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: visible;
+}
+
+.telegramControlPage_controlCardBody.is-blurred {
+  pointer-events: none;
+}
+
+.telegramControlPage_controlCardBody.is-blurred > *:not(.telegramControlPage_controlCardOverlay) {
+  filter: blur(4px);
+  opacity: 0.5;
+}
+
+.telegramControlPage_controlCardOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 14px;
+  background: rgba(244, 250, 250, 0.55);
+  pointer-events: auto;
+}
+
+.telegramControlPage_controlCardLoader {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(22, 114, 121, 0.2);
+  border-top-color: rgba(22, 114, 121, 0.9);
+  animation: telegramControlPageSpin 0.9s linear infinite;
+}
+
+.telegramControlPage_controlCardOverlayText {
+  margin: 0;
+  color: rgba(12, 68, 76, 0.92);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+@keyframes telegramControlPageSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .telegramControlPage_cardHeader h2,
@@ -537,6 +633,30 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.telegramControlPage_migrationModeRow {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.telegramControlPage_migrationModeRow .telegramControlPage_migrationModeBlock,
+.telegramControlPage_migrationModeRow .telegramControlPage_dateGrid {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.telegramControlPage_migrationModeBlock input[type="checkbox"] {
+  width: min-content;
+}
+
+.telegramControlPage_migrationContentLabels {
+  display: grid;
+  grid-auto-rows: auto;
+  gap: 6px;
 }
 
 .telegramControlPage_migrationModeTabs {
@@ -1120,13 +1240,54 @@
   grid-column: 1 / -1;
 }
 
+.telegramControlPage_loginWindow {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 620px);
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  z-index: 1400;
+  border: 1px solid rgba(73, 121, 130, 0.4);
+  border-radius: 14px;
+  background: rgba(247, 252, 252, 0.98);
+  box-shadow: 0 24px 44px rgba(20, 67, 75, 0.22);
+  padding: 10px;
+}
+
+.telegramControlPage_loginWindowMiniBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 2px 4px;
+}
+
+.telegramControlPage_loginWindowMiniBar h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: rgba(22, 72, 80, 0.92);
+}
+
+.telegramControlPage_loginWindowClose {
+  border: 1px solid rgba(111, 154, 162, 0.48);
+  background: rgba(255, 255, 255, 0.88);
+  color: rgba(26, 74, 82, 0.86);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 .telegramControlPage_scopeTableWrap {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 280px;
   flex-direction: column;
-  min-height: 0;
+  min-height: 220px;
   width: 100%;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   border-radius: 14px;
   border: 1px solid rgba(112, 158, 168, 0.14);
   background: rgba(246, 251, 251, 0.9);
@@ -1136,7 +1297,8 @@
 .telegramControlPage_scopeTable {
   width: 100%;
   border-collapse: collapse;
-  min-width: 420px;
+  min-width: 540px;
+  height: max-content;
 }
 
 .telegramControlPage_scopeTable th,
@@ -1510,6 +1672,69 @@
   white-space: pre-wrap;
 }
 
+.telegramControlPage_messageContent {
+  display: block;
+}
+
+.telegramControlPage_messageContent--withPhotos {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.telegramControlPage_messageBodyCol {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.telegramControlPage_messagePhotosCol {
+  display: flex;
+  flex: 0 0 auto;
+  max-width: min(46%, 360px);
+  min-width: 140px;
+  position: relative;
+  padding-top: 34px;
+}
+
+.telegramControlPage_messagePhotosCol.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.telegramControlPage_messagePhotoMiniBar {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 158, 168, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms ease;
+}
+
+.telegramControlPage_messagePhotoMiniBar.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
 .telegramControlPage_messageText {
   margin: 0;
   width: 100%;
@@ -1580,3 +1805,57 @@
   border: 1px solid rgba(95, 138, 148, 0.22);
   margin-top: 8px;
 }
+
+.telegramControlPage_messagePhotosCol .telegramControlPage_messagePhoto {
+  width: 100%;
+  margin-top: 0;
+}
+
+.telegramControlPage_messageVideo {
+  width: 100%;
+  max-height: 240px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.telegramControlPage_messageDocument {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(22, 71, 78, 0.92);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.telegramControlPage_messageDocumentIcon {
+  font-size: 0.92rem;
+}
+
+.telegramControlPage_messageMediaLoaderWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 120px;
+  border-radius: 10px;
+  border: 1px solid rgba(95, 138, 148, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.telegramControlPage_messageMediaLoader {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(22, 114, 121, 0.2);
+  border-top-color: rgba(22, 114, 121, 0.9);
+  animation: telegramControlPageSpin 0.9s linear infinite;
+}
+

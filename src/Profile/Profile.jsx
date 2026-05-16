@@ -5,6 +5,15 @@ import "./Profile.css";
 import { apiUrl } from "../config/api";
 
 const PROFILE_THEME_STORAGE_KEY = "phenomed.profileRouteTheme";
+const RESERVED_PROFILE_SLUGS = new Set([
+  "telegram-control",
+  "deezer-player",
+  "pdf-reader",
+  "schoolplanner",
+  "nogaplan",
+  "ecg",
+  "home",
+]);
 
 const formatProfileValue = (value) => {
   const normalized = String(value ?? "").trim();
@@ -99,6 +108,18 @@ const Profile = ({ viewerState, logOut }) => {
 
   React.useEffect(() => {
     if (!requestedUsername) {
+      setProfileData({
+        username: "",
+        firstname: "",
+        lastname: "",
+        profilePicture: "",
+      });
+      setIsLoading(false);
+      setErrorMessage("Profile not found.");
+      return undefined;
+    }
+
+    if (RESERVED_PROFILE_SLUGS.has(requestedUsername.toLowerCase())) {
       setProfileData({
         username: "",
         firstname: "",

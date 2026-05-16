@@ -278,16 +278,16 @@ body.dark .server_answer_noga_playerButton:hover:not(:disabled) {
 }
 
 #server_answer.server_answer--noga .server_answer_noga_playerButton {
-  border-color: rgba(126, 79, 76, 0.16);
-  background: transparent;
-  color: rgba(105, 72, 71, 0.82);
+  border-color: rgba(255, 238, 244, 0.56);
+  background: rgba(255, 248, 251, 0.24);
+  color: rgba(255, 247, 251, 0.96);
 }
 
 #server_answer.server_answer--noga .server_answer_noga_playerButton:hover:not(:disabled) {
-  border-color: rgba(126, 79, 76, 0.28);
-  background: transparent;
-  color: rgba(90, 57, 56, 0.92);
-  box-shadow: 0 8px 18px rgba(105, 72, 71, 0.12);
+  border-color: rgba(255, 244, 248, 0.82);
+  background: rgba(255, 251, 253, 0.38);
+  color: rgba(255, 252, 254, 0.99);
+  box-shadow: 0 8px 18px rgba(90, 24, 49, 0.2);
 }
 
 body.dark #server_answer.server_answer--noga {
@@ -315,17 +315,17 @@ body.dark #server_answer.server_answer--noga #server_answer_light {
 }
 
 body.dark #server_answer.server_answer--noga .server_answer_noga_playerButton {
-  border-color: rgba(110, 168, 180, 0.18);
-  background: transparent;
-  color: rgba(212, 236, 240, 0.88);
+  border-color: rgba(244, 231, 238, 0.42);
+  background: rgba(255, 249, 252, 0.16);
+  color: rgba(248, 241, 246, 0.94);
 }
 
 body.dark
   #server_answer.server_answer--noga
   .server_answer_noga_playerButton:hover:not(:disabled) {
-  border-color: rgba(34, 207, 187, 0.24);
-  background: transparent;
-  color: rgba(245, 252, 252, 0.96);
+  border-color: rgba(255, 243, 248, 0.72);
+  background: rgba(255, 251, 253, 0.24);
+  color: rgba(255, 250, 253, 0.99);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
@@ -443,6 +443,24 @@ body.dark #server_answer_musicTrack {
     rgba(238, 198, 183, 0.92) 52%,
     rgba(220, 174, 157, 0.9) 100%
   );
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_message {
+  color: rgba(63, 30, 33, 0.94);
+}
+
+body:not(.dark)
+  #server_answer.server_answer--home-noga
+  #server_answer_message.server_answer_message--idle {
+  color: rgba(95, 52, 56, 0.76);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicLabel {
+  color: rgba(95, 52, 56, 0.78);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicTrack {
+  color: rgba(63, 30, 33, 0.94);
 }
 
 #server_answer.server_answer--home .server_answer_locale_button {

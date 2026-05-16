@@ -20,6 +20,7 @@ import {
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
 import TelegramControlPage from "../TelegramControlPage.jsx";
+import DeezerPlayer from "../DeezerPlayer.jsx";
 import Profile from "../Profile/Profile.jsx";
 import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
 import Footer from "./Footer/Footer";
@@ -340,12 +341,14 @@ class App extends React.Component {
   handlePageHide = () => {
     logoutStoredSession({
       clear: false,
+      tokenless: true,
     });
   };
 
   handleBeforeUnload = () => {
     logoutStoredSession({
       clear: false,
+      tokenless: true,
     });
   };
 
@@ -2794,6 +2797,23 @@ class App extends React.Component {
                 memory={this.memory}
                 logOut={this.logOut}
                 acceptFriend={this.acceptFriend}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/deezer-player">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <DeezerPlayer
+                state={this.state}
                 serverReply={this.serverReply}
               />
             </main>

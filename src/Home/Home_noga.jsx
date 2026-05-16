@@ -1912,6 +1912,7 @@ function HomeNoga(props) {
     useState(false);
   // --- Friends/Requests/Blocked/Chat logic from Home.jsx (full clone) ---
   const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
+  const [isConnectionOpen, setIsConnectionOpen] = useState(false);
   const [activeBlockedListTab, setActiveBlockedListTab] = useState(
     DEFAULT_BLOCKED_LIST_USER_MODE,
   );
@@ -3466,6 +3467,27 @@ function HomeNoga(props) {
             username ||
             index,
         ).trim();
+        const normalizedUsername = String(username || "")
+          .trim()
+          .toLowerCase();
+        const presenceMap =
+          props.state?.friendChatPresence &&
+          typeof props.state.friendChatPresence === "object"
+            ? props.state.friendChatPresence
+            : null;
+        const isPresentInChat = Boolean(
+          (chatId && presenceMap?.[chatId]) ||
+            (normalizedUsername && presenceMap?.[normalizedUsername]) ||
+            (info?._id && presenceMap?.[String(info._id)]) ||
+            (friend?._id && presenceMap?.[String(friend._id)]),
+        );
+        const isConnected = Boolean(
+          friend?.isConnected ??
+            friend?.status?.isConnected ??
+            friend?.status?.isLoggedIn ??
+            friend?.identity?.status?.isLoggedIn ??
+            isPresentInChat,
+        );
 
         return {
           id: String(friend?._id || friend?.id || chatId || index),
@@ -3474,9 +3496,7 @@ function HomeNoga(props) {
           displayName,
           initials,
           avatarUrl,
-          isConnected: Boolean(
-            friend?.isConnected || props.state?.friendChatPresence?.[chatId],
-          ),
+          isConnected,
         };
       })
       .filter((friend) => friend.chatId);
@@ -3945,6 +3965,18 @@ function HomeNoga(props) {
   );
   const hasActiveFriendSearchQuery =
     String(friendSearchQuery || "").trim() !== "";
+  const onlineFriends = React.useMemo(
+    () =>
+      socialFriends.filter((friend) => {
+        const friendStatus = String(
+          friend?.friend_status || friend?.status || "",
+        )
+          .trim()
+          .toLowerCase();
+        return Boolean(friend?.isConnected) || friendStatus === "online";
+      }),
+    [socialFriends],
+  );
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
@@ -4055,7 +4087,6 @@ function HomeNoga(props) {
       const unreadChatCount = isFriendChatOpen
         ? 0
         : unreadChatCountsByFriendId[friend.chatId] || 0;
-      const friendPresenceState = getFriendPresenceState(friend);
       const incomingCall =
         props.state?.global_call_session?.incomingCall || null;
       const isIncomingCallForFriend =
@@ -4135,12 +4166,6 @@ function HomeNoga(props) {
               >
                 <i className="fas fa-comments"></i>
               </span>
-              <span
-                className={`Home_Noga_socialFriendStatus ${friendPresenceState.modifierClass}`}
-              >
-                <i className={`fas ${friendPresenceState.iconClass}`}></i>
-                <span>{friendPresenceState.label}</span>
-              </span>
               {isFriendChatOpen ? (
                 <div
                   className="Home_Noga_socialFriendInlineCallActionsSlot"
@@ -4215,7 +4240,6 @@ function HomeNoga(props) {
       props.sendToThemMessage,
       props.state,
       props.updateMyTypingPresence,
-      getFriendPresenceState,
       unreadChatCountsByFriendId,
       handleToggleInlineFriendChat,
     ],
@@ -4572,7 +4596,7 @@ function HomeNoga(props) {
             <button
               key={tab.id}
               type="button"
-              className={`Home_Noga_socialDirectoryTab${
+              className={`Home_Noga_socialDirectoryTab Home_Noga_aboutButton${
                 activeId === tab.id ? " isActive" : ""
               }${
                 hasRequestMarker
@@ -8292,7 +8316,7 @@ function HomeNoga(props) {
                               }
                               aria-pressed={isAboutOpen}
                             >
-                              Close About
+                              Close Profile
                             </button>
                           </div>
                         </div>
@@ -8314,20 +8338,85 @@ function HomeNoga(props) {
                       <>
                         <div className="Home_Noga_friendsEventsHeader">
                           <h3>Friends Events</h3>
-                          <button
-                            type="button"
-                            className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                            onClick={() =>
-                              setIsAboutOpen((currentValue) => !currentValue)
-                            }
-                            aria-pressed={isAboutOpen}
-                          >
-                            About
-                          </button>
+                          <div className="Home_Noga_friendsEventsHeaderActions">
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton"
+                              onClick={() =>
+                                setIsConnectionOpen((currentValue) => !currentValue)
+                              }
+                              aria-pressed={isConnectionOpen}
+                            >
+                              Connection
+                            </button>
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                              onClick={() =>
+                                setIsAboutOpen((currentValue) => !currentValue)
+                              }
+                              aria-pressed={isAboutOpen}
+                            >
+                              Profile
+                            </button>
+                          </div>
                         </div>
-                        <div className="Home_Noga_friendsEventsEmpty">
-                          There is no events to show.
-                        </div>
+                        {isConnectionOpen ? (
+                          <div className="Home_Noga_socialFriendsSearchAndBlocked">
+                            {activeFriendsMiniTab === "friends" ? (
+                              <>
+                                {renderFriendSearchPanel()}
+                                <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
+                                  {hasActiveFriendSearchQuery ? (
+                                    isFriendSearchLoading ? (
+                                      <li className="Home_Noga_socialFriendsEmptyState">
+                                        Searching users...
+                                      </li>
+                                    ) : friendSearchResults.length > 0 ? (
+                                      friendSearchResults.map(
+                                        renderSearchedUserListItem,
+                                      )
+                                    ) : (
+                                      <li className="Home_Noga_socialFriendsEmptyState">
+                                        {friendSearchFeedback ||
+                                          "No users found. Try another name or username."}
+                                      </li>
+                                    )
+                                  ) : activeBlockedListTabMeta.entries.length > 0 ? (
+                                    activeBlockedListTabMeta.entries.map(
+                                      renderBlockedUserListItem,
+                                    )
+                                  ) : (
+                                    <li className="Home_Noga_socialFriendsEmptyState">
+                                      {activeBlockedListTabMeta.emptyLabel}
+                                    </li>
+                                  )}
+                                </ul>
+                              </>
+                            ) : (
+                              <>
+                                {activeFriendsMiniTab === "pages"
+                                  ? renderPageSearchPanel()
+                                  : renderGroupSearchPanel()}
+                                <ul className="Home_Noga_socialFriendsList">
+                                  <li className="Home_Noga_socialFriendsEmptyState">
+                                    {activeFriendsMiniTab === "pages"
+                                      ? pageSearchQuery.trim()
+                                        ? "No pages matched your search."
+                                        : "No pages to show yet."
+                                      : groupSearchQuery.trim()
+                                        ? "No groups matched your search."
+                                        : "No groups to show yet."}
+                                  </li>
+                                </ul>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="Home_Noga_friendsEventsEmpty">
+                            There is no events to show.
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -8749,7 +8838,7 @@ function HomeNoga(props) {
                               <button
                                 key={tab.id}
                                 type="button"
-                                className={`Home_Noga_socialFriendsMiniNavButton${
+                                className={`Home_Noga_socialFriendsMiniNavButton Home_Noga_aboutButton${
                                   activeFriendsMiniTab === tab.id
                                     ? " isActive"
                                     : ""
@@ -8769,56 +8858,15 @@ function HomeNoga(props) {
                     </div>
                   )}
                   {isReportsWrapperOpen ? null : (
-                    <>
-                      {activeFriendsMiniTab === "friends" ? (
-                        <div className="Home_Noga_socialFriendsSearchAndBlocked">
-                          {renderFriendSearchPanel()}
-                          <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
-                            {hasActiveFriendSearchQuery ? (
-                              isFriendSearchLoading ? (
-                                <li className="Home_Noga_socialFriendsEmptyState">
-                                  Searching users...
-                                </li>
-                              ) : friendSearchResults.length > 0 ? (
-                                friendSearchResults.map(
-                                  renderSearchedUserListItem,
-                                )
-                              ) : (
-                                <li className="Home_Noga_socialFriendsEmptyState">
-                                  {friendSearchFeedback ||
-                                    "No users found. Try another name or username."}
-                                </li>
-                              )
-                            ) : activeBlockedListTabMeta.entries.length > 0 ? (
-                              activeBlockedListTabMeta.entries.map(
-                                renderBlockedUserListItem,
-                              )
-                            ) : (
-                              <li className="Home_Noga_socialFriendsEmptyState">
-                                {activeBlockedListTabMeta.emptyLabel}
-                              </li>
-                            )}
-                          </ul>
-                        </div>
+                    <ul className="Home_Noga_socialFriendsList">
+                      {onlineFriends.length > 0 ? (
+                        onlineFriends.map(renderFriendListItem)
                       ) : (
-                        <>
-                          {activeFriendsMiniTab === "pages"
-                            ? renderPageSearchPanel()
-                            : renderGroupSearchPanel()}
-                          <ul className="Home_Noga_socialFriendsList">
-                            <li className="Home_Noga_socialFriendsEmptyState">
-                              {activeFriendsMiniTab === "pages"
-                                ? pageSearchQuery.trim()
-                                  ? "No pages matched your search."
-                                  : "No pages to show yet."
-                                : groupSearchQuery.trim()
-                                  ? "No groups matched your search."
-                                  : "No groups to show yet."}
-                            </li>
-                          </ul>
-                        </>
+                        <li className="Home_Noga_socialFriendsEmptyState">
+                          No online friends right now.
+                        </li>
                       )}
-                    </>
+                    </ul>
                   )}
                 </div>
               </section>

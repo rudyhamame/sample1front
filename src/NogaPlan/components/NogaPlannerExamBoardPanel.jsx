@@ -1,6 +1,6 @@
 import React from "react";
 
-const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
+const NogaPlannerExamBoardPanel = ({ planner, runtime, embedded = false }) => {
   const {
     EXAM_WEIGHT_UNIT_OPTIONS,
     EXAM_GRADE_UNIT_OPTIONS,
@@ -159,15 +159,16 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
   };
 
   const renderWrapperTabs = () => (
-    <div className="nogaPlanner_wrapperTabs">
+    <div id="nogaPlanner_exam_wrapperTabs" className="nogaPlanner_wrapperTabs nogaPlanner_exam_wrapperTabs">
       {(Array.isArray(NOGAPLANNER_WRAPPER_TABS)
         ? NOGAPLANNER_WRAPPER_TABS
         : []
       ).map((tabEntry) => (
         <button
           key={`exam-wrapper-tab-${tabEntry.key}`}
+          id={`nogaPlanner_exam_wrapperTabBtn_${tabEntry.key}`}
           type="button"
-          className="nogaPlanner_wrapperTabBtn"
+          className="nogaPlanner_wrapperTabBtn nogaPlanner_exam_wrapperTabBtn"
           data-wrapper-tab-active={
             planner.state.wrapperTab === tabEntry.key ? "true" : "false"
           }
@@ -182,15 +183,16 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
   );
 
   const renderExamMiniBar = () => (
-    <div className="nogaPlanner_coursesMiniBar">
-      <div className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--tabs">
+    <div id="nogaPlanner_exam_miniBar" className="nogaPlanner_coursesMiniBar nogaPlanner_exam_miniBar">
+      <div id="nogaPlanner_exam_miniBar_tabs" className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--tabs nogaPlanner_exam_miniBarCol nogaPlanner_exam_miniBarCol--tabs">
         {renderWrapperTabs()}
       </div>
-      <div className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--actions">
-        <div className="nogaPlanner_coursesMiniBarGroup nogaPlanner_coursesMiniBarGroup--editDelete">
+      <div id="nogaPlanner_exam_miniBar_actions" className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--actions nogaPlanner_exam_miniBarCol nogaPlanner_exam_miniBarCol--actions">
+        <div id="nogaPlanner_exam_miniBar_actionsGroup" className="nogaPlanner_coursesMiniBarGroup nogaPlanner_coursesMiniBarGroup--editDelete nogaPlanner_exam_miniBarGroup">
           <button
+            id="nogaPlanner_exam_miniBarBtn_add"
             type="button"
-            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--add"
+            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--add nogaPlanner_exam_miniBarBtn"
             aria-label={EXAM_UI_TEXT.add}
             title={EXAM_UI_TEXT.add}
             onClick={() => planner.openAddExamForm("Add")}
@@ -198,8 +200,9 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             {EXAM_UI_TEXT.add}
           </button>
           <button
+            id="nogaPlanner_exam_miniBarBtn_edit"
             type="button"
-            className="nogaPlanner_coursesMiniBarBtn"
+            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_exam_miniBarBtn"
             aria-label={EXAM_UI_TEXT.edit}
             title={EXAM_UI_TEXT.edit}
             onClick={() => planner.openAddExamForm("Edit")}
@@ -208,8 +211,9 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             {EXAM_UI_TEXT.edit}
           </button>
           <button
+            id="nogaPlanner_exam_miniBarBtn_delete"
             type="button"
-            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--danger"
+            className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--danger nogaPlanner_exam_miniBarBtn"
             aria-label={EXAM_UI_TEXT.delete}
             title={EXAM_UI_TEXT.delete}
             onClick={planner.deleteSelectedExam}
@@ -223,11 +227,11 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
   );
 
   const renderExamEditorPanel = () => (
-    <div className="nogaPlanner_savedCourseEditor nogaPlanner_examEditor">
-      <div className="nogaPlanner_savedCourseEditorGrid">
-        <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--course">
-          <div className="nogaPlanner_formCardTitleRow">
-            <p className="nogaPlanner_savedCourseEditorLabel">{EXAM_UI_TEXT.linkedCourseLabel}</p>
+    <div id="nogaPlanner_exam_editor" className="nogaPlanner_savedCourseEditor nogaPlanner_examEditor">
+      <div id="nogaPlanner_exam_editorGrid" className="nogaPlanner_savedCourseEditorGrid nogaPlanner_exam_editorGrid">
+        <div id="nogaPlanner_exam_editorCell_course" className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--course nogaPlanner_exam_editorCell nogaPlanner_exam_editorCell--course">
+          <div id="nogaPlanner_exam_editorTitleRow" className="nogaPlanner_formCardTitleRow nogaPlanner_exam_editorTitleRow">
+            <p id="nogaPlanner_exam_editorLinkedCourseLabel" className="nogaPlanner_savedCourseEditorLabel nogaPlanner_exam_editorLabel">{EXAM_UI_TEXT.linkedCourseLabel}</p>
             {Boolean(planner.state?.plannerSettingsVisible) ? (
               <button
                 id="nogaPlanner_examFormCloseBtn"
@@ -242,7 +246,8 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             ) : null}
           </div>
           <select
-            className="nogaPlanner_savedCoursesDetailsInput"
+            id="nogaPlanner_exam_input_selectedCourseId"
+            className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_exam_input nogaPlanner_exam_input--select"
             value={examDraft.selectedCourseId}
             onChange={(event) => planner.handleExamDraftChange("selectedCourseId", event.target.value)}
           >
@@ -254,7 +259,8 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             ))}
           </select>
           <input
-            className="nogaPlanner_savedCoursesDetailsInput"
+            id="nogaPlanner_exam_input_type"
+            className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_exam_input"
             type="text"
             value={examDraft.type}
             onChange={(event) => planner.handleExamDraftChange("type", event.target.value)}
@@ -262,12 +268,12 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
           />
         </div>
 
-        <div className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--componentDetails">
-          <p className="nogaPlanner_savedCourseEditorLabel">{EXAM_UI_TEXT.timingLabel}</p>
+        <div id="nogaPlanner_exam_editorCell_details" className="nogaPlanner_savedCourseEditorCell nogaPlanner_savedCourseEditorCell--componentDetails nogaPlanner_exam_editorCell nogaPlanner_exam_editorCell--details">
+          <p id="nogaPlanner_exam_editorTimingLabel" className="nogaPlanner_savedCourseEditorLabel nogaPlanner_exam_editorLabel">{EXAM_UI_TEXT.timingLabel}</p>
 
-          <div className="nogaPlanner_savedCourseDetailGroupsGrid">
-            <div className="nogaPlanner_savedCourseDetailGroup">
-              <span className="nogaPlanner_savedCourseDetailGroupTitle">{EXAM_UI_TEXT.normativeLabel}</span>
+          <div id="nogaPlanner_exam_timingGroups" className="nogaPlanner_savedCourseDetailGroupsGrid nogaPlanner_exam_detailGroupsGrid">
+            <div id="nogaPlanner_exam_normativeGroup" className="nogaPlanner_savedCourseDetailGroup nogaPlanner_exam_detailGroup">
+              <span className="nogaPlanner_savedCourseDetailGroupTitle nogaPlanner_exam_detailGroupTitle">{EXAM_UI_TEXT.normativeLabel}</span>
               <input className="nogaPlanner_savedCoursesDetailsInput" type="number" min="0" step="1" value={examDraft.normativeCourseYearNum} onChange={(event) => planner.handleExamDraftChange("normativeCourseYearNum", event.target.value)} placeholder={EXAM_UI_TEXT.yearPlaceholder} />
               <select className="nogaPlanner_savedCoursesDetailsInput" value={examDraft.normativeCourseTerm} onChange={(event) => planner.handleExamDraftChange("normativeCourseTerm", event.target.value)}>
                 <option value="">{EXAM_UI_TEXT.termPlaceholder}</option>
@@ -276,8 +282,8 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
                 ))}
               </select>
             </div>
-            <div className="nogaPlanner_savedCourseDetailGroup">
-              <span className="nogaPlanner_savedCourseDetailGroupTitle">{EXAM_UI_TEXT.actualLabel}</span>
+            <div id="nogaPlanner_exam_actualGroup" className="nogaPlanner_savedCourseDetailGroup nogaPlanner_exam_detailGroup">
+              <span className="nogaPlanner_savedCourseDetailGroupTitle nogaPlanner_exam_detailGroupTitle">{EXAM_UI_TEXT.actualLabel}</span>
               <input className="nogaPlanner_savedCoursesDetailsInput" type="number" min="0" step="1" value={examDraft.actualCourseYearNum} onChange={(event) => planner.handleExamDraftChange("actualCourseYearNum", event.target.value)} placeholder={EXAM_UI_TEXT.yearPlaceholder} />
               <select className="nogaPlanner_savedCoursesDetailsInput" value={examDraft.actualCourseYearInterval} onChange={(event) => planner.handleExamDraftChange("actualCourseYearInterval", event.target.value)}>
                 <option value="">{EXAM_UI_TEXT.intervalPlaceholder}</option>
@@ -294,8 +300,8 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             </div>
           </div>
 
-          <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-            <span className="nogaPlanner_savedCourseDetailGroupTitle">{EXAM_UI_TEXT.locationLabel}</span>
+          <div id="nogaPlanner_exam_locationGroup" className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull nogaPlanner_exam_detailGroup nogaPlanner_exam_detailGroup--full">
+            <span className="nogaPlanner_savedCourseDetailGroupTitle nogaPlanner_exam_detailGroupTitle">{EXAM_UI_TEXT.locationLabel}</span>
             <select className="nogaPlanner_savedCoursesDetailsInput" value={examDraft.locationBuilding} onChange={(event) => planner.handleExamDraftChange("locationBuilding", event.target.value)}>
               <option value="">{EXAM_UI_TEXT.buildingPlaceholder}</option>
               {locationBuildingOptions.map((optionValue) => (
@@ -314,9 +320,9 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             </select>
           </div>
 
-          <div className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull">
-            <span className="nogaPlanner_savedCourseDetailGroupTitle">{EXAM_UI_TEXT.linkedLecturesLabel}</span>
-            <div className="nogaPlanner_examLectureTokens">
+          <div id="nogaPlanner_exam_linkedLecturesGroup" className="nogaPlanner_savedCourseDetailGroup nogaPlanner_savedCourseEditorFieldFull nogaPlanner_exam_detailGroup nogaPlanner_exam_detailGroup--full">
+            <span className="nogaPlanner_savedCourseDetailGroupTitle nogaPlanner_exam_detailGroupTitle">{EXAM_UI_TEXT.linkedLecturesLabel}</span>
+            <div id="nogaPlanner_exam_linkedLecturesTokens" className="nogaPlanner_examLectureTokens nogaPlanner_exam_linkedLecturesTokens">
               {linkedLectureOptions.length === 0 ? (
                 <span className="nogaPlanner_examLectureEmpty">{EXAM_UI_TEXT.noLinkedLectures}</span>
               ) : (
@@ -325,7 +331,7 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
                     ? examDraft.linkedLectureIds.includes(lectureOption.id)
                     : false;
                   return (
-                    <button key={lectureOption.id} type="button" className={"nogaPlanner_examLectureToken" + (isActive ? " is-active" : "")} onClick={() => planner.toggleExamDraftLectureId(lectureOption.id)}>
+                    <button id={`nogaPlanner_exam_linkedLectureToken_${lectureOption.id}`} key={lectureOption.id} type="button" className={"nogaPlanner_examLectureToken nogaPlanner_exam_linkedLectureToken" + (isActive ? " is-active" : "")} onClick={() => planner.toggleExamDraftLectureId(lectureOption.id)}>
                       {lectureOption.label}
                     </button>
                   );
@@ -403,11 +409,11 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
             <textarea className="nogaPlanner_savedCoursesDetailsInput" value={examDraft.recommendationNote} onChange={(event) => planner.handleExamDraftChange("recommendationNote", event.target.value)} placeholder={EXAM_UI_TEXT.notePlaceholder} />
           </div>
 
-          <div className="nogaPlanner_savedCourseEditorActionRow">
-            <button type="button" className="nogaPlanner_coursesMiniBarBtn" onClick={planner.submitExamForm}>
+          <div id="nogaPlanner_exam_editorActions" className="nogaPlanner_savedCourseEditorActionRow nogaPlanner_exam_editorActions">
+            <button id="nogaPlanner_exam_editorBtn_submit" type="button" className="nogaPlanner_coursesMiniBarBtn nogaPlanner_exam_editorBtn" onClick={planner.submitExamForm}>
               {exam_form_mode === "Edit" ? EXAM_UI_TEXT.saveExam : EXAM_UI_TEXT.addExam}
             </button>
-            <button type="button" className="nogaPlanner_coursesMiniBarBtn" onClick={planner.closeAddExamForm}>
+            <button id="nogaPlanner_exam_editorBtn_cancel" type="button" className="nogaPlanner_coursesMiniBarBtn nogaPlanner_exam_editorBtn" onClick={planner.closeAddExamForm}>
               {EXAM_UI_TEXT.cancel}
             </button>
           </div>
@@ -415,6 +421,90 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
       </div>
     </div>
   );
+
+  const renderExamTableBlock = () => (
+    <div id="nogaPlanner_exam_tableBody" className="nogaPlanner_savedCoursesColumnBody nogaPlanner_exam_tableBody" ref={planner.savedCoursesColumnBodyRef}>
+      <div id="nogaPlanner_exam_tableBodyScroll" className="nogaPlanner_savedCoursesTableBodyScroll nogaPlanner_exam_tableBodyScroll" onScroll={planner.handleSavedCoursesBodyScroll}>
+        <table id="nogaPlanner_exam_table" className="nogaPlanner_tabTable nogaPlanner_savedCoursesTable nogaPlanner_exam_table">
+          <thead id="nogaPlanner_exam_tableHead">
+            <tr id="nogaPlanner_exam_tableHead_row_1">
+              <th id="nogaPlanner_exam_th_courseName" rowSpan={2}>
+                <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("course_name")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("course_name")}>
+                  {renderExamBoardSortLabel("course_name", EXAM_UI_TEXT.tableCourseName)}
+                </span>
+              </th>
+              <th id="nogaPlanner_exam_th_componentType" rowSpan={2}>{EXAM_UI_TEXT.tableComponentType}</th>
+              <th id="nogaPlanner_exam_th_type" rowSpan={2}>
+                <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("type")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("type")}>
+                  {renderExamBoardSortLabel("type", EXAM_UI_TEXT.tableType)}
+                </span>
+              </th>
+              <th id="nogaPlanner_exam_th_timeGroup" colSpan={3}>{EXAM_UI_TEXT.tableTime}</th>
+              <th id="nogaPlanner_exam_th_locationGroup" colSpan={2}>
+                <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("location")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("location")}>
+                  {renderExamBoardSortLabel("location", EXAM_UI_TEXT.tableLocation)}
+                </span>
+              </th>
+              <th id="nogaPlanner_exam_th_volume" rowSpan={2}>
+                <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("volume")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("volume")}>
+                  {renderExamBoardSortLabel("volume", EXAM_UI_TEXT.tableVolume)}
+                </span>
+              </th>
+              <th id="nogaPlanner_exam_th_weight" rowSpan={2}>
+                <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("weight")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("weight")}>
+                  {renderExamBoardSortLabel("weight", EXAM_UI_TEXT.tableWeight)}
+                </span>
+              </th>
+              <th id="nogaPlanner_exam_th_pass" rowSpan={2}>{EXAM_UI_TEXT.tablePass}</th>
+              <th id="nogaPlanner_exam_th_grade" rowSpan={2}>{EXAM_UI_TEXT.tableGrade}</th>
+              <th id="nogaPlanner_exam_th_recommendation" rowSpan={2}>{EXAM_UI_TEXT.tableRecommendation}</th>
+            </tr>
+            <tr id="nogaPlanner_exam_tableHead_row_2">
+              <th id="nogaPlanner_exam_th_date">{EXAM_UI_TEXT.tableDate}</th>
+              <th id="nogaPlanner_exam_th_startTime">{EXAM_UI_TEXT.tableStartTime}</th>
+              <th id="nogaPlanner_exam_th_endTime">{EXAM_UI_TEXT.tableEndTime}</th>
+              <th id="nogaPlanner_exam_th_building">{EXAM_UI_TEXT.tableBuilding}</th>
+              <th id="nogaPlanner_exam_th_room">{EXAM_UI_TEXT.tableRoom}</th>
+            </tr>
+          </thead>
+          <tbody id="nogaPlanner_exam_tableBodyRows">
+            {sortedExamRows.length === 0 ? (
+              <tr id="nogaPlanner_exam_tableBody_emptyRow">
+                <td id="nogaPlanner_exam_tableBody_emptyCell" colSpan={13} className="nogaPlanner_savedCoursesEmpty nogaPlanner_exam_emptyCell">{EXAM_UI_TEXT.empty}</td>
+              </tr>
+            ) : (
+              sortedExamRows.map(({ course, examEntry, examIndex }) => (
+                <tr id={`nogaPlanner_exam_tableBody_row_${course?._id || "course"}_${examIndex}`} key={`${course?._id || course?.course_name || "course"}-${examIndex}`} className={"nogaPlanner_tabTableRow nogaPlanner_exam_tableRow" + (String(course?._id || "").trim() === String(selected_course_id || "").trim() && examIndex === selected_exam_index ? " selected" : "")} onClick={() => planner.setSelectedCourseWithExamFocus(course?._id, examIndex)}>
+                  <td id={`nogaPlanner_exam_td_courseName_${course?._id || "course"}_${examIndex}`} className="nogaPlanner_exam_tableCell nogaPlanner_exam_tableCell--courseName" style={getCellAlignmentStyle(course?.course_name || "-")}>{course?.course_name || "-"}</td>
+                  <td style={getCellAlignmentStyle(resolveExamComponentTypeValue(course, examEntry))}>{resolveExamComponentTypeValue(course, examEntry)}</td>
+                  <td style={getCellAlignmentStyle(examEntry?.type || examEntry?.exam_type || "-")}>{examEntry?.type || examEntry?.exam_type || "-"}</td>
+                  <td style={getCellAlignmentStyle(resolveExamDateValue(examEntry))}>{resolveExamDateValue(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(resolveExamStartTimeValue(examEntry))}>{resolveExamStartTimeValue(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(resolveExamEndTimeValue(examEntry))}>{resolveExamEndTimeValue(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(resolveExamLocationBuildingValue(examEntry))}>{resolveExamLocationBuildingValue(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(resolveExamLocationRoomValue(examEntry))}>{resolveExamLocationRoomValue(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(formatExamVolumeDisplay(examEntry))}>{formatExamVolumeDisplay(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(formatExamWeightDisplay(examEntry))}>{formatExamWeightDisplay(examEntry)}</td>
+                  <td style={getCellAlignmentStyle(formatExamGradeDisplay(examEntry?.passGrade || {}))}>{formatExamGradeDisplay(examEntry?.passGrade || {})}</td>
+                  <td style={getCellAlignmentStyle(formatExamGradeDisplay(examEntry?.grade || {}))}>{formatExamGradeDisplay(examEntry?.grade || {})}</td>
+                  <td style={getCellAlignmentStyle(formatExamRecommendationDisplay(examEntry, "ar"))}>{formatExamRecommendationDisplay(examEntry, "ar")}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {renderExamTableBlock()}
+        {show_addExamForm ? renderExamEditorPanel() : null}
+      </>
+    );
+  }
 
   return (
     <section id="nogaPlanner_exam_section" className="nogaPlanner_homeSoulPanel">
@@ -439,78 +529,7 @@ const NogaPlannerExamBoardPanel = ({ planner, runtime }) => {
         </div>
       </div>
 
-      <div className="nogaPlanner_savedCoursesColumnBody" ref={planner.savedCoursesColumnBodyRef}>
-        <div className="nogaPlanner_savedCoursesTableBodyScroll" onScroll={planner.handleSavedCoursesBodyScroll}>
-          <table className="nogaPlanner_tabTable nogaPlanner_savedCoursesTable">
-            <thead>
-              <tr>
-                <th rowSpan={2}>
-                  <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("course_name")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("course_name")}>
-                    {renderExamBoardSortLabel("course_name", EXAM_UI_TEXT.tableCourseName)}
-                  </span>
-                </th>
-                <th rowSpan={2}>{EXAM_UI_TEXT.tableComponentType}</th>
-                <th rowSpan={2}>
-                  <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("type")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("type")}>
-                    {renderExamBoardSortLabel("type", EXAM_UI_TEXT.tableType)}
-                  </span>
-                </th>
-                <th colSpan={3}>{EXAM_UI_TEXT.tableTime}</th>
-                <th colSpan={2}>
-                  <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("location")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("location")}>
-                    {renderExamBoardSortLabel("location", EXAM_UI_TEXT.tableLocation)}
-                  </span>
-                </th>
-                <th rowSpan={2}>
-                  <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("volume")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("volume")}>
-                    {renderExamBoardSortLabel("volume", EXAM_UI_TEXT.tableVolume)}
-                  </span>
-                </th>
-                <th rowSpan={2}>
-                  <span className="nogaPlanner_tabTableSortLabel" role="button" tabIndex={0} onClick={() => planner.handleExamBoardSort("weight")} onKeyDown={(event) => (event.key === "Enter" || event.key === " ") && planner.handleExamBoardSort("weight")}>
-                    {renderExamBoardSortLabel("weight", EXAM_UI_TEXT.tableWeight)}
-                  </span>
-                </th>
-                <th rowSpan={2}>{EXAM_UI_TEXT.tablePass}</th>
-                <th rowSpan={2}>{EXAM_UI_TEXT.tableGrade}</th>
-                <th rowSpan={2}>{EXAM_UI_TEXT.tableRecommendation}</th>
-              </tr>
-              <tr>
-                <th>{EXAM_UI_TEXT.tableDate}</th>
-                <th>{EXAM_UI_TEXT.tableStartTime}</th>
-                <th>{EXAM_UI_TEXT.tableEndTime}</th>
-                <th>{EXAM_UI_TEXT.tableBuilding}</th>
-                <th>{EXAM_UI_TEXT.tableRoom}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedExamRows.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="nogaPlanner_savedCoursesEmpty">{EXAM_UI_TEXT.empty}</td>
-                </tr>
-              ) : (
-                sortedExamRows.map(({ course, examEntry, examIndex }) => (
-                  <tr key={`${course?._id || course?.course_name || "course"}-${examIndex}`} className={"nogaPlanner_tabTableRow" + (String(course?._id || "").trim() === String(selected_course_id || "").trim() && examIndex === selected_exam_index ? " selected" : "")} onClick={() => planner.setSelectedCourseWithExamFocus(course?._id, examIndex)}>
-                    <td style={getCellAlignmentStyle(course?.course_name || "-")}>{course?.course_name || "-"}</td>
-                    <td style={getCellAlignmentStyle(resolveExamComponentTypeValue(course, examEntry))}>{resolveExamComponentTypeValue(course, examEntry)}</td>
-                    <td style={getCellAlignmentStyle(examEntry?.type || examEntry?.exam_type || "-")}>{examEntry?.type || examEntry?.exam_type || "-"}</td>
-                    <td style={getCellAlignmentStyle(resolveExamDateValue(examEntry))}>{resolveExamDateValue(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(resolveExamStartTimeValue(examEntry))}>{resolveExamStartTimeValue(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(resolveExamEndTimeValue(examEntry))}>{resolveExamEndTimeValue(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(resolveExamLocationBuildingValue(examEntry))}>{resolveExamLocationBuildingValue(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(resolveExamLocationRoomValue(examEntry))}>{resolveExamLocationRoomValue(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(formatExamVolumeDisplay(examEntry))}>{formatExamVolumeDisplay(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(formatExamWeightDisplay(examEntry))}>{formatExamWeightDisplay(examEntry)}</td>
-                    <td style={getCellAlignmentStyle(formatExamGradeDisplay(examEntry?.passGrade || {}))}>{formatExamGradeDisplay(examEntry?.passGrade || {})}</td>
-                    <td style={getCellAlignmentStyle(formatExamGradeDisplay(examEntry?.grade || {}))}>{formatExamGradeDisplay(examEntry?.grade || {})}</td>
-                    <td style={getCellAlignmentStyle(formatExamRecommendationDisplay(examEntry, "ar"))}>{formatExamRecommendationDisplay(examEntry, "ar")}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {renderExamTableBlock()}
 
       {show_addExamForm ? renderExamEditorPanel() : null}
     </section>

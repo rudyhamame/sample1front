@@ -274,6 +274,22 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
         }
       },
     },
+    ...(isTelegramControlRoute
+      ? [
+          {
+            id: "telegramLoginWindow",
+            label: "Telegram Login",
+            icon: "fas fa-key",
+            onClick: () => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("telegram-control-open-login-window"),
+                );
+              }
+            },
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -285,6 +301,9 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
         <SubApps
           subApps={footerSubApps}
           startActions={footerStartActions}
+          startSettingsItemIds={
+            isTelegramControlRoute ? ["action:telegramLoginWindow"] : []
+          }
           placement="footer"
           authToken={appState.token}
           appHealth={{ rows: appHealthRows }}

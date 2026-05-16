@@ -399,6 +399,61 @@ body.dark-mode .nogaPlanner_coursesMiniBarBtn:disabled {
   background: linear-gradient(180deg, rgba(49, 59, 73, 0.88), rgba(34, 40, 51, 0.84));
   border-color: rgba(112, 126, 147, 0.16);
 }
+
+body.dark #nogaPlanner_telegramMiniChat,
+.dark #nogaPlanner_telegramMiniChat {
+  border-color: rgba(132, 193, 203, 0.24);
+  background:
+    linear-gradient(180deg, rgba(23, 65, 76, 0.96), rgba(11, 33, 40, 0.94)),
+    rgba(11, 33, 40, 0.95);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(208, 235, 240, 0.14);
+}
+
+body.dark #nogaPlanner_telegramMiniChatViewer,
+.dark #nogaPlanner_telegramMiniChatViewer {
+  border-color: rgba(132, 193, 203, 0.24);
+  background: rgba(8, 24, 31, 0.8);
+}
+
+body.dark .nogaPlanner_telegramMiniChatStatus,
+.dark .nogaPlanner_telegramMiniChatStatus {
+  color: rgba(214, 236, 241, 0.9);
+}
+
+body.dark .nogaPlanner_telegramMiniChatMessage,
+.dark .nogaPlanner_telegramMiniChatMessage {
+  border-color: rgba(132, 193, 203, 0.22);
+  background: rgba(14, 39, 48, 0.86);
+}
+
+body.dark .nogaPlanner_telegramMiniChatMessage > header,
+.dark .nogaPlanner_telegramMiniChatMessage > header {
+  color: rgba(183, 219, 226, 0.92);
+}
+
+body.dark .nogaPlanner_telegramMiniChatMessage > header > strong,
+.dark .nogaPlanner_telegramMiniChatMessage > header > strong {
+  color: rgba(228, 244, 247, 0.98);
+}
+
+body.dark .nogaPlanner_telegramMiniChatMessage > p,
+.dark .nogaPlanner_telegramMiniChatMessage > p {
+  color: rgba(232, 246, 250, 0.94);
+}
+
+body.dark .nogaPlanner_telegramMiniChatTitleBar > span,
+.dark .nogaPlanner_telegramMiniChatTitleBar > span {
+  color: rgba(228, 244, 247, 0.98);
+}
+
+body.dark .nogaPlanner_telegramMiniChatResizeHandle,
+.dark .nogaPlanner_telegramMiniChatResizeHandle {
+  border-color: rgba(132, 193, 203, 0.32);
+  background: rgba(17, 55, 64, 0.86);
+}
+
 .nogaPlanner_selectSettingsLoading {
   background: rgba(255, 255, 255, 0.08);
   color: #d7e0ea;
