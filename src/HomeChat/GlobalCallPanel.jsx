@@ -347,6 +347,7 @@ function GlobalCallPanel({
 
         socket.emit("call:offer", {
           toUserId: targetUserId,
+          fromUserId: currentUserId,
           callType: nextCallMode,
           offer: {
             roomName,
@@ -416,6 +417,7 @@ function GlobalCallPanel({
 
       socket.emit("call:answer", {
         toUserId: fromUserId,
+        fromUserId: currentUserId,
         answer: {
           accepted: true,
           roomName,
@@ -430,6 +432,7 @@ function GlobalCallPanel({
       });
     }
   }, [
+    currentUserId,
     friends,
     getRealtimeSocket,
     incomingCall,
@@ -445,6 +448,7 @@ function GlobalCallPanel({
     if (socket && fromUserId) {
       socket.emit("call:reject", {
         toUserId: fromUserId,
+        fromUserId: currentUserId,
         reason: "declined",
       });
     }
@@ -453,7 +457,7 @@ function GlobalCallPanel({
       keepError: true,
       nextError: "Incoming call declined.",
     });
-  }, [getRealtimeSocket, incomingCall, teardownCall]);
+  }, [currentUserId, getRealtimeSocket, incomingCall, teardownCall]);
 
   const handleEndCall = React.useCallback(
     (reason = "ended") => {
@@ -464,13 +468,14 @@ function GlobalCallPanel({
       if (socket && targetUserId) {
         socket.emit("call:end", {
           toUserId: targetUserId,
+          fromUserId: currentUserId,
           reason,
         });
       }
 
       teardownCall();
     },
-    [getRealtimeSocket, incomingCall, teardownCall],
+    [currentUserId, getRealtimeSocket, incomingCall, teardownCall],
   );
 
   const handleToggleMute = React.useCallback(async () => {

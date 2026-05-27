@@ -581,6 +581,7 @@ const FriendChat = ({
           });
           socket.emit("call:ice-candidate", {
             toUserId: activeCallPartnerRef.current,
+            fromUserId: currentUserId,
             candidate: serializedCandidate,
           });
         },
@@ -1104,6 +1105,7 @@ const FriendChat = ({
 
       socket.emit("call:offer", {
         toUserId: activeFriendId,
+        fromUserId: currentUserId,
         callType: nextCallMode,
         offer: peerConnection.localDescription,
         metadata: {
@@ -1160,6 +1162,7 @@ const FriendChat = ({
 
       socket.emit("call:answer", {
         toUserId: incomingCall.fromUserId,
+        fromUserId: currentUserId,
         answer: peerConnection.localDescription,
       });
 
@@ -1179,6 +1182,7 @@ const FriendChat = ({
     if (socket && incomingCall?.fromUserId) {
       socket.emit("call:reject", {
         toUserId: incomingCall.fromUserId,
+        fromUserId: currentUserId,
         reason: "declined",
       });
     }
@@ -1199,6 +1203,7 @@ const FriendChat = ({
     if (socket && targetUserId) {
       socket.emit("call:end", {
         toUserId: targetUserId,
+        fromUserId: currentUserId,
         reason,
       });
     }
