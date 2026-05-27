@@ -347,7 +347,7 @@ export const normalizeUserUpdatePayload = (payload) => {
     sentFriendRequests: toArray(payload?.sent_friend_requests),
     rejectedUsers: toArray(payload?.rejected_users),
     posts: toArray(payload?.posts),
-    chat: payload?.chat,
+    chat: toArray(payload?.chat),
     isOnline: Boolean(payload?.isOnline),
     aiProvider: String(settings?.aiProvider || "openai").trim() || "openai",
     profilePicture: nextProfilePicture,

@@ -469,15 +469,25 @@ const PdfReaderPage = ({
           groupReference,
           messageId: String(messageId),
         });
-        const response = await fetch(
-          apiUrl(`/api/telegram/stored-media?${params.toString()}`),
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${state.token}`,
-            },
+        const requestUrl = apiUrl(`/api/telegram/stored-media?${params.toString()}`);
+        const requestOptions = {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${state.token}`,
           },
-        );
+        };
+        let response = await fetch(requestUrl, requestOptions);
+        if (!response.ok) {
+          const firstPayload = await response.json().catch(() => ({}));
+          const firstMessage = String(firstPayload?.message || "");
+          const shouldRetry =
+            firstMessage.toLowerCase().includes("timed out") ||
+            firstMessage.toLowerCase().includes("timeout");
+          if (shouldRetry && !isCancelled) {
+            await new Promise((resolve) => window.setTimeout(resolve, 700));
+            response = await fetch(requestUrl, requestOptions);
+          }
+        }
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           if (!isCancelled) {

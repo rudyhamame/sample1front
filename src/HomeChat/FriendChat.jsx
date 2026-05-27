@@ -1809,6 +1809,28 @@ const FriendChat = ({
     width: `${callPanelLayout.width}px`,
     height: `${callPanelLayout.height}px`,
   };
+  const handleBackToChatList = () => {
+    const phenomedIntro = document.querySelector(".PhenomedSocial_intro");
+    const friendsListArticle = document.getElementById("FriendsList_article");
+    const addFriendArticle = document.getElementById("AddFriend_article");
+    const friendChatArticle = document.getElementById("FriendChat_article");
+
+    if (friendsListArticle) {
+      friendsListArticle.style.display = "flex";
+    }
+    if (addFriendArticle) {
+      addFriendArticle.style.display = "flex";
+    }
+    if (friendChatArticle) {
+      friendChatArticle.style.display = "none";
+    }
+    if (phenomedIntro) {
+      phenomedIntro.style.display = "flex";
+    }
+    if (closeActiveChat) {
+      closeActiveChat();
+    }
+  };
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
   const shouldRenderCallPanel =
@@ -1823,35 +1845,15 @@ const FriendChat = ({
               <i
                 className="fas fa-chevron-circle-left"
                 id="Chat_goback_icon"
-                onClick={() => {
-                  const phenomedIntro = document.querySelector(
-                    ".PhenomedSocial_intro",
-                  );
-                  const friendsListArticle = document.getElementById(
-                    "FriendsList_article",
-                  );
-                  const addFriendArticle =
-                    document.getElementById("AddFriend_article");
-                  const friendChatArticle =
-                    document.getElementById("FriendChat_article");
-
-                  if (friendsListArticle) {
-                    friendsListArticle.style.display = "flex";
-                  }
-                  if (addFriendArticle) {
-                    addFriendArticle.style.display = "flex";
-                  }
-                  if (friendChatArticle) {
-                    friendChatArticle.style.display = "none";
-                  }
-                  if (phenomedIntro) {
-                    phenomedIntro.style.display = "flex";
-                  }
-                  if (closeActiveChat) {
-                    closeActiveChat();
-                  }
-                }}
+                onClick={handleBackToChatList}
               ></i>
+              <button
+                id="Chat_backToListBtn"
+                type="button"
+                onClick={handleBackToChatList}
+              >
+                Back to chat list
+              </button>
               <div id="Chat_title_copy" className="fc">
                 <h1 id="Chat_title_text">
                   {state?.activeChatFriendName || chatContent?.title || "Chat"}

@@ -199,6 +199,7 @@
 .deezerPlayer_playlistOnlyItem {
   display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 6px;
   border: 1px solid rgba(112, 158, 168, 0.2);
   border-radius: 10px;
@@ -228,7 +229,9 @@
   flex-direction: column;
   gap: 2px;
   cursor: pointer;
-  flex-grow: 1;
+  flex: 0 1 calc(100% - 38px);
+  min-width: 0;
+  max-width: calc(100% - 38px);
 }
 .deezerPlayer_playlistOnlySelectBtn span,
 .deezerPlayer_playlistOnlySelectBtn small {

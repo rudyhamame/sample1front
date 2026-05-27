@@ -37,6 +37,26 @@
   flex: 0 0 auto;
 }
 
+#Home_rightColumn_wrapper #Chat_backToListBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 105, 99, 0.18);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(20, 82, 89, 0.96);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#Home_rightColumn_wrapper #Chat_backToListBtn:hover {
+  background: rgba(255, 255, 255, 0.98);
+}
+
 #Home_rightColumn_wrapper .Chat_inlineCallElapsed {
   display: inline-flex;
   align-items: center;

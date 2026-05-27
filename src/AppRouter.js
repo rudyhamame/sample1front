@@ -26,8 +26,10 @@ const getNormalizedUsername = (authState) => {
     .toLowerCase();
 };
 
+const NOGA_HOME_USERNAMES = new Set(["naghamtrkmani", "rudyhamame"]);
+
 const isNogaUser = (authState) =>
-  getNormalizedUsername(authState) === "naghamtrkmani";
+  NOGA_HOME_USERNAMES.has(getNormalizedUsername(authState));
 
 const getHomeRouteForUser = (authState) => {
   return isNogaUser(authState) ? "/phenomed/home/noga" : "/phenomed/home";
