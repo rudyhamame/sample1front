@@ -4333,6 +4333,7 @@ function HomeNoga(props) {
       activeChatFriendId: activeFriendCard.chatId,
       activeChatFriendName:
         activeFriendCard.displayName || props.state?.activeChatFriendName || "Chat",
+      activeChatFriendAvatarUrl: activeFriendCard.avatarUrl || "",
       isChatting: true,
     };
   }, [activeFriendCard, props.state]);

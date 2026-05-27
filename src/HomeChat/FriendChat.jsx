@@ -157,14 +157,15 @@ const FriendChat = ({
   const activeFriendAvatarUrl = React.useMemo(
     () =>
       String(
-        activeFriendRecord?.avatarUrl ||
+        state?.activeChatFriendAvatarUrl ||
+          activeFriendRecord?.avatarUrl ||
           activeFriendRecord?.profile_picture ||
           activeFriendRecord?.profilePicture ||
           activeFriendRecord?.image ||
           activeFriendRecord?.photo ||
           "",
       ).trim(),
-    [activeFriendRecord],
+    [activeFriendRecord, state?.activeChatFriendAvatarUrl],
   );
   const friendIsChatting = state?.activeChatFriendId
     ? Boolean(state?.friendChatPresence?.[state.activeChatFriendId])
@@ -1340,6 +1341,18 @@ const FriendChat = ({
   const inlineChatHeader =
     hideTitleContainer && hasActiveChat ? (
       <section id="Chat_inlineHeader" className="fr">
+        <section id="Chat_inlineBackRow" className="fr">
+          <button
+            id="Chat_backToListBtn"
+            className="Chat_backToListBtn"
+            type="button"
+            aria-label="Back to chat list"
+            title="Back to chat list"
+            onClick={handleBackToChatList}
+          >
+            <i className="fi fi-br-left" aria-hidden="true"></i>
+          </button>
+        </section>
         <div id="Chat_inlineHeaderIdentity" className="fr">
           <span id="Chat_inlineHeaderAvatar" aria-hidden="true">
             {activeFriendAvatarUrl ? (
@@ -1903,20 +1916,6 @@ const FriendChat = ({
     <section id="FriendChat_article" className="fc">
       <div id="FriendChat_content_container" className="fc">
         <section id="Chat_article" className="fc">
-          {hideTitleContainer && hasActiveChat ? (
-            <section id="Chat_inlineBackRow" className="fr">
-              <button
-                id="Chat_backToListBtn"
-                className="Chat_backToListBtn"
-                type="button"
-                aria-label="Back to chat list"
-                title="Back to chat list"
-                onClick={handleBackToChatList}
-              >
-                <i className="fi fi-br-left" aria-hidden="true"></i>
-              </button>
-            </section>
-          ) : null}
           {hideTitleContainer ? null : (
             <section id="Chat_title_container" className="fr">
               <button

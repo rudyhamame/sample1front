@@ -3942,6 +3942,7 @@ function Home(props) {
             activeChatFriendId: friend.chatId,
             activeChatFriendName:
               friend.displayName || props.state?.activeChatFriendName || "Chat",
+            activeChatFriendAvatarUrl: friend.avatarUrl || "",
             isChatting: true,
           }
         : props.state;
