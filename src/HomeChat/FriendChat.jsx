@@ -125,6 +125,78 @@ const repairMojibakeText = (value) => {
   }
 };
 
+const EMOJI_IMAGE_BASE_URL =
+  "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
+
+const isEmojiGrapheme = (value) => /\p{Extended_Pictographic}/u.test(value);
+
+const toEmojiCodepoint = (value) =>
+  Array.from(value || "")
+    .map((char) => char.codePointAt(0))
+    .filter((codePoint) => Number.isFinite(codePoint) && codePoint !== 0xfe0f)
+    .map((codePoint) => codePoint.toString(16))
+    .join("-");
+
+const renderMessageWithEmojiImages = (value) => {
+  const text = repairMojibakeText(value);
+  if (!text) {
+    return null;
+  }
+
+  const segmenter =
+    typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+      ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+      : null;
+  const graphemes = segmenter
+    ? Array.from(segmenter.segment(text), (entry) => entry.segment)
+    : Array.from(text);
+
+  const renderedNodes = [];
+  let textBuffer = "";
+
+  graphemes.forEach((grapheme, index) => {
+    if (!isEmojiGrapheme(grapheme)) {
+      textBuffer += grapheme;
+      return;
+    }
+
+    if (textBuffer) {
+      renderedNodes.push(
+        <React.Fragment key={`txt-${index}-${textBuffer.length}`}>
+          {textBuffer}
+        </React.Fragment>,
+      );
+      textBuffer = "";
+    }
+
+    const codepoint = toEmojiCodepoint(grapheme);
+    if (!codepoint) {
+      renderedNodes.push(
+        <React.Fragment key={`raw-${index}`}>{grapheme}</React.Fragment>,
+      );
+      return;
+    }
+
+    renderedNodes.push(
+      <img
+        key={`emoji-${index}-${codepoint}`}
+        className="Chat_messageEmojiImage"
+        src={`${EMOJI_IMAGE_BASE_URL}/${codepoint}.svg`}
+        alt={grapheme}
+        draggable={false}
+      />,
+    );
+  });
+
+  if (textBuffer) {
+    renderedNodes.push(
+      <React.Fragment key="txt-final">{textBuffer}</React.Fragment>,
+    );
+  }
+
+  return renderedNodes;
+};
+
 const FriendChat = ({
   state,
   content,
@@ -1885,7 +1957,7 @@ const FriendChat = ({
     width: `${callPanelLayout.width}px`,
     height: `${callPanelLayout.height}px`,
   };
-  const handleBackToChatList = () => {
+  function handleBackToChatList() {
     const phenomedIntro = document.querySelector(".PhenomedSocial_intro");
     const friendsListArticle = document.getElementById("FriendsList_article");
     const addFriendArticle = document.getElementById("AddFriend_article");
@@ -1906,7 +1978,7 @@ const FriendChat = ({
     if (closeActiveChat) {
       closeActiveChat();
     }
-  };
+  }
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
   const shouldRenderCallPanel =
@@ -2238,7 +2310,7 @@ const FriendChat = ({
                             : undefined
                         }
                       >
-                        <p>{repairMojibakeText(msg.text)}</p>
+                        <p>{renderMessageWithEmojiImages(msg.text)}</p>
                         <span className="Chat_messageMeta">
                           <span className="Chat_messageTimestamp">
                             {formatChatTimestamp(msg.rawDate, msg.timestamp)}
@@ -2330,7 +2402,7 @@ const FriendChat = ({
                             id="Chat_emoji_picker_aside"
                             onEmojiClick={handleEmojiPickerSelect}
                             theme={Theme.AUTO}
-                            emojiStyle={EmojiStyle.APPLE}
+                            emojiStyle={EmojiStyle.TWITTER}
                             lazyLoadEmojis
                             skinTonesDisabled={false}
                             searchDisabled={true}
