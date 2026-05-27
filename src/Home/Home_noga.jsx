@@ -4089,18 +4089,7 @@ function HomeNoga(props) {
   );
   const hasActiveFriendSearchQuery =
     String(friendSearchQuery || "").trim() !== "";
-  const onlineFriends = React.useMemo(
-    () =>
-      socialFriends.filter((friend) => {
-        const friendStatus = String(
-          friend?.friend_status || friend?.status || "",
-        )
-          .trim()
-          .toLowerCase();
-        return Boolean(friend?.isConnected) || friendStatus === "online";
-      }),
-    [socialFriends],
-  );
+  const chatFriends = React.useMemo(() => socialFriends, [socialFriends]);
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
@@ -4266,6 +4255,9 @@ function HomeNoga(props) {
                 </span>
                 <span className="Home_Noga_socialFriendUsername">
                   {friend.username || "Phenomed user"}
+                </span>
+                <span className="Home_Noga_socialFriendStatusText">
+                  {friend?.isConnected ? "online" : "offline"}
                 </span>
               </div>
             </div>
@@ -9336,7 +9328,7 @@ function HomeNoga(props) {
                       <div className="Home_Noga_chatColumnTitleRow">
                         <h3 className="Home_Noga_chatColumnTitle">Chat</h3>
                         <span className="Home_Noga_socialFriendsCount">
-                          {onlineFriends.length}
+                          {chatFriends.length}
                         </span>
                       </div>
                       {activeFriendCard?.chatId ? (
@@ -9360,11 +9352,11 @@ function HomeNoga(props) {
                         </div>
                       ) : (
                         <ul className="Home_Noga_socialFriendsList">
-                          {onlineFriends.length > 0 ? (
-                            onlineFriends.map(renderFriendListItem)
+                          {chatFriends.length > 0 ? (
+                            chatFriends.map(renderFriendListItem)
                           ) : (
                             <li className="Home_Noga_socialFriendsEmptyState">
-                              No online friends right now.
+                              No friends right now.
                             </li>
                           )}
                         </ul>

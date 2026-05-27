@@ -3910,6 +3910,16 @@ body.dark #Main_article,
   text-overflow: ellipsis;
 }
 
+.Home_Noga_socialFriendStatusText {
+  display: block;
+  color: rgba(23, 95, 70, 0.86);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
 .Home_Noga_socialFriendPresence {
   display: inline-flex;
   flex: 0 0 auto;
