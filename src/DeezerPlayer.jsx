@@ -193,24 +193,26 @@ function DeezerPlayer({ serverReply }) {
           {activeTrack ? (
             <>
               <img src={activeTrack.cover} alt="" className="deezerPlayer_cover" />
-              <h2>{activeTrack.title}</h2>
-              <p>{activeTrack.artist}</p>
-              <p>{activeTrack.album}</p>
-              <p>{formatDuration(activeTrack.duration)}</p>
-              <div className="deezerPlayer_transport">
-                <button type="button" className="deezerPlayer_btn" onClick={playPrev}>
-                  Prev
-                </button>
-                <button type="button" className="deezerPlayer_btn" onClick={playNext}>
-                  Next
-                </button>
+              <div className="deezerPlayer_nowPlayingDetails">
+                <h2>{activeTrack.title}</h2>
+                <p>{activeTrack.artist}</p>
+                <p>{activeTrack.album}</p>
+                <p>{formatDuration(activeTrack.duration)}</p>
+                <div className="deezerPlayer_transport">
+                  <button type="button" className="deezerPlayer_btn" onClick={playPrev}>
+                    Prev
+                  </button>
+                  <button type="button" className="deezerPlayer_btn" onClick={playNext}>
+                    Next
+                  </button>
+                </div>
+                <audio
+                  ref={audioRef}
+                  controls
+                  src={activeTrack.preview || ""}
+                  className="deezerPlayer_audio"
+                />
               </div>
-              <audio
-                ref={audioRef}
-                controls
-                src={activeTrack.preview || ""}
-                className="deezerPlayer_audio"
-              />
             </>
           ) : (
             <p>No track selected.</p>
@@ -222,4 +224,3 @@ function DeezerPlayer({ serverReply }) {
 }
 
 export default DeezerPlayer;
-

@@ -137,9 +137,9 @@ body {
   flex-direction: column;
   flex-grow: 1;
   overflow: hidden;
-  width: calc(100%/0.85);
-  min-height: calc(100dvh / 0.85);
-  transform: scale(0.85);
+  width: calc(100%/0.80);
+  min-height: calc(100dvh / 0.80);
+  transform: scale(0.80);
   transform-origin: top left;
 }
 
@@ -225,9 +225,6 @@ i:hover {
 
 li {
   list-style: none;
-}
-label {
-  color: white;
 }
 
 input,

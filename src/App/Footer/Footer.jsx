@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import SubApps from "../../Nav/SubApps/SubApps";
 import { getHomeSubApps } from "../../utils/homeSubApps";
 import {
@@ -33,6 +33,10 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     currentPath === "/phenomed/home" || currentPath === "/phenomed/home/";
   const isTelegramControlRoute =
     currentPath === "/phenomed/telegram-control";
+  const isMusicPlayerRoute =
+    currentPath === "/phenomed/jamendo-player" ||
+    currentPath === "/phenomed/deezer-player" ||
+    currentPath === "/phenomed/soundcloud-player";
   const isNogaPlanRoute =
     typeof window !== "undefined" &&
     (window.location.pathname.includes("/phenomed/schoolplanner/nogaplan") ||
@@ -51,6 +55,7 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
         ? "server_answer--home"
         : "",
     isTelegramControlRoute ? "server_answer--telegram" : "",
+    isMusicPlayerRoute ? "server_answer--music" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -367,21 +372,21 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
                       submitVoicePrompt();
                     }
                   }}
-                  placeholder="اكتب الأمر الصوتي"
+                  placeholder="Type the voice command"
                 />
                 <button
                   id="server_answer_voicePromptSubmit"
                   type="button"
                   onClick={submitVoicePrompt}
                 >
-                  حفظ
+                  Save
                 </button>
                 <button
                   id="server_answer_voicePromptCancel"
                   type="button"
                   onClick={cancelVoicePrompt}
                 >
-                  إلغاء
+                  Cancel
                 </button>
               </span>
             ) : (
@@ -459,3 +464,4 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
 };
 
 export default Footer;
+

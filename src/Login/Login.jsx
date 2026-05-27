@@ -198,6 +198,12 @@ const studyLanguageOptions = [
   "Spanish",
   "Other",
 ];
+const studyComponentsClassOptions = [
+  "Class",
+  "Lab",
+  "Clinical Rotations",
+  "Pharmacy",
+];
 
 const completeProfileCoreFields = [
   {
@@ -279,6 +285,12 @@ const completeProfileStudentFields = [
     type: "select",
     options: studyLanguageOptions,
   },
+  {
+    key: "studying.componentsClass",
+    label: "Component class",
+    type: "select",
+    options: studyComponentsClassOptions,
+  },
 ];
 
 const completeProfileWorkingFields = [
@@ -335,10 +347,15 @@ const createEmptyProfileCompletionForm = () => ({
       current: {
         programYearNum: "",
         programYearInterval: "",
-        programTerm: "",
+        programTerm: {
+          number: "",
+          attendanceDate: [],
+          examDate: [],
+        },
       },
     },
     language: "",
+    componentsClass: [],
   },
   working: {
     company: "",
@@ -1056,7 +1073,11 @@ const Login = ({ onLogin, onForceLogout }) => {
       let current = newForm;
 
       for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) {
+        if (
+          !current[keys[i]] ||
+          typeof current[keys[i]] !== "object" ||
+          Array.isArray(current[keys[i]])
+        ) {
           current[keys[i]] = {};
         }
         current = current[keys[i]];
@@ -1815,7 +1836,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         !String(studying?.time?.start?.programTerm || "").trim() ||
         !String(studying?.time?.current?.programYearNum || "").trim() ||
         !String(studying?.time?.current?.programYearInterval || "").trim() ||
-        !String(studying?.time?.current?.programTerm || "").trim()
+        !String(studying?.time?.current?.programTerm?.number || "").trim()
       ) {
         setSignup_ok(false);
         setSignupMessage("Please complete all education information.");
@@ -1848,7 +1869,21 @@ const Login = ({ onLogin, onForceLogout }) => {
         phone,
         dob: String(dob || "").trim() ? dob : null,
         hometown,
-        studying: isStudying ? studying : undefined,
+        studying: isStudying
+          ? {
+              ...studying,
+              componentsClass: Array.from(
+                new Set(
+                  (Array.isArray(studying?.componentsClass)
+                    ? studying.componentsClass
+                    : [studying?.componentsClass]
+                  )
+                    .map((entry) => String(entry || "").trim())
+                    .filter(Boolean),
+                ),
+              ),
+            }
+          : undefined,
         working: isWorking ? working : undefined,
       }),
     })
@@ -2066,7 +2101,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           !String(studying?.time?.start?.programTerm || "").trim() ||
           !String(studying?.time?.current?.programYearNum || "").trim() ||
           !String(studying?.time?.current?.programYearInterval || "").trim() ||
-          !String(studying?.time?.current?.programTerm || "").trim()
+          !String(studying?.time?.current?.programTerm?.number || "").trim()
         );
       }
       if (isWorking) {
@@ -2206,7 +2241,87 @@ const Login = ({ onLogin, onForceLogout }) => {
           <div key="studying-section" className="profile-section">
             <h3>Education (Optional)</h3>
             {completeProfileStudentFields.map((field) =>
-              renderTextField({
+              field.key === "studying.componentsClass" ? (
+                <div
+                  key="complete-profile-studying-componentsClass"
+                  className="Login_authField"
+                >
+                  <span className="Login_authFieldLabel">
+                    {field.label}
+                  </span>
+                  <div className="Login_authInlineRow">
+                    <select
+                      id="complete-profile-studying-componentsClass-select"
+                      className="Login_authInput"
+                      value=""
+                      onChange={(event) => {
+                        const nextValue = String(event.target.value || "").trim();
+                        if (!nextValue) {
+                          return;
+                        }
+                        setProfileCompletionForm((current) => {
+                          const currentList = Array.isArray(
+                            current?.studying?.componentsClass,
+                          )
+                            ? current.studying.componentsClass
+                            : [];
+                          if (currentList.includes(nextValue)) {
+                            return current;
+                          }
+                          return {
+                            ...current,
+                            studying: {
+                              ...(current?.studying || {}),
+                              componentsClass: [...currentList, nextValue],
+                            },
+                          };
+                        });
+                      }}
+                    >
+                      <option value="">Add component class</option>
+                      {studyComponentsClassOptions.map((optionValue) => (
+                        <option
+                          key={`complete-profile-componentsClass-option-${optionValue}`}
+                          value={optionValue}
+                        >
+                          {optionValue}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="Login_authInlineRow">
+                    {(Array.isArray(
+                      profileCompletionForm?.studying?.componentsClass,
+                    )
+                      ? profileCompletionForm.studying.componentsClass
+                      : []
+                    ).map((value) => (
+                      <button
+                        key={`complete-profile-componentsClass-chip-${value}`}
+                        type="button"
+                        className="Login_authButton Login_authButton--ghost"
+                        onClick={() => {
+                          setProfileCompletionForm((current) => ({
+                            ...current,
+                            studying: {
+                              ...(current?.studying || {}),
+                              componentsClass: (
+                                Array.isArray(current?.studying?.componentsClass)
+                                  ? current.studying.componentsClass
+                                  : []
+                              ).filter(
+                                (entry) => String(entry || "").trim() !== value,
+                              ),
+                            },
+                          }));
+                        }}
+                      >
+                        {value} ×
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : renderTextField({
                 id: `complete-profile-${field.key.replaceAll(".", "-")}`,
                 label: field.label,
                 type: field.type,
@@ -2237,7 +2352,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                 required:
                   Boolean(field.required) &&
                   isProfileCompletionStudyingStarted,
-              }),
+              })
             )}
             <div className="Login_authFieldGroup">
               <p className="Login_authFieldGroupTitle">
@@ -2337,11 +2452,11 @@ const Login = ({ onLogin, onForceLogout }) => {
                   type: "select",
                   value: getNestedValue(
                     profileCompletionForm,
-                    "studying.time.current.programTerm",
+                    "studying.time.current.programTerm.number",
                   ),
                   onChange: (value) =>
                     updateNestedField(
-                      "studying.time.current.programTerm",
+                      "studying.time.current.programTerm.number",
                       value,
                     ),
                   options: studyTermOptions,

@@ -96,6 +96,89 @@ const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
   { length: 31 },
   (_, index) => `${2030 - index}-${2031 - index}`,
 );
+const HOME_COMPONENT_CLASS_OPTIONS = [
+  "Class",
+  "Lab",
+  "Clinical Rotations",
+  "Pharmacy",
+];
+
+const createEmptyProgramTermScheduleEntry = () => ({
+  component_class: "",
+  start_date: "",
+  end_date: "",
+});
+
+const normalizeProgramTermScheduleEntriesForDraft = (entries) => {
+  const normalizedEntries = (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      const component_class = String(entry?.component_class || "").trim();
+      const start_date = entry?.start_date
+        ? String(entry.start_date).slice(0, 10)
+        : "";
+      const end_date = entry?.end_date
+        ? String(entry.end_date).slice(0, 10)
+        : "";
+
+      return {
+        component_class,
+        start_date,
+        end_date,
+      };
+    })
+    .filter(
+      (entry) => entry.component_class || entry.start_date || entry.end_date,
+    );
+
+  return normalizedEntries.length > 0
+    ? normalizedEntries
+    : [createEmptyProgramTermScheduleEntry()];
+};
+
+const serializeProgramTermScheduleEntries = (entries) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      component_class: String(entry?.component_class || "").trim(),
+      start_date: String(entry?.start_date || "").trim() || null,
+      end_date: String(entry?.end_date || "").trim() || null,
+    }))
+    .filter(
+      (entry) => entry.component_class || entry.start_date || entry.end_date,
+    );
+
+// Keep schedule display compact while still showing all saved rows.
+const formatProgramTermScheduleDisplay = (entries) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      const componentClass = String(entry?.component_class || "").trim();
+      const startDate = entry?.start_date
+        ? String(entry.start_date).slice(0, 10)
+        : "";
+      const endDate = entry?.end_date
+        ? String(entry.end_date).slice(0, 10)
+        : "";
+
+      return [componentClass, startDate, endDate].filter(Boolean).join(" | ");
+    })
+    .filter(Boolean)
+    .join(" ; ");
+
+const formatProgramTermScheduleRowDisplay = (entry) => {
+  const componentClass = String(entry?.component_class || "").trim();
+  const startDate = entry?.start_date
+    ? String(entry.start_date).slice(0, 10)
+    : "";
+  const endDate = entry?.end_date ? String(entry.end_date).slice(0, 10) : "";
+  const dateRange = [startDate, endDate].filter(Boolean).join(" - ");
+
+  if (componentClass && dateRange) {
+    return `${componentClass}: ${dateRange}`;
+  }
+  if (componentClass) {
+    return componentClass;
+  }
+  return dateRange || "-";
+};
 
 const HOME_DRAWING_ALLOWLIST_ZONES = [
   { id: "canvas", label: "Canvas", selector: "#Home_Noga_main_wrapper" },
@@ -1673,14 +1756,18 @@ function HomeNoga(props) {
     isImageGalleryVisibilityUpdatingPublicId,
     setIsImageGalleryVisibilityUpdatingPublicId,
   ] = useState("");
-  const [isHiddenGalleryPasswordPromptOpen, setIsHiddenGalleryPasswordPromptOpen] =
-    useState(false);
+  const [
+    isHiddenGalleryPasswordPromptOpen,
+    setIsHiddenGalleryPasswordPromptOpen,
+  ] = useState(false);
   const [hiddenGalleryPasswordInput, setHiddenGalleryPasswordInput] =
     useState("");
   const [hiddenGalleryPasswordFeedback, setHiddenGalleryPasswordFeedback] =
     useState("");
-  const [isHiddenGalleryPasswordSubmitting, setIsHiddenGalleryPasswordSubmitting] =
-    useState(false);
+  const [
+    isHiddenGalleryPasswordSubmitting,
+    setIsHiddenGalleryPasswordSubmitting,
+  ] = useState(false);
   const [clearPendingFeedback, setClearPendingFeedback] = useState("");
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [activeGalleryImageIndex, setActiveGalleryImageIndex] = useState(0);
@@ -1718,12 +1805,15 @@ function HomeNoga(props) {
     university: "",
     program: "",
     faculty: "",
+    componentsClass: [],
     totalYearsNum: "",
     startProgramYearInterval: "",
     startProgramTerm: "",
     currentProgramYearNum: "",
     currentProgramYearInterval: "",
     currentProgramTerm: "",
+    currentProgramTermAttendanceDateEntries: [],
+    currentProgramTermExamDateEntries: [],
     language: "",
     company: "",
     position: "",
@@ -1961,8 +2051,10 @@ function HomeNoga(props) {
     useState(false);
   const [isProfilePictureDragging, setIsProfilePictureDragging] =
     useState(false);
-  const [isApplyingProfilePictureViewport, setIsApplyingProfilePictureViewport] =
-    useState(false);
+  const [
+    isApplyingProfilePictureViewport,
+    setIsApplyingProfilePictureViewport,
+  ] = useState(false);
   const hasHydratedProfilePictureViewportRef = React.useRef(true);
   const [profilePictureViewport, setProfilePictureViewport] = useState(() => {
     const stateViewport = props.state?.profilePictureViewport;
@@ -3213,7 +3305,9 @@ function HomeNoga(props) {
 
   React.useEffect(() => {
     const nextAcademicInfoFields = {
-      faculty: String(props.state?.faculty || props.state?.studying?.faculty || ""),
+      faculty: String(
+        props.state?.faculty || props.state?.studying?.faculty || "",
+      ),
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
       currentAcademicYear: String(
@@ -3228,6 +3322,7 @@ function HomeNoga(props) {
       ),
       term: String(
         props.state?.term ||
+          props.state?.studying?.time?.current?.programTerm?.number ||
           props.state?.studying?.time?.current?.programTerm ||
           "",
       ),
@@ -3253,6 +3348,7 @@ function HomeNoga(props) {
     props.state?.studying?.time?.currentAcademicYear,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
+    props.state?.studying?.time?.current?.programTerm?.number,
     props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
@@ -3261,9 +3357,7 @@ function HomeNoga(props) {
     const nextAboutProfileDraft = {
       firstname: String(props.state?.firstname || ""),
       lastname: String(props.state?.lastname || ""),
-      dob: props.state?.dob
-        ? String(props.state.dob).slice(0, 10)
-        : "",
+      dob: props.state?.dob ? String(props.state.dob).slice(0, 10) : "",
       university: String(
         props.state?.studying?.university || props.state?.university || "",
       ),
@@ -3272,6 +3366,16 @@ function HomeNoga(props) {
       ),
       faculty: String(
         props.state?.studying?.faculty || props.state?.faculty || "",
+      ),
+      componentsClass: Array.from(
+        new Set(
+          (Array.isArray(props.state?.studying?.componentsClass)
+            ? props.state.studying.componentsClass
+            : [props.state?.studying?.componentsClass]
+          )
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean),
+        ),
       ),
       totalYearsNum: String(props.state?.studying?.time?.totalYearsNum || ""),
       startProgramYearInterval: String(
@@ -3287,8 +3391,18 @@ function HomeNoga(props) {
         props.state?.studying?.time?.current?.programYearInterval || "",
       ),
       currentProgramTerm: String(
-        props.state?.studying?.time?.current?.programTerm || "",
+        props.state?.studying?.time?.current?.programTerm?.number ||
+          props.state?.studying?.time?.current?.programTerm ||
+          "",
       ),
+      currentProgramTermAttendanceDateEntries:
+        normalizeProgramTermScheduleEntriesForDraft(
+          props.state?.studying?.time?.current?.programTerm?.attendanceDate,
+        ),
+      currentProgramTermExamDateEntries:
+        normalizeProgramTermScheduleEntriesForDraft(
+          props.state?.studying?.time?.current?.programTerm?.examDate,
+        ),
       language: String(props.state?.studying?.language || ""),
       company: String(props.state?.working?.company || ""),
       position: String(props.state?.working?.position || ""),
@@ -3313,11 +3427,14 @@ function HomeNoga(props) {
     props.state?.program,
     props.state?.studying?.faculty,
     props.state?.faculty,
+    props.state?.studying?.componentsClass,
     props.state?.studying?.time?.totalYearsNum,
     props.state?.studying?.time?.start?.programYearInterval,
     props.state?.studying?.time?.start?.programTerm,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studying?.time?.current?.programTerm,
+    props.state?.studying?.time?.current?.programTerm?.attendanceDate,
+    props.state?.studying?.time?.current?.programTerm?.examDate,
     props.state?.studying?.time?.current?.programYearInterval,
     props.state?.studying?.language,
     props.state?.working?.company,
@@ -3398,7 +3515,7 @@ function HomeNoga(props) {
 
           return (
             normalizeGalleryVisibility(image?.visibility) ===
-              galleryImageVisibilityTab
+            galleryImageVisibilityTab
           );
         }
 
@@ -3477,16 +3594,16 @@ function HomeNoga(props) {
             : null;
         const isPresentInChat = Boolean(
           (chatId && presenceMap?.[chatId]) ||
-            (normalizedUsername && presenceMap?.[normalizedUsername]) ||
-            (info?._id && presenceMap?.[String(info._id)]) ||
-            (friend?._id && presenceMap?.[String(friend._id)]),
+          (normalizedUsername && presenceMap?.[normalizedUsername]) ||
+          (info?._id && presenceMap?.[String(info._id)]) ||
+          (friend?._id && presenceMap?.[String(friend._id)]),
         );
         const isConnected = Boolean(
           friend?.isConnected ??
-            friend?.status?.isConnected ??
-            friend?.status?.isLoggedIn ??
-            friend?.identity?.status?.isLoggedIn ??
-            isPresentInChat,
+          friend?.status?.isConnected ??
+          friend?.status?.isLoggedIn ??
+          friend?.identity?.status?.isLoggedIn ??
+          isPresentInChat,
         );
 
         return {
@@ -3665,7 +3782,9 @@ function HomeNoga(props) {
               const atSignup = identity?.atSignup || {};
               const profile = user?.profile || {};
               const auth = user?.auth || {};
-              const id = String(user?._id || info?._id || profile?._id || "").trim();
+              const id = String(
+                user?._id || info?._id || profile?._id || "",
+              ).trim();
               const username = String(
                 info?.username ||
                   atSignup?.username ||
@@ -3676,7 +3795,10 @@ function HomeNoga(props) {
                 .trim()
                 .toLowerCase();
               const firstname = String(
-                info?.firstname || personal?.firstname || profile?.firstname || "",
+                info?.firstname ||
+                  personal?.firstname ||
+                  profile?.firstname ||
+                  "",
               ).trim();
               const lastname = String(
                 info?.lastname || personal?.lastname || profile?.lastname || "",
@@ -3772,9 +3894,10 @@ function HomeNoga(props) {
         const initials =
           `${firstName.charAt(0) || displayName.charAt(0) || "U"}${lastName.charAt(0) || username.charAt(0) || ""}`.toUpperCase() ||
           "U";
-        const profile = entry?.profile && typeof entry.profile === "object"
-          ? entry.profile
-          : {};
+        const profile =
+          entry?.profile && typeof entry.profile === "object"
+            ? entry.profile
+            : {};
         const profileStudying =
           profile?.studying && typeof profile.studying === "object"
             ? profile.studying
@@ -3794,8 +3917,8 @@ function HomeNoga(props) {
           initials,
           isConnected: Boolean(
             entry?.status?.isConnected ??
-              entry?.status?.isLoggedIn ??
-              entry?.identity?.status?.isLoggedIn,
+            entry?.status?.isLoggedIn ??
+            entry?.identity?.status?.isLoggedIn,
           ),
           userMode: normalizeFriendUserMode(
             entry?.userMode ||
@@ -3827,7 +3950,8 @@ function HomeNoga(props) {
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.current?.programTerm ||
+              profileStudying?.time?.current?.programTerm?.number ||
+                profileStudying?.time?.current?.programTerm ||
                 profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
@@ -4094,16 +4218,6 @@ function HomeNoga(props) {
         String(friend.chatId || "").trim();
       const incomingCallMode =
         incomingCall?.callType === "video" ? "video" : "voice";
-      const inlineChatState = isFriendChatOpen
-        ? {
-            ...props.state,
-            friendID_selected: friend.chatId,
-            activeChatFriendId: friend.chatId,
-            activeChatFriendName:
-              friend.displayName || props.state?.activeChatFriendName || "Chat",
-            isChatting: true,
-          }
-        : props.state;
 
       return (
         <li
@@ -4131,7 +4245,8 @@ function HomeNoga(props) {
                     className="Home_Noga_socialFriendAvatarImage"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
-                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      const fallbackIcon =
+                        event.currentTarget.nextElementSibling;
                       if (fallbackIcon) {
                         fallbackIcon.style.display = "inline-flex";
                       }
@@ -4206,29 +4321,6 @@ function HomeNoga(props) {
               </div>
             </div>
           ) : null}
-          {isFriendChatOpen && friend.chatId ? (
-            <div
-              id={`Home_Noga_friendChat_${friend.chatId}`}
-              className="Home_Noga_inlineFriendChat"
-            >
-              <FriendChat
-                state={inlineChatState}
-                content={HOME_CHAT_CONTENT}
-                sendToThemMessage={props.sendToThemMessage}
-                updateMyTypingPresence={props.updateMyTypingPresence}
-                markMessagesRead={props.markMessagesRead}
-                requestGlobalCall={props.requestGlobalCall}
-                globalCallSession={props.state?.global_call_session}
-                closeActiveChat={() => {
-                  setInlineCallActionsTarget(null);
-                  setOpenChatFriendId(null);
-                  props.closeActiveChat?.();
-                }}
-                hideTitleContainer
-                inlineCallActionsTarget={inlineCallActionsTarget}
-              />
-            </div>
-          ) : null}
         </li>
       );
     },
@@ -4244,6 +4336,20 @@ function HomeNoga(props) {
       handleToggleInlineFriendChat,
     ],
   );
+
+  const activeFriendChatState = React.useMemo(() => {
+    if (!activeFriendCard?.chatId) {
+      return props.state;
+    }
+    return {
+      ...props.state,
+      friendID_selected: activeFriendCard.chatId,
+      activeChatFriendId: activeFriendCard.chatId,
+      activeChatFriendName:
+        activeFriendCard.displayName || props.state?.activeChatFriendName || "Chat",
+      isChatting: true,
+    };
+  }, [activeFriendCard, props.state]);
 
   const renderFriendRequestListItem = React.useCallback(
     (notification) => {
@@ -4356,7 +4462,9 @@ function HomeNoga(props) {
         .then(() => {
           setFriendSearchResults((currentResults) =>
             currentResults.map((entry) =>
-              String(entry?.username || "").trim().toLowerCase() === username
+              String(entry?.username || "")
+                .trim()
+                .toLowerCase() === username
                 ? { ...entry, userMode: "requestSent" }
                 : entry,
             ),
@@ -4482,7 +4590,8 @@ function HomeNoga(props) {
                     className="Home_Noga_socialFriendAvatarImage"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
-                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      const fallbackIcon =
+                        event.currentTarget.nextElementSibling;
                       if (fallbackIcon) {
                         fallbackIcon.style.display = "inline-flex";
                       }
@@ -4491,7 +4600,9 @@ function HomeNoga(props) {
                 ) : null}
                 <span
                   aria-hidden="true"
-                  style={{ display: candidate.avatarUrl ? "none" : "inline-flex" }}
+                  style={{
+                    display: candidate.avatarUrl ? "none" : "inline-flex",
+                  }}
                 >
                   <i className="fas fa-user"></i>
                 </span>
@@ -4593,26 +4704,26 @@ function HomeNoga(props) {
           {tabs.map((tab) => {
             const hasRequestMarker = tab.id === "pending" && tab.count > 0;
             return (
-            <button
-              key={tab.id}
-              type="button"
-              className={`Home_Noga_socialDirectoryTab Home_Noga_aboutButton${
-                activeId === tab.id ? " isActive" : ""
-              }${
-                hasRequestMarker
-                  ? " Home_Noga_socialDirectoryTab--hasMarker"
-                  : ""
-              }`}
-              onClick={() => onChange(tab.id)}
-            >
-              {tab.label} ({tab.count})
-              {hasRequestMarker ? (
-                <span
-                  className="Home_Noga_socialDirectoryTabMarker"
-                  aria-hidden="true"
-                ></span>
-              ) : null}
-            </button>
+              <button
+                key={tab.id}
+                type="button"
+                className={`Home_Noga_socialDirectoryTab Home_Noga_aboutButton${
+                  activeId === tab.id ? " isActive" : ""
+                }${
+                  hasRequestMarker
+                    ? " Home_Noga_socialDirectoryTab--hasMarker"
+                    : ""
+                }`}
+                onClick={() => onChange(tab.id)}
+              >
+                {tab.label} ({tab.count})
+                {hasRequestMarker ? (
+                  <span
+                    className="Home_Noga_socialDirectoryTabMarker"
+                    aria-hidden="true"
+                  ></span>
+                ) : null}
+              </button>
             );
           })}
         </div>
@@ -4649,41 +4760,47 @@ function HomeNoga(props) {
         onChange: setFriendSearchQuery,
         placeholder: "Search friends",
         ariaLabel: "Search friends",
-        controls: (
-          <div className="Home_Noga_socialDirectoryTabGroup">
-            {renderDirectoryTabs({
-              tabs: blockedListGroups,
-              activeId: activeBlockedListGroup,
-              onChange: (nextGroupId) => {
+        controls: null,
+      }),
+    [
+      friendSearchQuery,
+      renderConnectionSearchPanel,
+    ],
+  );
+
+  const renderFriendDirectoryTabGroup = React.useCallback(
+    () => (
+      <div className="Home_Noga_socialDirectoryTabGroup">
+        {renderDirectoryTabs({
+          tabs: blockedListGroups,
+          activeId: activeBlockedListGroup,
+          onChange: (nextGroupId) => {
+            if (hasActiveFriendSearchQuery) {
+              return;
+            }
+            setActiveBlockedListGroup(nextGroupId);
+          },
+        })}
+        {activeBlockedListGroupMeta.tabs.length > 1
+          ? renderDirectoryTabs({
+              tabs: activeBlockedListGroupMeta.tabs,
+              activeId: activeBlockedListTab,
+              onChange: (nextTabId) => {
                 if (hasActiveFriendSearchQuery) {
                   return;
                 }
-                setActiveBlockedListGroup(nextGroupId);
+                setActiveBlockedListTab(nextTabId);
               },
-            })}
-            {activeBlockedListGroupMeta.tabs.length > 1
-              ? renderDirectoryTabs({
-                  tabs: activeBlockedListGroupMeta.tabs,
-                  activeId: activeBlockedListTab,
-                  onChange: (nextTabId) => {
-                    if (hasActiveFriendSearchQuery) {
-                      return;
-                    }
-                    setActiveBlockedListTab(nextTabId);
-                  },
-                })
-              : null}
-          </div>
-        ),
-      }),
+            })
+          : null}
+      </div>
+    ),
     [
       activeBlockedListGroup,
       activeBlockedListGroupMeta.tabs,
       activeBlockedListTab,
       blockedListGroups,
-      friendSearchQuery,
       hasActiveFriendSearchQuery,
-      renderConnectionSearchPanel,
       renderDirectoryTabs,
     ],
   );
@@ -4758,7 +4875,8 @@ function HomeNoga(props) {
                     className="Home_Noga_socialFriendAvatarImage"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
-                      const fallbackIcon = event.currentTarget.nextElementSibling;
+                      const fallbackIcon =
+                        event.currentTarget.nextElementSibling;
                       if (fallbackIcon) {
                         fallbackIcon.style.display = "inline-flex";
                       }
@@ -5247,11 +5365,12 @@ function HomeNoga(props) {
     const maxImageSizeBytes = 8 * 1024 * 1024;
     const maxVideoSizeBytes = 100 * 1024 * 1024;
     const preCheckMimeType = String(selectedFile?.type || "").trim();
-    const targetResourceType = String(
-      options?.resourceType ||
-        HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab]?.resourceType ||
-        "",
-    ).trim() || "image";
+    const targetResourceType =
+      String(
+        options?.resourceType ||
+          HOME_GALLERY_TAB_UPLOAD_CONFIG[galleryTab]?.resourceType ||
+          "",
+      ).trim() || "image";
     const isVideoFilePre = preCheckMimeType.toLowerCase().startsWith("video/");
     const expectsVideoUpload = targetResourceType === "video";
 
@@ -5386,7 +5505,9 @@ function HomeNoga(props) {
 
         if (compressedImage !== fileToUpload) {
           fileToUpload = compressedImage;
-          currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+          currentMimeType = String(
+            compressedImage?.type || currentMimeType,
+          ).trim();
           triedCompression = true;
           sendCloudinaryReply(
             `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Starting upload...`,
@@ -5489,7 +5610,9 @@ function HomeNoga(props) {
                 throw new Error("Compression did not reduce image size.");
               }
               fileToUpload = compressedImage;
-              currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+              currentMimeType = String(
+                compressedImage?.type || currentMimeType,
+              ).trim();
               triedCompression = true;
               sendCloudinaryReply(
                 `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
@@ -5590,7 +5713,9 @@ function HomeNoga(props) {
               throw new Error("Compression did not reduce image size.");
             }
             fileToUpload = compressedImage;
-            currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+            currentMimeType = String(
+              compressedImage?.type || currentMimeType,
+            ).trim();
             triedCompression = true;
             sendCloudinaryReply(
               `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB. Retrying upload...`,
@@ -6050,7 +6175,9 @@ function HomeNoga(props) {
 
   const persistedProfilePictureViewport = React.useMemo(
     () =>
-      normalizeProfilePictureViewport(props.state?.profilePictureViewport || {}),
+      normalizeProfilePictureViewport(
+        props.state?.profilePictureViewport || {},
+      ),
     [
       props.state?.profilePictureViewport?.scale,
       props.state?.profilePictureViewport?.offsetX,
@@ -7059,7 +7186,8 @@ function HomeNoga(props) {
         program: nextInfo?.program || academicInfoFields.program,
         university: nextInfo?.university || academicInfoFields.university,
         currentAcademicYear:
-          nextInfo?.currentAcademicYear || academicInfoFields.currentAcademicYear,
+          nextInfo?.currentAcademicYear ||
+          academicInfoFields.currentAcademicYear,
         studyYear: nextInfo?.studyYear || academicInfoFields.studyYear,
         term: nextInfo?.term || academicInfoFields.term,
         aiProvider:
@@ -7070,7 +7198,8 @@ function HomeNoga(props) {
         program: nextInfo?.program || academicInfoFields.program,
         university: nextInfo?.university || academicInfoFields.university,
         currentAcademicYear:
-          nextInfo?.currentAcademicYear || academicInfoFields.currentAcademicYear,
+          nextInfo?.currentAcademicYear ||
+          academicInfoFields.currentAcademicYear,
         studyYear: nextInfo?.studyYear || academicInfoFields.studyYear,
         term: nextInfo?.term || academicInfoFields.term,
       });
@@ -7365,6 +7494,56 @@ function HomeNoga(props) {
     }));
   };
 
+  const updateProgramTermScheduleEntry = (
+    scheduleFieldName,
+    entryIndex,
+    fieldName,
+    nextValue,
+  ) => {
+    setAboutProfileDraft((currentDraft) => {
+      const baseEntries =
+        Array.isArray(currentDraft?.[scheduleFieldName]) &&
+        currentDraft[scheduleFieldName].length > 0
+          ? currentDraft[scheduleFieldName]
+          : [createEmptyProgramTermScheduleEntry()];
+      const nextEntries = baseEntries.map((entry, index) =>
+        index === entryIndex
+          ? {
+              ...entry,
+              [fieldName]: nextValue,
+            }
+          : entry,
+      );
+
+      return {
+        ...currentDraft,
+        [scheduleFieldName]: nextEntries,
+      };
+    });
+  };
+
+  const addProgramTermScheduleEntry = (scheduleFieldName) => {
+    setAboutProfileDraft((currentDraft) => ({
+      ...currentDraft,
+      [scheduleFieldName]: [
+        ...(Array.isArray(currentDraft?.[scheduleFieldName])
+          ? currentDraft[scheduleFieldName]
+          : []),
+        createEmptyProgramTermScheduleEntry(),
+      ],
+    }));
+  };
+
+  const removeProgramTermScheduleEntry = (scheduleFieldName, entryIndex) => {
+    setAboutProfileDraft((currentDraft) => ({
+      ...currentDraft,
+      [scheduleFieldName]: (Array.isArray(currentDraft?.[scheduleFieldName])
+        ? currentDraft[scheduleFieldName]
+        : []
+      ).filter((_, index) => index !== entryIndex),
+    }));
+  };
+
   const handleAboutProfileSave = async () => {
     if (!props.state?.token || isAboutProfileSubmitting) {
       return;
@@ -7377,6 +7556,16 @@ function HomeNoga(props) {
     });
 
     try {
+      const nextCurrentProgramTermDetails = {
+        number: aboutProfileDraft.currentProgramTerm,
+        attendanceDate: serializeProgramTermScheduleEntries(
+          aboutProfileDraft.currentProgramTermAttendanceDateEntries,
+        ),
+        examDate: serializeProgramTermScheduleEntries(
+          aboutProfileDraft.currentProgramTermExamDateEntries,
+        ),
+      };
+
       const response = await fetch(apiUrl("/api/user/profile"), {
         method: "PUT",
         headers: {
@@ -7390,12 +7579,23 @@ function HomeNoga(props) {
           university: aboutProfileDraft.university,
           program: aboutProfileDraft.program,
           faculty: aboutProfileDraft.faculty,
+          componentsClass: Array.from(
+            new Set(
+              (Array.isArray(aboutProfileDraft.componentsClass)
+                ? aboutProfileDraft.componentsClass
+                : []
+              )
+                .map((entry) => String(entry || "").trim())
+                .filter(Boolean),
+            ),
+          ),
           totalYearsNum: aboutProfileDraft.totalYearsNum,
           startProgramYearInterval: aboutProfileDraft.startProgramYearInterval,
           startProgramTerm: aboutProfileDraft.startProgramTerm,
           currentProgramYearNum: aboutProfileDraft.currentProgramYearNum,
-          currentProgramYearInterval: aboutProfileDraft.currentProgramYearInterval,
-          currentProgramTerm: aboutProfileDraft.currentProgramTerm,
+          currentProgramYearInterval:
+            aboutProfileDraft.currentProgramYearInterval,
+          currentProgramTerm: nextCurrentProgramTermDetails,
           language: aboutProfileDraft.language,
           company: aboutProfileDraft.company,
           position: aboutProfileDraft.position,
@@ -7421,14 +7621,30 @@ function HomeNoga(props) {
         lastname: nextInfo?.lastname ?? aboutProfileDraft.lastname,
         dob: nextInfo?.dob ?? aboutProfileDraft.dob,
         faculty: nextInfo?.faculty ?? aboutProfileDraft.faculty,
+        componentsClass: Array.from(
+          new Set(
+            (Array.isArray(nextInfo?.componentsClass)
+              ? nextInfo.componentsClass
+              : Array.isArray(aboutProfileDraft.componentsClass)
+                ? aboutProfileDraft.componentsClass
+                : []
+            )
+              .map((entry) => String(entry || "").trim())
+              .filter(Boolean),
+          ),
+        ),
         program: nextInfo?.program ?? aboutProfileDraft.program,
         university: nextInfo?.university ?? aboutProfileDraft.university,
         currentAcademicYear:
           nextInfo?.currentProgramYearInterval ??
           aboutProfileDraft.currentProgramYearInterval,
         studyYear:
-          nextInfo?.currentProgramYearNum ?? aboutProfileDraft.currentProgramYearNum,
-        term: nextInfo?.currentProgramTerm ?? aboutProfileDraft.currentProgramTerm,
+          nextInfo?.currentProgramYearNum ??
+          aboutProfileDraft.currentProgramYearNum,
+        term:
+          nextInfo?.currentProgramTerm ?? aboutProfileDraft.currentProgramTerm,
+        currentProgramTermDetails:
+          nextInfo?.currentProgramTermDetails ?? nextCurrentProgramTermDetails,
         language: nextInfo?.language ?? aboutProfileDraft.language,
         company: nextInfo?.company ?? aboutProfileDraft.company,
         position: nextInfo?.position ?? aboutProfileDraft.position,
@@ -7456,6 +7672,19 @@ function HomeNoga(props) {
     }
   };
 
+  const availableProfileComponentClassOptions = Array.from(
+    new Set(
+      [
+        ...HOME_COMPONENT_CLASS_OPTIONS,
+        ...(Array.isArray(aboutProfileDraft?.componentsClass)
+          ? aboutProfileDraft.componentsClass
+          : []),
+      ]
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
   const renderAboutProfileField = (fieldConfig) => {
     const {
       label,
@@ -7464,13 +7693,43 @@ function HomeNoga(props) {
       inputType = "text",
       options = [],
       placeholder = "",
+      displayEntries = [],
     } = fieldConfig;
 
     if (!isAboutProfileEditing || !fieldName) {
+      if (inputType === "schedule") {
+        const entries = Array.isArray(displayEntries) ? displayEntries : [];
+        return (
+          <p key={label}>
+            <strong>{label}</strong>
+            <span className="Home_Noga_aboutProfileScheduleDisplay">
+              {entries.length > 0 ? (
+                entries.map((entry, entryIndex) => (
+                  <span
+                    key={`${fieldName}-display-${entryIndex}`}
+                    className="Home_Noga_aboutProfileScheduleDisplayRow"
+                  >
+                    {formatProgramTermScheduleRowDisplay(entry)}
+                  </span>
+                ))
+              ) : (
+                <span className="Home_Noga_aboutProfileScheduleDisplayRow">
+                  -
+                </span>
+              )}
+            </span>
+          </p>
+        );
+      }
+
       return (
         <p key={label}>
           <strong>{label}</strong>
-          <span>{value}</span>
+          <span>
+            {inputType === "componentClasses" && Array.isArray(value)
+              ? value.join(", ") || "-"
+              : value}
+          </span>
         </p>
       );
     }
@@ -7478,13 +7737,178 @@ function HomeNoga(props) {
     const fieldValue = String(aboutProfileDraft?.[fieldName] ?? "");
     const isRequiredField = HOME_ABOUT_PROFILE_REQUIRED_FIELDS.has(fieldName);
 
+    if (inputType === "componentClasses") {
+      const selectedValues = Array.isArray(aboutProfileDraft?.[fieldName])
+        ? aboutProfileDraft[fieldName]
+        : [];
+      return (
+        <div key={label} className="Home_Noga_aboutProfileEditRow">
+          <strong>{label}</strong>
+          <div className="Home_Noga_aboutProfileScheduleEditor">
+            <select
+              value=""
+              onChange={(event) => {
+                const nextValue = String(event.target.value || "").trim();
+                if (!nextValue) {
+                  return;
+                }
+                setAboutProfileDraft((currentDraft) => {
+                  const currentList = Array.isArray(currentDraft?.[fieldName])
+                    ? currentDraft[fieldName]
+                    : [];
+                  if (currentList.includes(nextValue)) {
+                    return currentDraft;
+                  }
+                  return {
+                    ...currentDraft,
+                    [fieldName]: [...currentList, nextValue],
+                  };
+                });
+              }}
+            >
+              <option value="" disabled>
+                Add component class
+              </option>
+              {HOME_COMPONENT_CLASS_OPTIONS.map((optionValue) => (
+                <option key={`${fieldName}-option-${optionValue}`} value={optionValue}>
+                  {optionValue}
+                </option>
+              ))}
+            </select>
+            <div className="Home_Noga_aboutProfileScheduleDisplay">
+              {selectedValues.length > 0 ? (
+                selectedValues.map((entry) => (
+                  <button
+                    key={`${fieldName}-chip-${entry}`}
+                    type="button"
+                    className="Home_Noga_aboutProfileScheduleRemove"
+                    onClick={() =>
+                      setAboutProfileDraft((currentDraft) => ({
+                        ...currentDraft,
+                        [fieldName]: (
+                          Array.isArray(currentDraft?.[fieldName])
+                            ? currentDraft[fieldName]
+                            : []
+                        ).filter(
+                          (currentEntry) =>
+                            String(currentEntry || "").trim() !== entry,
+                        ),
+                      }))
+                    }
+                  >
+                    {entry} ×
+                  </button>
+                ))
+              ) : (
+                <span className="Home_Noga_aboutProfileScheduleDisplayRow">-</span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (inputType === "schedule") {
+      const entries = Array.isArray(aboutProfileDraft?.[fieldName])
+        ? aboutProfileDraft[fieldName]
+        : [];
+
+      return (
+        <div key={label} className="Home_Noga_aboutProfileEditRow">
+          <strong>
+            {label}
+            {isRequiredField ? (
+              <span className="Home_Noga_requiredMarker" aria-hidden="true">
+                {" "}
+                *
+              </span>
+            ) : null}
+          </strong>
+          <div className="Home_Noga_aboutProfileScheduleEditor">
+            {entries.map((entry, entryIndex) => (
+              <div
+                key={`${fieldName}-${entryIndex}`}
+                className="Home_Noga_aboutProfileScheduleRow"
+              >
+                <select
+                  value={String(entry?.component_class || "")}
+                  onChange={(event) =>
+                    updateProgramTermScheduleEntry(
+                      fieldName,
+                      entryIndex,
+                      "component_class",
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="" disabled>
+                    Component class
+                  </option>
+                  {availableProfileComponentClassOptions.map((optionValue) => (
+                    <option
+                      key={`${fieldName}-component-${optionValue}`}
+                      value={optionValue}
+                    >
+                      {optionValue}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={String(entry?.start_date || "")}
+                  onChange={(event) =>
+                    updateProgramTermScheduleEntry(
+                      fieldName,
+                      entryIndex,
+                      "start_date",
+                      event.target.value,
+                    )
+                  }
+                />
+                <input
+                  type="date"
+                  value={String(entry?.end_date || "")}
+                  onChange={(event) =>
+                    updateProgramTermScheduleEntry(
+                      fieldName,
+                      entryIndex,
+                      "end_date",
+                      event.target.value,
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  className="Home_Noga_aboutProfileScheduleRemove"
+                  onClick={() =>
+                    removeProgramTermScheduleEntry(fieldName, entryIndex)
+                  }
+                  disabled={entries.length <= 1}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="Home_Noga_aboutProfileScheduleAdd"
+              onClick={() => addProgramTermScheduleEntry(fieldName)}
+            >
+              Add row
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <p key={label} className="Home_Noga_aboutProfileEditRow">
         <strong>
           {label}
           {isRequiredField ? (
             <span className="Home_Noga_requiredMarker" aria-hidden="true">
-              {" "}*
+              {" "}
+              *
             </span>
           ) : null}
         </strong>
@@ -7536,7 +7960,8 @@ function HomeNoga(props) {
           {label}
           {isRequiredField ? (
             <span className="Home_Noga_requiredMarker" aria-hidden="true">
-              {" "}*
+              {" "}
+              *
             </span>
           ) : null}
           :
@@ -7664,6 +8089,15 @@ function HomeNoga(props) {
           fieldName: "faculty",
         },
         {
+          label: "Component class",
+          value: Array.isArray(profileStudying.componentsClass)
+            ? profileStudying.componentsClass
+            : [],
+          fieldName: "componentsClass",
+          inputType: "componentClasses",
+          options: HOME_COMPONENT_CLASS_OPTIONS,
+        },
+        {
           label: "Total program years",
           value: formatProfileValue(profileStudyingTime.totalYearsNum),
           fieldName: "totalYearsNum",
@@ -7704,7 +8138,8 @@ function HomeNoga(props) {
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrent.programTerm ||
+            profileStudyingCurrent.programTerm?.number ||
+              profileStudyingCurrent.programTerm ||
               profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,
@@ -7712,6 +8147,28 @@ function HomeNoga(props) {
           fieldName: "currentProgramTerm",
           inputType: "select",
           options: ["First", "Second", "Third"],
+        },
+        {
+          label: "Current term attendance dates",
+          value: formatProfileValue(
+            formatProgramTermScheduleDisplay(
+              profileStudyingCurrent.programTerm?.attendanceDate,
+            ),
+          ),
+          fieldName: "currentProgramTermAttendanceDateEntries",
+          inputType: "schedule",
+          displayEntries: profileStudyingCurrent.programTerm?.attendanceDate,
+        },
+        {
+          label: "Current term exam dates",
+          value: formatProfileValue(
+            formatProgramTermScheduleDisplay(
+              profileStudyingCurrent.programTerm?.examDate,
+            ),
+          ),
+          fieldName: "currentProgramTermExamDateEntries",
+          inputType: "schedule",
+          displayEntries: profileStudyingCurrent.programTerm?.examDate,
         },
         {
           label: "Language",
@@ -8088,7 +8545,8 @@ function HomeNoga(props) {
                               : handleProfilePictureWheel
                           }
                           className={
-                            !isViewingExternalProfile && isProfilePictureDragging
+                            !isViewingExternalProfile &&
+                            isProfilePictureDragging
                               ? "isDragging"
                               : ""
                           }
@@ -8141,7 +8599,9 @@ function HomeNoga(props) {
                               <button
                                 type="button"
                                 className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
-                                onClick={() => startInlinePersonalInfoEdit("bio")}
+                                onClick={() =>
+                                  startInlinePersonalInfoEdit("bio")
+                                }
                                 aria-label="Edit bio"
                                 title="Edit bio"
                                 disabled={isPersonalInfoInlineSubmitting}
@@ -8165,7 +8625,11 @@ function HomeNoga(props) {
                                 onKeyDown={handleInlinePersonalInfoKeyDown}
                                 autoFocus
                                 rows={5}
-                                dir={isArabicText(personalInfoInputValue) ? "rtl" : "ltr"}
+                                dir={
+                                  isArabicText(personalInfoInputValue)
+                                    ? "rtl"
+                                    : "ltr"
+                                }
                                 disabled={isPersonalInfoInlineSubmitting}
                               />
                               <div className="Home_Noga_compactBioEditorActions fr">
@@ -8275,52 +8739,51 @@ function HomeNoga(props) {
                   <div className="Home_Noga_friendsEvents">
                     {isAboutOpen ? (
                       <>
-                        <div className="Home_Noga_friendsEventsHeader">
-                          <h3>About Profile</h3>
-                          <div className="Home_Noga_friendsEventsHeaderActions">
+                        <div className="Home_Noga_activeTab_title">
+                          <div className="Home_Noga_activeTab_titleTitleRow">
+                            <h3>Profile</h3>
+                          </div>
+                        </div>
+                        <div
+                          className={
+                            "Home_Noga_aboutPanel" +
+                            (isAboutProfileEditing
+                              ? " Home_Noga_aboutPanel--editing"
+                              : " Home_Noga_aboutPanel--regular")
+                          }
+                        >
+                          <div className="Home_Noga_aboutPanelActions">
                             {isAboutProfileEditing ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="Home_Noga_aboutButton"
-                                  onClick={handleAboutProfileSave}
-                                  disabled={isAboutProfileSubmitting}
-                                >
-                                  {isAboutProfileSubmitting
-                                    ? "Saving..."
-                                    : "Save Profile"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                                  onClick={() => setIsAboutProfileEditing(false)}
-                                  disabled={isAboutProfileSubmitting}
-                                >
-                                  Cancel
-                                </button>
-                              </>
+                              <button
+                                type="button"
+                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
+                                onClick={handleAboutProfileSave}
+                                disabled={isAboutProfileSubmitting}
+                              >
+                                {isAboutProfileSubmitting ? "save..." : "save"}
+                              </button>
                             ) : (
                               <button
                                 type="button"
-                                className="Home_Noga_aboutButton"
+                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
                                 onClick={openProfileEditor}
                               >
-                                Edit Profile
+                                edit
                               </button>
                             )}
                             <button
                               type="button"
-                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                              onClick={() =>
-                                setIsAboutOpen((currentValue) => !currentValue)
-                              }
+                              className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
+                              onClick={() => {
+                                setIsAboutProfileEditing(false);
+                                setIsAboutOpen(false);
+                              }}
                               aria-pressed={isAboutOpen}
+                              disabled={isAboutProfileSubmitting}
                             >
-                              Close Profile
+                              close
                             </button>
                           </div>
-                        </div>
-                        <div className="Home_Noga_aboutPanel">
                           {profileColumns.map((column) => (
                             <section
                               key={`about-${column.title}`}
@@ -8329,25 +8792,45 @@ function HomeNoga(props) {
                               <h4 className="Home_Noga_profileInfoColumnTitle">
                                 {column.title}
                               </h4>
-                              {column.rows.map(renderAboutProfileField)}
+                              <div className="Home_Noga_profileInfoColumnGrid">
+                                {column.rows.map(renderAboutProfileField)}
+                              </div>
                             </section>
                           ))}
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="Home_Noga_friendsEventsHeader">
-                          <h3>Friends Events</h3>
-                          <div className="Home_Noga_friendsEventsHeaderActions">
+                        <div className="Home_Noga_activeTab_title">
+                          <div className="Home_Noga_activeTab_titleTitleRow">
+                            <h3>
+                              {isConnectionOpen
+                                ? activeFriendsMiniTabMeta?.label ||
+                                  "Connections"
+                                : "Events"}
+                            </h3>
+                            <span className="Home_Noga_socialFriendsCount">
+                              {isConnectionOpen
+                                ? activeFriendsMiniTabMeta?.count || 0
+                                : 0}
+                            </span>
+                          </div>
+                          <div className="Home_Noga_activeTab_titleActions">
                             <button
                               type="button"
-                              className="Home_Noga_aboutButton"
-                              onClick={() =>
-                                setIsConnectionOpen((currentValue) => !currentValue)
-                              }
+                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                              onClick={() => setIsConnectionOpen(false)}
+                              aria-pressed={!isConnectionOpen}
+                            >
+                              Events
+                            </button>
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                              onClick={() => setIsConnectionOpen(true)}
                               aria-pressed={isConnectionOpen}
                             >
-                              Connection
+                              Connections
                             </button>
                             <button
                               type="button"
@@ -8363,52 +8846,100 @@ function HomeNoga(props) {
                         </div>
                         {isConnectionOpen ? (
                           <div className="Home_Noga_socialFriendsSearchAndBlocked">
+                            {activeFriendCard ? null : (
+                              <div className="Home_Noga_gallery_Header_wrapper">
+                                {!isReportsWrapperOpen ? (
+                                  <div
+                                    className="Home_Noga_socialFriendsMiniNav"
+                                    style={{
+                                      "--home-friends-tab-count": 3,
+                                      "--home-friends-tab-index": Math.max(
+                                        0,
+                                        Math.min(activeFriendsMiniTabIndex, 2),
+                                      ),
+                                    }}
+                                  >
+                                    <div className="Home_Noga_socialFriendsMiniNavRail">
+                                      <span
+                                        className="Home_Noga_socialFriendsMiniNavSelector"
+                                        aria-hidden="true"
+                                      ></span>
+                                      {friendsMiniTabs.map((tab) => (
+                                        <button
+                                          key={tab.id}
+                                          type="button"
+                                          className={`Home_Noga_socialFriendsMiniNavButton Home_Noga_aboutButton${
+                                            activeFriendsMiniTab === tab.id
+                                              ? " isActive"
+                                              : ""
+                                          }`}
+                                          onClick={() =>
+                                            handleSelectFriendsMiniTab(tab.id)
+                                          }
+                                          aria-label={tab.label}
+                                          title={tab.label}
+                                        >
+                                          <i className={tab.iconClass}></i>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {activeFriendsMiniTab === "friends"
+                                  ? renderFriendSearchPanel()
+                                  : activeFriendsMiniTab === "pages"
+                                    ? renderPageSearchPanel()
+                                    : renderGroupSearchPanel()}
+                              </div>
+                            )}
                             {activeFriendsMiniTab === "friends" ? (
                               <>
-                                {renderFriendSearchPanel()}
-                                <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
-                                  {hasActiveFriendSearchQuery ? (
-                                    isFriendSearchLoading ? (
-                                      <li className="Home_Noga_socialFriendsEmptyState">
-                                        Searching users...
-                                      </li>
-                                    ) : friendSearchResults.length > 0 ? (
-                                      friendSearchResults.map(
-                                        renderSearchedUserListItem,
+                                <div className="Home_Noga_socialDirectoryResultsWrapper">
+                                  {renderFriendDirectoryTabGroup()}
+                                  <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
+                                    {hasActiveFriendSearchQuery ? (
+                                      isFriendSearchLoading ? (
+                                        <li className="Home_Noga_socialFriendsEmptyState">
+                                          Searching users...
+                                        </li>
+                                      ) : friendSearchResults.length > 0 ? (
+                                        friendSearchResults.map(
+                                          renderSearchedUserListItem,
+                                        )
+                                      ) : (
+                                        <li className="Home_Noga_socialFriendsEmptyState">
+                                          {friendSearchFeedback ||
+                                            "No users found. Try another name or username."}
+                                        </li>
                                       )
-                                    ) : (
+                                    ) : activeBlockedListTabMeta.entries.length >
+                                      0 ? (
+                                      activeBlockedListTabMeta.entries.map(
+                                          renderBlockedUserListItem,
+                                        )
+                                      ) : (
                                       <li className="Home_Noga_socialFriendsEmptyState">
-                                        {friendSearchFeedback ||
-                                          "No users found. Try another name or username."}
+                                        {activeBlockedListTabMeta.emptyLabel}
                                       </li>
-                                    )
-                                  ) : activeBlockedListTabMeta.entries.length > 0 ? (
-                                    activeBlockedListTabMeta.entries.map(
-                                      renderBlockedUserListItem,
-                                    )
-                                  ) : (
-                                    <li className="Home_Noga_socialFriendsEmptyState">
-                                      {activeBlockedListTabMeta.emptyLabel}
-                                    </li>
-                                  )}
-                                </ul>
+                                    )}
+                                  </ul>
+                                </div>
                               </>
                             ) : (
                               <>
-                                {activeFriendsMiniTab === "pages"
-                                  ? renderPageSearchPanel()
-                                  : renderGroupSearchPanel()}
-                                <ul className="Home_Noga_socialFriendsList">
-                                  <li className="Home_Noga_socialFriendsEmptyState">
-                                    {activeFriendsMiniTab === "pages"
-                                      ? pageSearchQuery.trim()
-                                        ? "No pages matched your search."
-                                        : "No pages to show yet."
-                                      : groupSearchQuery.trim()
-                                        ? "No groups matched your search."
-                                        : "No groups to show yet."}
-                                  </li>
-                                </ul>
+                                <div className="Home_Noga_socialDirectoryResultsWrapper">
+                                  <ul className="Home_Noga_socialFriendsList">
+                                    <li className="Home_Noga_socialFriendsEmptyState">
+                                      {activeFriendsMiniTab === "pages"
+                                        ? pageSearchQuery.trim()
+                                          ? "No pages matched your search."
+                                          : "No pages to show yet."
+                                        : groupSearchQuery.trim()
+                                          ? "No groups matched your search."
+                                          : "No groups to show yet."}
+                                    </li>
+                                  </ul>
+                                </div>
                               </>
                             )}
                           </div>
@@ -8585,152 +9116,148 @@ function HomeNoga(props) {
                               className="Home_Noga_galleryItem"
                             >
                               <div className="Home_Noga_galleryThumbWrap">
+                                <button
+                                  type="button"
+                                  className="Home_Noga_galleryThumbButton"
+                                  onClick={() =>
+                                    toggleGalleryItemActions(image.publicId)
+                                  }
+                                  title="Show media actions"
+                                >
+                                  {isVideoItem ? (
+                                    <video
+                                      src={image.url}
+                                      className="Home_Noga_galleryThumb"
+                                      muted
+                                      playsInline
+                                      preload="metadata"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={image.url}
+                                      alt="Gallery upload"
+                                      className="Home_Noga_galleryThumb"
+                                    />
+                                  )}
+                                </button>
+                                <div
+                                  className={`Home_Noga_galleryItemActions fc${isActionsOpen ? " Home_Noga_galleryItemActions--open" : ""}`}
+                                >
                                   <button
                                     type="button"
-                                    className="Home_Noga_galleryThumbButton"
-                                    onClick={() =>
-                                      toggleGalleryItemActions(image.publicId)
+                                    className="Home_Noga_editPicButton"
+                                    onClick={() => {
+                                      if (isVideoItem) {
+                                        openGalleryVideoPlayer(image);
+                                        return;
+                                      }
+                                      openGalleryViewer(image.publicId);
+                                    }}
+                                    aria-label={
+                                      isVideoItem ? "Open video" : "View image"
                                     }
-                                    title="Show media actions"
+                                    title={
+                                      isVideoItem ? "Open video" : "View image"
+                                    }
                                   >
-                                    {isVideoItem ? (
-                                      <video
-                                        src={image.url}
-                                        className="Home_Noga_galleryThumb"
-                                        muted
-                                        playsInline
-                                        preload="metadata"
-                                      />
-                                    ) : (
-                                      <img
-                                        src={image.url}
-                                        alt="Gallery upload"
-                                        className="Home_Noga_galleryThumb"
-                                      />
-                                    )}
+                                    <i
+                                      className={`fas ${isVideoItem ? "fa-play" : "fa-expand"}`}
+                                    ></i>
                                   </button>
-                                  <div
-                                    className={`Home_Noga_galleryItemActions fc${isActionsOpen ? " Home_Noga_galleryItemActions--open" : ""}`}
+                                  <button
+                                    type="button"
+                                    className="Home_Noga_editPicButton"
+                                    onClick={() =>
+                                      handleSetGalleryImageAsProfilePicture(
+                                        image.publicId,
+                                      )
+                                    }
+                                    disabled={
+                                      isVideoItem ||
+                                      isCurrentProfilePicture ||
+                                      isImageGallerySettingProfilePublicId ===
+                                        image.publicId
+                                    }
+                                    aria-label={
+                                      isImageGallerySettingProfilePublicId ===
+                                      image.publicId
+                                        ? "Saving profile picture"
+                                        : isVideoItem
+                                          ? "Only images can be profile pictures"
+                                          : isCurrentProfilePicture
+                                            ? "Current profile picture"
+                                            : "Set as profile picture"
+                                    }
+                                    title={
+                                      isImageGallerySettingProfilePublicId ===
+                                      image.publicId
+                                        ? "Saving profile picture"
+                                        : isVideoItem
+                                          ? "Only images can be profile pictures"
+                                          : isCurrentProfilePicture
+                                            ? "Current profile picture"
+                                            : "Set as profile picture"
+                                    }
                                   >
-                                    <button
-                                      type="button"
-                                      className="Home_Noga_editPicButton"
-                                      onClick={() => {
-                                        if (isVideoItem) {
-                                          openGalleryVideoPlayer(image);
-                                          return;
-                                        }
-                                        openGalleryViewer(image.publicId);
-                                      }}
-                                      aria-label={
-                                        isVideoItem
-                                          ? "Open video"
-                                          : "View image"
-                                      }
-                                      title={
-                                        isVideoItem
-                                          ? "Open video"
-                                          : "View image"
-                                      }
+                                    <i className="fas fa-user-check"></i>
+                                  </button>
+                                  {isVideoItem ? null : (
+                                    <div
+                                      className="Home_Noga_galleryVisibilityGroup"
+                                      role="group"
+                                      aria-label="Image visibility"
                                     >
-                                      <i
-                                        className={`fas ${isVideoItem ? "fa-play" : "fa-expand"}`}
-                                      ></i>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="Home_Noga_editPicButton"
-                                      onClick={() =>
-                                        handleSetGalleryImageAsProfilePicture(
-                                          image.publicId,
-                                        )
-                                      }
-                                      disabled={
-                                        isVideoItem ||
-                                        isCurrentProfilePicture ||
-                                        isImageGallerySettingProfilePublicId ===
-                                          image.publicId
-                                      }
-                                      aria-label={
-                                        isImageGallerySettingProfilePublicId ===
-                                        image.publicId
-                                          ? "Saving profile picture"
-                                          : isVideoItem
-                                            ? "Only images can be profile pictures"
-                                            : isCurrentProfilePicture
-                                              ? "Current profile picture"
-                                              : "Set as profile picture"
-                                      }
-                                      title={
-                                        isImageGallerySettingProfilePublicId ===
-                                        image.publicId
-                                          ? "Saving profile picture"
-                                          : isVideoItem
-                                            ? "Only images can be profile pictures"
-                                            : isCurrentProfilePicture
-                                              ? "Current profile picture"
-                                              : "Set as profile picture"
-                                      }
-                                    >
-                                      <i className="fas fa-user-check"></i>
-                                    </button>
-                                    {isVideoItem ? null : (
-                                      <div
-                                        className="Home_Noga_galleryVisibilityGroup"
-                                        role="group"
-                                        aria-label="Image visibility"
-                                      >
-                                        {[
-                                          {
-                                            value: "public",
-                                            label: "Public",
-                                            iconClass: "fas fa-globe",
-                                          },
-                                          {
-                                            value: "me",
-                                            label: "Private",
-                                            iconClass: "fas fa-lock",
-                                          },
-                                          {
-                                            value: "hidden",
-                                            label: "Hidden",
-                                            iconClass: "fas fa-eye-slash",
-                                          },
-                                        ].map((option) => (
-                                          <button
-                                            key={option.value}
-                                            type="button"
-                                            className={`Home_Noga_galleryVisibilityButton${
-                                              currentVisibility === option.value
-                                                ? " isActive"
-                                                : ""
-                                            }`}
-                                            onClick={() =>
-                                              handleUpdateGalleryImageVisibility(
-                                                image.publicId,
-                                                option.value,
-                                              )
-                                            }
-                                            disabled={
-                                              isImageGalleryVisibilityUpdatingPublicId ===
-                                              image.publicId
-                                            }
-                                            aria-label={`${option.label} visibility`}
-                                            title={option.label}
-                                            aria-pressed={
-                                              currentVisibility === option.value
-                                            }
-                                          >
-                                            <i
-                                              className={option.iconClass}
-                                              aria-hidden="true"
-                                            ></i>
-                                            <span>{option.label}</span>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {/* <button
+                                      {[
+                                        {
+                                          value: "public",
+                                          label: "Public",
+                                          iconClass: "fas fa-globe",
+                                        },
+                                        {
+                                          value: "me",
+                                          label: "Private",
+                                          iconClass: "fas fa-lock",
+                                        },
+                                        {
+                                          value: "hidden",
+                                          label: "Hidden",
+                                          iconClass: "fas fa-eye-slash",
+                                        },
+                                      ].map((option) => (
+                                        <button
+                                          key={option.value}
+                                          type="button"
+                                          className={`Home_Noga_galleryVisibilityButton${
+                                            currentVisibility === option.value
+                                              ? " isActive"
+                                              : ""
+                                          }`}
+                                          onClick={() =>
+                                            handleUpdateGalleryImageVisibility(
+                                              image.publicId,
+                                              option.value,
+                                            )
+                                          }
+                                          disabled={
+                                            isImageGalleryVisibilityUpdatingPublicId ===
+                                            image.publicId
+                                          }
+                                          aria-label={`${option.label} visibility`}
+                                          title={option.label}
+                                          aria-pressed={
+                                            currentVisibility === option.value
+                                          }
+                                        >
+                                          <i
+                                            className={option.iconClass}
+                                            aria-hidden="true"
+                                          ></i>
+                                          <span>{option.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {/* <button
                                       type="button"
                                       className="Home_Noga_editPicButton"
                                       onClick={() =>
@@ -8752,32 +9279,32 @@ function HomeNoga(props) {
                                     >
                                       <i className="fas fa-panorama"></i>
                                     </button> */}
-                                    <button
-                                      type="button"
-                                      className="Home_Noga_editPicButton"
-                                      onClick={() =>
-                                        handleDeleteGalleryImage(image.publicId)
-                                      }
-                                      disabled={
-                                        isImageGalleryDeletingPublicId ===
-                                        image.publicId
-                                      }
-                                      aria-label={
-                                        isImageGalleryDeletingPublicId ===
-                                        image.publicId
-                                          ? "Deleting media"
-                                          : "Delete media"
-                                      }
-                                      title={
-                                        isImageGalleryDeletingPublicId ===
-                                        image.publicId
-                                          ? "Deleting media"
-                                          : "Delete media"
-                                      }
-                                    >
-                                      <i className="fas fa-trash-alt"></i>
-                                    </button>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    className="Home_Noga_editPicButton"
+                                    onClick={() =>
+                                      handleDeleteGalleryImage(image.publicId)
+                                    }
+                                    disabled={
+                                      isImageGalleryDeletingPublicId ===
+                                      image.publicId
+                                    }
+                                    aria-label={
+                                      isImageGalleryDeletingPublicId ===
+                                      image.publicId
+                                        ? "Deleting media"
+                                        : "Delete media"
+                                    }
+                                    title={
+                                      isImageGalleryDeletingPublicId ===
+                                      image.publicId
+                                        ? "Deleting media"
+                                        : "Delete media"
+                                    }
+                                  >
+                                    <i className="fas fa-trash-alt"></i>
+                                  </button>
+                                </div>
                               </div>
                             </article>
                           );
@@ -8804,69 +9331,45 @@ function HomeNoga(props) {
                   id="Home_Noga_friendsCard"
                   className={`Home_Noga_socialFriendsCard fc${activeFriendCard ? " Home_Noga_socialFriendsCard--chatMounted" : ""}`}
                 >
-                  {activeFriendCard ? null : (
-                    <div className="Home_Noga_gallery_Header_wrapper">
-                      <div className="Home_Noga_socialFriendsHeaderTitleRow">
-                        <h3 className="Home_Noga_socialFriendsTitle">
-                          {isReportsWrapperOpen
-                            ? "Settings"
-                            : activeFriendsMiniTabMeta?.label || "Friends"}
-                        </h3>
-                        {isReportsWrapperOpen ? null : (
-                          <span className="Home_Noga_socialFriendsCount">
-                            {activeFriendsMiniTabMeta?.count || 0}
-                          </span>
-                        )}
-                      </div>
-                      {!isReportsWrapperOpen ? (
-                        <div
-                          className="Home_Noga_socialFriendsMiniNav"
-                          style={{
-                            "--home-friends-tab-count": 3,
-                            "--home-friends-tab-index": Math.max(
-                              0,
-                              Math.min(activeFriendsMiniTabIndex, 2),
-                            ),
-                          }}
-                        >
-                          <div className="Home_Noga_socialFriendsMiniNavRail">
-                            <span
-                              className="Home_Noga_socialFriendsMiniNavSelector"
-                              aria-hidden="true"
-                            ></span>
-                            {friendsMiniTabs.map((tab) => (
-                              <button
-                                key={tab.id}
-                                type="button"
-                                className={`Home_Noga_socialFriendsMiniNavButton Home_Noga_aboutButton${
-                                  activeFriendsMiniTab === tab.id
-                                    ? " isActive"
-                                    : ""
-                                }`}
-                                onClick={() =>
-                                  handleSelectFriendsMiniTab(tab.id)
-                                }
-                                aria-label={tab.label}
-                                title={tab.label}
-                              >
-                                <i className={tab.iconClass}></i>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
                   {isReportsWrapperOpen ? null : (
-                    <ul className="Home_Noga_socialFriendsList">
-                      {onlineFriends.length > 0 ? (
-                        onlineFriends.map(renderFriendListItem)
+                    <>
+                      <div className="Home_Noga_chatColumnTitleRow">
+                        <h3 className="Home_Noga_chatColumnTitle">Chat</h3>
+                        <span className="Home_Noga_socialFriendsCount">
+                          {onlineFriends.length}
+                        </span>
+                      </div>
+                      {activeFriendCard?.chatId ? (
+                        <div className="Home_Noga_chatPanelHost">
+                          <FriendChat
+                            state={activeFriendChatState}
+                            content={HOME_CHAT_CONTENT}
+                            sendToThemMessage={props.sendToThemMessage}
+                            updateMyTypingPresence={props.updateMyTypingPresence}
+                            markMessagesRead={props.markMessagesRead}
+                            requestGlobalCall={props.requestGlobalCall}
+                            globalCallSession={props.state?.global_call_session}
+                            closeActiveChat={() => {
+                              setInlineCallActionsTarget(null);
+                              setOpenChatFriendId(null);
+                              props.closeActiveChat?.();
+                            }}
+                            hideTitleContainer
+                            inlineCallActionsTarget={inlineCallActionsTarget}
+                          />
+                        </div>
                       ) : (
-                        <li className="Home_Noga_socialFriendsEmptyState">
-                          No online friends right now.
-                        </li>
+                        <ul className="Home_Noga_socialFriendsList">
+                          {onlineFriends.length > 0 ? (
+                            onlineFriends.map(renderFriendListItem)
+                          ) : (
+                            <li className="Home_Noga_socialFriendsEmptyState">
+                              No online friends right now.
+                            </li>
+                          )}
+                        </ul>
                       )}
-                    </ul>
+                    </>
                   )}
                 </div>
               </section>
@@ -9849,3 +10352,4 @@ function HomeNoga(props) {
   );
 }
 export default HomeNoga;
+

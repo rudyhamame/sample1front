@@ -3164,7 +3164,7 @@ function Home(props) {
   };
 
   React.useEffect(() => {
-    const nextAcademicInfoFields = {
+      const nextAcademicInfoFields = {
       program: String(props.state?.program || ""),
       university: String(props.state?.university || ""),
       studyYear: String(
@@ -3174,6 +3174,7 @@ function Home(props) {
       ),
       term: String(
         props.state?.term ||
+          props.state?.studying?.time?.current?.programTerm?.number ||
           props.state?.studying?.time?.current?.programTerm ||
           "",
       ),
@@ -3192,6 +3193,7 @@ function Home(props) {
     props.state?.university,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
+    props.state?.studying?.time?.current?.programTerm?.number,
     props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
@@ -3676,7 +3678,8 @@ function Home(props) {
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.current?.programTerm ||
+              profileStudying?.time?.current?.programTerm?.number ||
+                profileStudying?.time?.current?.programTerm ||
                 profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
@@ -7312,7 +7315,8 @@ function Home(props) {
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrent.programTerm ||
+            profileStudyingCurrent.programTerm?.number ||
+              profileStudyingCurrent.programTerm ||
               profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,

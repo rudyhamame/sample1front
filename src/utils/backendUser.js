@@ -21,6 +21,39 @@ const normalizeNullableNumber = (value, fallback = null) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeProgramTermNumber = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  return ["First", "Second", "Third"].includes(normalizedValue)
+    ? normalizedValue
+    : "";
+};
+
+const normalizeProgramTermScheduleEntries = (value) =>
+  (Array.isArray(value) ? value : [])
+    .map((entry) => ({
+      component_class: String(entry?.component_class || "").trim(),
+      start_date: entry?.start_date || null,
+      end_date: entry?.end_date || null,
+    }))
+    .filter(
+      (entry) =>
+        entry.component_class || entry.start_date !== null || entry.end_date !== null,
+    );
+
+const normalizeCurrentProgramTerm = (value, fallback = "") => {
+  const rawValue =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const number = normalizeProgramTermNumber(
+    rawValue?.number ?? value ?? fallback,
+  );
+  return {
+    ...rawValue,
+    number: number || null,
+    attendanceDate: normalizeProgramTermScheduleEntries(rawValue?.attendanceDate),
+    examDate: normalizeProgramTermScheduleEntries(rawValue?.examDate),
+  };
+};
+
 const normalizeProfileStudyingTime = (studying = {}) => {
   const studyingTime =
     studying?.time && typeof studying.time === "object" ? studying.time : {};
@@ -58,9 +91,17 @@ const normalizeProfileStudyingTime = (studying = {}) => {
     current?.programYearNum ?? currentDate?.year,
     null,
   );
-  const currentProgramTerm = String(
-    current?.programTerm ?? currentDate?.term ?? studying?.term ?? "",
-  ).trim();
+  const currentProgramTermNumber = normalizeProgramTermNumber(
+    current?.programTerm?.number ??
+      current?.programTerm ??
+      currentDate?.term ??
+      studying?.term ??
+      "",
+  );
+  const normalizedCurrentProgramTerm = normalizeCurrentProgramTerm(
+    current?.programTerm,
+    currentProgramTermNumber,
+  );
 
   return {
     ...studyingTime,
@@ -75,7 +116,7 @@ const normalizeProfileStudyingTime = (studying = {}) => {
       ...(current && typeof current === "object" ? current : {}),
       programYearInterval: currentProgramYearInterval || null,
       programYearNum: currentProgramYearNum,
-      programTerm: currentProgramTerm || null,
+      programTerm: normalizedCurrentProgramTerm,
     },
     currentAcademicYear: currentProgramYearInterval || null,
     startDate: {
@@ -86,7 +127,7 @@ const normalizeProfileStudyingTime = (studying = {}) => {
     currentDate: {
       ...(currentDate && typeof currentDate === "object" ? currentDate : {}),
       year: currentProgramYearNum,
-      term: currentProgramTerm || null,
+      term: currentProgramTermNumber || null,
     },
   };
 };
@@ -272,6 +313,7 @@ export const normalizeUserUpdatePayload = (payload) => {
       ).trim(),
       term: String(
         personal?.term ??
+          normalizedStudyingTime?.current?.programTerm?.number ??
           normalizedStudyingTime?.current?.programTerm ??
           normalizedStudyingTime?.currentDate?.term ??
           studying?.term ??

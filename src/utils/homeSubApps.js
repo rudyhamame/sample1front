@@ -29,10 +29,10 @@ export const getHomeSubApps = (username = "") => {
       path: "/phenomed/telegram-control",
     },
     {
-      id: "deezer-player",
-      label: "Deezer Player",
+      id: "jamendo-player",
+      label: "Jamendo Player",
       icon: "fas fa-music",
-      path: "/phenomed/deezer-player",
+      path: "/phenomed/jamendo-player",
     },
     {
       id: "school",

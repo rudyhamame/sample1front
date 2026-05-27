@@ -20,7 +20,7 @@ import {
 import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
 import PdfReaderPage from "../PdfReaderPage.jsx";
 import TelegramControlPage from "../TelegramControlPage.jsx";
-import DeezerPlayer from "../DeezerPlayer.jsx";
+import JamendoPlayer from "../JamendoPlayer.jsx";
 import Profile from "../Profile/Profile.jsx";
 import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
 import Footer from "./Footer/Footer";
@@ -643,31 +643,7 @@ class App extends React.Component {
   };
 
   availableToChat = (isConnected) => {
-    let url = apiUrl("/api/user/isOnline/") + this.state.my_id;
-    let options = {
-      method: "PUT",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        isConnected: isConnected,
-      }),
-    };
-
-    let req = new Request(url, options);
-    return fetch(req)
-      .then((response) => {
-        if (response.status === 201) {
-          return response.json();
-        }
-
-        throw new Error("Unable to update connection status.");
-      })
-      .catch((err) => {
-        console.log("error:", err.message);
-        throw err;
-      });
+    return Promise.resolve({ isConnected: Boolean(isConnected) });
   };
 
   //......END OF MAKE YOURSELF AVAILABLE TO CHAT......
@@ -1913,10 +1889,16 @@ class App extends React.Component {
             nextInfo?.term !== undefined
               ? String(nextInfo?.term || "").trim() || null
               : String(
-                  currentStudyingTimeCurrent.programTerm ??
+                  currentStudyingTimeCurrent.programTerm?.number ??
+                    currentStudyingTimeCurrent.programTerm ??
                     currentStudyingTimeCurrentDate.term ??
                     "",
                 ).trim() || null;
+          const nextCurrentProgramTermDetails =
+            nextInfo?.currentProgramTermDetails &&
+            typeof nextInfo.currentProgramTermDetails === "object"
+              ? nextInfo.currentProgramTermDetails
+              : null;
 
           return {
             ...currentStudying,
@@ -1936,6 +1918,21 @@ class App extends React.Component {
               nextInfo?.language !== undefined
                 ? String(nextInfo?.language || "").trim()
                 : String(currentStudying?.language || "").trim(),
+            componentsClass:
+              nextInfo?.componentsClass !== undefined
+                ? Array.from(
+                    new Set(
+                      (Array.isArray(nextInfo.componentsClass)
+                        ? nextInfo.componentsClass
+                        : [nextInfo.componentsClass]
+                      )
+                        .map((entry) => String(entry || "").trim())
+                        .filter(Boolean),
+                    ),
+                  )
+                : Array.isArray(currentStudying?.componentsClass)
+                  ? currentStudying.componentsClass
+                  : [],
             time: {
               ...currentStudyingTime,
               currentAcademicYear: nextCurrentProgramYearInterval,
@@ -1946,7 +1943,34 @@ class App extends React.Component {
                 ...currentStudyingTimeCurrent,
                 programYearInterval: nextCurrentProgramYearInterval,
                 programYearNum: nextCurrentProgramYearNum,
-                programTerm: nextCurrentProgramTerm,
+                programTerm: {
+                  ...(currentStudyingTimeCurrent.programTerm &&
+                  typeof currentStudyingTimeCurrent.programTerm === "object"
+                    ? currentStudyingTimeCurrent.programTerm
+                    : {}),
+                  number:
+                    String(
+                      nextCurrentProgramTermDetails?.number ??
+                        nextCurrentProgramTerm ??
+                        "",
+                    ).trim() || null,
+                  attendanceDate: Array.isArray(
+                    nextCurrentProgramTermDetails?.attendanceDate,
+                  )
+                    ? nextCurrentProgramTermDetails.attendanceDate
+                    : Array.isArray(
+                          currentStudyingTimeCurrent?.programTerm?.attendanceDate,
+                        )
+                      ? currentStudyingTimeCurrent.programTerm.attendanceDate
+                      : [],
+                  examDate: Array.isArray(nextCurrentProgramTermDetails?.examDate)
+                    ? nextCurrentProgramTermDetails.examDate
+                    : Array.isArray(
+                          currentStudyingTimeCurrent?.programTerm?.examDate,
+                        )
+                      ? currentStudyingTimeCurrent.programTerm.examDate
+                      : [],
+                },
               },
               startDate: {
                 ...currentStudyingTimeStartDate,
@@ -2809,10 +2833,44 @@ class App extends React.Component {
             ) : null}
           </article>
         </Route>
+        <Route exact path="/phenomed/jamendo-player">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <JamendoPlayer
+                state={this.state}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
+          </article>
+        </Route>
         <Route exact path="/phenomed/deezer-player">
           <article id="app_page" className={appPageClassName}>
             <main id="Main_article" className="fr">
-              <DeezerPlayer
+              <JamendoPlayer
+                state={this.state}
+                serverReply={this.serverReply}
+              />
+            </main>
+            {showServerAnswerFooter ? (
+              <Footer
+                appState={this.state}
+                onSetSelectedAiProvider={this.setSelectedAiProvider}
+                onLogout={this.logOut}
+              />
+            ) : null}
+          </article>
+        </Route>
+        <Route exact path="/phenomed/soundcloud-player">
+          <article id="app_page" className={appPageClassName}>
+            <main id="Main_article" className="fr">
+              <JamendoPlayer
                 state={this.state}
                 serverReply={this.serverReply}
               />

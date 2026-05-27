@@ -15,8 +15,12 @@ export const connectRealtime = ({
   }
 
   const socket = io(API_BASE_URL, {
-    transports: ["polling", "websocket"],
+    transports: ["websocket"],
     reconnection: true,
+    reconnectionAttempts: 4,
+    reconnectionDelay: 2500,
+    reconnectionDelayMax: 8000,
+    timeout: 6000,
     autoConnect: false,
   });
 
@@ -51,6 +55,10 @@ export const connectRealtime = ({
   if (typeof onVisitLog === "function") {
     socket.on("visit-log:new", onVisitLog);
   }
+
+  socket.on("connect_error", () => {
+    // Keep silent when backend is offline to avoid console noise from retries.
+  });
 
   socket.connect();
 

@@ -1,5 +1,4 @@
 import React from "react";
-import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import "./emojie_picker.css";
 import "./friendchat.css";
@@ -1209,7 +1208,7 @@ const FriendChat = ({
 
   const inlineCallActions =
     hideTitleContainer && hasActiveChat ? (
-      <div className="Chat_inlineCallActions Home_socialFriendPresence fr">
+      <div className="Chat_inlineCallActions fr">
         {isGlobalCallActiveForFriend ? (
           <>
             <span className="Chat_inlineCallElapsed" aria-label="Call duration">
@@ -1286,6 +1285,16 @@ const FriendChat = ({
           </>
         )}
       </div>
+    ) : null;
+
+  const inlineChatHeader =
+    hideTitleContainer && hasActiveChat ? (
+      <section id="Chat_inlineHeader" className="fr">
+        <h1 id="Chat_inlineHeaderTitle">
+          {state?.activeChatFriendName || chatContent?.title || "Chat"}
+        </h1>
+        {inlineCallActions}
+      </section>
     ) : null;
 
   React.useEffect(() => {
@@ -1917,9 +1926,7 @@ const FriendChat = ({
                 </React.Fragment>
               )}
               {inlineCallActions
-                ? inlineCallActionsTarget
-                  ? createPortal(inlineCallActions, inlineCallActionsTarget)
-                  : inlineCallActions
+                ? inlineChatHeader
                 : null}
               {!usesGlobalCallPanel && incomingCall ? (
                 <section id="Chat_incomingCallBanner" className="fc">
@@ -2217,44 +2224,40 @@ const FriendChat = ({
                   <i className="fc far fa-paper-plane"></i>
                 </button>
               </section>
-              <div
-                id="Chat_emoji_mount"
-                className="fc"
-                style={{
-                  height: isEmojiPickerOpen ? "40%" : "0",
-                }}
-              >
-                <div
-                  id="Chat_emoji_region"
-                  className="fc"
-                  ref={emojiPickerWrapRef}
-                >
-                  <div id="Chat_emoji_popup_wrap" className="fc">
-                    <div
-                      id="Chat_emoji_picker"
-                      className="fc"
-                      ref={emojiPickerRef}
-                    >
-                      <div id="Chat_emoji_picker_card_wrap" className="fc">
-                        <EmojiPicker
-                          id="Chat_emoji_picker_aside"
-                          onEmojiClick={handleEmojiPickerSelect}
-                          theme={Theme.AUTO}
-                          emojiStyle={EmojiStyle.APPLE}
-                          lazyLoadEmojis
-                          skinTonesDisabled={false}
-                          searchDisabled={true}
-                          previewConfig={{
-                            showPreview: false,
-                            defaultCaption: "Pick an emoji",
-                          }}
-                          className="Chat_modernEmojiPicker"
-                        />
+              {isEmojiPickerOpen ? (
+                <div id="Chat_emoji_mount" className="fc">
+                  <div
+                    id="Chat_emoji_region"
+                    className="fc"
+                    ref={emojiPickerWrapRef}
+                  >
+                    <div id="Chat_emoji_popup_wrap" className="fc">
+                      <div
+                        id="Chat_emoji_picker"
+                        className="fc"
+                        ref={emojiPickerRef}
+                      >
+                        <div id="Chat_emoji_picker_card_wrap" className="fc">
+                          <EmojiPicker
+                            id="Chat_emoji_picker_aside"
+                            onEmojiClick={handleEmojiPickerSelect}
+                            theme={Theme.AUTO}
+                            emojiStyle={EmojiStyle.APPLE}
+                            lazyLoadEmojis
+                            skinTonesDisabled={false}
+                            searchDisabled={true}
+                            previewConfig={{
+                              showPreview: false,
+                              defaultCaption: "Pick an emoji",
+                            }}
+                            className="Chat_modernEmojiPicker"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
             </React.Fragment>
           ) : null}
         </section>

@@ -10,6 +10,63 @@
   --pdf-tools-icon-hover-bg: rgba(83, 206, 236, 0.28);
   --pdf-tools-icon-active-bg: rgba(83, 206, 236, 0.45);
 }
+
+.pdfReader_page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+#pdfReader_pageFileInput,
+.pdfReader_pageFileInput {
+  display: none;
+}
+
+.pdfReader_imageMount {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: var(--pdf-reader-day-panel);
+}
+
+.pdfReader_imageHeader {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--pdf-reader-day-border);
+}
+
+.pdfReader_imageTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--pdf-reader-day-text);
+}
+
+.pdfReader_imageViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px;
+}
+
+.pdfReader_imagePreview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
 /* DAY MODE */
 .pdfReader_overlay {
   --pdf-reader-highlight-color: var(--blue-shade-400);
@@ -44,21 +101,9 @@
   padding: 16px;
 }
 
-.pdfReader_inlineMount {
-  display: flex;
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 26px;
-  box-sizing: border-box;
-  background: transparent;
-  box-shadow: none;
-}
-
 .pdfReader_shell {
   max-height: 94vh;
+  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -72,7 +117,8 @@
   height: min(94vh, calc(100dvh - 32px));
 }
 
-.pdfReader_inlineMount .pdfReader_shell {
+#pdfReader_page .pdfReader_shell,
+.pdfReader_page .pdfReader_shell {
   width: 100%;
   height: 100%;
   max-height: none;
@@ -458,12 +504,21 @@
     inset 0 -28px 40px rgba(8, 21, 24, 0.28);
 }
 
+.pdfReader_studyLayout > * {
+  min-height: 0;
+  height: 100%;
+}
+
 .pdfReader_studyPanel,
 .pdfReader_notesPanel {
   background:
     linear-gradient(180deg, rgba(245, 251, 252, 0.96), rgba(224, 244, 248, 0.92));
+  width: 100%;
+  height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  overscroll-behavior: contain;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -10px 18px rgba(38, 95, 109, 0.08),
@@ -893,6 +948,64 @@
     inset 0 -24px 36px rgba(8, 21, 24, 0.4),
     0 24px 44px rgba(8, 21, 24, 0.22);
   transform: translateY(2px);
+  position: relative;
+}
+
+.pdfReader_selectionMiniBar {
+  position: absolute;
+  z-index: 30;
+  width: min(320px, calc(100% - 16px));
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(58, 112, 124, 0.26);
+  background: rgba(248, 253, 253, 0.98);
+  box-shadow: 0 12px 22px rgba(9, 28, 33, 0.2);
+}
+
+.pdfReader_selectionMiniBarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdfReader_selectionMiniBarBtn,
+.pdfReader_selectionMiniBarUseBtn {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(66, 123, 135, 0.24);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(18, 63, 72, 0.94);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pdfReader_selectionMiniBarPreview {
+  margin: 8px 0 0;
+  color: rgba(18, 63, 72, 0.9);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  unicode-bidi: plaintext;
+  max-height: 84px;
+  overflow: auto;
+  padding-right: 2px;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+.pdfReader_selectionMiniBarUseList {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pdfReader_selectionMiniBarUseBtn {
+  text-align: left;
+  justify-content: flex-start;
 }
 
 .pdfReader_canvasWrap {
@@ -911,7 +1024,7 @@
   scroll-behavior: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
+  touch-action: none;
   box-shadow:
     inset 0 16px 26px rgba(255, 255, 255, 0.012),
     inset 0 -18px 28px rgba(8, 21, 24, 0.104);
@@ -920,6 +1033,10 @@
 
 .pdfReader_canvasWrap--nativescrollable {
   min-height: 0;
+}
+
+.pdfReader_canvasWrap--hand {
+  touch-action: pan-x pan-y;
 }
 
 .pdfReader_status {
@@ -961,7 +1078,7 @@
 
 .pdfReader_annotationLayer {
   position: relative;
-  touch-action: pan-x pan-y;
+  touch-action: none;
   cursor: crosshair;
   width: var(--pdf-page-width);
   height: var(--pdf-page-height);
@@ -1163,6 +1280,34 @@
   margin-bottom: 10px;
 }
 
+.pdfReader_ocrRangeRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pdfReader_ocrRangeInput {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--pdf-reader-day-border);
+  background: rgba(8, 21, 24, 0.24);
+  color: var(--pdf-reader-day-text);
+  padding: 0 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  box-sizing: border-box;
+}
+
+.pdfReader_ocrButtonsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
 .pdfReader_ocrOutput {
   width: 100%;
   min-height: 150px;
@@ -1210,6 +1355,14 @@
 .pdfReader_ocrAction:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.pdfReader_ocrAction.is-active {
+  border-color: var(--pdf-reader-day-border-strong);
+  background: rgba(83, 206, 236, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 0 2px rgba(83, 206, 236, 0.12);
 }
 
 .pdfReader_sourcePickerOverlay {
@@ -1471,8 +1624,8 @@ body.dark .pdfReader_overlay,
   background: rgba(8, 22, 27, 0.92);
 }
 
-body.dark .pdfReader_inlineMount,
-#app_page.app_page--home-dark .pdfReader_inlineMount {
+body.dark .pdfReader_page,
+#app_page.app_page--home-dark .pdfReader_page {
   background:
     radial-gradient(circle at 14% 18%, rgba(44, 148, 145, 0.18), transparent 26%),
     radial-gradient(circle at 86% 12%, rgba(245, 168, 93, 0.1), transparent 20%),

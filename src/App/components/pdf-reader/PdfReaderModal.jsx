@@ -16,6 +16,29 @@ const TOOLS = [
   { id: "hand", label: <i className="fas fa-hand-paper"></i> },
 ];
 
+const OCR_LANGUAGE_OPTIONS = [
+  { value: "ara+eng", label: "Arabic + English" },
+  { value: "ara", label: "Arabic" },
+  { value: "eng", label: "English" },
+];
+
+const getOcrLanguageLabel = (value) =>
+  OCR_LANGUAGE_OPTIONS.find((entry) => entry.value === value)?.label ||
+  "Arabic + English";
+
+const buildOcrPageRange = (startValue, endValue, totalPages) => {
+  const maxPages = Math.max(1, Number(totalPages) || 1);
+  const startPage = clampPage(startValue, maxPages);
+  const endPage = clampPage(endValue, maxPages);
+  const lowerBound = Math.min(startPage, endPage);
+  const upperBound = Math.max(startPage, endPage);
+
+  return Array.from(
+    { length: upperBound - lowerBound + 1 },
+    (_, index) => lowerBound + index,
+  );
+};
+
 const clampPage = (value, max) => {
   const numeric = Number(value) || 1;
 
@@ -291,12 +314,18 @@ const PdfReaderModal = ({
   onChooseFile,
   renderInline = false,
   forceVisible = false,
-  storedCourseOptions = [],
-  selectedCourseName = "",
-  onSelectCourseName,
-  selectedCourseLectures = [],
-  selectedLectureId = "",
-  onSelectCourseLecture,
+  studyConceptForm = {},
+  courseOptions = [],
+  componentOptions = [],
+  lectureOptions = [],
+  lectureInstructorOptions = [],
+  lectureEditorOptions = [],
+  difficultyOptions = [],
+  masteryOptions = [],
+  priorityOptions = [],
+  onStudyConceptCourseChange,
+  onStudyConceptLectureChange,
+  onStudyConceptFieldChange,
   cloudPdfMessages = [],
   openCloudPdf,
 }) => {
@@ -308,6 +337,7 @@ const PdfReaderModal = ({
   const realityEditorRef = useRef(null);
   const renderTasksRef = useRef({});
   const textLayerBuildersRef = useRef({});
+  const ocrWordsByPageRef = useRef({});
   const draftAnnotationRef = useRef(null);
   const draftAnimationFrameRef = useRef(null);
   const wheelAnimationFrameRef = useRef(null);
@@ -319,6 +349,10 @@ const PdfReaderModal = ({
   const layoutSyncTimeoutRef = useRef(null);
   const ocrWorkerRef = useRef(null);
   const ocrWorkerPromiseRef = useRef(null);
+  const ocrWorkerLanguageRef = useRef("");
+  const runOcrForPageRef = useRef(null);
+  const autoOcrDocumentKeyRef = useRef("");
+  const selectionMiniBarRef = useRef(null);
 
   const [pdfDocument, setPdfDocument] = useState(null);
   const [numPages, setNumPages] = useState(0);
@@ -366,6 +400,7 @@ const PdfReaderModal = ({
   const [activePdfToolButton, setActivePdfToolButton] = useState("");
   const [rtlMode, setRtlMode] = useState(true);
   const [antiOcrMode, setAntiOcrMode] = useState(true);
+  const [ocrLanguage, setOcrLanguage] = useState("ara+eng");
   const [defaultNoteText, setDefaultNoteText] = useState("");
   const [draftAnnotation, setDraftAnnotation] = useState(null);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
@@ -376,6 +411,18 @@ const PdfReaderModal = ({
   const [normalizedOcrText, setNormalizedOcrText] = useState("");
   const [ocrSourcePage, setOcrSourcePage] = useState(null);
   const [isRunningOcr, setIsRunningOcr] = useState(false);
+  const [ocrRangeStart, setOcrRangeStart] = useState(1);
+  const [ocrRangeEnd, setOcrRangeEnd] = useState(1);
+  const [isAutoOcrVisiblePageOn, setIsAutoOcrVisiblePageOn] = useState(false);
+  const [lastOcrRunMode, setLastOcrRunMode] = useState("page");
+  const [selectionMiniBar, setSelectionMiniBar] = useState({
+    isOpen: false,
+    text: "",
+    preview: "",
+    x: 0,
+    y: 0,
+    useOpen: false,
+  });
   const handlePdfToolButton = useCallback(
     (buttonId, effect) => {
       disableErasers();
@@ -415,16 +462,708 @@ const PdfReaderModal = ({
     [renderingPages],
   );
   const isSelectingText = tool === "select";
+  const autoOcrSignatureRef = useRef("");
+  const closeSelectionMiniBar = useCallback(() => {
+    setSelectionMiniBar((currentValue) =>
+      currentValue.isOpen
+        ? {
+            isOpen: false,
+            text: "",
+            preview: "",
+            x: 0,
+            y: 0,
+            useOpen: false,
+          }
+        : currentValue,
+    );
+  }, []);
+
+  const formatSelectionPreviewText = useCallback((value) => {
+    const normalizedValue = String(value || "")
+      .replace(/[\u200B\u2060\uFEFF]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!normalizedValue) {
+      return "";
+    }
+    return normalizedValue.length > 140
+      ? `${normalizedValue.slice(0, 140).trim()}...`
+      : normalizedValue;
+  }, []);
+
+  const isArabicText = useCallback(
+    (value) => /[\u0600-\u06FF]/.test(String(value || "")),
+    [],
+  );
+
+  const normalizeArabicToken = useCallback(
+    (value) =>
+      String(value || "")
+        .replace(/[\u064B-\u065F\u0670]/g, "")
+        .replace(/\u0640/g, "")
+        .replace(/[^\u0600-\u06FF0-9A-Za-z]/g, "")
+        .trim(),
+    [],
+  );
+
+  const levenshteinDistance = useCallback((leftValue, rightValue) => {
+    const left = String(leftValue || "");
+    const right = String(rightValue || "");
+    const leftLength = left.length;
+    const rightLength = right.length;
+    if (!leftLength) {
+      return rightLength;
+    }
+    if (!rightLength) {
+      return leftLength;
+    }
+    const matrix = Array.from({ length: leftLength + 1 }, () =>
+      new Array(rightLength + 1).fill(0),
+    );
+    for (let i = 0; i <= leftLength; i += 1) {
+      matrix[i][0] = i;
+    }
+    for (let j = 0; j <= rightLength; j += 1) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= leftLength; i += 1) {
+      for (let j = 1; j <= rightLength; j += 1) {
+        const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + substitutionCost,
+        );
+      }
+    }
+    return matrix[leftLength][rightLength];
+  }, []);
+
+  const getClosestOcrToken = useCallback(
+    (selectedTextValue, ocrPageTextValue) => {
+      const sourceToken = normalizeArabicToken(selectedTextValue);
+      if (!sourceToken || !isArabicText(sourceToken)) {
+        return "";
+      }
+      const ocrTokens = String(ocrPageTextValue || "")
+        .split(/\s+/)
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean);
+      if (!ocrTokens.length) {
+        return "";
+      }
+      let bestToken = "";
+      let bestScore = Number.POSITIVE_INFINITY;
+      ocrTokens.forEach((token) => {
+        const normalizedToken = normalizeArabicToken(token);
+        if (!normalizedToken) {
+          return;
+        }
+        const score = levenshteinDistance(sourceToken, normalizedToken);
+        if (score < bestScore) {
+          bestScore = score;
+          bestToken = token;
+        }
+      });
+      const maxLength = Math.max(sourceToken.length, normalizeArabicToken(bestToken).length);
+      if (!bestToken || !maxLength) {
+        return "";
+      }
+      const ratio = bestScore / maxLength;
+      return ratio <= 0.45 ? bestToken : "";
+    },
+    [isArabicText, levenshteinDistance, normalizeArabicToken],
+  );
+
+  const damerauLevenshteinDistance = useCallback((leftValue, rightValue) => {
+    const left = String(leftValue || "");
+    const right = String(rightValue || "");
+    const leftLength = left.length;
+    const rightLength = right.length;
+    if (!leftLength) {
+      return rightLength;
+    }
+    if (!rightLength) {
+      return leftLength;
+    }
+    const matrix = Array.from({ length: leftLength + 1 }, () =>
+      new Array(rightLength + 1).fill(0),
+    );
+    for (let i = 0; i <= leftLength; i += 1) {
+      matrix[i][0] = i;
+    }
+    for (let j = 0; j <= rightLength; j += 1) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= leftLength; i += 1) {
+      for (let j = 1; j <= rightLength; j += 1) {
+        const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+        let nextValue = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + substitutionCost,
+        );
+        if (
+          i > 1 &&
+          j > 1 &&
+          left[i - 1] === right[j - 2] &&
+          left[i - 2] === right[j - 1]
+        ) {
+          nextValue = Math.min(nextValue, matrix[i - 2][j - 2] + 1);
+        }
+        matrix[i][j] = nextValue;
+      }
+    }
+    return matrix[leftLength][rightLength];
+  }, []);
+
+  const correctArabicTokenLightweight = useCallback(
+    (tokenValue, pageNumberValue) => {
+      const token = String(tokenValue || "").trim();
+      if (!token || !isArabicText(token)) {
+        return token;
+      }
+      if (/\s/.test(token)) {
+        return token;
+      }
+
+      const pageNumberNormalized = Number(pageNumberValue) || 0;
+      const pageWords = Array.isArray(ocrWordsByPageRef.current?.[pageNumberNormalized])
+        ? ocrWordsByPageRef.current[pageNumberNormalized]
+        : [];
+      const pageVocabulary = new Set(
+        pageWords
+          .map((entry) => String(entry?.text || "").trim())
+          .filter((entry) => entry && isArabicText(entry)),
+      );
+      String(ocrText || "")
+        .split(/\s+/)
+        .map((entry) => String(entry || "").trim())
+        .filter((entry) => entry && isArabicText(entry))
+        .forEach((entry) => pageVocabulary.add(entry));
+
+      if (!pageVocabulary.size) {
+        return token;
+      }
+
+      const tokenNormalized = normalizeArabicToken(token);
+      if (!tokenNormalized) {
+        return token;
+      }
+
+      let bestCandidate = token;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      pageVocabulary.forEach((candidateRaw) => {
+        const candidate = String(candidateRaw || "").trim();
+        if (!candidate) {
+          return;
+        }
+        const normalizedCandidate = normalizeArabicToken(candidate);
+        if (!normalizedCandidate) {
+          return;
+        }
+        const distance = damerauLevenshteinDistance(
+          tokenNormalized,
+          normalizedCandidate,
+        );
+        const startsWithAlBonus =
+          token.startsWith("ال") && candidate.startsWith("ال") ? -0.25 : 0;
+        const lengthPenalty = Math.abs(
+          tokenNormalized.length - normalizedCandidate.length,
+        ) * 0.2;
+        const score = distance + lengthPenalty + startsWithAlBonus;
+        if (score < bestScore) {
+          bestScore = score;
+          bestCandidate = candidate;
+        }
+      });
+
+      const maxLength = Math.max(
+        tokenNormalized.length,
+        normalizeArabicToken(bestCandidate).length,
+      );
+      if (!maxLength) {
+        return token;
+      }
+      const ratio = bestScore / maxLength;
+      return ratio <= 0.45 ? bestCandidate : token;
+    },
+    [
+      damerauLevenshteinDistance,
+      isArabicText,
+      normalizeArabicToken,
+      ocrText,
+    ],
+  );
+
+  const parseTextLayerPageNumber = useCallback((textLayerElement) => {
+    const rawId = String(textLayerElement?.id || "");
+    const match = rawId.match(/pdfReader_textLayer-(\d+)/);
+    return match ? Number.parseInt(match[1], 10) : null;
+  }, []);
+
+  const extractOcrTextFromSelectionRect = useCallback((pageNumberValue, selectionRect) => {
+    const normalizedPageNumber = Number(pageNumberValue) || 0;
+    if (!normalizedPageNumber || !selectionRect) {
+      return "";
+    }
+    const cachedWords = ocrWordsByPageRef.current?.[normalizedPageNumber];
+    const activeCanvas = canvasRefs.current?.[normalizedPageNumber];
+    if (!Array.isArray(cachedWords) || !cachedWords.length || !activeCanvas) {
+      return "";
+    }
+
+    const canvasRect = activeCanvas.getBoundingClientRect();
+    if (!canvasRect.width || !canvasRect.height) {
+      return "";
+    }
+
+    const scaleX = activeCanvas.width / canvasRect.width;
+    const scaleY = activeCanvas.height / canvasRect.height;
+
+    const left = (selectionRect.left - canvasRect.left) * scaleX;
+    const top = (selectionRect.top - canvasRect.top) * scaleY;
+    const right = (selectionRect.right - canvasRect.left) * scaleX;
+    const bottom = (selectionRect.bottom - canvasRect.top) * scaleY;
+
+    const rectIntersects = (wordBbox) => {
+      if (!wordBbox) {
+        return false;
+      }
+      const x0 = Number(wordBbox.x0 ?? wordBbox.left ?? 0);
+      const y0 = Number(wordBbox.y0 ?? wordBbox.top ?? 0);
+      const x1 = Number(wordBbox.x1 ?? wordBbox.right ?? 0);
+      const y1 = Number(wordBbox.y1 ?? wordBbox.bottom ?? 0);
+      return !(x1 < left || x0 > right || y1 < top || y0 > bottom);
+    };
+
+    const selectedWords = cachedWords
+      .filter((entry) => rectIntersects(entry?.bbox))
+      .filter((entry) => String(entry?.text || "").trim());
+
+    if (!selectedWords.length) {
+      return "";
+    }
+
+    selectedWords.sort((a, b) => {
+      const ay = Number(a?.bbox?.y0 ?? a?.bbox?.top ?? 0);
+      const by = Number(b?.bbox?.y0 ?? b?.bbox?.top ?? 0);
+      if (Math.abs(ay - by) > 8) {
+        return ay - by;
+      }
+      const ax = Number(a?.bbox?.x0 ?? a?.bbox?.left ?? 0);
+      const bx = Number(b?.bbox?.x0 ?? b?.bbox?.left ?? 0);
+      return bx - ax;
+    });
+
+    return selectedWords.map((entry) => String(entry.text || "").trim()).join(" ").trim();
+  }, []);
+
+  const extractNearestOcrWordFromPoint = useCallback((pageNumberValue, clientX, clientY) => {
+    const normalizedPageNumber = Number(pageNumberValue) || 0;
+    if (!normalizedPageNumber) {
+      return "";
+    }
+    const cachedWords = ocrWordsByPageRef.current?.[normalizedPageNumber];
+    const activeCanvas = canvasRefs.current?.[normalizedPageNumber];
+    if (!Array.isArray(cachedWords) || !cachedWords.length || !activeCanvas) {
+      return "";
+    }
+
+    const canvasRect = activeCanvas.getBoundingClientRect();
+    if (!canvasRect.width || !canvasRect.height) {
+      return "";
+    }
+
+    const scaleX = activeCanvas.width / canvasRect.width;
+    const scaleY = activeCanvas.height / canvasRect.height;
+    const x = (clientX - canvasRect.left) * scaleX;
+    const y = (clientY - canvasRect.top) * scaleY;
+
+    let bestEntry = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    cachedWords.forEach((entry) => {
+      const textValue = String(entry?.text || "").trim();
+      const bbox = entry?.bbox;
+      if (!textValue || !bbox) {
+        return;
+      }
+      const x0 = Number(bbox.x0 ?? bbox.left ?? 0);
+      const y0 = Number(bbox.y0 ?? bbox.top ?? 0);
+      const x1 = Number(bbox.x1 ?? bbox.right ?? 0);
+      const y1 = Number(bbox.y1 ?? bbox.bottom ?? 0);
+      const centerX = (x0 + x1) / 2;
+      const centerY = (y0 + y1) / 2;
+      const dx = centerX - x;
+      const dy = centerY - y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestEntry = entry;
+      }
+    });
+
+    return String(bestEntry?.text || "").trim();
+  }, []);
+
+  const selectionPreviewDirection = useMemo(() => {
+    const rawValue = String(selectionMiniBar.preview || "");
+    return /[\u0600-\u06FF]/.test(rawValue) ? "rtl" : "ltr";
+  }, [selectionMiniBar.preview]);
+
+  const extractWordFromPoint = useCallback((clientX, clientY) => {
+    if (typeof document === "undefined") {
+      return "";
+    }
+
+    let node = null;
+    let offset = 0;
+
+    if (typeof document.caretPositionFromPoint === "function") {
+      const caretPosition = document.caretPositionFromPoint(clientX, clientY);
+      node = caretPosition?.offsetNode || null;
+      offset = Number(caretPosition?.offset || 0);
+    } else if (typeof document.caretRangeFromPoint === "function") {
+      const caretRange = document.caretRangeFromPoint(clientX, clientY);
+      node = caretRange?.startContainer || null;
+      offset = Number(caretRange?.startOffset || 0);
+    }
+
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+      return "";
+    }
+
+    const rawText = String(node.textContent || "");
+    if (!rawText.trim()) {
+      return "";
+    }
+
+    const isWordChar = (charValue) =>
+      /[\p{L}\p{N}\p{M}_-]/u.test(String(charValue || ""));
+
+    let start = Math.max(0, Math.min(offset, rawText.length));
+    let end = start;
+
+    while (start > 0 && isWordChar(rawText[start - 1])) {
+      start -= 1;
+    }
+    while (end < rawText.length && isWordChar(rawText[end])) {
+      end += 1;
+    }
+
+    return rawText.slice(start, end).trim();
+  }, []);
+
+  useEffect(() => {
+    if (tool !== "select") {
+      closeSelectionMiniBar();
+    }
+  }, [closeSelectionMiniBar, tool]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+    let selectionChangeTimer = null;
+
+    const handleSelectionChange = () => {
+      if (tool !== "select") {
+        return;
+      }
+      if (selectionChangeTimer) {
+        clearTimeout(selectionChangeTimer);
+      }
+      selectionChangeTimer = setTimeout(async () => {
+        const selection = window.getSelection();
+        const selectedText = String(selection?.toString() || "").trim();
+        if (!selection || selection.rangeCount === 0) {
+          closeSelectionMiniBar();
+          return;
+        }
+        const range = selection.getRangeAt(0);
+        const commonNode = range.commonAncestorContainer;
+        const textLayerElement =
+          commonNode instanceof Element
+            ? commonNode.closest(".pdfReader_textLayer")
+            : commonNode?.parentElement?.closest?.(".pdfReader_textLayer");
+        if (!textLayerElement) {
+          closeSelectionMiniBar();
+          return;
+        }
+        const canvasSection = document.getElementById("pdfReader_canvasSection");
+        if (!canvasSection) {
+          closeSelectionMiniBar();
+          return;
+        }
+        const selectionRect = range.getBoundingClientRect();
+        const selectedPageNumber = parseTextLayerPageNumber(textLayerElement);
+        let resolvedSelectedText = "";
+        if (selectedPageNumber) {
+          const selectionCenterX = selectionRect.left + selectionRect.width / 2;
+          const selectionCenterY = selectionRect.top + selectionRect.height / 2;
+          let ocrSelectionText = extractNearestOcrWordFromPoint(
+            selectedPageNumber,
+            selectionCenterX,
+            selectionCenterY,
+          );
+          if (!ocrSelectionText) {
+            ocrSelectionText = extractOcrTextFromSelectionRect(
+              selectedPageNumber,
+              selectionRect,
+            );
+          }
+
+          if (!ocrSelectionText) {
+            ocrSelectionText = getClosestOcrToken(selectedText || "", ocrText || "");
+          }
+
+          if (ocrSelectionText) {
+            resolvedSelectedText = correctArabicTokenLightweight(
+              ocrSelectionText,
+              selectedPageNumber,
+            );
+          }
+        }
+        if (!resolvedSelectedText) {
+          closeSelectionMiniBar();
+          return;
+        }
+
+        const sectionRect = canvasSection.getBoundingClientRect();
+        const x = Math.max(
+          8,
+          Math.min(
+            sectionRect.width - 280,
+            selectionRect.left - sectionRect.left + selectionRect.width / 2 - 130,
+          ),
+        );
+        const y = Math.max(
+          8,
+          Math.min(
+            sectionRect.height - 140,
+            selectionRect.top - sectionRect.top - 48,
+          ),
+        );
+        setSelectionMiniBar({
+          isOpen: true,
+          text: resolvedSelectedText,
+          preview: formatSelectionPreviewText(resolvedSelectedText),
+          x,
+          y,
+          useOpen: false,
+        });
+      }, 60);
+    };
+
+    const handlePointerDown = (event) => {
+      if (!selectionMiniBarRef.current) {
+        return;
+      }
+      if (!selectionMiniBarRef.current.contains(event.target)) {
+        setSelectionMiniBar((currentValue) =>
+          currentValue.isOpen ? { ...currentValue, useOpen: false } : currentValue,
+        );
+      }
+    };
+
+    const handleDoubleClick = (event) => {
+      if (tool !== "select") {
+        return;
+      }
+      const textLayer = event.target?.closest?.(".pdfReader_textLayer");
+      if (!textLayer) {
+        return;
+      }
+      const selectedPageNumber = parseTextLayerPageNumber(textLayer);
+      if (!selectedPageNumber) {
+        return;
+      }
+      const selectedWord = extractWordFromPoint(event.clientX, event.clientY);
+      let resolvedWord = extractNearestOcrWordFromPoint(
+        selectedPageNumber,
+        event.clientX,
+        event.clientY,
+      );
+      if (!resolvedWord && selectedWord) {
+        resolvedWord = getClosestOcrToken(selectedWord, ocrText);
+      }
+      if (!resolvedWord) {
+        return;
+      }
+      resolvedWord = correctArabicTokenLightweight(
+        resolvedWord,
+        selectedPageNumber,
+      );
+      if (!resolvedWord) {
+        return;
+      }
+      const canvasSection = document.getElementById("pdfReader_canvasSection");
+      if (!canvasSection) {
+        return;
+      }
+      const sectionRect = canvasSection.getBoundingClientRect();
+      const x = Math.max(8, Math.min(sectionRect.width - 280, event.clientX - sectionRect.left - 120));
+      const y = Math.max(8, Math.min(sectionRect.height - 140, event.clientY - sectionRect.top - 46));
+      setSelectionMiniBar({
+        isOpen: true,
+        text: resolvedWord,
+        preview: formatSelectionPreviewText(resolvedWord),
+        x,
+        y,
+        useOpen: false,
+      });
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("dblclick", handleDoubleClick);
+    return () => {
+      if (selectionChangeTimer) {
+        clearTimeout(selectionChangeTimer);
+      }
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("dblclick", handleDoubleClick);
+    };
+  }, [
+    closeSelectionMiniBar,
+    extractNearestOcrWordFromPoint,
+    extractWordFromPoint,
+    extractOcrTextFromSelectionRect,
+    formatSelectionPreviewText,
+    correctArabicTokenLightweight,
+    getClosestOcrToken,
+    parseTextLayerPageNumber,
+    tool,
+  ]);
+
+  const applySelectionTextToField = useCallback(
+    (targetKey) => {
+      const selectedText = String(selectionMiniBar.text || "").trim();
+      if (!selectedText) {
+        return;
+      }
+
+      if (targetKey === "courseName") {
+        const matchedCourse = (Array.isArray(courseOptions) ? courseOptions : []).find(
+          (entry) =>
+            String(entry?.label || "")
+              .trim()
+              .toLowerCase()
+              .includes(selectedText.toLowerCase()),
+        );
+        if (matchedCourse?.id) {
+          onStudyConceptCourseChange?.(String(matchedCourse.id || "").trim());
+        } else {
+          onStudyConceptFieldChange?.("courseName", selectedText);
+          onStudyConceptFieldChange?.("courseId", "");
+        }
+      } else if (targetKey === "courseCode") {
+        onStudyConceptFieldChange?.("courseCode", selectedText);
+      } else if (targetKey === "lectureName") {
+        const matchedLecture = (Array.isArray(lectureOptions) ? lectureOptions : []).find(
+          (entry) =>
+            String(entry?.label || "")
+              .trim()
+              .toLowerCase()
+              .includes(selectedText.toLowerCase()),
+        );
+        if (matchedLecture?.id) {
+          onStudyConceptLectureChange?.(String(matchedLecture.id || "").trim());
+        } else {
+          onStudyConceptFieldChange?.("lectureTitle", selectedText);
+          onStudyConceptFieldChange?.("lectureId", "");
+        }
+      } else if (targetKey === "instructorName") {
+        onStudyConceptFieldChange?.("lectureInstructor", selectedText);
+      } else if (targetKey === "editorName") {
+        onStudyConceptFieldChange?.("lectureEditor", selectedText);
+      }
+
+      setSelectionMiniBar((currentValue) => ({
+        ...currentValue,
+        isOpen: false,
+        useOpen: false,
+      }));
+    },
+    [
+      courseOptions,
+      lectureOptions,
+      onStudyConceptCourseChange,
+      onStudyConceptFieldChange,
+      onStudyConceptLectureChange,
+      selectionMiniBar.text,
+    ],
+  );
+
+  const copySelectedMiniBarText = useCallback(async () => {
+    const selectedText = String(selectionMiniBar.text || "").trim();
+    if (!selectedText) {
+      return;
+    }
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(selectedText);
+      } else {
+        const temporaryTextArea = document.createElement("textarea");
+        temporaryTextArea.value = selectedText;
+        document.body.appendChild(temporaryTextArea);
+        temporaryTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(temporaryTextArea);
+      }
+    } catch {
+      // Keep silent on clipboard errors.
+    }
+  }, [selectionMiniBar.text]);
+
+  const resetOcrWorker = useCallback(async () => {
+    const currentWorker = ocrWorkerRef.current;
+    const currentWorkerPromise = ocrWorkerPromiseRef.current;
+
+    ocrWorkerRef.current = null;
+    ocrWorkerPromiseRef.current = null;
+    ocrWorkerLanguageRef.current = "";
+
+    try {
+      await currentWorker?.terminate?.();
+    } catch {
+      // Ignore OCR worker cleanup failures.
+    }
+
+    if (currentWorkerPromise && currentWorkerPromise !== currentWorker) {
+      try {
+        const promisedWorker = await currentWorkerPromise;
+        await promisedWorker?.terminate?.();
+      } catch {
+        // Ignore OCR worker cleanup failures.
+      }
+    }
+  }, []);
 
   const getOcrWorker = useCallback(async () => {
-    if (ocrWorkerRef.current) {
+    if (
+      ocrWorkerRef.current &&
+      ocrWorkerLanguageRef.current === ocrLanguage
+    ) {
       return ocrWorkerRef.current;
     }
+
+    if (
+      ocrWorkerPromiseRef.current &&
+      ocrWorkerLanguageRef.current === ocrLanguage
+    ) {
+      return ocrWorkerPromiseRef.current;
+    }
+
+    await resetOcrWorker();
 
     if (!ocrWorkerPromiseRef.current) {
       ocrWorkerPromiseRef.current = import("tesseract.js").then(
         async ({ createWorker }) => {
-          const worker = await createWorker("eng", 1, {
+          const worker = await createWorker(ocrLanguage, 1, {
             logger: (message) => {
               if (message?.status) {
                 const progressSuffix = Number.isFinite(message?.progress)
@@ -436,13 +1175,14 @@ const PdfReaderModal = ({
           });
 
           ocrWorkerRef.current = worker;
+          ocrWorkerLanguageRef.current = ocrLanguage;
           return worker;
         },
       );
     }
 
     return ocrWorkerPromiseRef.current;
-  }, []);
+  }, [ocrLanguage, resetOcrWorker]);
 
   const appendOcrTextToSummary = useCallback(() => {
     const nextText = String(normalizedOcrText || ocrText || "").trim();
@@ -457,44 +1197,191 @@ const PdfReaderModal = ({
     });
   }, [normalizedOcrText, ocrText]);
 
-  const runOcrForCurrentPage = useCallback(async () => {
-    const activeCanvas = canvasRefs.current[pageNumber];
+  const runOcrForPage = useCallback(async (targetPageNumber) => {
+    const normalizedTargetPage = clampPage(targetPageNumber, numPages || 1);
+    const activeCanvas = canvasRefs.current[normalizedTargetPage];
 
     if (!activeCanvas) {
-      setOcrStatus("Current page is not ready for OCR yet.");
+      return {
+        ok: false,
+        page: normalizedTargetPage,
+        rawText: "",
+        normalizedText: "",
+        message: `Page ${normalizedTargetPage} is not ready for OCR yet.`,
+      };
+    }
+
+    const worker = await getOcrWorker();
+    const result = await worker.recognize(activeCanvas);
+    const rawText = String(result?.data?.text || "").trim();
+    const normalizedText = normalizeOcrText(rawText);
+    const words = Array.isArray(result?.data?.words) ? result.data.words : [];
+    ocrWordsByPageRef.current[normalizedTargetPage] = words;
+
+    return {
+      ok: true,
+      page: normalizedTargetPage,
+      rawText,
+      normalizedText,
+      words,
+      message: rawText
+        ? `${getOcrLanguageLabel(ocrLanguage)} OCR finished for page ${normalizedTargetPage}.`
+        : `${getOcrLanguageLabel(ocrLanguage)} OCR finished for page ${normalizedTargetPage}, but no text was detected.`,
+    };
+  }, [getOcrWorker, numPages, ocrLanguage]);
+
+  useEffect(() => {
+    runOcrForPageRef.current = runOcrForPage;
+  }, [runOcrForPage]);
+
+  const runOcrForCurrentPage = useCallback(async () => {
+    setIsRunningOcr(true);
+    setLastOcrRunMode("page");
+    setOcrStatus(
+      `Preparing ${getOcrLanguageLabel(ocrLanguage)} OCR for page ${pageNumber}...`,
+    );
+    setOcrSourcePage(pageNumber);
+
+    try {
+      const result = await runOcrForPage(pageNumber);
+
+      setOcrText(result.rawText);
+      setNormalizedOcrText(result.normalizedText);
+      setOcrStatus(result.message);
+      setOcrSourcePage(result.page);
+    } catch (ocrError) {
+      setOcrStatus(ocrError?.message || "OCR failed for the current page.");
+    } finally {
+      setIsRunningOcr(false);
+    }
+  }, [ocrLanguage, pageNumber, runOcrForPage]);
+
+  const runOcrForPageRange = useCallback(async () => {
+    const pages = buildOcrPageRange(ocrRangeStart, ocrRangeEnd, numPages);
+
+    if (!pages.length) {
+      setOcrStatus("Choose a valid page range first.");
       return;
     }
 
     setIsRunningOcr(true);
-    setOcrStatus(`Preparing OCR for page ${pageNumber}...`);
-    setOcrSourcePage(pageNumber);
+    setLastOcrRunMode("range");
+    setOcrStatus(
+      `Preparing ${getOcrLanguageLabel(ocrLanguage)} OCR for pages ${pages[0]}-${pages[pages.length - 1]}...`,
+    );
 
     try {
-      const worker = await getOcrWorker();
-      const result = await worker.recognize(activeCanvas);
-      const nextText = String(result?.data?.text || "").trim();
-      const nextNormalizedText = normalizeOcrText(nextText);
+      const pageResults = [];
 
-      setOcrText(nextText);
-      setNormalizedOcrText(nextNormalizedText);
+      for (const targetPage of pages) {
+        const result = await runOcrForPage(targetPage);
+        pageResults.push(result);
+        setOcrStatus(
+          `Processed ${targetPage}/${pages[pages.length - 1]} in ${getOcrLanguageLabel(ocrLanguage)} mode.`,
+        );
+      }
+
+      const rawText = pageResults
+        .filter((entry) => entry.rawText)
+        .map((entry) => `[Page ${entry.page}]\n${entry.rawText}`)
+        .join("\n\n");
+      const normalizedText = pageResults
+        .filter((entry) => entry.normalizedText)
+        .map((entry) => `[Page ${entry.page}]\n${entry.normalizedText}`)
+        .join("\n\n");
+
+      setOcrText(rawText);
+      setNormalizedOcrText(normalizedText);
+      setOcrSourcePage(pages[pages.length - 1]);
       setOcrStatus(
-        nextText
-          ? `OCR finished for page ${pageNumber}.`
-          : `OCR finished for page ${pageNumber}, but no text was detected.`,
+        `${getOcrLanguageLabel(ocrLanguage)} OCR finished for pages ${pages[0]}-${pages[pages.length - 1]}.`,
       );
     } catch (ocrError) {
-      setOcrStatus(
-        ocrError?.message || "OCR failed for the current page.",
-      );
+      setOcrStatus(ocrError?.message || "OCR failed for the selected page range.");
     } finally {
       setIsRunningOcr(false);
     }
-  }, [getOcrWorker, pageNumber]);
+  }, [numPages, ocrLanguage, ocrRangeEnd, ocrRangeStart, runOcrForPage]);
+
+  const runOcrForAllPages = useCallback(async () => {
+    if (!numPages) {
+      setOcrStatus("No PDF pages are available for OCR.");
+      return;
+    }
+
+    setOcrRangeStart(1);
+    setOcrRangeEnd(numPages);
+    setIsRunningOcr(true);
+    setLastOcrRunMode("all");
+    setOcrStatus(
+      `Preparing ${getOcrLanguageLabel(ocrLanguage)} OCR for all ${numPages} pages...`,
+    );
+
+    try {
+      const pageResults = [];
+
+      for (const targetPage of pageNumbers) {
+        const result = await runOcrForPage(targetPage);
+        pageResults.push(result);
+        setOcrStatus(
+          `Processed ${targetPage}/${numPages} in ${getOcrLanguageLabel(ocrLanguage)} mode.`,
+        );
+      }
+
+      const rawText = pageResults
+        .filter((entry) => entry.rawText)
+        .map((entry) => `[Page ${entry.page}]\n${entry.rawText}`)
+        .join("\n\n");
+      const normalizedText = pageResults
+        .filter((entry) => entry.normalizedText)
+        .map((entry) => `[Page ${entry.page}]\n${entry.normalizedText}`)
+        .join("\n\n");
+
+      setOcrText(rawText);
+      setNormalizedOcrText(normalizedText);
+      setOcrSourcePage(numPages);
+      setOcrStatus(
+        `${getOcrLanguageLabel(ocrLanguage)} OCR finished for all ${numPages} pages.`,
+      );
+    } catch (ocrError) {
+      setOcrStatus(ocrError?.message || "OCR failed for the full document.");
+    } finally {
+      setIsRunningOcr(false);
+    }
+  }, [getOcrLanguageLabel, numPages, ocrLanguage, pageNumbers, runOcrForPage]);
+
+  useEffect(() => {
+    if (!fileUrl || !numPages || isRunningOcr) {
+      return;
+    }
+    const normalizedDocumentKey = String(documentKey || fileUrl || "").trim();
+    if (!normalizedDocumentKey) {
+      return;
+    }
+    if (autoOcrDocumentKeyRef.current === normalizedDocumentKey) {
+      return;
+    }
+    autoOcrDocumentKeyRef.current = normalizedDocumentKey;
+    runOcrForAllPages().catch(() => {
+      // Keep UI usable even if background auto OCR fails.
+    });
+  }, [documentKey, fileUrl, isRunningOcr, numPages, runOcrForAllPages]);
 
   useEffect(() => {
     setPageNumber(Math.max(1, Number(initialPage) || 1));
     setZoom(Math.min(2.5, Math.max(0.6, Number(initialZoom) || 1)));
   }, [initialPage, initialZoom, fileUrl]);
+
+  useEffect(() => {
+    if (!numPages) {
+      setOcrRangeStart(1);
+      setOcrRangeEnd(1);
+      return;
+    }
+
+    setOcrRangeStart((currentValue) => clampPage(currentValue || 1, numPages));
+    setOcrRangeEnd((currentValue) => clampPage(currentValue || numPages, numPages));
+  }, [numPages]);
 
   useEffect(() => {
     const stored = readStoredStudyState(documentKey);
@@ -515,19 +1402,15 @@ const PdfReaderModal = ({
     return () => {
       const terminateWorker = async () => {
         try {
-          const worker = await ocrWorkerPromiseRef.current;
-          await worker?.terminate?.();
+          await resetOcrWorker();
         } catch {
           // Ignore OCR worker cleanup failures.
-        } finally {
-          ocrWorkerRef.current = null;
-          ocrWorkerPromiseRef.current = null;
         }
       };
 
       terminateWorker();
     };
-  }, []);
+  }, [resetOcrWorker]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -554,6 +1437,68 @@ const PdfReaderModal = ({
       zoom,
     });
   }, [isOpen, onReaderStateChange, pageNumber, zoom]);
+
+  useEffect(() => {
+    if (
+      !isAutoOcrVisiblePageOn ||
+      !isOpen ||
+      !fileUrl ||
+      !pageNumber ||
+      isRunningOcr ||
+      isCurrentPageRendering
+    ) {
+      return;
+    }
+
+    const nextSignature = [
+      documentKey,
+      pageNumber,
+      ocrLanguage,
+      renderRevision,
+    ].join("|");
+
+    if (autoOcrSignatureRef.current === nextSignature) {
+      return;
+    }
+
+    autoOcrSignatureRef.current = nextSignature;
+    setIsRunningOcr(true);
+    setLastOcrRunMode("auto");
+    setOcrStatus(
+      `Auto OCR is scanning visible page ${pageNumber} in ${getOcrLanguageLabel(ocrLanguage)} mode...`,
+    );
+    setOcrSourcePage(pageNumber);
+
+    runOcrForPage(pageNumber)
+      .then((result) => {
+        setOcrText(result.rawText);
+        setNormalizedOcrText(result.normalizedText);
+        setOcrStatus(
+          result.rawText
+            ? `Auto OCR finished for visible page ${result.page}.`
+            : `Auto OCR finished for visible page ${result.page}, but no text was detected.`,
+        );
+        setOcrSourcePage(result.page);
+      })
+      .catch((ocrError) => {
+        autoOcrSignatureRef.current = "";
+        setOcrStatus(ocrError?.message || "Auto OCR failed for the visible page.");
+      })
+      .finally(() => {
+        setIsRunningOcr(false);
+      });
+  }, [
+    documentKey,
+    fileUrl,
+    isAutoOcrVisiblePageOn,
+    isCurrentPageRendering,
+    isOpen,
+    isRunningOcr,
+    ocrLanguage,
+    pageNumber,
+    renderRevision,
+    runOcrForPage,
+  ]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -652,13 +1597,7 @@ const PdfReaderModal = ({
     }
 
     let isCancelled = false;
-    const pagesToRender = Array.from(
-      new Set(
-        [pageNumber - 1, pageNumber, pageNumber + 1, ...visiblePages].filter(
-          (pageIndex) => pageIndex >= 1 && pageIndex <= numPages,
-        ),
-      ),
-    );
+    const pagesToRender = pageNumbers;
 
     const setPageRenderingState = (pageIndex, nextState) => {
       const pageKey = String(pageIndex);
@@ -801,10 +1740,9 @@ const PdfReaderModal = ({
     canvasWrapWidth,
     isOpen,
     numPages,
-    pageNumber,
+    pageNumbers,
     pdfDocument,
     renderRevision,
-    visiblePagesKey,
     zoom,
   ]);
 
@@ -913,47 +1851,70 @@ const PdfReaderModal = ({
       return undefined;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let strongestVisiblePage = null;
-        let strongestRatio = 0;
+    const syncCurrentVisiblePage = () => {
+      const rootRect = rootElement.getBoundingClientRect();
+      const nextVisiblePages = [];
+      let strongestVisiblePage = null;
+      let strongestRatio = 0;
+      let nearestPage = null;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      const rootCenter = rootRect.top + rootRect.height / 2;
 
-        entries.forEach((entry) => {
-          const pageIndex = Number(entry.target.dataset.pageNumber);
+      pageNumbers.forEach((pageIndex) => {
+        const pageElement = pageContainerRefs.current[pageIndex];
 
-          if (!pageIndex) {
-            return;
-          }
-
-          if (entry.isIntersecting && entry.intersectionRatio > 0.2) {
-            visiblePagesRef.current.add(pageIndex);
-
-            if (entry.intersectionRatio > strongestRatio) {
-              strongestRatio = entry.intersectionRatio;
-              strongestVisiblePage = pageIndex;
-            }
-          } else {
-            visiblePagesRef.current.delete(pageIndex);
-          }
-        });
-
-        const nextVisiblePages = Array.from(visiblePagesRef.current).sort(
-          (firstPage, secondPage) => firstPage - secondPage,
-        );
-        setVisiblePages((currentPages) =>
-          currentPages.length === nextVisiblePages.length &&
-          currentPages.every((page, index) => page === nextVisiblePages[index])
-            ? currentPages
-            : nextVisiblePages,
-        );
-
-        if (strongestVisiblePage) {
-          setPageNumber((currentPage) =>
-            currentPage === strongestVisiblePage
-              ? currentPage
-              : strongestVisiblePage,
-          );
+        if (!pageElement) {
+          return;
         }
+
+        const pageRect = pageElement.getBoundingClientRect();
+        const visibleHeight =
+          Math.min(pageRect.bottom, rootRect.bottom) -
+          Math.max(pageRect.top, rootRect.top);
+        const clampedVisibleHeight = Math.max(0, visibleHeight);
+        const pageHeight = Math.max(1, pageRect.height);
+        const visibleRatio = clampedVisibleHeight / pageHeight;
+        const pageCenter = pageRect.top + pageRect.height / 2;
+        const centerDistance = Math.abs(pageCenter - rootCenter);
+
+        if (visibleRatio > 0.05) {
+          nextVisiblePages.push(pageIndex);
+        }
+
+        if (visibleRatio > strongestRatio) {
+          strongestRatio = visibleRatio;
+          strongestVisiblePage = pageIndex;
+        }
+
+        if (centerDistance < nearestDistance) {
+          nearestDistance = centerDistance;
+          nearestPage = pageIndex;
+        }
+      });
+
+      visiblePagesRef.current = new Set(nextVisiblePages);
+      setVisiblePages((currentPages) =>
+        currentPages.length === nextVisiblePages.length &&
+        currentPages.every((page, index) => page === nextVisiblePages[index])
+          ? currentPages
+          : nextVisiblePages,
+      );
+
+      const nextCurrentPage =
+        strongestVisiblePage && strongestRatio > 0.12
+          ? strongestVisiblePage
+          : nearestPage;
+
+      if (nextCurrentPage) {
+        setPageNumber((currentPage) =>
+          currentPage === nextCurrentPage ? currentPage : nextCurrentPage,
+        );
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      () => {
+        syncCurrentVisiblePage();
       },
       {
         root: rootElement,
@@ -969,7 +1930,17 @@ const PdfReaderModal = ({
       }
     });
 
-    return () => observer.disconnect();
+    const handleScroll = () => {
+      syncCurrentVisiblePage();
+    };
+
+    rootElement.addEventListener("scroll", handleScroll, { passive: true });
+    window.requestAnimationFrame(syncCurrentVisiblePage);
+
+    return () => {
+      rootElement.removeEventListener("scroll", handleScroll);
+      observer.disconnect();
+    };
   }, [isVisible, pageNumbers]);
 
   const setPageAnnotations = (targetPageNumber, updater) => {
@@ -2388,6 +3359,18 @@ const PdfReaderModal = ({
       <div id="pdfReader_studyLayout" className="pdfReader_studyLayout">
         <aside id="pdfReader_studyPanel" className="pdfReader_studyPanel">
           <div
+            id="pdfReader_conceptIntroBlock"
+            className="pdfReader_panelBlock"
+          >
+            <span className="pdfReader_panelEyebrow">Conceptualization</span>
+            <h3 id="pdfReader_conceptHeading">Document concept fields</h3>
+            <p id="pdfReader_conceptDescription">
+              Treat this document as the lecture content itself and bind it to the
+              planner context here.
+            </p>
+          </div>
+
+          <div
             id="pdfReader_courseSelectBlock"
             className="pdfReader_panelBlock"
           >
@@ -2396,69 +3379,309 @@ const PdfReaderModal = ({
               className="pdfReader_inputLabel"
               htmlFor="pdfReader_courseSelect"
             >
-              Select course
+              Course name
             </label>
             <select
               id="pdfReader_courseSelect"
               className="pdfReader_courseSelect"
-              value={selectedCourseName}
-              onChange={(event) => onSelectCourseName?.(event.target.value)}
+              value={studyConceptForm?.courseId || ""}
+              onChange={(event) =>
+                onStudyConceptCourseChange?.(event.target.value)
+              }
             >
               <option value="">Select course</option>
-              {storedCourseOptions.map((courseName) => (
-                <option key={courseName} value={courseName}>
-                  {courseName}
+              {courseOptions.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.label}
                 </option>
               ))}
             </select>
           </div>
 
-          <div id="pdfReader_lectureListBlock" className="pdfReader_panelBlock">
-            <h3 id="pdfReader_lectureListHeading">Stored lectures</h3>
-            <ul id="pdfReader_lectureList" className="pdfReader_lectureList">
-              {selectedCourseLectures.length ? (
-                selectedCourseLectures.map((lecture) => (
-                  <li
-                    key={lecture.id}
-                    id={`pdfReader_lectureListItem-${lecture.id}`}
-                    className="pdfReader_lectureListItem"
-                  >
-                    <button
-                      id={`pdfReader_lectureButton-${lecture.id}`}
-                      type="button"
-                      className={`pdfReader_lectureButton${
-                        lecture.id === selectedLectureId ? " is-selected" : ""
-                      }`}
-                      onClick={() => onSelectCourseLecture?.(lecture)}
-                      disabled={!lecture.pdfUrl}
-                    >
-                      <strong>{lecture.title}</strong>
-                      <span>
-                        {lecture.pdfUrl
-                          ? "Open lecture PDF"
-                          : "No PDF available"}
-                      </span>
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li
-                  id="pdfReader_lectureListEmpty"
-                  className="pdfReader_lectureListEmpty"
-                >
-                  {selectedCourseName
-                    ? "No stored lectures found for this course."
-                    : "Choose a course to view its stored lectures."}
-                </li>
-              )}
-            </ul>
+          <div id="pdfReader_componentSelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_componentSelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_componentSelect"
+            >
+              Component class
+            </label>
+            <select
+              id="pdfReader_componentSelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.componentClass || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("componentClass", event.target.value)
+              }
+            >
+              <option value="">Select component class</option>
+              {componentOptions.map((component) => (
+                <option key={component.id} value={component.label}>
+                  {component.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_lectureSelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_lectureSelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_lectureSelect"
+            >
+              Lecture title
+            </label>
+            <select
+              id="pdfReader_lectureSelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lectureId || ""}
+              onChange={(event) =>
+                onStudyConceptLectureChange?.(event.target.value)
+              }
+            >
+              <option value="">Select lecture title</option>
+              {lectureOptions.map((lecture) => (
+                <option key={lecture.id} value={lecture.id}>
+                  {lecture.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_instructorSelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_instructorSelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_instructorSelect"
+            >
+              Lecture instructor
+            </label>
+            <select
+              id="pdfReader_instructorSelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lectureInstructor || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("lectureInstructor", event.target.value)
+              }
+            >
+              <option value="">Select lecture instructor</option>
+              {lectureInstructorOptions.map((entry, entryIndex) => (
+                <option key={`${entry}-${entryIndex}`} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_editorSelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_editorSelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_editorSelect"
+            >
+              Lecture editor
+            </label>
+            <select
+              id="pdfReader_editorSelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lectureEditor || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("lectureEditor", event.target.value)
+              }
+            >
+              <option value="">Select lecture editor</option>
+              {lectureEditorOptions.map((entry, entryIndex) => (
+                <option key={`${entry}-${entryIndex}`} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_difficultySelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_difficultySelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_difficultySelect"
+            >
+              Lecture difficulty
+            </label>
+            <select
+              id="pdfReader_difficultySelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lectureDifficulty || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("lectureDifficulty", event.target.value)
+              }
+            >
+              <option value="">Select difficulty</option>
+              {difficultyOptions.map((entry, entryIndex) => (
+                <option key={`${entry}-${entryIndex}`} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_masterySelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_masterySelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_masterySelect"
+            >
+              Lecture mastery
+            </label>
+            <select
+              id="pdfReader_masterySelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lectureMastery || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("lectureMastery", event.target.value)
+              }
+            >
+              <option value="">Select mastery</option>
+              {masteryOptions.map((entry, entryIndex) => (
+                <option key={`${entry}-${entryIndex}`} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_prioritySelectBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_prioritySelectLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_prioritySelect"
+            >
+              Lecture priority
+            </label>
+            <select
+              id="pdfReader_prioritySelect"
+              className="pdfReader_courseSelect"
+              value={studyConceptForm?.lecturePriority || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.("lecturePriority", event.target.value)
+              }
+            >
+              <option value="">Select priority</option>
+              {priorityOptions.map((entry, entryIndex) => (
+                <option key={`${entry}-${entryIndex}`} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div id="pdfReader_studyTimePerPageBlock" className="pdfReader_panelBlock">
+            <label
+              id="pdfReader_studyTimePerPageLabel"
+              className="pdfReader_inputLabel"
+              htmlFor="pdfReader_studyTimePerPageInput"
+            >
+              Lecture study time per page
+            </label>
+            <input
+              id="pdfReader_studyTimePerPageInput"
+              className="pdfReader_courseSelect pdfReader_courseSelect--input"
+              type="number"
+              min="0"
+              step="0.1"
+              value={studyConceptForm?.lectureStudyTimePerPage || ""}
+              onChange={(event) =>
+                onStudyConceptFieldChange?.(
+                  "lectureStudyTimePerPage",
+                  event.target.value,
+                )
+              }
+            />
           </div>
         </aside>
 
         <div id="pdfReader_canvasSection" className="pdfReader_canvasSection">
+          {selectionMiniBar.isOpen ? (
+            <div
+              id="pdfReader_selectionMiniBar"
+              ref={selectionMiniBarRef}
+              className="pdfReader_selectionMiniBar"
+              style={{
+                left: `${selectionMiniBar.x}px`,
+                top: `${selectionMiniBar.y}px`,
+              }}
+            >
+              <div className="pdfReader_selectionMiniBarActions">
+                <button
+                  type="button"
+                  className="pdfReader_selectionMiniBarBtn"
+                  onClick={copySelectedMiniBarText}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="pdfReader_selectionMiniBarBtn"
+                  onClick={() =>
+                    setSelectionMiniBar((currentValue) => ({
+                      ...currentValue,
+                      useOpen: !currentValue.useOpen,
+                    }))
+                  }
+                >
+                  Use
+                </button>
+              </div>
+              <p
+                className="pdfReader_selectionMiniBarPreview"
+                dir={selectionPreviewDirection}
+              >
+                {selectionMiniBar.preview}
+              </p>
+              {selectionMiniBar.useOpen ? (
+                <div className="pdfReader_selectionMiniBarUseList">
+                  <button
+                    type="button"
+                    className="pdfReader_selectionMiniBarUseBtn"
+                    onClick={() => applySelectionTextToField("courseName")}
+                  >
+                    as course name
+                  </button>
+                  <button
+                    type="button"
+                    className="pdfReader_selectionMiniBarUseBtn"
+                    onClick={() => applySelectionTextToField("courseCode")}
+                  >
+                    as course code
+                  </button>
+                  <button
+                    type="button"
+                    className="pdfReader_selectionMiniBarUseBtn"
+                    onClick={() => applySelectionTextToField("lectureName")}
+                  >
+                    as lecture name
+                  </button>
+                  <button
+                    type="button"
+                    className="pdfReader_selectionMiniBarUseBtn"
+                    onClick={() => applySelectionTextToField("instructorName")}
+                  >
+                    as instructor name
+                  </button>
+                  <button
+                    type="button"
+                    className="pdfReader_selectionMiniBarUseBtn"
+                    onClick={() => applySelectionTextToField("editorName")}
+                  >
+                    as editor name
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div
             id="pdfReader_canvasWrap"
-            className="pdfReader_canvasWrap pdfReader_canvasWrap--nativescrollable"
+            className={`pdfReader_canvasWrap pdfReader_canvasWrap--nativescrollable${
+              tool === "hand" ? " pdfReader_canvasWrap--hand" : ""
+            }`}
             ref={canvasWrapRef}
             onWheel={handleCanvasWheel}
             onTouchStart={handleCanvasTouchStart}
@@ -2714,6 +3937,28 @@ const PdfReaderModal = ({
                 </div>
               </div>
 
+              <div
+                id="pdfReader_settingsOcrLanguageBlock"
+                className="pdfReader_panelBlock"
+              >
+                <span className="pdfReader_inputLabel">OCR language</span>
+                <div className="pdfReader_settingsGrid">
+                  {OCR_LANGUAGE_OPTIONS.map((entry) => (
+                    <button
+                      key={entry.value}
+                      id={`pdfReader_settingsOcrLanguage-${entry.value.replace(/\+/g, "-")}`}
+                      type="button"
+                      className={`pdfReader_settingsToggle${ocrLanguage === entry.value ? " is-active" : ""}`}
+                      aria-pressed={ocrLanguage === entry.value}
+                      onClick={() => setOcrLanguage(entry.value)}
+                    >
+                      <strong>{entry.label}</strong>
+                      <span>{ocrLanguage === entry.value ? "Active" : "Use"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div id="pdfReader_settingsStatsBlock" className="pdfReader_panelBlock">
                 <span className="pdfReader_inputLabel">Session</span>
                 <div className="pdfReader_settingsList">
@@ -2930,9 +4175,54 @@ const PdfReaderModal = ({
                       OCR extraction
                     </label>
                     <p className="pdfReader_hint">
-                      Extract text from the current PDF page using Tesseract.
+                      Extract text from the current PDF page using Tesseract in{" "}
+                      {getOcrLanguageLabel(ocrLanguage)} mode.
                     </p>
                   </div>
+                </div>
+                <div className="pdfReader_ocrRangeRow">
+                  <label
+                    id="pdfReader_ocrRangeStartLabel"
+                    className="pdfReader_inputLabel"
+                    htmlFor="pdf-reader-ocr-range-start"
+                  >
+                    Range start
+                  </label>
+                  <input
+                    id="pdf-reader-ocr-range-start"
+                    className="pdfReader_ocrRangeInput"
+                    type="number"
+                    min={1}
+                    max={numPages || 1}
+                    value={ocrRangeStart}
+                    onChange={(event) =>
+                      setOcrRangeStart(
+                        clampPage(event.target.value || 1, numPages || 1),
+                      )
+                    }
+                  />
+                  <label
+                    id="pdfReader_ocrRangeEndLabel"
+                    className="pdfReader_inputLabel"
+                    htmlFor="pdf-reader-ocr-range-end"
+                  >
+                    Range end
+                  </label>
+                  <input
+                    id="pdf-reader-ocr-range-end"
+                    className="pdfReader_ocrRangeInput"
+                    type="number"
+                    min={1}
+                    max={numPages || 1}
+                    value={ocrRangeEnd}
+                    onChange={(event) =>
+                      setOcrRangeEnd(
+                        clampPage(event.target.value || 1, numPages || 1),
+                      )
+                    }
+                  />
+                </div>
+                <div className="pdfReader_ocrButtonsGrid">
                   <button
                     id="pdfReader_runOcrButton"
                     type="button"
@@ -2945,7 +4235,43 @@ const PdfReaderModal = ({
                       isRunningOcr
                     }
                   >
-                    {isRunningOcr ? "Running OCR..." : `OCR page ${pageNumber}`}
+                    {isRunningOcr && lastOcrRunMode === "page"
+                      ? "Running current page..."
+                      : `OCR page ${pageNumber}`}
+                  </button>
+                  <button
+                    id="pdfReader_runOcrRangeButton"
+                    type="button"
+                    className="pdfReader_ocrAction"
+                    onClick={runOcrForPageRange}
+                    disabled={!fileUrl || documentLoading || isRunningOcr || !numPages}
+                  >
+                    {isRunningOcr && lastOcrRunMode === "range"
+                      ? "Running range..."
+                      : `OCR pages ${Math.min(ocrRangeStart, ocrRangeEnd)}-${Math.max(ocrRangeStart, ocrRangeEnd)}`}
+                  </button>
+                  <button
+                    id="pdfReader_runOcrAllPagesButton"
+                    type="button"
+                    className="pdfReader_ocrAction"
+                    onClick={runOcrForAllPages}
+                    disabled={!fileUrl || documentLoading || isRunningOcr || !numPages}
+                  >
+                    {isRunningOcr && lastOcrRunMode === "all"
+                      ? "Running all pages..."
+                      : `OCR all ${numPages || 0} pages`}
+                  </button>
+                  <button
+                    id="pdfReader_autoOcrVisiblePageButton"
+                    type="button"
+                    className={`pdfReader_ocrAction${isAutoOcrVisiblePageOn ? " is-active" : ""}`}
+                    aria-pressed={isAutoOcrVisiblePageOn}
+                    onClick={() =>
+                      setIsAutoOcrVisiblePageOn((currentValue) => !currentValue)
+                    }
+                    disabled={!fileUrl || documentLoading || !numPages}
+                  >
+                    {isAutoOcrVisiblePageOn ? "Auto OCR: On" : "Auto OCR: Off"}
                   </button>
                 </div>
                 <div id="pdfReader_ocrStatus" className="pdfReader_ocrStatus">
@@ -2985,7 +4311,7 @@ const PdfReaderModal = ({
                 <div className="pdfReader_ocrActionsRow">
                   <span className="pdfReader_ocrMeta">
                     {ocrSourcePage
-                      ? `Last OCR page: ${ocrSourcePage}`
+                      ? `Last OCR page: ${ocrSourcePage}${isAutoOcrVisiblePageOn ? " · auto visible-page OCR enabled" : ""}`
                       : "No OCR result yet"}
                   </span>
                   <button
@@ -3084,11 +4410,7 @@ const PdfReaderModal = ({
   );
 
   if (renderInline) {
-    return (
-      <div id="pdfReader_inlineMount" className="pdfReader_inlineMount">
-        {shell}
-      </div>
-    );
+    return shell;
   }
 
   return (

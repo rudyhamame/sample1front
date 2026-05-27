@@ -1,8 +1,13 @@
+@import url('https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css');
+
 .deezerPlayerPage {
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: 100%;
   min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
   padding: 18px;
   gap: 14px;
   background: linear-gradient(180deg, #f6fbfb 0%, #eaf4f6 100%);
@@ -17,6 +22,20 @@
   display: flex;
   gap: 8px;
 }
+.deezerPlayer_durationFilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(112, 158, 168, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.74);
+}
+.deezerPlayer_durationFilterTitle {
+  font-weight: 700;
+  color: rgba(20, 67, 75, 0.88);
+  min-width: 70px;
+}
 
 .deezerPlayer_input {
   flex: 1 1 auto;
@@ -24,6 +43,11 @@
   border-radius: 12px;
   border: 1px solid rgba(112, 158, 168, 0.28);
   padding: 0 12px;
+}
+.deezerPlayer_input--duration {
+  flex: 0 0 96px;
+  width: 96px;
+  min-width: 96px;
 }
 
 .deezerPlayer_btn {
@@ -37,38 +61,59 @@
 
 .deezerPlayerPage_layout {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 1fr) minmax(420px, 1.4fr) minmax(280px, 340px);
   gap: 12px;
-  min-height: 0;
   flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  min-width: 980px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .deezerPlayer_list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  min-width: 0;
+  grid-column: 1;
 }
 
 .deezerPlayer_trackItem {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  grid-template-areas:
-    "cover title"
-    "cover artist";
-  gap: 0 8px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border: 1px solid rgba(112, 158, 168, 0.2);
   background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
   padding: 8px;
   text-align: left;
-  cursor: pointer;
 }
 
 .deezerPlayer_trackItem.is-active {
   border-color: rgba(24, 113, 118, 0.6);
+}
+
+.deezerPlayer_trackSelectBtn {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    "cover title"
+    "cover artist"
+    "cover genre";
+  row-gap: 2px;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
 }
 
 .deezerPlayer_trackItem img {
@@ -81,11 +126,33 @@
 .deezerPlayer_trackItem span {
   grid-area: title;
   font-size: 0.84rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .deezerPlayer_trackItem small {
-  grid-area: artist;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: rgba(20, 67, 75, 0.75);
+}
+.deezerPlayer_trackItem small:nth-of-type(1) {
+  grid-area: artist;
+}
+.deezerPlayer_trackItem small:nth-of-type(2) {
+  grid-area: genre;
+}
+
+.deezerPlayer_trackAddBtn {
+  width: 100%;
+}
+.deezerPlayer_trackAddBtn--added {
+  background: #22a06b;
+  border-color: #1d8a5d;
+  color: #ffffff;
 }
 
 .deezerPlayer_nowPlaying {
@@ -94,18 +161,116 @@
   background: rgba(255, 255, 255, 0.88);
   padding: 14px;
   display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  flex-grow: 1;
+  min-width: 0;
+  grid-column: 2;
+  height: min-content;
+}
+.deezerPlayer_playlistOnly {
+  display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(112, 158, 168, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  min-height: 0;
+  grid-column: 3;
 }
-
+.deezerPlayer_playlistOnlyTitle {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.deezerPlayer_playlistOnlyEmpty {
+  margin: 0;
+  color: rgba(20, 67, 75, 0.72);
+}
+.deezerPlayer_playlistOnlyList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.deezerPlayer_playlistOnlyItem {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  border: 1px solid rgba(112, 158, 168, 0.2);
+  border-radius: 10px;
+  padding: 8px;
+}
+.deezerPlayer_playlistOnlyItem .deezerPlayer_trackAddBtn {
+  min-height: 32px;
+  height: 32px;
+  min-width: 32px;
+  width: 32px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+}
+.deezerPlayer_playlistOnlyItem.is-active {
+  border-color: rgba(24, 113, 118, 0.6);
+}
+.deezerPlayer_playlistOnlySelectBtn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  flex-grow: 1;
+}
+.deezerPlayer_playlistOnlySelectBtn span,
+.deezerPlayer_playlistOnlySelectBtn small {
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deezerPlayer_previewButtonsRow {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
 .deezerPlayer_cover {
-  width: min(280px, 100%);
+  flex: 0 0 160px;
+  width: 160px;
+  max-width: 160px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
   border-radius: 14px;
 }
 
 .deezerPlayer_transport {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.deezerPlayer_transportGroup {
+  display: flex;
+  gap: 8px;
+}
+.deezerPlayer_previewMass {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(24, 113, 118, 0.24);
+  border-radius: 10px;
+  background: rgba(218, 240, 243, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  width: fit-content;
 }
 
 .deezerPlayer_audio {

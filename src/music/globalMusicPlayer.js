@@ -1,43 +1,17 @@
+import { apiUrl } from "../config/api";
+import { readStoredSession } from "../utils/sessionCleanup";
+
 const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
-const MUSIC_LIBRARY_STORAGE_KEY = "schoolPlanner_music_library_items";
-const LEGACY_MUSIC_LIBRARY_STORAGE_KEYS = [
-  "phenomed.globalMusic.archiveItems",
-  "schoolPlanner_music_archive_items",
-];
-
-const INTERNET_ARCHIVE_CLASSICAL_ITEMS = [
-  {
-    identifier: "beethoven-piano-sonata-no.-14-moonlight-sonata",
-    fallbackTitle: "Moonlight Sonata",
-    fallbackCreator: "Ludwig van Beethoven",
-  },
-  {
-    identifier: "nocturne-op.-9-no.-2",
-    fallbackTitle: "Nocturne Op. 9 No. 2",
-    fallbackCreator: "Frederic Chopin",
-  },
-  {
-    identifier: "gymnopedie-no.-1",
-    fallbackTitle: "Gymnopedie No. 1",
-    fallbackCreator: "Erik Satie",
-  },
-];
-
-const DEFAULT_MUSIC_LIBRARY_ITEMS = INTERNET_ARCHIVE_CLASSICAL_ITEMS.map(
-  (item) => ({
-    provider: "internetArchive",
-    identifier: item.identifier,
-    query: item.identifier,
-    title: item.fallbackTitle,
-    artist: item.fallbackCreator,
-  }),
-);
+const JAMENDO_TRACK_LOOKUP_ENDPOINT = "/api/jamendo/tracks";
+const JAMENDO_TRACK_STREAM_ENDPOINT = "/api/jamendo/stream";
+const MUSIC_PLAYLIST_SETTINGS_ENDPOINT = "/api/user/settings/music-playlist";
+const buildBackendUrl = (path = "") => apiUrl(String(path || "").trim());
 
 let sharedSnapshot = {
   isReady: false,
   isPlaying: false,
   trackTitle: "Planner Music",
-  trackArtist: "Internet Archive",
+  trackArtist: "Jamendo Playlist",
   volume: 0.42,
   audioSignal: {
     energy: 0,
@@ -63,6 +37,8 @@ let musicAnalyser = null;
 let musicAnalyserData = null;
 let reactiveFrame = null;
 let lastSignalEmitAt = 0;
+let consecutiveTrackErrorCount = 0;
+let jamendoRefreshInFlight = false;
 
 const EMPTY_AUDIO_SIGNAL = {
   energy: 0,
@@ -275,6 +251,7 @@ const ensureAudioElement = () => {
 
   if (!eventsBound && audioElement) {
     audioElement.addEventListener("play", () => {
+      consecutiveTrackErrorCount = 0;
       emitSnapshot({ isPlaying: true });
       startReactiveSignalLoop().catch(() => {
         resetAudioSignal(audioElement?.currentTime || 0);
@@ -285,16 +262,45 @@ const ensureAudioElement = () => {
       stopReactiveSignalLoop();
     });
     audioElement.addEventListener("ended", () => {
+      consecutiveTrackErrorCount = 0;
       stopReactiveSignalLoop();
       playNextSharedPlannerMusicTrack(true);
     });
-    audioElement.addEventListener("error", () => {
+    audioElement.addEventListener("error", async () => {
       stopReactiveSignalLoop();
+      const currentTrack = playlist[playlistIndex];
+      const canRefreshCurrentTrack =
+        !jamendoRefreshInFlight &&
+        currentTrack &&
+        String(currentTrack.provider || "").trim().toLowerCase() === "jamendo" &&
+        String(currentTrack.trackId || "").trim() &&
+        !currentTrack.__refreshAttempted;
+
+      if (canRefreshCurrentTrack) {
+        jamendoRefreshInFlight = true;
+        currentTrack.__refreshAttempted = true;
+        const refreshedTrack = await refreshJamendoTrackSource(currentTrack);
+        jamendoRefreshInFlight = false;
+        if (refreshedTrack && audioElement) {
+          audioElement.pause();
+          audioElement.src = refreshedTrack.src;
+          audioElement.load();
+          audioElement.play().catch(() => null);
+          syncTrackSnapshot();
+          return;
+        }
+      }
+
+      consecutiveTrackErrorCount += 1;
+      if (playlist.length > 1 && consecutiveTrackErrorCount < playlist.length) {
+        playNextSharedPlannerMusicTrack(true);
+        return;
+      }
       emitSnapshot({
         isReady: false,
         isPlaying: false,
-        trackTitle: "Archive Unavailable",
-        trackArtist: "Try again later",
+        trackTitle: "Music unavailable",
+        trackArtist: "",
       });
     });
     eventsBound = true;
@@ -303,58 +309,25 @@ const ensureAudioElement = () => {
   return audioElement;
 };
 
-const buildInternetArchiveSearchUrl = (queryText) =>
-  `https://archive.org/advancedsearch.php?q=${encodeURIComponent(
-    queryText,
-  )}&fl[]=identifier,title,creator&rows=1&page=1&output=json&sort[]=downloads desc`;
-
-const buildITunesSearchUrl = (queryText) =>
-  `https://itunes.apple.com/search?term=${encodeURIComponent(
-    queryText,
-  )}&entity=song&limit=1`;
-
-const buildMusicBrainzSearchUrl = (queryText) =>
-  `https://musicbrainz.org/ws/2/recording?fmt=json&limit=1&query=${encodeURIComponent(
-    queryText,
-  )}`;
-
-const buildQueryFromTitleArtist = (title, artist, fallbackValue = "") => {
-  const parts = [String(title || "").trim(), String(artist || "").trim()].filter(
-    Boolean,
-  );
-
-  if (parts.length > 0) {
-    return parts.join(" - ");
-  }
-
-  return String(fallbackValue || "").trim();
-};
-
 const normalizeStoredMusicLibraryItem = (rawItem) => {
-  if (typeof rawItem === "string") {
-    const normalizedIdentifier = String(rawItem || "").trim();
-
-    if (!normalizedIdentifier) {
-      return null;
-    }
-
-    return {
-      provider: "internetArchive",
-      identifier: normalizedIdentifier,
-      query: normalizedIdentifier,
-      title: normalizedIdentifier.replace(/[-_]+/g, " "),
-      artist: "Internet Archive",
-    };
-  }
-
-  const provider = String(rawItem?.provider || "internetArchive").trim();
-  const identifier = String(rawItem?.identifier || "").trim();
+  const provider = String(rawItem?.provider || "").trim().toLowerCase();
   const title = String(
-    rawItem?.title || rawItem?.fallbackTitle || rawItem?.trackTitle || "",
+    rawItem?.songName ||
+      rawItem?.title ||
+      rawItem?.fallbackTitle ||
+      rawItem?.trackTitle ||
+      "",
   ).trim();
   const artist = String(
     rawItem?.artist || rawItem?.fallbackCreator || rawItem?.trackArtist || "",
   ).trim();
+  const identifier = String(
+    rawItem?.trackId || rawItem?.id || rawItem?.query || rawItem?.previewUrl || "",
+  ).trim();
+  const buildQueryFromTitleArtist = (nextTitle, nextArtist, fallbackIdentifier) =>
+    [String(nextTitle || "").trim(), String(nextArtist || "").trim(), String(fallbackIdentifier || "").trim()]
+      .filter(Boolean)
+      .join(" ");
   const query = String(
     rawItem?.query || buildQueryFromTitleArtist(title, artist, identifier),
   ).trim();
@@ -362,296 +335,149 @@ const normalizeStoredMusicLibraryItem = (rawItem) => {
     rawItem?.previewUrl || rawItem?.src || rawItem?.url || "",
   ).trim();
   const trackId = String(rawItem?.trackId || rawItem?.id || "").trim();
-  const recordingId = String(rawItem?.recordingId || "").trim();
 
-  if (!provider) {
-    return null;
-  }
-
-  if (provider === "internetArchive" && !identifier && !query) {
-    return null;
-  }
-
-  if (provider !== "internetArchive" && !query && !previewUrl && !trackId && !recordingId) {
+  if (provider !== "jamendo" || (!query && !previewUrl && !trackId)) {
     return null;
   }
 
   return {
     provider,
-    identifier,
     query,
     title,
     artist,
     previewUrl,
     trackId,
-    recordingId,
   };
 };
 
-const readStoredMusicLibraryItems = () => {
+const refreshJamendoTrackSource = async (track = {}) => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const trackId = String(track?.trackId || "").trim();
+  if (!trackId) {
+    return null;
+  }
+  try {
+    const response = await fetch(
+      `${buildBackendUrl(JAMENDO_TRACK_LOOKUP_ENDPOINT)}?id=${encodeURIComponent(trackId)}&limit=1`,
+      {
+        method: "GET",
+      },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return null;
+    }
+    const firstMatch = Array.isArray(payload?.results) ? payload.results[0] : null;
+    const refreshedUrl = String(
+      firstMatch?.audio || firstMatch?.audiodownload || "",
+    ).trim();
+    if (!refreshedUrl) {
+      return null;
+    }
+    const refreshedTrackId = String(firstMatch?.id || trackId).trim();
+    track.src = refreshedTrackId
+      ? `${buildBackendUrl(JAMENDO_TRACK_STREAM_ENDPOINT)}?id=${encodeURIComponent(refreshedTrackId)}`
+      : refreshedUrl;
+    track.title = String(
+      firstMatch?.name || track?.title || "Jamendo Track",
+    ).trim() || "Jamendo Track";
+    track.artist = String(
+      firstMatch?.artist_name || track?.artist || "Jamendo",
+    ).trim() || "Jamendo";
+    return track;
+  } catch {
+    return null;
+  }
+};
+
+const buildMusicLibraryItemIdentity = (item = {}) =>
+  [
+    String(item?.provider || "").trim().toLowerCase(),
+    String(item?.trackId || "").trim(),
+    String(item?.previewUrl || "").trim(),
+    String(item?.query || "").trim(),
+  ].join("::");
+
+const buildAuthHeaders = () => {
+  const token = String(readStoredSession?.()?.token || "").trim();
+  if (!token) {
+    return {};
+  }
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+const fetchMusicPlaylistFromSettings = async () => {
   if (typeof window === "undefined") {
     return [];
   }
-
-  const candidateKeys = [
-    MUSIC_LIBRARY_STORAGE_KEY,
-    ...LEGACY_MUSIC_LIBRARY_STORAGE_KEYS,
-  ];
-
-  for (const storageKey of candidateKeys) {
-    try {
-      const rawValue = window.localStorage.getItem(storageKey);
-      if (!rawValue) {
-        continue;
-      }
-
-      const parsedValue = JSON.parse(rawValue);
-      if (!Array.isArray(parsedValue)) {
-        continue;
-      }
-
-      const normalizedItems = parsedValue
-        .map((item) => normalizeStoredMusicLibraryItem(item))
-        .filter(Boolean);
-
-      if (normalizedItems.length > 0) {
-        return normalizedItems;
-      }
-    } catch {}
-  }
-
-  return [];
-};
-
-const buildResolvedArchiveTrack = (item, payload) => {
-  const files = Array.isArray(payload?.files) ? payload.files : [];
-  const audioFile = files.find((file) => {
-    const name = String(file?.name || "").toLowerCase();
-    const format = String(file?.format || "").toLowerCase();
-
-    return (
-      name.endsWith(".mp3") ||
-      name.endsWith(".ogg") ||
-      format.includes("mp3") ||
-      format.includes("ogg")
-    );
-  });
-
-  if (!audioFile?.name) {
-    return null;
-  }
-
-  const identifier = String(payload?.metadata?.identifier || item?.identifier || "").trim();
-  if (!identifier) {
-    return null;
-  }
-
-  return {
-    id: identifier,
-    title:
-      String(payload?.metadata?.title || item?.fallbackTitle || identifier).trim() ||
-      "Archive Track",
-    artist:
-      String(payload?.metadata?.creator || item?.fallbackCreator || "Internet Archive").trim() ||
-      "Internet Archive",
-    src: `https://archive.org/download/${encodeURIComponent(identifier)}/${encodeURIComponent(audioFile.name)}`,
-  };
-};
-
-const getConfiguredMusicLibraryItems = () => {
-  const storedItems = readStoredMusicLibraryItems();
-  return storedItems.length > 0 ? storedItems : DEFAULT_MUSIC_LIBRARY_ITEMS;
-};
-
-const resolveInternetArchiveTrack = async (item) => {
-  const normalizedIdentifier = String(item?.identifier || item?.query || "").trim();
-  const fallbackTitle =
-    String(item?.title || item?.query || normalizedIdentifier).trim() ||
-    normalizedIdentifier;
-  const fallbackCreator =
-    String(item?.artist || "Internet Archive").trim() || "Internet Archive";
-
   try {
-    const metadataResponse = await fetch(
-      `https://archive.org/metadata/${encodeURIComponent(normalizedIdentifier)}`,
-    );
-
-    if (metadataResponse.ok) {
-      const metadataPayload = await metadataResponse.json();
-      const resolvedTrack = buildResolvedArchiveTrack(
-        {
-          ...item,
-          identifier: normalizedIdentifier,
-          fallbackTitle,
-          fallbackCreator,
-        },
-        metadataPayload,
-      );
-
-      if (resolvedTrack) {
-        return resolvedTrack;
-      }
-    }
-  } catch {}
-
-  try {
-    const searchResponse = await fetch(
-      buildInternetArchiveSearchUrl(
-        fallbackTitle || normalizedIdentifier || fallbackCreator,
-      ),
-    );
-
-    if (!searchResponse.ok) {
-      return null;
-    }
-
-    const searchPayload = await searchResponse.json();
-    const matchedDoc = searchPayload?.response?.docs?.[0];
-    const matchedIdentifier = String(matchedDoc?.identifier || "").trim();
-
-    if (!matchedIdentifier) {
-      return null;
-    }
-
-    const metadataResponse = await fetch(
-      `https://archive.org/metadata/${encodeURIComponent(matchedIdentifier)}`,
-    );
-
-    if (!metadataResponse.ok) {
-      return null;
-    }
-
-    const metadataPayload = await metadataResponse.json();
-
-    return buildResolvedArchiveTrack(
-      {
-        ...item,
-        identifier: matchedIdentifier,
-        fallbackTitle: matchedDoc?.title || fallbackTitle || matchedIdentifier,
-        fallbackCreator: matchedDoc?.creator || fallbackCreator || "Internet Archive",
+    const response = await fetch(apiUrl(MUSIC_PLAYLIST_SETTINGS_ENDPOINT), {
+      method: "GET",
+      headers: {
+        ...buildAuthHeaders(),
       },
-      metadataPayload,
-    );
+      credentials: "include",
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return [];
+    }
+    return (Array.isArray(payload?.musicPlaylist) ? payload.musicPlaylist : [])
+      .map((item) => normalizeStoredMusicLibraryItem(item))
+      .filter(Boolean);
   } catch {
-    return null;
+    return [];
   }
 };
 
-const resolveITunesTrack = async (item) => {
-  const previewUrl = String(item?.previewUrl || "").trim();
-  const title = String(item?.title || "").trim();
-  const artist = String(item?.artist || "").trim();
-  const query =
-    String(item?.query || buildQueryFromTitleArtist(title, artist)).trim();
-
-  if (previewUrl) {
-    return {
-      id: String(item?.trackId || query || previewUrl).trim() || previewUrl,
-      title: title || "iTunes Preview",
-      artist: artist || "iTunes Search API",
-      src: previewUrl,
-    };
+const saveMusicPlaylistToSettings = async (items = []) => {
+  if (typeof window === "undefined") {
+    return false;
   }
-
-  if (!query) {
-    return null;
-  }
-
   try {
-    const response = await fetch(buildITunesSearchUrl(query));
-    if (!response.ok) {
-      return null;
-    }
-
-    const payload = await response.json().catch(() => ({}));
-    const track = Array.isArray(payload?.results) ? payload.results[0] : null;
-    const resolvedPreviewUrl = String(track?.previewUrl || "").trim();
-
-    if (!resolvedPreviewUrl) {
-      return null;
-    }
-
-    return {
-      id: String(track?.trackId || query).trim() || resolvedPreviewUrl,
-      title: String(track?.trackName || title || query).trim() || "iTunes Preview",
-      artist:
-        String(track?.artistName || artist || "iTunes Search API").trim() ||
-        "iTunes Search API",
-      src: resolvedPreviewUrl,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const resolveMusicBrainzTrack = async (item) => {
-  const existingQuery = String(
-    item?.query || buildQueryFromTitleArtist(item?.title, item?.artist),
-  ).trim();
-
-  if (!existingQuery) {
-    return null;
-  }
-
-  try {
-    const response = await fetch(buildMusicBrainzSearchUrl(existingQuery));
-    if (!response.ok) {
-      return null;
-    }
-
-    const payload = await response.json().catch(() => ({}));
-    const recording = Array.isArray(payload?.recordings)
-      ? payload.recordings[0]
-      : null;
-
-    const resolvedTitle =
-      String(recording?.title || item?.title || existingQuery).trim() ||
-      existingQuery;
-    const resolvedArtist =
-      String(
-        Array.isArray(recording?.["artist-credit"])
-          ? recording["artist-credit"]
-              .map((credit) => String(credit?.name || "").trim())
-              .filter(Boolean)
-              .join(", ")
-          : item?.artist || "",
-      ).trim() || "MusicBrainz";
-
-    const iTunesTrack = await resolveITunesTrack({
-      provider: "itunes",
-      query: buildQueryFromTitleArtist(resolvedTitle, resolvedArtist, existingQuery),
-      title: resolvedTitle,
-      artist: resolvedArtist,
+    const response = await fetch(apiUrl(MUSIC_PLAYLIST_SETTINGS_ENDPOINT), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...buildAuthHeaders(),
+      },
+      credentials: "include",
+      body: JSON.stringify({ musicPlaylist: items }),
     });
-
-    if (iTunesTrack) {
-      return iTunesTrack;
-    }
-
-    return resolveInternetArchiveTrack({
-      provider: "internetArchive",
-      identifier: "",
-      query: buildQueryFromTitleArtist(resolvedTitle, resolvedArtist, existingQuery),
-      title: resolvedTitle,
-      artist: resolvedArtist,
-    });
+    return response.ok;
   } catch {
-    return null;
+    return false;
   }
 };
 
 const resolveMusicLibraryTrack = (item) => {
-  const provider = String(item?.provider || "internetArchive").trim();
+  const provider = String(item?.provider || "").trim().toLowerCase();
 
-  if (provider === "itunes") {
-    return resolveITunesTrack(item);
+  if (provider === "jamendo") {
+    const previewUrl = String(item?.previewUrl || "").trim();
+    const trackId = String(item?.trackId || "").trim();
+    if (!previewUrl && !trackId) {
+      return Promise.resolve(null);
+    }
+    const streamUrl = trackId
+      ? `${buildBackendUrl(JAMENDO_TRACK_STREAM_ENDPOINT)}?id=${encodeURIComponent(trackId)}`
+      : previewUrl;
+    return Promise.resolve({
+      id:
+        String(item?.trackId || item?.query || previewUrl).trim() || previewUrl,
+      title: String(item?.title || "Jamendo Track").trim() || "Jamendo Track",
+      artist: String(item?.artist || "Jamendo").trim() || "Jamendo",
+      src: streamUrl,
+      provider: "jamendo",
+      trackId,
+      __refreshAttempted: false,
+    });
   }
-
-  if (provider === "musicBrainz") {
-    return resolveMusicBrainzTrack(item);
-  }
-
-  return resolveInternetArchiveTrack(item);
+  return Promise.resolve(null);
 };
 
 const syncTrackSnapshot = () => {
@@ -660,7 +486,7 @@ const syncTrackSnapshot = () => {
   emitSnapshot({
     isReady: Boolean(currentTrack),
     trackTitle: currentTrack?.title || "Planner Music",
-    trackArtist: currentTrack?.artist || "Internet Archive",
+    trackArtist: currentTrack?.artist || "Jamendo Playlist",
     volume: audioElement?.volume ?? sharedSnapshot.volume,
     audioSignal: sharedSnapshot.isPlaying
       ? sharedSnapshot.audioSignal
@@ -680,9 +506,11 @@ const setTrack = (nextIndex, autoplay = false) => {
   }
 
   playlistIndex = nextIndex;
+  nextTrack.__refreshAttempted = false;
   musicAudio.pause();
   musicAudio.src = nextTrack.src;
   musicAudio.load();
+  emitSnapshot({ isReady: true });
   resetAudioSignal(0);
   syncTrackSnapshot();
 
@@ -715,8 +543,10 @@ const loadMusicLibrary = async () => {
     trackArtist: "Music Library",
   });
 
+  const configuredItems = await fetchMusicPlaylistFromSettings();
+
   playlistPromise = Promise.all(
-    getConfiguredMusicLibraryItems().map((item) => resolveMusicLibraryTrack(item)),
+    configuredItems.map((item) => resolveMusicLibraryTrack(item)),
   )
     .then((tracks) => tracks.filter(Boolean))
     .catch(() => [])
@@ -733,8 +563,8 @@ const loadMusicLibrary = async () => {
     emitSnapshot({
       isReady: false,
       isPlaying: false,
-      trackTitle: "Music Unavailable",
-      trackArtist: "Try again later",
+      trackTitle: "Music unavailable",
+      trackArtist: "",
     });
   }
 
@@ -758,6 +588,7 @@ export const refreshSharedPlannerMusicLibrary = async () => {
   playlist = [];
   playlistIndex = 0;
   playlistPromise = null;
+  consecutiveTrackErrorCount = 0;
   resetAudioSignal(0);
 
   const nextPlaylist = await loadMusicLibrary();
@@ -767,6 +598,64 @@ export const refreshSharedPlannerMusicLibrary = async () => {
   }
 
   return nextPlaylist;
+};
+
+export const addSharedPlannerMusicLibraryItem = async (rawItem = {}) => {
+  if (typeof window === "undefined") {
+    return { added: false, reason: "unavailable" };
+  }
+
+  const normalizedItem = normalizeStoredMusicLibraryItem(rawItem);
+  if (!normalizedItem) {
+    return { added: false, reason: "invalid" };
+  }
+
+  const currentItems = await fetchMusicPlaylistFromSettings();
+  const targetIdentity = buildMusicLibraryItemIdentity(normalizedItem);
+  const alreadyExists = currentItems.some(
+    (item) => buildMusicLibraryItemIdentity(item) === targetIdentity,
+  );
+
+  if (alreadyExists) {
+    return { added: false, reason: "duplicate" };
+  }
+
+  const nextItems = [...currentItems, normalizedItem];
+  const saved = await saveMusicPlaylistToSettings(nextItems);
+  if (!saved) {
+    return { added: false, reason: "save_failed" };
+  }
+  await refreshSharedPlannerMusicLibrary();
+  return { added: true, reason: "added" };
+};
+
+export const removeSharedPlannerMusicLibraryItem = async (rawItem = {}) => {
+  if (typeof window === "undefined") {
+    return { removed: false, reason: "unavailable" };
+  }
+
+  const normalizedItem = normalizeStoredMusicLibraryItem(rawItem);
+  if (!normalizedItem) {
+    return { removed: false, reason: "invalid" };
+  }
+
+  const currentItems = await fetchMusicPlaylistFromSettings();
+  const targetIdentity = buildMusicLibraryItemIdentity(normalizedItem);
+  const nextItems = currentItems.filter(
+    (item) => buildMusicLibraryItemIdentity(item) !== targetIdentity,
+  );
+
+  if (nextItems.length === currentItems.length) {
+    return { removed: false, reason: "missing" };
+  }
+
+  const saved = await saveMusicPlaylistToSettings(nextItems);
+  if (!saved) {
+    return { removed: false, reason: "save_failed" };
+  }
+
+  await refreshSharedPlannerMusicLibrary();
+  return { removed: true, reason: "removed" };
 };
 
 export const getPlannerMusicSnapshot = () => ({

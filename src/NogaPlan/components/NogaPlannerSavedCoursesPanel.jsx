@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import NogaPlannerSettings from "./NogaPlannerSettings";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../../config/api";
 import "../../telegramControlPage.css";
 
-const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
+const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) => {
   const [coursesMiniBarActionsLeft, setCoursesMiniBarActionsLeft] =
     useState("50%");
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
@@ -61,16 +60,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     SAVED_COMPONENT_CLASS_OPTIONS,
     ACADEMIC_YEAR_OPTIONS,
     buildDefaultPlannerWeekdayOptions,
-    PLANNER_COURSE_UI,
     getPlannerDefaultFieldsForForm,
     NOGAPLANNER_TEXT,
   } = runtime;
   const SAVED_TEXT = NOGAPLANNER_TEXT.savedCourses;
   const WRAPPER_TABS = [
     {
-      key: "courses",
-      label: NOGAPLANNER_TEXT.savedCourses.coursesTitle,
-      icon: "fi fi-rr-lesson",
+      key: "traces",
+      label: "Traces",
+      icon: "fi fi-rr-folder",
     },
     {
       key: "lectures",
@@ -78,16 +76,26 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       icon: "fi fi-rc-leader-speech",
     },
     {
+      key: "courses",
+      label: NOGAPLANNER_TEXT.savedCourses.coursesTitle,
+      icon: "fi fi-rr-lesson",
+    },
+    {
       key: "exams",
       label: NOGAPLANNER_TEXT.examBoard.tabExams,
       icon: "fi fi-rr-test",
     },
     {
-      key: "settings",
-      label: SAVED_TEXT.plannerSettings,
-      icon: "fi fi-rr-holding-hand-gear",
+      key: "plan",
+      label: NOGAPLANNER_TEXT.studyPlan.title,
+      icon: "fi fi-rr-calendar-clock",
     },
   ];
+  const settingsTabEntry = {
+    key: "settings",
+    label: SAVED_TEXT.plannerSettings,
+    icon: "fi fi-rr-holding-hand-gear",
+  };
   const LOGO_BY_CLOCK_POSITION = {
     "12": "/img/NP12.png",
     "1": "/img/NP1.png",
@@ -186,19 +194,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     String(course?.course_name || "").trim().toLowerCase();
   const isLecturesTab = plannerTab === "lectures";
   const isCoursesTab = plannerTab === "courses";
-  const isSettingsTab = String(planner.state?.wrapperTab || "").trim() === "settings";
-  const hasActivePlannerTab =
-    isCoursesTab ||
-    isLecturesTab ||
-    planner.state?.wrapperTab === "exams" ||
-    isSettingsTab;
-  const activeWorkspaceTabTitle = isCoursesTab
-    ? SAVED_TEXT.coursesTitle
-    : isLecturesTab
-      ? SAVED_TEXT.lecturesTitle
-      : planner.state?.wrapperTab === "exams"
-        ? NOGAPLANNER_TEXT.examBoard.tabExams
-        : "";
+  const activeWrapperTab = String(planner.state?.wrapperTab || "").trim();
   const messageFriendSettings = planner.state?.plannerSelectSettings?.messageFriend;
   const plannerToken = String(planner?.props?.state?.token || "").trim();
   const normalizeFriendId = (value) => {
@@ -253,9 +249,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     }
     return String(messageFriendSettings?.from?.message || "").trim();
   })();
-  const showCourseEditor = isCoursesTab && savedCourseEditorVisible;
-  const shouldShowSelectedCourseLectures =
-    isLecturesTab && !savedCourseSelectionMode;
+  const showCourseEditor = savedCourseEditorVisible;
   const isLogoMotionListenerEnabled = Boolean(plannerSettingsLogoMotionEnabled);
   const fixedLogoClockPosition = String(plannerSettingsLogoFixedClock || "9").trim();
   const scheduleDisabledForComponent =
@@ -453,9 +447,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
       setIsMiniBarActionsVisible(false);
       return;
     }
-    const isActiveTab = planner.state.wrapperTab === tabKey;
-    if (isActiveTab) {
-      setIsMiniBarActionsVisible((previousValue) => !previousValue);
+    if (planner.state.wrapperTab === tabKey) {
       return;
     }
     planner.handleWrapperTabChange(tabKey);
@@ -649,24 +641,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     articleElement.dataset.pointerActive = "false";
     ensureSavedCoursesWorkspacePointerLoop();
   };
-  const resetToUnmountedPlannerState = () => {
-    planner.setState({
-      wrapperTab: "",
-      plannerTab: "",
-      plannerSettingsVisible: false,
-      selectedTabItemId: null,
-      selectedCourseForLecturesId: "",
-      selectedCourseForLecturesName: "",
-      deleteSelectionMode: false,
-      deleteSelectionIds: [],
-      savedCourseSelectionMode: false,
-      selectedSavedCourseIds: [],
-      savedCourseEditorVisible: false,
-      inlineCourseRowVisible: false,
-    });
-    setIsMiniBarActionsVisible(false);
-  };
-
   useEffect(() => {
     const updateCoursesMiniBarActionsPosition = () => {
       const tabsContainer = coursesMiniBarTabsRef.current;
@@ -675,15 +649,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
         return;
       }
       const activeTabButton = tabsContainer.querySelector(
-        '[data-wrapper-tab-active="true"]',
+        '[data-main-tab-button="true"][data-wrapper-tab-active="true"]',
       );
       if (!activeTabButton) {
         setCoursesMiniBarActionsLeft("50%");
         return;
       }
-      const titleRowContainer = tabsContainer.closest(
-        ".nogaPlanner_coursesTitleRow",
-      );
+      const titleRowContainer = tabsContainer.closest("#nogaPlanner_shellAside");
       const baseRect = titleRowContainer
         ? titleRowContainer.getBoundingClientRect()
         : tabsContainer.getBoundingClientRect();
@@ -808,7 +780,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
     }
   }, [isLogoMotionListenerEnabled, fixedLogoClockPosition]);
 
-  const courseUi = PLANNER_COURSE_UI;
+  const courseUi = NOGAPLANNER_TEXT.savedCourses || {};
   const courseFieldLabel = (fieldName) => courseUi.fields[fieldName] || "";
 
   const savedCourseDefaultFieldMap = new Map(
@@ -1475,7 +1447,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                 title={
                   courseCoreFieldsReady
                     ? ""
-                    : "أكمل اسم المقرر، الرمز، الحالة، ووزن المقرر أولاً"
+                    : "Complete the course name, code, status, and course weight first"
                 }
               >
                 <option value="">
@@ -1623,7 +1595,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                       setNoAttendanceForComponent(Boolean(event.target.checked))
                     }
                   />
-                  <span>لا يوجد حضور لهذا المكوّن</span>
+                  <span>No attendance for this component</span>
                 </label>
               </div>
               <div
@@ -1735,7 +1707,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
                   )
                 ) : (
                   <li className="nogaPlanner_savedCoursesScheduleEmpty">
-                    لا يوجد أي إدخال، أضف واحداً
+                    No entries yet, add one
                   </li>
                 )}
               </ul>
@@ -1849,43 +1821,11 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   );
 
   const renderWrapperTabs = () => (
-      <div id="nogaPlanner_wrapperTabsGroup" className="nogaPlanner_wrapperTabsGroup">
+      <>
         <div
           id="nogaPlanner_coursesMiniBar"
           className="nogaPlanner_coursesMiniBar"
         >
-            <div
-              id="nogaPlanner_coursesMiniBar_tabs"
-              className="nogaPlanner_coursesMiniBarCol nogaPlanner_coursesMiniBarCol--tabs"
-              ref={coursesMiniBarTabsRef}
-            >
-                {WRAPPER_TABS.map((tabEntry) => (
-                  <button
-                    key={`wrapper-tab-${tabEntry.key}`}
-                    id={`nogaPlanner_wrapperTabBtn_${tabEntry.key}`}
-                    type="button"
-                    className={
-                      "nogaPlanner_wrapperTabBtn"
-                    }
-                    data-wrapper-tab-active={
-                      planner.state.wrapperTab === tabEntry.key ? "true" : "false"
-                    }
-                    onClick={() => handleWrapperTabButtonClick(tabEntry.key)}
-                    aria-label={tabEntry.label}
-                    title={tabEntry.label}
-                    aria-expanded={
-                      planner.state.wrapperTab === tabEntry.key
-                        ? isMiniBarActionsVisible
-                        : false
-                    }
-                  >
-                    <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                      <i className={tabEntry.icon} />
-                      <span>{tabEntry.label}</span>
-                    </span>
-                  </button>
-                ))}
-            </div>
           {isMiniBarActionsVisible &&
           !plannerSettingsVisible &&
           (planner.state.wrapperTab === "courses" ||
@@ -2149,46 +2089,51 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
             </>
           ) : null}
         </div>
-        <div id="nogaPlanner_wrapperTabsAside" className="nogaPlanner_wrapperTabsAside">
-          <button
-            id="nogaPlanner_coursesMiniBarBtn_telegramChat"
-            type="button"
-            className={
-              "nogaPlanner_wrapperTabBtn" +
-              (telegramChatOpen ? " nogaPlanner_coursesMiniBarBtn--active" : "")
-            }
-            onClick={() => setTelegramChatOpen((currentValue) => !currentValue)}
-            aria-pressed={telegramChatOpen}
-            aria-label="Telegram chat"
-            title="Telegram chat"
-          >
-            <span className="nogaPlanner_wrapperTabBtnIconLabel">
-              <i className="fi fi-brands-telegram" />
-              <span>Telegram</span>
-            </span>
-          </button>
-          {isMiniBarActionsVisible &&
-          !plannerSettingsVisible &&
-          (planner.state.wrapperTab === "courses" ||
-            planner.state.wrapperTab === "lectures" ||
-            planner.state.wrapperTab === "exams") ? (
+        <div
+          id="nogaPlanner_wrapperTabsAside"
+          className="nogaPlanner_wrapperTabsAside"
+          ref={coursesMiniBarTabsRef}
+        >
+          {WRAPPER_TABS.map((tabEntry) => (
             <button
-              id="backToTabs_button"
+              key={`wrapper-tab-${tabEntry.key}`}
+              id={`nogaPlanner_wrapperTabBtn_${tabEntry.key}`}
               type="button"
               className="nogaPlanner_wrapperTabBtn"
-              aria-label={NOGAPLANNER_TEXT.settings.back}
-              title={NOGAPLANNER_TEXT.settings.back}
-              onClick={resetToUnmountedPlannerState}
-              data-wrapper-tab-active="true"
+              data-main-tab-button="true"
+              data-wrapper-tab-active={
+                planner.state.wrapperTab === tabEntry.key ? "true" : "false"
+              }
+              onClick={() => handleWrapperTabButtonClick(tabEntry.key)}
+              aria-label={tabEntry.label}
+              title={tabEntry.label}
+              aria-expanded={
+                planner.state.wrapperTab === tabEntry.key
+                  ? isMiniBarActionsVisible
+                  : false
+              }
             >
               <span className="nogaPlanner_wrapperTabBtnIconLabel">
-                <i className="fi fi-rc-arrow-alt-circle-left" />
-                <span>{NOGAPLANNER_TEXT.settings.back}</span>
+                <i className={tabEntry.icon} />
+                <span>{tabEntry.label}</span>
               </span>
             </button>
-          ) : null}
+          ))}
+          <button
+            id="nogaPlanner_wrapperTabBtn_settings"
+            type="button"
+            className="nogaPlanner_wrapperTabBtn"
+            onClick={() => handleWrapperTabButtonClick(settingsTabEntry.key)}
+            aria-label={settingsTabEntry.label}
+            title={settingsTabEntry.label}
+          >
+            <span className="nogaPlanner_wrapperTabBtnIconLabel">
+              <i className={settingsTabEntry.icon} />
+              <span>{settingsTabEntry.label}</span>
+            </span>
+          </button>
         </div>
-      </div>
+      </>
   );
 
   const renderTelegramChatPanel = () => {
@@ -2299,18 +2244,23 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
   };
 
   const renderTable = () => (
-    <div
-      id="nogaPlanner_savedCoursesTableBodyScroll"
-      className="nogaPlanner_savedCoursesTableBodyScroll"
-      ref={planner.savedCoursesColumnBodyRef}
-      onScroll={planner.handleSavedCoursesBodyScroll}
-    >
       <table
         id="nogaPlanner_savedCoursesTable"
-        className="nogaPlanner_tabTable nogaPlanner_savedCoursesTable"
+        className={
+          "nogaPlanner_tabTable nogaPlanner_savedCoursesTable" +
+          (showCourseEditor ? " nogaPlanner_savedCoursesTable--editorOpen" : "")
+        }
+        ref={(node) => {
+          planner.savedCoursesColumnRef.current = node;
+          planner.savedCoursesColumnBodyRef.current = node;
+        }}
+        onScroll={planner.handleSavedCoursesBodyScroll}
       >
         {planner.renderSavedCoursesTableColGroup()}
-        <thead id="nogaPlanner_savedCoursesTableHead">
+        <thead
+          id="nogaPlanner_savedCoursesTableHead"
+          className="nogaPlanner_tableHead"
+        >
           <tr id="nogaPlanner_savedCoursesTableHead_row_1">
             <th id="nogaPlanner_savedCoursesTableHead_courseGroup" colSpan={3}>
               {courseUi.table.courseGroup}
@@ -2410,10 +2360,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
               {courseFieldLabel("course_timeSelection")}
             </th>
             <th id="nogaPlanner_savedCoursesTableHead_building" rowSpan={2}>
-              {courseFieldLabel("course_locationBuilding")}
+              Building
             </th>
             <th id="nogaPlanner_savedCoursesTableHead_room" rowSpan={2}>
-              {courseFieldLabel("course_locationRoom")}
+              Room
             </th>
           </tr>
           <tr id="nogaPlanner_savedCoursesTableHead_row_4">
@@ -2546,93 +2496,30 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime }) => {
           )}
         </tbody>
       </table>
-    </div>
   );
 
-  return (
-    <section
-      id="nogaPlanner_savedCoursesColumn"
-      className="nogaPlanner_homeSoulPanel"
-      ref={planner.savedCoursesColumnRef}
-    >
-      {showCourseEditor ? renderSavedCourseEditorPanel() : null}
-      {isLecturesTab && inlineLectureRowVisible ? (
-        planner.renderSelectedCourseLecturesTable("form")
-      ) : null}
-      <div
-        id="nogaPlanner_coursesTitleRow"
-        className="nogaPlanner_coursesTitleRow"
+  if (shellOnly) {
+    return (
+      <aside
+        id="nogaPlanner_shellAside"
+        className="nogaPlanner_homeSoulPanel"
         ref={planner.savedCoursesColumnHeaderRef}
       >
-        <div
-          id="nogaPlanner_coursesTitleTextWrap"
-          className="nogaPlanner_coursesTitleTextWrap"
-        >
-            {logoAssetsReady ? (
-              <img
-                ref={logoImageRef}
-                id="nogaPlanner_coursesEyebrowLogo"
-                src={
-                  LOGO_BY_CLOCK_POSITION[String(logoClockPosition || "").trim()] ||
-                  "/img/NP9.png"
-                }
-                alt={NOGAPLANNER_TEXT.common.appEyebrow}
-                loading="eager"
-                fetchpriority="high"
-                decoding="async"
-              />
-            ) : (
-              <div
-                id="nogaPlanner_coursesEyebrowLogoLoader"
-                className="nogaPlanner_coursesEyebrowLogoLoader"
-                aria-label="Loading logo images"
-              />
-            )}
-        </div>
         {renderWrapperTabs()}
-      </div>
-      {renderTelegramChatPanel()}
-      {isSettingsTab || plannerSettingsVisible ? (
-        <NogaPlannerSettings planner={planner} runtime={runtime} />
-      ) : (
-        <div
-          id="nogaPlanner_savedCoursesWorkspace"
-          className={
-            "nogaPlanner_savedCoursesWorkspace" +
-            (showCourseEditor ? " nogaPlanner_savedCoursesWorkspace--editorOpen" : "")
-          }
-        >
-          {hasActivePlannerTab ? (
-            <div
-              id="nogaPlanner_savedCoursesWorkspaceTitle"
-              className="nogaPlanner_savedCoursesWorkspaceTitle"
-            >
-              <p>{activeWorkspaceTabTitle}</p>
-              {messageFromFriendText ? (
-                <div className="nogaPlanner_savedCoursesWorkspaceFriendMessageWrapper">
-                  <p>
-                    {messageFromFriendText}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {!hasActivePlannerTab ? null : isLecturesTab ? (
-            planner.renderSelectedCourseLecturesTable(
-              inlineLectureRowVisible ? "table" : "full",
-            )
-          ) : planner.state?.wrapperTab === "exams" ? (
-            planner.renderSelectedCourseExamBoard(true)
-          ) : (
-            <>
-              {shouldShowSelectedCourseLectures
-                ? planner.renderSelectedCourseLecturesTable()
-                : renderTable()}
-            </>
-          )}
+      </aside>
+    );
+  }
+
+  return (
+    <>
+      {showCourseEditor ? renderSavedCourseEditorPanel() : null}
+      {messageFromFriendText ? (
+        <div className="nogaPlanner_savedCoursesWorkspaceFriendMessageWrapper">
+          <p>{messageFromFriendText}</p>
         </div>
-      )}
-    </section>
+      ) : null}
+      {renderTable()}
+    </>
   );
 };
 

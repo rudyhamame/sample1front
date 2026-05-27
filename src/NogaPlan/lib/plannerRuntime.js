@@ -101,7 +101,7 @@ export const buildExamDateValue = ({ day, month, year }) => {
     return "";
   }
 
-  return `بعد ${diffDaysWithoutDecimals} يوم و${diffHoursWithoutDecimals} ساعة و${diffMinsWithoutDecimals} دقيقة عن ${examTime_hour} ساعة و${examTime_mins} دقيقة من الآن تقريباً`;
+  return `About ${diffDaysWithoutDecimals} days, ${diffHoursWithoutDecimals} hours, and ${diffMinsWithoutDecimals} minutes before ${examTime_hour}:${examTime_mins} from now`;
 };
 
 export const getPlannerTermRank = (value = "") => {
@@ -218,176 +218,332 @@ export const TELEGRAM_COURSE_PAYLOAD_FIELDS = [
   "exam_time",
 ];
 
-export const NOGAPLANNER_WRAPPER_TABS = [
-  { key: "courses", label: "المقررات" },
-  { key: "lectures", label: "المحاضرات" },
-  { key: "exams", label: "الامتحانات" },
-];
-
 export const NOGAPLANNER_TEXT = {
+  // Shared labels and actions reused across planner panels.
   common: {
-    appEyebrow: "نوغا بلان",
-    add: "إضافة",
-    edit: "تعديل",
-    delete: "حذف",
-    cancel: "إلغاء",
-    save: "حفظ",
-    close: "إغلاق",
-    none: "بدون",
+    appEyebrow: "Noga Plan",
+    add: "Add",
+    edit: "Edit",
+    delete: "Delete",
+    cancel: "Cancel",
+    save: "Save",
+    close: "Close",
+    none: "None",
   },
+  // Top-level planner tab labels used by the shared wrapper navigation.
+  wrapperTabs: {
+    plan: "Plan",
+    courses: "Courses",
+    lectures: "Lectures",
+    exams: "Exams",
+  },
+  // User-facing status and failure messages surfaced by planner workflows.
   messages: {
-    submitCourseNameRequired: "فشل الإرسال. الرجاء إضافة اسم المقرر",
-    genericRetry: "حدث خطأ. يرجى المحاولة مرة أخرى.",
-    componentTypeRequired: "أدخل نوع المكوّن أولاً",
-    courseSaveError: "حدث خطأ في حفظ المقرر. يرجى المحاولة مرة أخرى.",
-    courseAddedSuffix: "تمت إضافته",
-    selectItemForDetails: "اختر مقرراً أو محاضرة من القائمة لعرض التفاصيل.",
-    settingsSaveFailed: "تعذّر حفظ الإعدادات في قاعدة البيانات.",
-    settingsServerUnreachable: "تعذّر الاتصال بالخادم أثناء حفظ الإعدادات.",
-    settingsSaved: "تم حفظ الإعدادات بنجاح.",
-    noLectures: "لا توجد محاضرات",
+    submitCourseNameRequired: "Submission failed. Please add a course name.",
+    genericRetry: "Something went wrong. Please try again.",
+    componentTypeRequired: "Enter the component type first.",
+    courseSaveError: "Failed to save the course. Please try again.",
+    courseAddedSuffix: "added",
+    selectItemForDetails: "Select a course or lecture from the list to view details.",
+    settingsSaveFailed: "Failed to save settings to the database.",
+    settingsServerUnreachable: "Could not reach the server while saving settings.",
+    settingsSaved: "Settings saved successfully.",
+    noLectures: "No lectures",
   },
+  // Labels and placeholders used by the inline lecture form and lecture lists.
   lectures: {
-    formTitle: "إضافة محاضرة",
-    courseName: "اسم المقرر",
-    componentType: "نوع المكوّن",
-    lectureTitle: "عنوان المحاضرة",
-    instructors: "المدرسون",
-    writers: "الكتّاب",
-    publishDate: "تاريخ النشر",
-    content: "المحتوى",
-    uploadContent: "رفع محتوى",
-    uploadedList: "الملفات المرفوعة",
-    noUploadedFiles: "لا توجد ملفات مرفوعة",
-    chooseCourse: "اختر المقرر",
-    chooseComponent: "اختر المكوّن",
-    chooseInstructor: "اختر المدرّس",
-    chooseWriter: "اختر الكاتب",
+    formTitle: "Add Lecture",
+    courseReferenceTitle: "Course Reference",
+    lectureInfoTitle: "Lecture Information",
+    courseName: "Course Name",
+    componentType: "Component Type",
+    lectureTitle: "Lecture Title",
+    instructors: "Instructors",
+    writers: "Writers",
+    publishDate: "Publish Date",
+    content: "Content",
+    uploadContent: "Upload Content",
+    uploadedList: "Uploaded Files",
+    noUploadedFiles: "No uploaded files",
+    chooseCourse: "Choose course",
+    chooseComponent: "Choose component",
+    chooseInstructor: "Choose instructor",
+    chooseWriter: "Choose writer",
   },
+  // Labels and placeholders used by planner settings sections.
   settings: {
-    back: "رجوع",
+    back: "Back",
     backEn: "back",
-    title: "إعدادات القوائم",
-    lists: "خيارات القوائم",
-    defaults: "الافتراضيات",
-    relationships: "علاقات المكوّن",
-    noListsForTab: "لا توجد قوائم لهذا التبويب",
-    chooseBuilding: "اختر المبنى",
-    chooseBuildingFirst: "اختر المبنى أولاً",
-    noSavedItems: "لا توجد عناصر محفوظة",
-    update: "تحديث",
-    add: "إضافة",
-    deleteSelected: "حذف المحدد",
-    deleteAll: "حذف الكل",
-    edit: "تعديل",
-    logoMotionListener: "استماع حركة المؤشر",
-    voiceControlListener: "التحكم الصوتي",
-    fixedLogoClock: "تثبيت اتجاه الشعار",
-    messageFromFriend: "رسالة من صديق",
-    messageFromFriendChoose: "اختر صديقاً",
-    messageFromFriendInput: "اكتب رسالة مشجعة",
-    messageFromFriendSave: "حفظ الرسائل",
-    messageFromFriendFrom: "من صديق (الاستماع)",
-    messageFromFriendTo: "إرسال إلى صديق",
-    messageFromFriendToList: "قائمة الإرسال",
-    messageFromFriendAddToList: "إضافة",
-    messageFromFriendDeleteSelected: "حذف المحدد",
-    messageFromFriendNoEntries: "لا يوجد أي إدخال",
-    motionOn: "مفعّل",
-    motionOff: "متوقف",
-    selectClock: "اختر الساعة",
+    title: "List Settings",
+    lists: "Lists",
+    defaults: "Defaults",
+    relationships: "Component Relationships",
+    noListsForTab: "No lists for this tab",
+    listFieldLabel: "Field",
+    listModeLabel: "Mode",
+    dependentSelectLabel: "Independent Field",
+    dependentOptionLabel: "Independent Option",
+    listValueLabel: "Value",
+    chooseListField: "Choose field",
+    chooseMode: "Choose mode",
+    modeIndependent: "Independent",
+    modeDependent: "Dependent",
+    chooseIndependentSelect: "Choose independent field",
+    chooseIndependentOption: "Choose independent option",
+    chooseBuilding: "Choose building",
+    chooseBuildingFirst: "Choose building first",
+    noSavedItems: "No saved items",
+    update: "Update",
+    add: "Add",
+    deleteSelected: "Delete selected",
+    deleteAll: "Delete all",
+    edit: "Edit",
+    logoMotionListener: "Pointer motion listener",
+    voiceControlListener: "Voice control",
+    fixedLogoClock: "Lock logo direction",
+    messageFromFriend: "Message from a friend",
+    messageFromFriendChoose: "Choose a friend",
+    messageFromFriendInput: "Write an encouraging message",
+    messageFromFriendSave: "Save messages",
+    messageFromFriendFrom: "From friend (listen)",
+    messageFromFriendTo: "Send to friend",
+    messageFromFriendToList: "Delivery list",
+    messageFromFriendAddToList: "Add",
+    messageFromFriendDeleteSelected: "Delete selected",
+    messageFromFriendNoEntries: "No entries",
+    motionOn: "On",
+    motionOff: "Off",
+    selectClock: "Choose clock",
     optionGroups: {
       componentClassOptions: {
-        label: "أنواع المكوّن",
-        placeholder: "أدخل نوع مكوّن",
+        label: "Component Types",
+        placeholder: "Enter a component type",
       },
-      weekdayOptions: { label: "الأيام", placeholder: "أدخل يوماً" },
-      hourOptions: { label: "الساعات", placeholder: "مثال 08:00" },
-      termOptions: { label: "الفصول", placeholder: "أدخل فصلاً" },
+      weekdayOptions: { label: "Days", placeholder: "Enter a day" },
+      hourOptions: { label: "Hours", placeholder: "Example 08:00" },
+      termOptions: { label: "Terms", placeholder: "Enter a term" },
       academicYearOptions: {
-        label: "السنوات الأكاديمية",
-        placeholder: "أدخل سنة أكاديمية",
+        label: "Academic Years",
+        placeholder: "Enter an academic year",
       },
-      locationBuildingOptions: { label: "المبنى", placeholder: "أدخل المبنى" },
-      locationRoomOptions: { label: "القاعة", placeholder: "أدخل القاعة" },
+      locationBuildingOptions: { label: "Building", placeholder: "Enter building" },
+      locationRoomOptions: { label: "Room", placeholder: "Enter room" },
+      lectureInstructorOptions: {
+        label: "Instructors",
+        placeholder: "Enter instructor",
+      },
+      lectureWriterOptions: {
+        label: "Writers",
+        placeholder: "Enter writer",
+      },
     },
   },
   savedCourses: {
-    plannerSettings: "الإعدادات",
+    plannerSettings: "Settings",
     restoreDefaultTitle: "Restore default value",
-    save: "حفظ",
-    close: "إغلاق",
-    addLecture: "إضافة محاضرة",
-    deleteLecture: "حذف محاضرة",
-    clearSelection: "إلغاء التحديد",
-    add: "إضافة",
-    edit: "تعديل",
-    openLectures: "فتح المحاضرات",
-    select: "تحديد",
-    finishSelection: "إنهاء التحديد",
-    closeDetails: "إغلاق التفاصيل",
-    showPanelTitle: "إظهار عنوان اللوحة",
-    hidePanelTitle: "إخفاء عنوان اللوحة",
-    lecturesTitle: "المحاضرات",
-    coursesTitle: "المقررات",
-    lecturesSubtitle: "أدر المحاضرات مباشرة أو اربطها بالمقرر المحدد.",
-    coursesSubtitle: "أدر المقررات ومكوّناتها من نفس اللوحة.",
+    save: "Save",
+    close: "Close",
+    addLecture: "Add Lecture",
+    addLectureToPlan: "Add to Plan",
+    deleteLecture: "Delete Lecture",
+    clearSelection: "Clear Selection",
+    add: "Add",
+    edit: "Edit",
+    openLectures: "Open Lectures",
+    select: "Select",
+    finishSelection: "Finish Selection",
+    closeDetails: "Close Details",
+    showPanelTitle: "Show Panel Title",
+    hidePanelTitle: "Hide Panel Title",
+    planTitle: "Plan",
+    lecturesTitle: "Lectures",
+    coursesTitle: "Courses",
+    planSubtitle: "Distribute daily study hours across components and lectures until exam dates.",
+    lecturesSubtitle: "Manage lectures directly or link them to the selected course.",
+    coursesSubtitle: "Manage your courses, components, and study schedule here.",
+    openCourseManager: "Open Course Manager",
+    backToPlan: "Back to Plan",
+    editor: {
+      courseCardTitle: "Course Data",
+      componentCardTitle: "Component Data",
+      newComponent: "New Component",
+      currentComponent: "Current Component",
+      scheduleGroupTitle: "Schedule",
+      locationGroupTitle: "Location",
+      pendingStatus: "Set later",
+    },
+    fields: {},
+    table: {
+      courseGroup: "Course",
+      componentsGroup: "Course Components",
+      timing: "Timing",
+      schedule: "Schedule",
+      location: "Location",
+      normative: "Normative",
+      actual: "Actual",
+      academicYear: "Academic Year",
+      term: "Term",
+      empty: "No saved courses",
+    },
   },
+  studyPlan: {
+    title: "Plan",
+    subtitle: "Plan daily hours for components and lectures until upcoming exams.",
+    preExamPeriodOfStudy: "Pre-exam study period",
+    examPeriodOfStudy: "Exam study period",
+    nextStudyPeriod: "Next study period",
+    previousStudyPeriod: "Previous study period",
+    defaultsTitle: "Global defaults",
+    rowsTitle: "Daily plan",
+    addPlanInfoTitle: "Add plan information",
+    noCourses: "No organized courses yet.",
+    noRows: "No items can be planned right now.",
+    globalDefaults: "Defaults",
+    componentPlan: "Component plan",
+    openCourseManager: "Open Course Manager",
+    closeCourseManager: "Close Course Manager",
+    selectCourse: "Choose course",
+    selectComponent: "Choose component",
+    selectLecture: "Choose lecture",
+    savePlan: "Save Plan",
+    noLectureOverrides: "No linked lectures for this component.",
+    deadlineMissing: "No deadline",
+    todayHoursHint: "Daily suggestion",
+    remainingHours: "Remaining hours",
+    remainingDays: "Remaining days",
+    resolvedDeadline: "Deadline",
+    sourceExam: "Component exam date",
+    sourceTerm: "Term exam window",
+    tableCourse: "Course",
+    tableComponent: "Component",
+    tableLecture: "Lecture",
+    tableDeadline: "Deadline",
+    tableRemainingDays: "Days",
+    tableRemainingHours: "Hours",
+    tableSuggestedDailyHours: "Today hours",
+    tablePriority: "Priority",
+    tableDifficulty: "Difficulty",
+    tableMastery: "Mastery",
+    tableSource: "Source",
+  },
+  // Labels used by exam rows and exam editor fields.
   examBoard: {
-    title: "جدول الامتحانات",
-    subtitle: "أدر الامتحانات المحفوظة لنفس المقررات.",
-    tabCourses: "المقررات",
-    tabLectures: "المحاضرات",
-    tabExams: "الامتحانات",
-    countExams: "امتحانات",
-    countCourses: "مقررات",
-    tableCourse: "المقرر",
-    tableCourseName: "اسم المقرر",
-    tableComponentType: "نوع المكوّن",
-    tableType: "النوع",
-    tableTime: "التوقيت",
-    tableDate: "التاريخ",
-    tableStartTime: "ساعة البدء",
-    tableEndTime: "ساعة الانتهاء",
-    tableLocation: "الموقع",
-    tableBuilding: "المبنى",
-    tableRoom: "القاعة",
-    tableVolume: "الحجم",
-    tableWeight: "الوزن",
-    tablePass: "النجاح",
-    tableGrade: "العلامة",
-    tableRecommendation: "التوصية",
-    empty: "لا توجد امتحانات",
-    saveExam: "حفظ الامتحان",
-    addExam: "إضافة امتحان",
-    linkedCourseLabel: "بيانات الامتحان",
-    linkedCoursePlaceholder: "المقرر المرتبط",
-    examTypePlaceholder: "نوع الامتحان",
-    timingLabel: "التوقيت",
-    normativeLabel: "المفترض",
-    actualLabel: "الفعلي",
-    yearPlaceholder: "رقم السنة",
-    termPlaceholder: "الفصل",
-    intervalPlaceholder: "الفترة",
-    locationLabel: "الموقع",
-    buildingPlaceholder: "المبنى",
-    roomPlaceholder: "القاعة",
-    linkedLecturesLabel: "المحاضرات المرتبطة",
-    noLinkedLectures: "لا توجد محاضرات متاحة لهذا المقرر",
-    volumeLabel: "الحجم",
-    valuePlaceholder: "القيمة",
-    scopePlaceholder: "النطاق",
-    notePlaceholder: "ملاحظة",
-    weightLabel: "الوزن",
-    passGradeLabel: "علامة النجاح",
-    minPlaceholder: "الحد الأدنى",
-    maxPlaceholder: "الحد الأعلى",
-    gradeLabel: "العلامة",
-    recommendationLabel: "التوصية",
-    suggestedHoursPlaceholder: "الساعات المقترحة",
-    reasonPlaceholder: "السبب",
+    title: "Exam Board",
+    subtitle: "Manage saved exams for the same courses.",
+    tabCourses: "Courses",
+    tabLectures: "Lectures",
+    tabExams: "Exams",
+    countExams: "Exams",
+    countCourses: "Courses",
+    tableCourse: "Course",
+    tableCourseName: "Course Name",
+    tableComponentType: "Component Type",
+    tableType: "Type",
+    tableTime: "Timing",
+    tableDate: "Date",
+    tableStartTime: "Start Time",
+    tableEndTime: "End Time",
+    tableLocation: "Location",
+    tableBuilding: "Building",
+    tableRoom: "Room",
+    tableVolume: "Volume",
+    tableWeight: "Weight",
+    tablePass: "Pass",
+    tableGrade: "Grade",
+    tableRecommendation: "Recommendation",
+    empty: "No exams",
+    saveExam: "Save Exam",
+    addExam: "Add Exam",
+    linkedCourseLabel: "Exam Data",
+    linkedCoursePlaceholder: "Linked course",
+    examTypePlaceholder: "Exam type",
+    timingLabel: "Timing",
+    dateLabel: "Date",
+    timeLabel: "Time",
+    datePlaceholder: "Exam date",
+    timePlaceholder: "Exam time",
+    locationLabel: "Location",
+    buildingPlaceholder: "Building",
+    roomPlaceholder: "Room",
+    linkedLecturesLabel: "Linked Lectures",
+    noLinkedLectures: "No lectures available for this course",
+    volumeLabel: "Volume",
+    valuePlaceholder: "Value",
+    scopePlaceholder: "Scope",
+    notePlaceholder: "Note",
+    weightLabel: "Weight",
+    passGradeLabel: "Pass Grade",
+    minPlaceholder: "Minimum",
+    maxPlaceholder: "Maximum",
+    gradeLabel: "Grade",
+    recommendationLabel: "Recommendation",
+    suggestedHoursPlaceholder: "Suggested hours",
+    reasonPlaceholder: "Reason",
+  },
+  // The only text-owned option/value source for planner selects and defaults.
+  selectsOptions: {
+    common: {
+      componentClassOptions: [
+        "Class",
+        "Lab",
+        "Clinical Rotations",
+        "Pharmacy",
+      ],
+      weekdayOptions: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+      hourOptions: Array.from({ length: 48 }, (_, index) => {
+        const totalMinutes = index * 30;
+        const hour = Math.floor(totalMinutes / 60);
+        const minute = totalMinutes % 60;
+        const period = hour >= 12 ? "PM" : "AM";
+        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+        return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+      }),
+      termOptions: ["First", "Second", "Third"],
+      academicYearOptions: Array.from(
+        { length: 31 },
+        (_, index) => `${2030 - index} - ${2031 - index}`,
+      ),
+      locationBuildingOptions: [],
+      locationRoomOptions: [],
+      lectureInstructorOptions: [],
+      lectureWriterOptions: [],
+      planDifficultyOptions: ["Low", "Medium", "High"],
+      planMasteryOptions: ["Weak", "Average", "Good"],
+      planPriorityOptions: ["Low", "Medium", "High"],
+      volumeUnitOptions: ["Pages", "Questions", "Hours", "Chapters"],
+      weightUnitOptions: ["Percentage", "Points"],
+      gradeUnitOptions: ["Points", "Percentage"],
+    },
+    defaults: {
+      inputValue: "",
+    },
+    inlineLecture: {
+      lecture_course: [],
+    },
+  },
+  // The only text-owned label source for registry-backed planner fields.
+  registryLabels: {
+    savedCourse: {},
+    exam: {},
+    inlineLecture: {},
+    shared: {},
   },
 };
+
+export const NOGAPLANNER_WRAPPER_TABS = [
+  { key: "plan", label: NOGAPLANNER_TEXT.wrapperTabs.plan },
+  { key: "courses", label: NOGAPLANNER_TEXT.wrapperTabs.courses },
+  { key: "lectures", label: NOGAPLANNER_TEXT.wrapperTabs.lectures },
+  { key: "exams", label: NOGAPLANNER_TEXT.wrapperTabs.exams },
+];
 
 export const isPendingCourseValue = (value) =>
   String(value || "").trim() === TELEGRAM_PENDING_VALUE;
@@ -468,23 +624,33 @@ export const formatCourseLocationDisplay = (value) => {
 };
 
 export const formatPlannerStatusLabel = (value) => {
-  const normalizedValue = String(value || "")
-    .trim()
-    .toLowerCase();
+  const rawValue = String(value || "").trim();
+  const normalizedValue = rawValue.toLowerCase();
 
   if (!normalizedValue || normalizedValue === "-") {
     return "-";
   }
 
+  const aliases = {
+    pending: "pending",
+    new: "new",
+    failed: "failed",
+    passed: "passed",
+    incomplete: "incomplete",
+    ongoing: "ongoing",
+  };
+  const normalizedStatus = aliases[normalizedValue] || normalizedValue;
+
   const labels = {
-    new: "جديد",
-    failed: "راسب",
-    incomplete: "غير مكتمل",
-    passed: "ناجح",
-    ongoing: "مستمر",
+    pending: "Set later",
+    new: "New",
+    failed: "Failed",
+    incomplete: "Incomplete",
+    passed: "Passed",
+    ongoing: "Ongoing",
   };
 
-  return labels[normalizedValue] || String(value || "").trim() || "-";
+  return labels[normalizedStatus] || "Set later";
 };
 export const detectContentDirection = (value) => {
   const normalizedValue = String(value || "").trim();
@@ -530,12 +696,18 @@ export const formatCourseComponentLabel = (value) => {
   if (!normalizedValue || normalizedValue === "-") {
     return normalizedValue || "-";
   }
-  // Map all possible cases to Arabic
+  // Map normalized component types to display labels.
   const componentLabels = {
-    lecture: "نظري",
-    lab: "عملي: مخبر",
-    "clinical rotation": "عملي: دوام مشفى",
-    "pharmacy training": "عملي: دوام صيدلية",
+    lecture: "Class",
+    theoretical: "Class",
+    class: "Class",
+    lab: "Lab",
+    "practical (lab)": "Lab",
+    "clinical rotation": "Clinical Rotations",
+    "clinical rotations": "Clinical Rotations",
+    "practical (hospital)": "Clinical Rotations",
+    "pharmacy training": "Pharmacy",
+    "practical (pharmacy)": "Pharmacy",
   };
   return componentLabels[normalizedValue] || value;
 };
@@ -607,8 +779,9 @@ export const getDefaultSavedCourseDraft = () => ({
   course_daySelection: "",
   course_timeSelection: "",
   course_grade: "",
-  course_locationBuilding: "",
-  course_locationRoom: "",
+  dailyHoursCap: "",
+  locationBuilding: "",
+  locationRoom: "",
 });
 
 export const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
@@ -631,10 +804,13 @@ export const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
     (entry) => entry !== "-",
   );
   const courseGrade = String(draft?.course_grade || "").trim();
+  const dailyHoursCap = String(draft?.dailyHoursCap || "").trim();
   const courseLocationBuilding = String(
-    draft?.course_locationBuilding || "",
+    draft?.locationBuilding || draft?.course_locationBuilding || "",
   ).trim();
-  const courseLocationRoom = String(draft?.course_locationRoom || "").trim();
+  const courseLocationRoom = String(
+    draft?.locationRoom || draft?.course_locationRoom || "",
+  ).trim();
 
   const hasMeaningfulValue = Boolean(
     courseClass ||
@@ -646,6 +822,7 @@ export const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
     actualCourseTerm ||
     courseDayAndTime.length > 0 ||
     courseGrade ||
+    dailyHoursCap ||
     courseLocationBuilding ||
     courseLocationRoom,
   );
@@ -667,11 +844,13 @@ export const buildSavedCourseComponentEntryFromDraft = (draft = {}) => {
     course_term: actualCourseTerm,
     course_dayAndTime: courseDayAndTime,
     course_grade: courseGrade,
-    course_locationBuilding: courseLocationBuilding,
-    course_locationRoom: courseLocationRoom,
+    dailyHoursCap,
+    locationBuilding: courseLocationBuilding,
+    locationRoom: courseLocationRoom,
   };
 };
 
+// Build the empty lecture draft used by inline lecture creation and reset flows.
 export const getDefaultInlineLectureDraft = () => ({
   lecture_courseId: "",
   lecture_componentId: "",
@@ -680,60 +859,51 @@ export const getDefaultInlineLectureDraft = () => ({
   lecture_volume_done: "",
   lecture_volume_remaining: "",
   lecture_pagesFinished: [],
+  lecture_pageStudyTimes: {},
   lecture_name: "",
   lecture_instructors: "",
   lecture_writers: "",
   lecture_date: "",
   lecture_contentUploads: [],
+  lectureDailyHoursCap: "",
+  lectureTargetHours: "",
+  lectureDifficulty: "",
+  lectureMastery: "",
+  lecturePriority: "",
+  lectureNote: "",
 });
 
-export const EXAM_WEIGHT_UNIT_OPTIONS = ["نسبة مئوية", "نقاط"];
-export const EXAM_GRADE_UNIT_OPTIONS = ["نقاط", "نسبة مئوية"];
-export const EXAM_VOLUME_UNIT_OPTIONS = ["صفحات", "أسئلة", "ساعات", "فصول"];
-export const EXAM_RECOMMENDATION_TIMING_OPTIONS = [
-  "الآن",
-  "قريباً",
-  "لاحقاً",
-  "مراجعة",
-];
-export const EXAM_RECOMMENDATION_INTENSITY_OPTIONS = [
-  "منخفضة",
-  "متوسطة",
-  "مرتفعة",
-];
-
+// Build the empty exam draft used by add/edit exam flows.
 export const getDefaultExamDraft = () => ({
   selectedCourseId: "",
   type: "",
-  normativeCourseYearNum: "",
-  normativeCourseTerm: "",
-  actualCourseYearNum: "",
-  actualCourseYearInterval: "",
-  actualCourseTerm: "",
+  exam_date: "",
+  exam_time: "",
   locationBuilding: "",
   locationRoom: "",
   linkedLectureIds: [],
   volumeValue: "",
-  volumeUnit: "صفحات",
+  volumeUnit: "Pages",
   volumeScope: "",
   volumeNote: "",
   weightValue: "",
-  weightUnit: "نسبة مئوية",
+  weightUnit: "Percentage",
   passGradeValue: "",
   passGradeMin: "",
   passGradeMax: "",
-  passGradeUnit: "نقاط",
+  passGradeUnit: "Points",
   gradeValue: "",
   gradeMin: "",
   gradeMax: "",
-  gradeUnit: "نقاط",
-  recommendationTiming: "لاحقاً",
-  recommendationIntensity: "متوسطة",
+  gradeUnit: "Points",
+  recommendationTiming: "Later",
+  recommendationIntensity: "Medium",
   recommendationSuggestedHours: "",
   recommendationReason: "",
   recommendationNote: "",
 });
 
+// Normalize raw stored exam rows into the shape expected by planner editing and display helpers.
 export const normalizeExamEntryForPlanner = (
   entry = {},
   selectedCourseId = "",
@@ -772,6 +942,7 @@ export const normalizeExamEntryForPlanner = (
   ).trim(),
 });
 
+// Convert a normalized exam entry into an editable exam draft.
 export const buildExamDraftFromEntry = (entry = {}, selectedCourseId = "") => {
   const normalizedEntry = normalizeExamEntryForPlanner(entry, selectedCourseId);
 
@@ -780,20 +951,12 @@ export const buildExamDraftFromEntry = (entry = {}, selectedCourseId = "") => {
       String(selectedCourseId || "").trim() ||
       String(normalizedEntry?.componentId || "").trim(),
     type: String(normalizedEntry?.type || "").trim(),
-    normativeCourseYearNum: normalizeProgramYearValue(
-      normalizedEntry?.time?.Normative?.courseYearNum,
-    ),
-    normativeCourseTerm: String(
-      normalizedEntry?.time?.Normative?.courseTerm || "",
-    ).trim(),
-    actualCourseYearNum: normalizeProgramYearValue(
-      normalizedEntry?.time?.actual?.courseYearNum,
-    ),
-    actualCourseYearInterval: normalizeAcademicYearValue(
-      normalizedEntry?.time?.actual?.courseYearInterval,
-    ),
-    actualCourseTerm: String(
-      normalizedEntry?.time?.actual?.courseTerm || "",
+    exam_date: String(normalizedEntry?.exam_date || "").trim(),
+    exam_time: String(
+      normalizedEntry?.time?.start ||
+        normalizedEntry?.startTime ||
+        normalizedEntry?.exam_time ||
+        "",
     ).trim(),
     locationBuilding: String(normalizedEntry?.location?.building || "").trim(),
     locationRoom: String(normalizedEntry?.location?.room || "").trim(),
@@ -802,33 +965,33 @@ export const buildExamDraftFromEntry = (entry = {}, selectedCourseId = "") => {
       : [],
     volumeValue: String(normalizedEntry?.volume?.value ?? "").trim(),
     volumeUnit:
-      String(normalizedEntry?.volume?.unit || "صفحات").trim() || "صفحات",
+      String(normalizedEntry?.volume?.unit || "Pages").trim() || "Pages",
     volumeScope: String(normalizedEntry?.volume?.scope || "").trim(),
     volumeNote: String(normalizedEntry?.volume?.note || "").trim(),
     weightValue: String(
       normalizedEntry?.weight?.value ?? normalizedEntry?.course_grade ?? "",
     ).trim(),
     weightUnit:
-      String(normalizedEntry?.weight?.unit || "نسبة مئوية").trim() ||
-      "نسبة مئوية",
+      String(normalizedEntry?.weight?.unit || "Percentage").trim() ||
+      "Percentage",
     passGradeValue: String(normalizedEntry?.passGrade?.value ?? "").trim(),
     passGradeMin: String(normalizedEntry?.passGrade?.min ?? "").trim(),
     passGradeMax: String(normalizedEntry?.passGrade?.max ?? "").trim(),
     passGradeUnit:
-      String(normalizedEntry?.passGrade?.unit || "نقاط").trim() || "نقاط",
+      String(normalizedEntry?.passGrade?.unit || "Points").trim() || "Points",
     gradeValue: String(normalizedEntry?.grade?.value ?? "").trim(),
     gradeMin: String(normalizedEntry?.grade?.min ?? "").trim(),
     gradeMax: String(
       normalizedEntry?.grade?.max ?? normalizedEntry?.course_fullGrade ?? "",
     ).trim(),
-    gradeUnit: String(normalizedEntry?.grade?.unit || "نقاط").trim() || "نقاط",
+    gradeUnit: String(normalizedEntry?.grade?.unit || "Points").trim() || "Points",
     recommendationTiming:
-      String(normalizedEntry?.studyRecommendation?.timing || "لاحقاً").trim() ||
-      "لاحقاً",
+      String(normalizedEntry?.studyRecommendation?.timing || "Later").trim() ||
+      "Later",
     recommendationIntensity:
       String(
-        normalizedEntry?.studyRecommendation?.intensity || "متوسطة",
-      ).trim() || "متوسطة",
+        normalizedEntry?.studyRecommendation?.intensity || "Medium",
+      ).trim() || "Medium",
     recommendationSuggestedHours: String(
       normalizedEntry?.studyRecommendation?.suggestedHours ?? "",
     ).trim(),
@@ -841,23 +1004,13 @@ export const buildExamDraftFromEntry = (entry = {}, selectedCourseId = "") => {
   };
 };
 
+// Convert an editable exam draft back into the persisted exam payload shape.
 export const buildExamEntryFromDraft = (draft = {}) => {
   const type = String(draft?.type || "").trim();
+  const examDate = String(draft?.exam_date || "").trim();
+  const examTime = String(draft?.exam_time || "").trim();
   const time = {
-    Normative: {
-      courseYearNum: Number.isFinite(Number(draft?.normativeCourseYearNum))
-        ? Number(draft.normativeCourseYearNum)
-        : null,
-      courseTerm: String(draft?.normativeCourseTerm || "").trim() || null,
-    },
-    actual: {
-      courseYearNum: Number.isFinite(Number(draft?.actualCourseYearNum))
-        ? Number(draft.actualCourseYearNum)
-        : null,
-      courseYearInterval:
-        normalizeAcademicYearValue(draft?.actualCourseYearInterval) || null,
-      courseTerm: String(draft?.actualCourseTerm || "").trim() || null,
-    },
+    start: examTime || null,
   };
   const location = {
     building: String(draft?.locationBuilding || "").trim(),
@@ -867,7 +1020,7 @@ export const buildExamEntryFromDraft = (draft = {}) => {
     value: Number.isFinite(Number(draft?.volumeValue))
       ? Number(draft.volumeValue)
       : 0,
-    unit: String(draft?.volumeUnit || "صفحات").trim() || "صفحات",
+    unit: String(draft?.volumeUnit || "Pages").trim() || "Pages",
     scope: String(draft?.volumeScope || "").trim(),
     note: String(draft?.volumeNote || "").trim(),
   };
@@ -876,7 +1029,7 @@ export const buildExamEntryFromDraft = (draft = {}) => {
     : 0;
   const weight = {
     value: weightValue,
-    unit: String(draft?.weightUnit || "نسبة مئوية").trim() || "نسبة مئوية",
+    unit: String(draft?.weightUnit || "Percentage").trim() || "Percentage",
   };
   const passGrade = {
     value: Number.isFinite(Number(draft?.passGradeValue))
@@ -888,7 +1041,7 @@ export const buildExamEntryFromDraft = (draft = {}) => {
     max: Number.isFinite(Number(draft?.passGradeMax))
       ? Number(draft.passGradeMax)
       : null,
-    unit: String(draft?.passGradeUnit || "نقاط").trim() || "نقاط",
+    unit: String(draft?.passGradeUnit || "Points").trim() || "Points",
   };
   const grade = {
     value: Number.isFinite(Number(draft?.gradeValue))
@@ -900,12 +1053,12 @@ export const buildExamEntryFromDraft = (draft = {}) => {
     max: Number.isFinite(Number(draft?.gradeMax))
       ? Number(draft.gradeMax)
       : null,
-    unit: String(draft?.gradeUnit || "نقاط").trim() || "نقاط",
+    unit: String(draft?.gradeUnit || "Points").trim() || "Points",
   };
   const studyRecommendation = {
-    timing: String(draft?.recommendationTiming || "لاحقاً").trim() || "لاحقاً",
+    timing: String(draft?.recommendationTiming || "Later").trim() || "Later",
     intensity:
-      String(draft?.recommendationIntensity || "متوسطة").trim() || "متوسطة",
+      String(draft?.recommendationIntensity || "Medium").trim() || "Medium",
     suggestedHours: Number.isFinite(Number(draft?.recommendationSuggestedHours))
       ? Number(draft.recommendationSuggestedHours)
       : 0,
@@ -929,8 +1082,8 @@ export const buildExamEntryFromDraft = (draft = {}) => {
     grade,
     studyRecommendation,
     exam_type: type || "-",
-    exam_date: "-",
-    exam_time: "-",
+    exam_date: examDate || "-",
+    exam_time: examTime || "-",
     course_grade: Number.isFinite(weightValue) ? String(weightValue) : "",
     course_fullGrade:
       Number.isFinite(Number(grade.max)) && grade.max !== null
@@ -939,6 +1092,7 @@ export const buildExamEntryFromDraft = (draft = {}) => {
   };
 };
 
+// Format exam timing values for compact table rendering.
 export const formatExamTimingDisplay = (entry = {}) => {
   const normalizedEntry = normalizeExamEntryForPlanner(entry);
   const normativeYear = normalizeProgramYearValue(
@@ -975,6 +1129,7 @@ export const formatExamTimingDisplay = (entry = {}) => {
   return [fallbackDate, fallbackTime].filter(Boolean).join(" | ") || "-";
 };
 
+// Format exam volume values for compact table rendering.
 export const formatExamVolumeDisplay = (entry = {}) => {
   const volume =
     entry?.volume && typeof entry.volume === "object" ? entry.volume : {};
@@ -986,6 +1141,7 @@ export const formatExamVolumeDisplay = (entry = {}) => {
   return [value, unit, scope].filter(Boolean).join(" | ") || "-";
 };
 
+// Format exam weight values for compact table rendering.
 export const formatExamWeightDisplay = (entry = {}) => {
   const weight =
     entry?.weight && typeof entry.weight === "object" ? entry.weight : {};
@@ -996,6 +1152,7 @@ export const formatExamWeightDisplay = (entry = {}) => {
   return [value, unit].filter(Boolean).join(" | ") || "-";
 };
 
+// Format exam grade values for compact table rendering.
 export const formatExamGradeDisplay = (grade = {}) => {
   const normalizedGrade = grade && typeof grade === "object" ? grade : {};
   const value = normalizedGrade?.value;
@@ -1014,54 +1171,7 @@ export const formatExamGradeDisplay = (grade = {}) => {
     .filter(Boolean);
   return [...parts, unit].filter(Boolean).join(" | ") || "-";
 };
-
-export const formatExamRecommendationDisplay = (entry = {}) => {
-  const recommendation =
-    entry?.studyRecommendation && typeof entry.studyRecommendation === "object"
-      ? entry.studyRecommendation
-      : {};
-  const timing = String(recommendation?.timing || "").trim();
-  const intensity = String(recommendation?.intensity || "").trim();
-  const suggestedHours = Number.isFinite(Number(recommendation?.suggestedHours))
-    ? String(recommendation.suggestedHours)
-    : "";
-  const localizedTiming =
-    { now: "الآن", soon: "قريباً", later: "لاحقاً", review: "مراجعة" }[
-      timing
-    ] || timing;
-  const localizedIntensity =
-    { low: "منخفضة", medium: "متوسطة", high: "مرتفعة" }[intensity] || intensity;
-  return (
-    [
-      localizedTiming,
-      localizedIntensity,
-      suggestedHours ? `${suggestedHours} ساعة` : "",
-    ]
-      .filter(Boolean)
-      .join(" | ") || "-"
-  );
-};
-
-export const buildAcademicYearOptions = (startYear = 2000, endYear = 2030) => {
-  const parsedEndYear = Number(endYear);
-  const end =
-    endYear !== null &&
-    endYear !== undefined &&
-    String(endYear).trim() !== "" &&
-    Number.isFinite(parsedEndYear)
-      ? parsedEndYear
-      : 2030;
-  const start = Math.min(Math.max(1900, Number(startYear) || 2000), end);
-  const options = [];
-
-  for (let year = end; year >= start; year -= 1) {
-    options.push(`${year} - ${year + 1}`);
-  }
-
-  return options;
-};
-
-export const ACADEMIC_YEAR_OPTIONS = buildAcademicYearOptions(2000);
+// Normalize mixed academic-year formats coming from storage or the UI.
 export const normalizeAcademicYearValue = (value) => {
   const normalizedValue = String(value || "").trim();
 
@@ -1099,14 +1209,23 @@ export const normalizeAcademicYearValue = (value) => {
     }
   }
 
-  return ACADEMIC_YEAR_OPTIONS.includes(normalizedValue) ? normalizedValue : "";
+  return Array.isArray(
+    NOGAPLANNER_TEXT?.selectsOptions?.common?.academicYearOptions,
+  ) &&
+    NOGAPLANNER_TEXT.selectsOptions.common.academicYearOptions.includes(
+      normalizedValue,
+    )
+    ? normalizedValue
+    : "";
 };
+// Normalize academic-term text for display.
 export const formatAcademicTermDisplay = (value) => {
   const normalizedValue = String(value || "").trim();
-  const arabicTerms = { First: "الأول", Second: "الثاني", Third: "الثالث" };
+  const arabicTerms = { First: "First", Second: "Second", Third: "Third" };
 
   return arabicTerms[normalizedValue] || normalizedValue;
 };
+// Build the combined academic-year display used by course cards and tables.
 export const formatAcademicYearAndTerm = (course) => {
   const programYear = normalizeProgramYearValue(
     course?.programYear ||
@@ -1121,7 +1240,7 @@ export const formatAcademicYearAndTerm = (course) => {
     course?.course_term || course?.term || course?.time?.term || "",
   ).trim();
   const displayedTerm = formatAcademicTermDisplay(term);
-  const displayedProgramYear = programYear ? `السنة ${programYear}` : "";
+  const displayedProgramYear = programYear ? `Year ${programYear}` : "";
   const displayedAcademicYear =
     academicYear && displayedTerm && displayedTerm !== "-"
       ? `${academicYear} (${displayedTerm})`
@@ -1134,495 +1253,681 @@ export const formatAcademicYearAndTerm = (course) => {
 
   return displayedProgramYear || displayedAcademicYear || "-";
 };
-export const TERM_OPTIONS = ["الأول", "الثاني", "الثالث"];
 
-export const WEEKDAY_OPTIONS = [
-  "الأحد",
-  "الاثنين",
-  "الثلاثاء",
-  "الأربعاء",
-  "الخميس",
-  "الجمعة",
-  "السبت",
+// Keep all planner field labels in `NOGAPLANNER_TEXT` so text has one owner.
+NOGAPLANNER_TEXT.registryLabels = {
+  savedCourse: {
+    course_name: "Course Name",
+    course_code: "Course Code",
+    course_status: "Course Status",
+    course_totalWeight: "Course Weight",
+    course_classSelection: "Component Type",
+    component_status: "Component Status",
+    normativeCourseYearInterval: "Academic Year",
+    normativeCourseTerm: "Term",
+    actualCourseYearInterval: "Actual Academic Year",
+    actualCourseTerm: "Actual Term",
+    course_daySelection: "Day",
+    course_timeSelection: "Time",
+    locationBuilding: "Building",
+    locationRoom: "Room",
+    course_grade: "Component Weight",
+  },
+  exam: {
+    type: "Exam Type",
+    exam_date: "Exam Date",
+    exam_time: "Exam Time",
+    locationBuilding: "Building",
+    locationRoom: "Room",
+    volumeValue: "Volume Value",
+    volumeUnit: "Volume Unit",
+    volumeScope: "Volume Scope",
+    volumeNote: "Volume Note",
+    weightValue: "Weight Value",
+    weightUnit: "Weight Unit",
+    passGradeValue: "Pass Value",
+    passGradeMin: "Minimum Pass",
+    passGradeMax: "Maximum Pass",
+    passGradeUnit: "Pass Unit",
+    gradeValue: "Grade Value",
+    gradeMin: "Minimum Grade",
+    gradeMax: "Maximum Grade",
+    gradeUnit: "Grade Unit",
+  },
+  inlineLecture: {
+    lecture_course: NOGAPLANNER_TEXT.lectures.courseName,
+    lecture_component: NOGAPLANNER_TEXT.lectures.componentType,
+    lecture_name: "Lecture Name",
+    lecture_instructors: "Instructors",
+    lecture_writers: "Writers",
+    lecture_date: "Lecture Date",
+  },
+  shared: {
+    locationBuilding: "Building",
+    locationRoom: "Room",
+  },
+  studyPlanAid: {
+    defaultDailyHours: "Default Daily Hours",
+    defaultDifficulty: "Default Difficulty",
+    defaultMastery: "Default Mastery",
+    defaultPriority: "Default Priority",
+    targetHours: "Target Hours",
+    difficulty: "Difficulty",
+    mastery: "Mastery",
+    priority: "Priority",
+    dailyHoursCap: "Daily Cap",
+    lectureDailyHoursCap: "Lecture Daily Cap",
+    note: "Note",
+    lectureTargetHours: "Lecture Hours",
+    lectureDifficulty: "Lecture Difficulty",
+    lectureMastery: "Lecture Mastery",
+    lecturePriority: "Lecture Priority",
+    lectureNote: "Lecture Note",
+  },
+};
+NOGAPLANNER_TEXT.savedCourses.fields =
+  NOGAPLANNER_TEXT.registryLabels.savedCourse;
+
+// `PLANNER_FORM_FIELD_REGISTRY` is the single source of truth for planner form fields.
+export const PLANNER_FORM_FIELD_REGISTRY = [
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_defaultDailyHours",
+    form: ["studyPlanAid"],
+    field: ["defaultDailyHours"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.defaultDailyHours,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_defaultDifficulty",
+    form: ["studyPlanAid"],
+    field: ["defaultDifficulty"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.defaultDifficulty,
+    options: [],
+    settingsKey: "planDifficultyOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_defaultMastery",
+    form: ["studyPlanAid"],
+    field: ["defaultMastery"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.defaultMastery,
+    options: [],
+    settingsKey: "planMasteryOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_defaultPriority",
+    form: ["studyPlanAid"],
+    field: ["defaultPriority"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.defaultPriority,
+    options: [],
+    settingsKey: "planPriorityOptions",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_targetHours",
+    form: ["studyPlanAid"],
+    field: ["targetHours"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.targetHours,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_difficulty",
+    form: ["studyPlanAid"],
+    field: ["difficulty"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.difficulty,
+    options: [],
+    settingsKey: "planDifficultyOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_mastery",
+    form: ["studyPlanAid"],
+    field: ["mastery"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.mastery,
+    options: [],
+    settingsKey: "planMasteryOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_priority",
+    form: ["studyPlanAid"],
+    field: ["priority"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.priority,
+    options: [],
+    settingsKey: "planPriorityOptions",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_dailyHoursCap",
+    form: ["studyPlanAid"],
+    field: ["dailyHoursCap"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.dailyHoursCap,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_note",
+    form: ["studyPlanAid"],
+    field: ["note"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.note,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_lectureTargetHours",
+    form: ["studyPlanAid"],
+    field: ["lectureTargetHours"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.lectureTargetHours,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_lectureDifficulty",
+    form: ["studyPlanAid"],
+    field: ["lectureDifficulty"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.lectureDifficulty,
+    options: [],
+    settingsKey: "planDifficultyOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_lectureMastery",
+    form: ["studyPlanAid"],
+    field: ["lectureMastery"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.lectureMastery,
+    options: [],
+    settingsKey: "planMasteryOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_planSelect_lecturePriority",
+    form: ["studyPlanAid"],
+    field: ["lecturePriority"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.lecturePriority,
+    options: [],
+    settingsKey: "planPriorityOptions",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_planInput_lectureNote",
+    form: ["studyPlanAid"],
+    field: ["lectureNote"],
+    label: NOGAPLANNER_TEXT.registryLabels.studyPlanAid.lectureNote,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_coursesInput_name",
+    form: ["savedCourse"],
+    field: ["course_name"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_name,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_coursesInput_code",
+    form: ["savedCourse"],
+    field: ["course_code"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_code,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_coursesInput_totalWeight",
+    form: ["savedCourse"],
+    field: ["course_totalWeight"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_totalWeight,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_coursesSelect_component",
+    form: ["savedCourse"],
+    field: ["course_classSelection"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_classSelection,
+    options: [],
+    settingsKey: "componentClassOptions",
+    read_only: true,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_coursesSelect_courseYearInterval",
+    form: ["savedCourse"],
+    field: ["normativeCourseYearInterval"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.normativeCourseYearInterval,
+    options: [],
+    settingsKey: "academicYearOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_coursesSelect_courseTerm",
+    form: ["savedCourse"],
+    field: ["normativeCourseTerm"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.normativeCourseTerm,
+    options: [],
+    settingsKey: "termOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_coursesSelect_day",
+    form: ["savedCourse"],
+    field: ["course_daySelection"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_daySelection,
+    options: [],
+    settingsKey: "weekdayOptions",
+    read_only: true,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_coursesSelect_time",
+    form: ["savedCourse"],
+    field: ["course_timeSelection"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_timeSelection,
+    options: [],
+    settingsKey: "hourOptions",
+    read_only: true,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_coursesInput_grade",
+    form: ["savedCourse"],
+    field: ["course_grade"],
+    label: NOGAPLANNER_TEXT.registryLabels.savedCourse.course_grade,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_type",
+    form: ["exam"],
+    field: ["type"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.type,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_date",
+    form: ["exam"],
+    field: ["exam_date"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.exam_date,
+    value: "",
+    inputType: "date",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_time",
+    form: ["exam"],
+    field: ["exam_time"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.exam_time,
+    value: "",
+    inputType: "time",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_volumeValue",
+    form: ["exam"],
+    field: ["volumeValue"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.volumeValue,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_volumeScope",
+    form: ["exam"],
+    field: ["volumeScope"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.volumeScope,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_volumeNote",
+    form: ["exam"],
+    field: ["volumeNote"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.volumeNote,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_weightValue",
+    form: ["exam"],
+    field: ["weightValue"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.weightValue,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_passGradeValue",
+    form: ["exam"],
+    field: ["passGradeValue"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.passGradeValue,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_passGradeMin",
+    form: ["exam"],
+    field: ["passGradeMin"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.passGradeMin,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_passGradeMax",
+    form: ["exam"],
+    field: ["passGradeMax"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.passGradeMax,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_gradeValue",
+    form: ["exam"],
+    field: ["gradeValue"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.gradeValue,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_gradeMin",
+    form: ["exam"],
+    field: ["gradeMin"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.gradeMin,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_examsInput_gradeMax",
+    form: ["exam"],
+    field: ["gradeMax"],
+    label: NOGAPLANNER_TEXT.registryLabels.exam.gradeMax,
+    value: "",
+    inputType: "number",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_lecturesSelect_course",
+    form: ["inlineLecture"],
+    field: ["lecture_course"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_course,
+    options: NOGAPLANNER_TEXT.selectsOptions.inlineLecture.lecture_course,
+    read_only: true,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_lecturesSelect_component",
+    form: ["inlineLecture"],
+    field: ["lecture_component"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_component,
+    options: [],
+    settingsKey: "componentClassOptions",
+    read_only: true,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_lecturesInput_name",
+    form: ["inlineLecture"],
+    field: ["lecture_name"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_name,
+    value: "",
+    inputType: "text",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_lecturesSelect_instructors",
+    form: ["inlineLecture"],
+    field: ["lecture_instructors"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_instructors,
+    options: [],
+    settingsKey: "lectureInstructorOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_lecturesSelect_writers",
+    form: ["inlineLecture"],
+    field: ["lecture_writers"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_writers,
+    options: [],
+    settingsKey: "lectureWriterOptions",
+    read_only: false,
+  },
+  {
+    element: "input",
+    id: "nogaPlanner_lecturesInput_date",
+    form: ["inlineLecture"],
+    field: ["lecture_date"],
+    label: NOGAPLANNER_TEXT.registryLabels.inlineLecture.lecture_date,
+    value: "",
+    inputType: "date",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_sharedSelect_locationBuilding",
+    form: ["shared", "savedCourse", "exam"],
+    field: ["locationBuilding"],
+    label: NOGAPLANNER_TEXT.registryLabels.shared.locationBuilding,
+    options: [],
+    settingsKey: "locationBuildingOptions",
+    read_only: false,
+  },
+  {
+    element: "select",
+    id: "nogaPlanner_sharedSelect_locationRoom",
+    form: ["shared", "savedCourse", "exam"],
+    field: ["locationRoom"],
+    label: NOGAPLANNER_TEXT.registryLabels.shared.locationRoom,
+    options: [],
+    settingsKey: "locationRoomOptions",
+    read_only: false,
+  },
 ];
 
-const buildHalfHour12hOptions = () => {
-  const options = [];
-  for (let hour = 0; hour < 24; hour += 1) {
-    for (let minute = 0; minute <= 30; minute += 30) {
-      const period = hour >= 12 ? "PM" : "AM";
-      const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-      options.push(`${hour12}:${String(minute).padStart(2, "0")} ${period}`);
-    }
+// Keep one canonical form name per planner section and avoid alias indirection.
+const getNormalizedPlannerRegistryFormKey = (formKey) =>
+  String(formKey || "").trim();
+
+// Resolve the canonical field array to the concrete field name for the requested form.
+const getPlannerRegistryFieldName = (fieldConfig, formKey) => {
+  if (Array.isArray(fieldConfig?.field)) {
+    return String(fieldConfig.field[0] || "").trim();
   }
-  return options;
+  if (fieldConfig?.field && typeof fieldConfig.field === "object") {
+    const mappedField =
+      fieldConfig.field?.[formKey] ??
+      fieldConfig.field?.shared ??
+      fieldConfig.field?.savedCourse ??
+      [];
+    if (Array.isArray(mappedField)) {
+      return String(mappedField[0] || "").trim();
+    }
+    return String(
+      mappedField ??
+        "",
+    ).trim();
+  }
+  return String(fieldConfig?.field || "").trim();
 };
 
-export const HOUR_OPTIONS = buildHalfHour12hOptions();
-
-export const SAVED_COMPONENT_CLASS_OPTIONS = [
-  "نظري",
-  "عملي (مخبر)",
-  "عملي (مشفى)",
-  "عملي (صيدلية)",
-];
-
-export const PLANNER_COURSE_UI = {
-  editor: {
-    courseCardTitle: "بيانات المقرر",
-    componentCardTitle: "بيانات المكوّن",
-    newComponent: "مكوّن جديد",
-    currentComponent: "المكوّن الحالي",
-    scheduleGroupTitle: "جدول الدوام",
-    locationGroupTitle: "الموقع",
-    pendingStatus: "يحدّد لاحقاً",
-  },
-  fields: {
-    course_name: "اسم المقرر",
-    course_code: "رمز المقرر",
-    course_status: "حالة المقرر",
-    course_totalWeight: "وزن المقرر",
-    course_classSelection: "نوع المكوّن",
-    component_status: "حالة المكوّن",
-    normativeCourseYearInterval: "الفترة السنوية المفترضة",
-    normativeCourseTerm: "الفصل المفترض",
-    actualCourseYearInterval: "الفترة السنوية الفعلية",
-    actualCourseTerm: "الفصل الفعلي",
-    course_daySelection: "اليوم",
-    course_timeSelection: "الساعة",
-    course_locationBuilding: "المبنى",
-    course_locationRoom: "القاعة",
-    course_grade: "وزن المكوّن",
-  },
-  table: {
-    courseGroup: "المقرر",
-    componentsGroup: "مكوّنات المقرر",
-    timing: "التوقيت",
-    schedule: "جدول الدوام",
-    location: "الموقع",
-    normative: "المفترض",
-    actual: "الفعلي",
-    academicYear: "الفترة السنوية",
-    term: "الفصل",
-    empty: "لا توجد مقررات محفوظة",
-  },
-};
-
-export const PLANNER_FORM_FIELD_REGISTRY = {
-  savedCourse: [
-    {
-      key: "savedCourse.course_name",
-      formKey: "savedCourse",
-      fieldName: "course_name",
-      label: PLANNER_COURSE_UI.fields.course_name,
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "savedCourse.course_code",
-      formKey: "savedCourse",
-      fieldName: "course_code",
-      label: PLANNER_COURSE_UI.fields.course_code,
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "savedCourse.course_totalWeight",
-      formKey: "savedCourse",
-      fieldName: "course_totalWeight",
-      label: PLANNER_COURSE_UI.fields.course_totalWeight,
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "savedCourse.course_classSelection",
-      formKey: "savedCourse",
-      fieldName: "course_classSelection",
-      label: PLANNER_COURSE_UI.fields.course_classSelection,
-      control: "select",
-      optionsKey: "componentClassOptions",
-    },
-    {
-      key: "savedCourse.actualCourseYearInterval",
-      formKey: "savedCourse",
-      fieldName: "actualCourseYearInterval",
-      label: PLANNER_COURSE_UI.fields.actualCourseYearInterval,
-      control: "select",
-      optionsKey: "academicYearOptions",
-    },
-    {
-      key: "savedCourse.course_daySelection",
-      formKey: "savedCourse",
-      fieldName: "course_daySelection",
-      label: PLANNER_COURSE_UI.fields.course_daySelection,
-      control: "select",
-      optionsKey: "weekdayOptions",
-    },
-    {
-      key: "savedCourse.course_timeSelection",
-      formKey: "savedCourse",
-      fieldName: "course_timeSelection",
-      label: PLANNER_COURSE_UI.fields.course_timeSelection,
-      control: "select",
-      optionsKey: "hourOptions",
-    },
-    {
-      key: "savedCourse.course_locationBuilding",
-      formKey: "savedCourse",
-      fieldName: "course_locationBuilding",
-      label: PLANNER_COURSE_UI.fields.course_locationBuilding,
-      control: "select",
-      optionsKey: "locationBuildingOptions",
-    },
-    {
-      key: "savedCourse.course_locationRoom",
-      formKey: "savedCourse",
-      fieldName: "course_locationRoom",
-      label: PLANNER_COURSE_UI.fields.course_locationRoom,
-      control: "select",
-      optionsKey: "locationRoomOptions",
-    },
-    {
-      key: "savedCourse.course_grade",
-      formKey: "savedCourse",
-      fieldName: "course_grade",
-      label: PLANNER_COURSE_UI.fields.course_grade,
-      control: "input",
-      inputType: "number",
-    },
-  ],
-  exam: [
-    {
-      key: "exam.type",
-      formKey: "exam",
-      fieldName: "type",
-      label:
-        "\u0646\u0648\u0639 \u0627\u0644\u0627\u0645\u062a\u062d\u0627\u0646",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "exam.normativeCourseYearNum",
-      formKey: "exam",
-      fieldName: "normativeCourseYearNum",
-      label:
-        "\u0631\u0642\u0645 \u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0645\u0641\u062a\u0631\u0636\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.normativeCourseTerm",
-      formKey: "exam",
-      fieldName: "normativeCourseTerm",
-      label:
-        "\u0627\u0644\u0641\u0635\u0644 \u0627\u0644\u0645\u0641\u062a\u0631\u0636",
-      control: "select",
-      optionsKey: "termOptions",
-    },
-    {
-      key: "exam.actualCourseYearNum",
-      formKey: "exam",
-      fieldName: "actualCourseYearNum",
-      label:
-        "\u0631\u0642\u0645 \u0627\u0644\u0633\u0646\u0629 \u0627\u0644\u0641\u0639\u0644\u064a\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.actualCourseYearInterval",
-      formKey: "exam",
-      fieldName: "actualCourseYearInterval",
-      label:
-        "\u0627\u0644\u0641\u062a\u0631\u0629 \u0627\u0644\u0633\u0646\u0648\u064a\u0629 \u0627\u0644\u0641\u0639\u0644\u064a\u0629",
-      control: "select",
-      optionsKey: "academicYearOptions",
-    },
-    {
-      key: "exam.actualCourseTerm",
-      formKey: "exam",
-      fieldName: "actualCourseTerm",
-      label:
-        "\u0627\u0644\u0641\u0635\u0644 \u0627\u0644\u0641\u0639\u0644\u064a",
-      control: "select",
-      optionsKey: "termOptions",
-    },
-    {
-      key: "exam.locationBuilding",
-      formKey: "exam",
-      fieldName: "locationBuilding",
-      label: "\u0627\u0644\u0645\u0628\u0646\u0649",
-      control: "select",
-      optionsKey: "locationBuildingOptions",
-    },
-    {
-      key: "exam.locationRoom",
-      formKey: "exam",
-      fieldName: "locationRoom",
-      label: "\u0627\u0644\u0642\u0627\u0639\u0629",
-      control: "select",
-      optionsKey: "locationRoomOptions",
-    },
-    {
-      key: "exam.volumeValue",
-      formKey: "exam",
-      fieldName: "volumeValue",
-      label: "\u0642\u064a\u0645\u0629 \u0627\u0644\u062d\u062c\u0645",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.volumeUnit",
-      formKey: "exam",
-      fieldName: "volumeUnit",
-      label: "\u0648\u062d\u062f\u0629 \u0627\u0644\u062d\u062c\u0645",
-      control: "select",
-      options: EXAM_VOLUME_UNIT_OPTIONS,
-    },
-    {
-      key: "exam.volumeScope",
-      formKey: "exam",
-      fieldName: "volumeScope",
-      label: "\u0646\u0637\u0627\u0642 \u0627\u0644\u062d\u062c\u0645",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "exam.volumeNote",
-      formKey: "exam",
-      fieldName: "volumeNote",
-      label:
-        "\u0645\u0644\u0627\u062d\u0638\u0629 \u0627\u0644\u062d\u062c\u0645",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "exam.weightValue",
-      formKey: "exam",
-      fieldName: "weightValue",
-      label: "\u0642\u064a\u0645\u0629 \u0627\u0644\u0648\u0632\u0646",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.weightUnit",
-      formKey: "exam",
-      fieldName: "weightUnit",
-      label: "\u0648\u062d\u062f\u0629 \u0627\u0644\u0648\u0632\u0646",
-      control: "select",
-      options: EXAM_WEIGHT_UNIT_OPTIONS,
-    },
-    {
-      key: "exam.passGradeValue",
-      formKey: "exam",
-      fieldName: "passGradeValue",
-      label: "\u0642\u064a\u0645\u0629 \u0627\u0644\u0646\u062c\u0627\u062d",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.passGradeMin",
-      formKey: "exam",
-      fieldName: "passGradeMin",
-      label:
-        "\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u062f\u0646\u0649 \u0644\u0644\u0646\u062c\u0627\u062d",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.passGradeMax",
-      formKey: "exam",
-      fieldName: "passGradeMax",
-      label:
-        "\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0639\u0644\u0649 \u0644\u0644\u0646\u062c\u0627\u062d",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.passGradeUnit",
-      formKey: "exam",
-      fieldName: "passGradeUnit",
-      label: "\u0648\u062d\u062f\u0629 \u0627\u0644\u0646\u062c\u0627\u062d",
-      control: "select",
-      options: EXAM_GRADE_UNIT_OPTIONS,
-    },
-    {
-      key: "exam.gradeValue",
-      formKey: "exam",
-      fieldName: "gradeValue",
-      label:
-        "\u0642\u064a\u0645\u0629 \u0627\u0644\u0639\u0644\u0627\u0645\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.gradeMin",
-      formKey: "exam",
-      fieldName: "gradeMin",
-      label:
-        "\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u062f\u0646\u0649 \u0644\u0644\u0639\u0644\u0627\u0645\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.gradeMax",
-      formKey: "exam",
-      fieldName: "gradeMax",
-      label:
-        "\u0627\u0644\u062d\u062f \u0627\u0644\u0623\u0639\u0644\u0649 \u0644\u0644\u0639\u0644\u0627\u0645\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.gradeUnit",
-      formKey: "exam",
-      fieldName: "gradeUnit",
-      label:
-        "\u0648\u062d\u062f\u0629 \u0627\u0644\u0639\u0644\u0627\u0645\u0629",
-      control: "select",
-      options: EXAM_GRADE_UNIT_OPTIONS,
-    },
-    {
-      key: "exam.recommendationTiming",
-      formKey: "exam",
-      fieldName: "recommendationTiming",
-      label:
-        "\u062a\u0648\u0642\u064a\u062a \u0627\u0644\u062a\u0648\u0635\u064a\u0629",
-      control: "select",
-      options: EXAM_RECOMMENDATION_TIMING_OPTIONS,
-    },
-    {
-      key: "exam.recommendationIntensity",
-      formKey: "exam",
-      fieldName: "recommendationIntensity",
-      label: "\u0634\u062f\u0629 \u0627\u0644\u062a\u0648\u0635\u064a\u0629",
-      control: "select",
-      options: EXAM_RECOMMENDATION_INTENSITY_OPTIONS,
-    },
-    {
-      key: "exam.recommendationSuggestedHours",
-      formKey: "exam",
-      fieldName: "recommendationSuggestedHours",
-      label:
-        "\u0627\u0644\u0633\u0627\u0639\u0627\u062a \u0627\u0644\u0645\u0642\u062a\u0631\u062d\u0629",
-      control: "input",
-      inputType: "number",
-    },
-    {
-      key: "exam.recommendationReason",
-      formKey: "exam",
-      fieldName: "recommendationReason",
-      label: "\u0633\u0628\u0628 \u0627\u0644\u062a\u0648\u0635\u064a\u0629",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "exam.recommendationNote",
-      formKey: "exam",
-      fieldName: "recommendationNote",
-      label:
-        "\u0645\u0644\u0627\u062d\u0638\u0629 \u0627\u0644\u062a\u0648\u0635\u064a\u0629",
-      control: "input",
-      inputType: "text",
-    },
-  ],
-  inlineLecture: [
-    {
-      key: "inlineLecture.lecture_course",
-      formKey: "inlineLecture",
-      fieldName: "lecture_course",
-      label: NOGAPLANNER_TEXT.lectures.courseName,
-      control: "select",
-      options: [],
-    },
-    {
-      key: "inlineLecture.lecture_component",
-      formKey: "inlineLecture",
-      fieldName: "lecture_component",
-      label: NOGAPLANNER_TEXT.lectures.componentType,
-      control: "select",
-      optionsKey: "componentClassOptions",
-    },
-    {
-      key: "inlineLecture.lecture_name",
-      formKey: "inlineLecture",
-      fieldName: "lecture_name",
-      label:
-        "\u0627\u0633\u0645 \u0627\u0644\u0645\u062d\u0627\u0636\u0631\u0629",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "inlineLecture.lecture_instructors",
-      formKey: "inlineLecture",
-      fieldName: "lecture_instructors",
-      label: "\u0627\u0644\u0645\u062f\u0631\u0651\u0633\u0648\u0646",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "inlineLecture.lecture_writers",
-      formKey: "inlineLecture",
-      fieldName: "lecture_writers",
-      label: "\u0627\u0644\u0643\u062a\u0651\u0627\u0628",
-      control: "input",
-      inputType: "text",
-    },
-    {
-      key: "inlineLecture.lecture_date",
-      formKey: "inlineLecture",
-      fieldName: "lecture_date",
-      label:
-        "\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u062d\u0627\u0636\u0631\u0629",
-      control: "input",
-      inputType: "date",
-    },
-  ],
-};
-
-export const getPlannerDefaultFieldsForForm = (formKey) => {
-  const safeFormKey = String(formKey || "").trim();
-  return Array.isArray(PLANNER_FORM_FIELD_REGISTRY?.[safeFormKey])
-    ? PLANNER_FORM_FIELD_REGISTRY[safeFormKey].map((fieldConfig) => ({
-        ...fieldConfig,
-      }))
+// Fill select entries from the registry first, then fall back to text-owned option lists.
+const hydratePlannerRegistryOptions = (fieldConfig) => {
+  const explicitOptions = Array.isArray(fieldConfig?.options)
+    ? fieldConfig.options
+    : [];
+  const selectSettingsKey = String(fieldConfig?.settingsKey || "").trim();
+  if (explicitOptions.length > 0) {
+    return explicitOptions;
+  }
+  if (!selectSettingsKey) {
+    return [];
+  }
+  return Array.isArray(
+    NOGAPLANNER_TEXT?.selectsOptions?.common?.[selectSettingsKey],
+  )
+    ? NOGAPLANNER_TEXT.selectsOptions.common[selectSettingsKey]
     : [];
 };
 
-export const PLANNER_DEFAULT_FIELD_REGISTRY = Object.values(
-  PLANNER_FORM_FIELD_REGISTRY,
-).flatMap((entries) =>
-  Array.isArray(entries)
-    ? entries.map((fieldConfig) => ({ ...fieldConfig }))
-    : [],
-);
-
-export const NOGAPLANNER_TAB_SELECT_FIELDS = {
-  courses: getPlannerDefaultFieldsForForm("savedCourse").filter(
-    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
-  ),
-  lectures: getPlannerDefaultFieldsForForm("inlineLecture").filter(
-    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
-  ),
-  exams: getPlannerDefaultFieldsForForm("exam").filter(
-    (fieldConfig) => String(fieldConfig?.control || "").trim() === "select",
-  ),
-  settings: [],
+// Expand a compact registry entry into the legacy runtime shape expected by existing components.
+const normalizePlannerRegistryEntry = (
+  fieldConfig = {},
+  requestedFormKey = "",
+) => {
+  const formKey = getNormalizedPlannerRegistryFormKey(requestedFormKey);
+  const fieldName = getPlannerRegistryFieldName(fieldConfig, formKey);
+  const key = fieldName ? `${formKey}.${fieldName}` : "";
+  const element = String(fieldConfig?.element || "").trim() || "input";
+  const resolvedReadOnly = Boolean(fieldConfig?.read_only);
+  return {
+    ...fieldConfig,
+    key,
+    formKey,
+    fieldName,
+    control: element,
+    element,
+    ID: String(fieldConfig?.id || "").trim(),
+    id: String(fieldConfig?.id || "").trim(),
+    selectID: String(fieldConfig?.settingsKey || fieldConfig?.id || key).trim(),
+    selectSettingsKey: String(fieldConfig?.settingsKey || "").trim(),
+    inputType: String(fieldConfig?.inputType || "text").trim(),
+    options: hydratePlannerRegistryOptions(fieldConfig),
+    value: String(fieldConfig?.value || "").trim(),
+    read_only: resolvedReadOnly,
+    readonly: resolvedReadOnly,
+  };
 };
 
-export const PLANNER_SELECT_SETTINGS_STORAGE_KEY =
-  "nogaPlanner.selectSettings.v1";
+// Derive the field list for one planner form directly from the central registry.
+export const getPlannerDefaultFieldsForForm = (formKey) => {
+  const normalizedFormKey = getNormalizedPlannerRegistryFormKey(formKey);
+  return PLANNER_FORM_FIELD_REGISTRY.filter((fieldConfig) =>
+    Array.isArray(fieldConfig?.form)
+      ? fieldConfig.form.includes(normalizedFormKey)
+      : false,
+  ).map((fieldConfig) =>
+    normalizePlannerRegistryEntry(fieldConfig, normalizedFormKey),
+  );
+};
 
-export const buildDefaultPlannerWeekdayOptions = () => [...WEEKDAY_OPTIONS];
+// Resolve one field config by key without storing a second registry copy.
+export const getPlannerFieldConfigByKey = (fieldKey) => {
+  const normalizedFieldKey = String(fieldKey || "").trim();
+  if (!normalizedFieldKey) {
+    return null;
+  }
+  const [rawFormKey] = normalizedFieldKey.split(".");
+  const normalizedFormKey = getNormalizedPlannerRegistryFormKey(rawFormKey);
+  return (
+    getPlannerDefaultFieldsForForm(normalizedFormKey).find(
+      (fieldConfig) =>
+        String(fieldConfig?.key || "").trim() === normalizedFieldKey,
+    ) || null
+  );
+};
 
+// Read default select options for a settings key from the central field registry.
+export const getPlannerRegistrySelectOptionsBySettingsKey = (settingsKey) => {
+  const normalizedSettingsKey = String(settingsKey || "").trim();
+  if (!normalizedSettingsKey) {
+    return [];
+  }
+  const matchedEntry = PLANNER_FORM_FIELD_REGISTRY.find(
+    (fieldConfig) =>
+      String(fieldConfig?.settingsKey || "").trim() === normalizedSettingsKey,
+  );
+  return matchedEntry ? hydratePlannerRegistryOptions(matchedEntry) : [];
+};
+
+// Derive tab-select groupings on demand instead of storing another field object.
+const PLANNER_SELECT_SETTINGS_STORAGE_KEY = "nogaPlanner.selectSettings.v1";
+
+// Build defaults from the registry so settings and forms always start from the same option source.
+export const buildDefaultPlannerWeekdayOptions = () => [
+  ...getPlannerRegistrySelectOptionsBySettingsKey("weekdayOptions"),
+];
+
+// Build the default planner settings object from registry-backed option sources.
 export const buildDefaultPlannerSelectSettings = () => ({
-  componentClassOptions: [...SAVED_COMPONENT_CLASS_OPTIONS],
+  componentClassOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("componentClassOptions"),
+  ],
   weekdayOptions: buildDefaultPlannerWeekdayOptions(),
-  hourOptions: [...HOUR_OPTIONS],
-  termOptions: [...TERM_OPTIONS],
-  academicYearOptions: [...ACADEMIC_YEAR_OPTIONS],
-  locationBuildingOptions: [],
-  locationRoomOptions: [],
+  hourOptions: [...getPlannerRegistrySelectOptionsBySettingsKey("hourOptions")],
+  termOptions: [...getPlannerRegistrySelectOptionsBySettingsKey("termOptions")],
+  academicYearOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("academicYearOptions"),
+  ],
+  locationBuildingOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("locationBuildingOptions"),
+  ],
+  locationRoomOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("locationRoomOptions"),
+  ],
   locationRoomOptionsByBuilding: [],
+  lectureInstructorOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("lectureInstructorOptions"),
+  ],
+  lectureWriterOptions: [
+    ...getPlannerRegistrySelectOptionsBySettingsKey("lectureWriterOptions"),
+  ],
   logoMotionEnabled: true,
   voiceControlEnabled: false,
   voiceDictationEnabled: false,
@@ -1640,6 +1945,410 @@ export const buildDefaultPlannerSelectSettings = () => ({
   voiceCommands: [],
   voiceDictationNormalizations: [],
 });
+
+// Build the empty persisted planning-input payload for the main planner tab.
+export const getDefaultStudyPlanAid = () => ({
+  enabled: true,
+  viewMode: "timeline",
+  timelineUnit: "day",
+  defaults: {
+    defaultDailyHours: 0,
+    defaultDifficulty: "",
+    defaultMastery: "",
+    defaultPriority: "",
+  },
+  coursePlans: [],
+  dayPlans: [],
+  note: "",
+});
+
+const normalizeStudyPlanAidNumber = (value, fallbackValue = 0) => {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) && parsedValue >= 0
+    ? parsedValue
+    : fallbackValue;
+};
+
+const normalizeStudyPlanAidId = (value = "") => String(value || "").trim();
+
+// Normalize the persisted planning-input payload used by the new main tab.
+export const normalizeStudyPlanAid = (value = {}) => {
+  const nextValue = value && typeof value === "object" ? value : {};
+  const fallback = getDefaultStudyPlanAid();
+
+  return {
+    enabled:
+      typeof nextValue?.enabled === "boolean"
+        ? nextValue.enabled
+        : fallback.enabled,
+    viewMode: String(nextValue?.viewMode || fallback.viewMode).trim() || fallback.viewMode,
+    timelineUnit:
+      String(nextValue?.timelineUnit || fallback.timelineUnit).trim() ||
+      fallback.timelineUnit,
+    defaults: {
+      defaultDailyHours: normalizeStudyPlanAidNumber(
+        nextValue?.defaults?.defaultDailyHours,
+        fallback.defaults.defaultDailyHours,
+      ),
+      defaultDifficulty: String(
+        nextValue?.defaults?.defaultDifficulty ||
+          fallback.defaults.defaultDifficulty,
+      ).trim(),
+      defaultMastery: String(
+        nextValue?.defaults?.defaultMastery || fallback.defaults.defaultMastery,
+      ).trim(),
+      defaultPriority: String(
+        nextValue?.defaults?.defaultPriority ||
+          fallback.defaults.defaultPriority,
+      ).trim(),
+    },
+    coursePlans: (Array.isArray(nextValue?.coursePlans) ? nextValue.coursePlans : [])
+      .map((coursePlanEntry) => {
+        const courseId = normalizeStudyPlanAidId(coursePlanEntry?.courseId);
+        if (!courseId) {
+          return null;
+        }
+        return {
+          _id: coursePlanEntry?._id || null,
+          courseId,
+          note: String(coursePlanEntry?.note || "").trim(),
+          componentPlans: (
+            Array.isArray(coursePlanEntry?.componentPlans)
+              ? coursePlanEntry.componentPlans
+              : []
+          )
+            .map((componentPlanEntry) => {
+              const componentId = normalizeStudyPlanAidId(
+                componentPlanEntry?.componentId,
+              );
+              if (!componentId) {
+                return null;
+              }
+              return {
+                _id: componentPlanEntry?._id || null,
+                componentId,
+                targetHours: normalizeStudyPlanAidNumber(
+                  componentPlanEntry?.targetHours,
+                  0,
+                ),
+                difficulty: String(componentPlanEntry?.difficulty || "").trim(),
+                mastery: String(componentPlanEntry?.mastery || "").trim(),
+                priority: String(componentPlanEntry?.priority || "").trim(),
+                dailyHoursCap: normalizeStudyPlanAidNumber(
+                  componentPlanEntry?.dailyHoursCap,
+                  0,
+                ),
+                note: String(componentPlanEntry?.note || "").trim(),
+                lectureOverrides: (
+                  Array.isArray(componentPlanEntry?.lectureOverrides)
+                    ? componentPlanEntry.lectureOverrides
+                    : []
+                )
+                  .map((lectureOverrideEntry) => {
+                    const lectureId = normalizeStudyPlanAidId(
+                      lectureOverrideEntry?.lectureId,
+                    );
+                    if (!lectureId) {
+                      return null;
+                    }
+                    return {
+                      _id: lectureOverrideEntry?._id || null,
+                      lectureId,
+                      targetHours: normalizeStudyPlanAidNumber(
+                        lectureOverrideEntry?.targetHours,
+                        0,
+                      ),
+                      difficulty: String(
+                        lectureOverrideEntry?.difficulty || "",
+                      ).trim(),
+                      mastery: String(lectureOverrideEntry?.mastery || "").trim(),
+                      priority: String(
+                        lectureOverrideEntry?.priority || "",
+                      ).trim(),
+                      dailyHoursCap: normalizeStudyPlanAidNumber(
+                        lectureOverrideEntry?.dailyHoursCap,
+                        0,
+                      ),
+                      note: String(lectureOverrideEntry?.note || "").trim(),
+                    };
+                  })
+                  .filter(Boolean),
+              };
+            })
+            .filter(Boolean),
+        };
+      })
+      .filter(Boolean),
+    dayPlans: (Array.isArray(nextValue?.dayPlans) ? nextValue.dayPlans : [])
+      .map((dayPlanEntry) => {
+        const periodType = String(dayPlanEntry?.periodType || "").trim();
+        const groupKey = String(dayPlanEntry?.groupKey || "").trim();
+        const dayNumber = normalizeStudyPlanAidNumber(dayPlanEntry?.dayNumber, 0);
+        if (!periodType || !groupKey || dayNumber <= 0) {
+          return null;
+        }
+        return {
+          _id: dayPlanEntry?._id || null,
+          periodType,
+          groupKey,
+          label: String(dayPlanEntry?.label || "").trim(),
+          dayNumber,
+          dailyHoursCap: normalizeStudyPlanAidNumber(
+            dayPlanEntry?.dailyHoursCap,
+            0,
+          ),
+          lectureIds: (Array.isArray(dayPlanEntry?.lectureIds)
+            ? dayPlanEntry.lectureIds
+            : []
+          )
+            .map((lectureId) => normalizeStudyPlanAidId(lectureId))
+            .filter(Boolean),
+        };
+      })
+      .filter(Boolean),
+    note: String(nextValue?.note || "").trim(),
+  };
+};
+
+const getPlannerTermExamWindows = (profile = {}) =>
+  Array.isArray(profile?.studying?.time?.current?.programTerm?.examDate)
+    ? profile.studying.time.current.programTerm.examDate
+    : [];
+
+const parsePlannerDateValue = (value) => {
+  if (!value) {
+    return null;
+  }
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const resolvePlannerComponentDeadline = (component = {}, profile = {}) => {
+  const exams = Array.isArray(component?.course_exams) ? component.course_exams : [];
+  const explicitExamDates = exams
+    .map((examEntry) =>
+      parsePlannerDateValue(
+        examEntry?.exam_date ||
+          examEntry?.time?.start_date ||
+          examEntry?.time?.startsAt,
+      ),
+    )
+    .filter(Boolean)
+    .sort((left, right) => left.getTime() - right.getTime());
+  if (explicitExamDates.length > 0) {
+    return {
+      date: explicitExamDates[0],
+      source: "componentExam",
+    };
+  }
+
+  const componentClass = String(component?.course_class || "").trim();
+  const matchingTermDates = getPlannerTermExamWindows(profile)
+    .filter(
+      (entry) =>
+        String(entry?.component_class || "").trim() === componentClass,
+    )
+    .map((entry) => parsePlannerDateValue(entry?.start_date))
+    .filter(Boolean)
+    .sort((left, right) => left.getTime() - right.getTime());
+
+  return matchingTermDates.length > 0
+    ? {
+        date: matchingTermDates[0],
+        source: "termExam",
+      }
+    : {
+        date: null,
+        source: "",
+      };
+};
+
+const getPlannerStudyPlanLookupMaps = (studyPlanAid = {}) => {
+  const normalizedAid = normalizeStudyPlanAid(studyPlanAid);
+  const coursePlanMap = new Map();
+  const componentPlanMap = new Map();
+  const lectureOverrideMap = new Map();
+
+  normalizedAid.coursePlans.forEach((coursePlanEntry) => {
+    coursePlanMap.set(coursePlanEntry.courseId, coursePlanEntry);
+    coursePlanEntry.componentPlans.forEach((componentPlanEntry) => {
+      componentPlanMap.set(componentPlanEntry.componentId, componentPlanEntry);
+      componentPlanEntry.lectureOverrides.forEach((lectureOverrideEntry) => {
+        lectureOverrideMap.set(lectureOverrideEntry.lectureId, lectureOverrideEntry);
+      });
+    });
+  });
+
+  return {
+    normalizedAid,
+    coursePlanMap,
+    componentPlanMap,
+    lectureOverrideMap,
+  };
+};
+
+// Derive the runtime daily timeline rows from organizer courses, profile term windows, and manual studyPlanAid inputs.
+export const buildPlannerStudyPlanTimeline = ({
+  courses = [],
+  lectures = [],
+  profile = {},
+  studyPlanAid = {},
+  now = new Date(),
+} = {}) => {
+  const {
+    normalizedAid,
+    coursePlanMap,
+    componentPlanMap,
+    lectureOverrideMap,
+  } = getPlannerStudyPlanLookupMaps(studyPlanAid);
+  const allLectures = Array.isArray(lectures) ? lectures : [];
+
+  const uniqueCourses = Array.from(
+    new Map(
+      (Array.isArray(courses) ? courses : []).map((courseEntry) => [
+        String(courseEntry?._id || courseEntry?.parentCourseId || "").trim(),
+        courseEntry,
+      ]),
+    ).values(),
+  );
+
+  const timelineRows = uniqueCourses.flatMap((courseEntry) => {
+    const courseId = String(courseEntry?._id || courseEntry?.parentCourseId || "").trim();
+    const courseName = formatSavedCourseTitle(courseEntry);
+    const coursePlan = coursePlanMap.get(courseId) || null;
+    const componentEntries = Array.isArray(courseEntry?.course_components)
+      ? courseEntry.course_components
+      : [];
+
+    return componentEntries.flatMap((componentEntry) => {
+      const componentId = String(componentEntry?._id || "").trim();
+      if (!componentId) {
+        return [];
+      }
+      const componentPlan = componentPlanMap.get(componentId) || null;
+      const resolvedDeadline = resolvePlannerComponentDeadline(componentEntry, profile);
+      const deadlineDate = resolvedDeadline.date;
+      const remainingDays = deadlineDate
+        ? Math.max(
+            0,
+            Math.ceil(
+              (deadlineDate.getTime() - new Date(now).setHours(0, 0, 0, 0)) /
+                86400000,
+            ),
+          )
+        : null;
+      const targetHours = normalizeStudyPlanAidNumber(
+        componentPlan?.targetHours,
+        normalizedAid.defaults.defaultDailyHours,
+      );
+      const suggestedDailyHours =
+        remainingDays && remainingDays > 0
+          ? Number((targetHours / remainingDays).toFixed(2))
+          : targetHours;
+      const matchingLectures = allLectures.filter((lectureEntry) => {
+        const lectureCourseId = String(
+          lectureEntry?.lecture_courseId || lectureEntry?.courseId || "",
+        ).trim();
+        const lectureComponentId = String(
+          lectureEntry?.lecture_componentId || lectureEntry?.componentId || "",
+        ).trim();
+        return lectureCourseId === courseId && lectureComponentId === componentId;
+      });
+
+      const componentRow = {
+        rowType: "component",
+        courseId,
+        componentId,
+        lectureId: "",
+        courseName,
+        componentName: formatCourseComponentLabel(
+          String(componentEntry?.course_class || "").trim() || "-",
+        ),
+        lectureName: "",
+        deadlineDate: deadlineDate ? deadlineDate.toISOString() : "",
+        deadlineSource: resolvedDeadline.source,
+        remainingDays,
+        remainingHours: targetHours,
+        suggestedDailyHours,
+        difficulty:
+          String(componentPlan?.difficulty || normalizedAid.defaults.defaultDifficulty).trim(),
+        mastery:
+          String(componentPlan?.mastery || normalizedAid.defaults.defaultMastery).trim(),
+        priority:
+          String(componentPlan?.priority || normalizedAid.defaults.defaultPriority).trim(),
+        dailyHoursCap: normalizeStudyPlanAidNumber(componentPlan?.dailyHoursCap, 0),
+        note: String(componentPlan?.note || "").trim(),
+        coursePlanNote: String(coursePlan?.note || "").trim(),
+      };
+
+      const lectureRows = matchingLectures
+        .map((lectureEntry) => {
+          const lectureId = String(lectureEntry?._id || "").trim();
+          const lectureOverride = lectureOverrideMap.get(lectureId);
+          if (!lectureId || !lectureOverride) {
+            return null;
+          }
+          return {
+            rowType: "lecture",
+            courseId,
+            componentId,
+            lectureId,
+            courseName,
+            componentName: componentRow.componentName,
+            lectureName: String(
+              lectureEntry?.lecture_name || lectureEntry?.title || "-",
+            ).trim(),
+            deadlineDate: componentRow.deadlineDate,
+            deadlineSource: componentRow.deadlineSource,
+            remainingDays,
+            remainingHours: normalizeStudyPlanAidNumber(
+              lectureOverride?.targetHours,
+              0,
+            ),
+            suggestedDailyHours:
+              remainingDays && remainingDays > 0
+                ? Number(
+                    (
+                      normalizeStudyPlanAidNumber(lectureOverride?.targetHours, 0) /
+                      remainingDays
+                    ).toFixed(2),
+                  )
+                : normalizeStudyPlanAidNumber(lectureOverride?.targetHours, 0),
+            difficulty: String(
+              lectureOverride?.difficulty ||
+                componentRow.difficulty ||
+                normalizedAid.defaults.defaultDifficulty,
+            ).trim(),
+            mastery: String(
+              lectureOverride?.mastery ||
+                componentRow.mastery ||
+                normalizedAid.defaults.defaultMastery,
+            ).trim(),
+            priority: String(
+              lectureOverride?.priority ||
+                componentRow.priority ||
+                normalizedAid.defaults.defaultPriority,
+            ).trim(),
+            dailyHoursCap: normalizeStudyPlanAidNumber(
+              lectureOverride?.dailyHoursCap,
+              0,
+            ),
+            note: String(lectureOverride?.note || "").trim(),
+            coursePlanNote: componentRow.coursePlanNote,
+          };
+        })
+        .filter(Boolean);
+
+      return [componentRow, ...lectureRows];
+    });
+  });
+
+  return {
+    studyPlanAid: normalizedAid,
+    rows: timelineRows,
+  };
+};
+// Build the empty relationship draft used by planner component rules in settings.
 export const getDefaultPlannerRelationshipDraft = () => ({
   relationScope: "innerComponent",
   causeField: "",
@@ -1649,9 +2358,11 @@ export const getDefaultPlannerRelationshipDraft = () => ({
   readOnly: false,
 });
 
+// Create stable client-side ids for settings relationships before persistence.
 export const createPlannerSettingsRelationshipId = () =>
   `planner-rel-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+// Normalize generic string-list settings while removing empty and duplicate values.
 export const normalizePlannerSettingsStringList = (
   entries = [],
   fallback = [],
@@ -1669,6 +2380,7 @@ export const normalizePlannerSettingsStringList = (
   return normalizedEntries.length > 0 ? normalizedEntries : [...fallback];
 };
 
+// Normalize grouped room options so each building owns one deduplicated room list.
 const normalizePlannerRoomOptionsByBuilding = (entries = []) =>
   (Array.isArray(entries) ? entries : [])
     .map((entry) => {
@@ -1695,6 +2407,7 @@ const normalizePlannerRoomOptionsByBuilding = (entries = []) =>
       return accumulator;
     }, []);
 
+// Normalize one relationship entry regardless of whether it came from legacy or current settings.
 export const normalizePlannerRelationshipEntry = (entry = {}) => ({
   id: String(entry?.id || "").trim() || createPlannerSettingsRelationshipId(),
   mode:
@@ -1731,6 +2444,7 @@ export const normalizePlannerRelationshipEntry = (entry = {}) => ({
       : Boolean(entry?.active),
 });
 
+// Normalize the entire planner settings payload into the runtime shape consumed by the UI.
 export const normalizePlannerSelectSettings = (value) => {
   const fallbackSettings = buildDefaultPlannerSelectSettings();
   const nextValue = value && typeof value === "object" ? value : {};
@@ -1764,9 +2478,8 @@ export const normalizePlannerSelectSettings = (value) => {
       message: String(entry?.message || "").trim(),
     }))
     .filter((entry) => entry.friendID && entry.message);
-  const normalizedPredictionTool = (Array.isArray(nextValue?.predictionTool)
-    ? nextValue.predictionTool
-    : []
+  const normalizedPredictionTool = (
+    Array.isArray(nextValue?.predictionTool) ? nextValue.predictionTool : []
   )
     .map((entry) => ({
       tab: String(entry?.tab || "").trim(),
@@ -1774,11 +2487,12 @@ export const normalizePlannerSelectSettings = (value) => {
       list: normalizePlannerSettingsStringList(entry?.list, []),
     }))
     .filter((entry) => Boolean(entry.inputFieldID));
-  const normalizedVoiceCommands = (Array.isArray(nextValue?.voiceCommands)
-    ? nextValue.voiceCommands
-    : Array.isArray(nextValue?.voiceCommandEntries)
-      ? nextValue.voiceCommandEntries
-      : []
+  const normalizedVoiceCommands = (
+    Array.isArray(nextValue?.voiceCommands)
+      ? nextValue.voiceCommands
+      : Array.isArray(nextValue?.voiceCommandEntries)
+        ? nextValue.voiceCommandEntries
+        : []
   )
     .map((entry) => ({
       idTree: Array.isArray(entry?.idTree)
@@ -1807,7 +2521,9 @@ export const normalizePlannerSelectSettings = (value) => {
       : []
   )
     .map((entry) => {
-      const conditionRaw = String(entry?.condition || "").trim().toLowerCase();
+      const conditionRaw = String(entry?.condition || "")
+        .trim()
+        .toLowerCase();
       const condition =
         conditionRaw === "startofword"
           ? "startOfWord"
@@ -1860,6 +2576,14 @@ export const normalizePlannerSelectSettings = (value) => {
     ),
     locationRoomOptions: [],
     locationRoomOptionsByBuilding,
+    lectureInstructorOptions: normalizePlannerSettingsStringList(
+      nextValue.lectureInstructorOptions,
+      fallbackSettings.lectureInstructorOptions,
+    ),
+    lectureWriterOptions: normalizePlannerSettingsStringList(
+      nextValue.lectureWriterOptions,
+      fallbackSettings.lectureWriterOptions,
+    ),
     logoMotionEnabled:
       typeof nextValue?.logoMotionEnabled === "boolean"
         ? nextValue.logoMotionEnabled
@@ -1887,7 +2611,8 @@ export const normalizePlannerSelectSettings = (value) => {
               ])
               .filter(([fieldKey]) => Boolean(fieldKey)),
           )
-        : nextValue?.fieldDefaults && typeof nextValue.fieldDefaults === "object"
+        : nextValue?.fieldDefaults &&
+            typeof nextValue.fieldDefaults === "object"
           ? Object.fromEntries(
               Object.entries(nextValue.fieldDefaults)
                 .map(([fieldKey, fieldValue]) => [
@@ -1913,50 +2638,21 @@ export const normalizePlannerSelectSettings = (value) => {
   };
 };
 
-export const readPlannerSelectSettingsFromStorage = () => {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return buildDefaultPlannerSelectSettings();
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(
-      PLANNER_SELECT_SETTINGS_STORAGE_KEY,
-    );
-
-    if (!storedValue) {
-      return buildDefaultPlannerSelectSettings();
-    }
-
-    return normalizePlannerSelectSettings(JSON.parse(storedValue));
-  } catch (error) {
-    console.error("[planner-select-settings] read failed:", error);
-    return buildDefaultPlannerSelectSettings();
-  }
-};
-
 export const getDefaultInlineComponentDraft = () => ({
   course_class: "",
   course_dayAndTime: "",
   course_daySelection: "",
   course_timeSelection: "",
   course_grade: "",
-  course_locationBuilding: "",
-  course_locationRoom: "",
+  locationBuilding: "",
+  locationRoom: "",
 });
 
 export const getEditableCourseDraft = (course = {}) => {
   const examEntries =
     Array.isArray(course?.course_exams) && course.course_exams.length > 0
       ? course.course_exams
-      : [
-          {
-            exam_type: course?.exam_type || "-",
-            exam_date: course?.exam_date || "-",
-            exam_time: course?.exam_time || "-",
-            course_grade: course?.course_grade || "",
-            course_fullGrade: course?.course_fullGrade || "",
-          },
-        ];
+      : [];
 
   return {
     course_name: String(course?.course_name || "").trim(),
@@ -2096,7 +2792,7 @@ export const getCourseDueText = (course) => {
     return "-";
   }
 
-  return `• أيام ${diffDaysWithoutDecimals} • ساعات ${diffHoursWithoutDecimals} • دقائق ${diffMinsWithoutDecimals} • الوقت ${examTime_hour}:${examTime_mins} • نمط نظري`;
+  return `• Days ${diffDaysWithoutDecimals} • Hours ${diffHoursWithoutDecimals} • Minutes ${diffMinsWithoutDecimals} • Time ${examTime_hour}:${examTime_mins} • Theoretical mode`;
 };
 export const COURSE_PRINT_SOUND_START_OFFSET = 0.109;
 export const COURSE_PRINT_SOUND_BASE_DURATION = 26.204;
@@ -2106,7 +2802,7 @@ export const NAGHAM_COURSE_LIST_STORAGE_KEY = "nogaPlanner_nagham_course_list";
 export const SCHOOLPLANNER_REDUCED_MOTION_STORAGE_KEY =
   "nogaPlanner_reducedMotion";
 export const DEFAULT_NAGHAM_COURSE_LETTER =
-  "هذه هي المحاضرة: اجعلها دراسة سهلة ثم اجعل بعدها سهرة ثم اجعل بعدها راحة.";
+  "This is the lecture: make it light study, then leisure, then rest.";
 export const TELEGRAM_DISPLAY_TIMEZONE = "Asia/Damascus";
 
 export const TELEGRAM_LECTURE_STOP_WORDS = new Set([
@@ -2146,3 +2842,4 @@ export const normalizeLectureCorrections = (entries = []) =>
       text: String(entry?.text || "").trim(),
     }))
     .filter((entry) => entry.page > 0 && entry.text);
+

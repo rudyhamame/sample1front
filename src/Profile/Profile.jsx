@@ -8,6 +8,8 @@ const PROFILE_THEME_STORAGE_KEY = "phenomed.profileRouteTheme";
 const RESERVED_PROFILE_SLUGS = new Set([
   "telegram-control",
   "deezer-player",
+  "soundcloud-player",
+  "jamendo-player",
   "pdf-reader",
   "schoolplanner",
   "nogaplan",

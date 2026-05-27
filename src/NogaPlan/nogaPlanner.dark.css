@@ -133,12 +133,10 @@ body.dark .nogaPlanner_wrapperTabBtn--active,
 body.dark #nogaPlanner_courses_aside,
 body.dark #nogaPlanner_lectures_section,
 body.dark #nogaPlanner_exam_section,
-body.dark #nogaPlanner_plan_scheduleBoard,
 body.dark #nogaPlanner_lectureDetailsCard,
 .dark #nogaPlanner_courses_aside,
 .dark #nogaPlanner_lectures_section,
 .dark #nogaPlanner_exam_section,
-.dark #nogaPlanner_plan_scheduleBoard,
 .dark #nogaPlanner_lectureDetailsCard {
   border-color: rgba(110, 168, 180, 0.24);
   background:
@@ -149,6 +147,11 @@ body.dark #nogaPlanner_lectureDetailsCard,
     inset 0 -1px 0 rgba(0, 0, 0, 0.72),
     0 20px 34px rgba(0, 0, 0, 0.34),
     0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+body.dark #nogaPlanner_plan_scheduleBoard,
+.dark #nogaPlanner_plan_scheduleBoard {
+  background: linear-gradient(180deg, var(--nogaPlanner-card-start) 0%, var(--nogaPlanner-card-end) 100%);
 }
 
 body.dark #nogaPlanner_courses_aside,
@@ -400,8 +403,8 @@ body.dark-mode .nogaPlanner_coursesMiniBarBtn:disabled {
   border-color: rgba(112, 126, 147, 0.16);
 }
 
-body.dark #nogaPlanner_telegramMiniChat,
-.dark #nogaPlanner_telegramMiniChat {
+body.dark .nogaPlanner_traces,
+.dark .nogaPlanner_traces {
   border-color: rgba(132, 193, 203, 0.24);
   background:
     linear-gradient(180deg, rgba(23, 65, 76, 0.96), rgba(11, 33, 40, 0.94)),
@@ -411,47 +414,47 @@ body.dark #nogaPlanner_telegramMiniChat,
     inset 0 1px 0 rgba(208, 235, 240, 0.14);
 }
 
-body.dark #nogaPlanner_telegramMiniChatViewer,
-.dark #nogaPlanner_telegramMiniChatViewer {
+body.dark .nogaPlanner_tracesViewer,
+.dark .nogaPlanner_tracesViewer {
   border-color: rgba(132, 193, 203, 0.24);
   background: rgba(8, 24, 31, 0.8);
 }
 
-body.dark .nogaPlanner_telegramMiniChatStatus,
-.dark .nogaPlanner_telegramMiniChatStatus {
+body.dark .nogaPlanner_tracesStatus,
+.dark .nogaPlanner_tracesStatus {
   color: rgba(214, 236, 241, 0.9);
 }
 
-body.dark .nogaPlanner_telegramMiniChatMessage,
-.dark .nogaPlanner_telegramMiniChatMessage {
+body.dark .nogaPlanner_tracesMessage,
+.dark .nogaPlanner_tracesMessage,
+body.dark .nogaPlanner_tracesListItem,
+.dark .nogaPlanner_tracesListItem {
   border-color: rgba(132, 193, 203, 0.22);
   background: rgba(14, 39, 48, 0.86);
 }
 
-body.dark .nogaPlanner_telegramMiniChatMessage > header,
-.dark .nogaPlanner_telegramMiniChatMessage > header {
+body.dark .nogaPlanner_tracesMessage > header,
+.dark .nogaPlanner_tracesMessage > header {
   color: rgba(183, 219, 226, 0.92);
 }
 
-body.dark .nogaPlanner_telegramMiniChatMessage > header > strong,
-.dark .nogaPlanner_telegramMiniChatMessage > header > strong {
+body.dark .nogaPlanner_tracesMessage > header > strong,
+.dark .nogaPlanner_tracesMessage > header > strong,
+body.dark .nogaPlanner_tracesListItemMeta > strong,
+.dark .nogaPlanner_tracesListItemMeta > strong {
   color: rgba(228, 244, 247, 0.98);
 }
 
-body.dark .nogaPlanner_telegramMiniChatMessage > p,
-.dark .nogaPlanner_telegramMiniChatMessage > p {
+body.dark .nogaPlanner_tracesMessage > p,
+.dark .nogaPlanner_tracesMessage > p,
+body.dark .nogaPlanner_tracesListItemMeta > span,
+.dark .nogaPlanner_tracesListItemMeta > span {
   color: rgba(232, 246, 250, 0.94);
 }
 
-body.dark .nogaPlanner_telegramMiniChatTitleBar > span,
-.dark .nogaPlanner_telegramMiniChatTitleBar > span {
+body.dark .nogaPlanner_tracesTitleBar > span,
+.dark .nogaPlanner_tracesTitleBar > span {
   color: rgba(228, 244, 247, 0.98);
-}
-
-body.dark .nogaPlanner_telegramMiniChatResizeHandle,
-.dark .nogaPlanner_telegramMiniChatResizeHandle {
-  border-color: rgba(132, 193, 203, 0.32);
-  background: rgba(17, 55, 64, 0.86);
 }
 
 .nogaPlanner_selectSettingsLoading {

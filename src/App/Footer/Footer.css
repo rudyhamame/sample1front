@@ -74,20 +74,6 @@ body.dark #server_answer {
   color: rgba(216, 232, 237, 0.82);
 }
 
-#server_answer.server_answer--noga {
-  background-color: #841b2d !important;
-  box-shadow:
-  inset 0 1px 0 rgba(255, 255, 255, 0.22),
-  inset 0 -4px 10px rgba(90, 24, 49, 0.18);
-  color:#f5fcfc !important;
-  width: fit-content;
-}
-
-
-#server_answer.server_answer--noga #server_answer_light {
-  background: rgba(126, 79, 76, 0.26);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
-}
 
 #server_answer_light {
   width: 8px;
@@ -96,6 +82,10 @@ body.dark #server_answer {
   border-radius: 999px;
   background: rgba(117, 141, 148, 0.34);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.server_answer--noga{
+  background-color: #dd2d4a !important;
 }
 
 #server_answer_light.server_answer_light--active {
@@ -277,64 +267,7 @@ body.dark .server_answer_noga_playerButton:hover:not(:disabled) {
   line-height: 1;
 }
 
-#server_answer.server_answer--noga .server_answer_noga_playerButton {
-  border-color: rgba(255, 238, 244, 0.56);
-  background: rgba(255, 248, 251, 0.24);
-  color: rgba(255, 247, 251, 0.96);
-}
 
-#server_answer.server_answer--noga .server_answer_noga_playerButton:hover:not(:disabled) {
-  border-color: rgba(255, 244, 248, 0.82);
-  background: rgba(255, 251, 253, 0.38);
-  color: rgba(255, 252, 254, 0.99);
-  box-shadow: 0 8px 18px rgba(90, 24, 49, 0.2);
-}
-
-body.dark #server_answer.server_answer--noga {
-  background-color: #ef0662 !important;
-  border-top-color: rgba(110, 168, 180, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -8px 18px rgba(0, 0, 0, 0.24);
-  color: rgba(216, 232, 237, 0.82);
-}
-
-body.dark #server_answer.server_answer--noga #server_answer_message {
-  color: rgba(232, 245, 247, 0.9);
-}
-
-body.dark
-  #server_answer.server_answer--noga
-  #server_answer_message.server_answer_message--idle {
-  color: rgba(197, 223, 228, 0.82);
-}
-
-body.dark #server_answer.server_answer--noga #server_answer_light {
-  background: rgba(117, 141, 148, 0.34);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-}
-
-body.dark #server_answer.server_answer--noga .server_answer_noga_playerButton {
-  border-color: rgba(244, 231, 238, 0.42);
-  background: rgba(255, 249, 252, 0.16);
-  color: rgba(248, 241, 246, 0.94);
-}
-
-body.dark
-  #server_answer.server_answer--noga
-  .server_answer_noga_playerButton:hover:not(:disabled) {
-  border-color: rgba(255, 243, 248, 0.72);
-  background: rgba(255, 251, 253, 0.24);
-  color: rgba(255, 250, 253, 0.99);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
-}
-
-#server_answer.server_answer--noga .server_answer_locale_button,
-#server_answer.server_answer--noga #server_answer_musicPlayer,
-body.dark #server_answer.server_answer--noga .server_answer_locale_button,
-body.dark #server_answer.server_answer--noga #server_answer_musicPlayer {
-  background: transparent;
-}
 
 #server_answer_musicPlayer {
   flex: 0 1 auto;
@@ -410,10 +343,6 @@ body.dark #server_answer_musicLabel {
   color: rgba(255, 247, 251, 0.96);
 }
 
-#server_answer.server_answer--noga #server_answer_musicPlayer {
-  border-color: rgba(255, 233, 242, 0.42);
-  background: rgba(255, 244, 248, 0.2);
-}
 
 #app_page.app_page--home-dark #server_answer_musicTrack,
 body.dark #server_answer_musicTrack {
@@ -434,16 +363,6 @@ body.dark #server_answer_musicTrack {
   color: rgba(24, 49, 58, 0.76);
 }
 
-/* Home_noga-only footer theme */
-#server_answer.server_answer--home-noga {
-  background-color: rgba(238, 198, 183, 0.92);
-  background: linear-gradient(
-    180deg,
-    rgba(248, 219, 208, 0.95) 0%,
-    rgba(238, 198, 183, 0.92) 52%,
-    rgba(220, 174, 157, 0.9) 100%
-  );
-}
 
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_message {
   color: rgba(63, 30, 33, 0.94);
@@ -558,4 +477,62 @@ body:not(.dark) #server_answer.server_answer--home #server_answer_musicTrack {
   background: rgba(226, 244, 246, 0.98);
   border-color: rgba(32, 121, 135, 0.44);
   color: rgba(13, 74, 84, 0.96);
+}
+
+#server_answer.server_answer--music {
+  background: linear-gradient(
+    180deg,
+    rgba(229, 246, 246, 0.98) 0%,
+    rgba(206, 234, 236, 0.96) 52%,
+    rgba(186, 222, 225, 0.94) 100%
+  );
+  border-top: 1px solid rgba(35, 103, 114, 0.24);
+  color: rgba(17, 63, 72, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -8px 18px rgba(45, 90, 100, 0.12);
+}
+
+#server_answer.server_answer--music #server_answer_wrapper {
+  border-color: rgba(45, 118, 129, 0.18);
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 6px 14px rgba(35, 89, 96, 0.1);
+}
+
+#server_answer.server_answer--music #server_answer_message {
+  color: rgba(17, 63, 72, 0.96);
+  text-shadow: none;
+}
+
+#server_answer.server_answer--music #server_answer_message.server_answer_message--idle {
+  color: rgba(41, 89, 98, 0.72);
+}
+
+#server_answer.server_answer--music #server_answer_musicLabel {
+  color: rgba(41, 89, 98, 0.82);
+}
+
+#server_answer.server_answer--music #server_answer_musicTrack {
+  color: rgba(13, 57, 65, 0.96);
+}
+
+#server_answer.server_answer--music .server_answer_locale_button,
+#server_answer.server_answer--music .server_answer_noga_playerButton {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(45, 118, 129, 0.22);
+  color: rgba(17, 63, 72, 0.92);
+}
+
+#server_answer.server_answer--music .server_answer_locale_button:hover:not(:disabled),
+#server_answer.server_answer--music .server_answer_noga_playerButton:hover:not(:disabled) {
+  background: rgba(240, 250, 250, 0.98);
+  border-color: rgba(27, 121, 135, 0.4);
+  color: rgba(11, 72, 81, 0.98);
+}
+
+#server_answer.server_answer--music #server_answer_musicPlayer {
+  border-color: rgba(45, 118, 129, 0.18);
+  background: rgba(255, 255, 255, 0.72);
 }

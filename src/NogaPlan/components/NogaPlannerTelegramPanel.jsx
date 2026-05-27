@@ -1,0 +1,1627 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { apiUrl } from "../../config/api";
+import { formatPlannerStatusLabel } from "../lib/plannerRuntime";
+import { createWorker } from "tesseract.js";
+
+const TRACE_MAIN_TABS = [
+  { key: "material", label: "material of study" },
+  { key: "language", label: "Language" },
+];
+
+const MATERIAL_SOURCE_TABS = [
+  { key: "telegram", label: "Telegram Documents" },
+  { key: "upload", label: "User Upload" },
+  { key: "physical", label: "Physical Document" },
+];
+
+const LANGUAGE_COMPONENT_CLASS_OPTIONS = ["Class", "Lab", "Pharmacy"];
+
+const TELEGRAM_DOCUMENT_TYPE_TABS = [
+  { key: "all", label: "All" },
+  { key: "image", label: "Images" },
+  { key: "pdf", label: "PDF" },
+  { key: "word", label: "Word" },
+  { key: "excel", label: "Excel" },
+  { key: "powerpoint", label: "PowerPoint" },
+  { key: "archive", label: "Archive" },
+  { key: "code", label: "Code" },
+  { key: "other", label: "Other" },
+];
+
+const formatFileSize = (size = 0) => {
+  const nextSize = Number(size || 0);
+  if (!Number.isFinite(nextSize) || nextSize <= 0) {
+    return "";
+  }
+  if (nextSize < 1024) {
+    return `${nextSize} B`;
+  }
+  if (nextSize < 1024 * 1024) {
+    return `${(nextSize / 1024).toFixed(1)} KB`;
+  }
+  return `${(nextSize / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const buildTelegramDocumentFilename = (message = {}) => {
+  const explicitName = String(
+    message?.attachmentFileName ||
+      message?.telegramFileName ||
+      message?.fileName ||
+      message?.name ||
+      message?.documentName ||
+      message?.title ||
+      "",
+  ).trim();
+  if (explicitName) {
+    return explicitName;
+  }
+  const explicitExtension = String(
+    message?.attachmentFileExtension || "",
+  ).trim().toLowerCase();
+  if (explicitExtension) {
+    const messageId = Number(message?.id || 0) || Date.now();
+    return `telegram-document-${messageId}.${explicitExtension.replace(/^\./, "")}`;
+  }
+  const mimeType = String(
+    message?.attachmentMimeType || message?.mimeType || "",
+  )
+    .trim()
+    .toLowerCase();
+  const extension =
+    mimeType.startsWith("image/")
+      ? mimeType.split("/").pop() || "jpg"
+      : mimeType === "application/pdf"
+        ? "pdf"
+        : mimeType.includes("word")
+          ? "docx"
+          : mimeType.includes("excel") || mimeType.includes("spreadsheet")
+            ? "xlsx"
+            : mimeType.includes("powerpoint") || mimeType.includes("presentation")
+              ? "pptx"
+              : mimeType.includes("zip") || mimeType.includes("rar")
+                ? "zip"
+                : "bin";
+  const messageId = Number(message?.id || 0) || Date.now();
+  return `telegram-document-${messageId}.${extension}`;
+};
+
+const classifyTelegramDocumentType = (message = {}) => {
+  const attachmentKind = String(message?.attachmentKind || "")
+    .trim()
+    .toLowerCase();
+  const fileName = buildTelegramDocumentFilename(message).toLowerCase();
+  const mimeType = String(
+    message?.attachmentMimeType || message?.mimeType || "",
+  )
+    .trim()
+    .toLowerCase();
+  const extension = fileName.includes(".")
+    ? fileName.split(".").pop()
+    : String(message?.attachmentFileExtension || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^\./, "");
+
+  if (attachmentKind === "photo" || mimeType.startsWith("image/")) {
+    return "image";
+  }
+  if (
+    extension === "pdf" ||
+    mimeType === "application/pdf"
+  ) {
+    return "pdf";
+  }
+  if (
+    ["doc", "docx", "odt", "rtf"].includes(extension) ||
+    mimeType.includes("word") ||
+    mimeType.includes("officedocument.wordprocessingml") ||
+    mimeType.includes("opendocument.text") ||
+    mimeType.includes("rtf")
+  ) {
+    return "word";
+  }
+  if (
+    ["xls", "xlsx", "csv", "ods"].includes(extension) ||
+    mimeType.includes("excel") ||
+    mimeType.includes("spreadsheet") ||
+    mimeType.includes("csv")
+  ) {
+    return "excel";
+  }
+  if (
+    ["ppt", "pptx", "odp"].includes(extension) ||
+    mimeType.includes("powerpoint") ||
+    mimeType.includes("presentation")
+  ) {
+    return "powerpoint";
+  }
+  if (
+    ["zip", "rar", "7z", "tar", "gz"].includes(extension) ||
+    mimeType.includes("zip") ||
+    mimeType.includes("rar") ||
+    mimeType.includes("compressed")
+  ) {
+    return "archive";
+  }
+  if (
+    [
+      "js",
+      "ts",
+      "jsx",
+      "tsx",
+      "py",
+      "java",
+      "c",
+      "cpp",
+      "cs",
+      "php",
+      "html",
+      "css",
+      "json",
+      "xml",
+      "yml",
+      "yaml",
+      "md",
+      "sql",
+      "sh",
+    ].includes(extension) ||
+    mimeType.startsWith("text/") ||
+    mimeType.includes("json") ||
+    mimeType.includes("xml")
+  ) {
+    return "code";
+  }
+  return "other";
+};
+
+const isTelegramPdfDocument = (message = {}) =>
+  classifyTelegramDocumentType(message) === "pdf";
+
+const isTelegramImageDocument = (message = {}) =>
+  classifyTelegramDocumentType(message) === "image";
+
+const NogaPlannerTelegramPanel = ({ planner }) => {
+  const [traceMainTab, setTraceMainTab] = useState("material");
+  const [materialSourceTab, setMaterialSourceTab] = useState("telegram");
+  const [documentTypeTab, setDocumentTypeTab] = useState("all");
+  const [storedGroups, setStoredGroups] = useState([]);
+  const [selectedGroupReference, setSelectedGroupReference] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [downloadingMessageId, setDownloadingMessageId] = useState("");
+  const [telegramImagePreviewUrls, setTelegramImagePreviewUrls] = useState({});
+  const [ocrLoadingMessageId, setOcrLoadingMessageId] = useState("");
+  const [ocrExtractedByMessageId, setOcrExtractedByMessageId] = useState({});
+  const [zoomedTraceImageUrl, setZoomedTraceImageUrl] = useState("");
+  const telegramImagePreviewUrlsRef = useRef({});
+  const telegramImagePreviewBlobUrlsRef = useRef(new Set());
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [physicalDraft, setPhysicalDraft] = useState({
+    title: "",
+    volume: "",
+    note: "",
+  });
+  const [physicalDocuments, setPhysicalDocuments] = useState([]);
+  const [languageCourseDraft, setLanguageCourseDraft] = useState({
+    name: "",
+    code: "",
+    componentClass: "",
+    componentClasses: [],
+  });
+  const [languageLectureDraft, setLanguageLectureDraft] = useState({
+    name: "",
+    order: "",
+  });
+  const [languageLectures, setLanguageLectures] = useState([]);
+  const [selectedLanguageCourseId, setSelectedLanguageCourseId] = useState("");
+  const [selectedLanguageLectureId, setSelectedLanguageLectureId] = useState("");
+  const plannerToken = String(planner?.props?.state?.token || "").trim();
+  const plannerUserId = String(planner?.props?.state?.my_id || "").trim();
+
+  const languageCourses = useMemo(() => {
+    const plannerCourses = Array.isArray(planner?.state?.courses)
+      ? planner.state.courses
+      : [];
+    const mappedCourses = plannerCourses.map((entry) => {
+        const componentClasses = Array.from(
+          new Set(
+            (Array.isArray(entry?.components) ? entry.components : [])
+              .map((componentEntry) =>
+                String(
+                  componentEntry?.component_class || componentEntry?.class || "",
+                ).trim(),
+              )
+              .filter(Boolean),
+          ),
+        );
+        const fallbackComponentClassValue = String(
+          entry?.course_class || entry?.course_component || "",
+        ).trim();
+        const resolvedComponentClasses =
+          componentClasses.length > 0
+            ? componentClasses
+            : fallbackComponentClassValue
+              ? [fallbackComponentClassValue]
+              : [];
+        return {
+          id: String(entry?.parentCourseId || entry?._id || "").trim(),
+          name: String(entry?.name || entry?.course_name || "").trim(),
+          code: String(entry?.code || entry?.course_code || "").trim(),
+          componentClass: String(resolvedComponentClasses[0] || "").trim(),
+          componentClasses: resolvedComponentClasses,
+          raw: entry,
+        };
+      });
+
+    const dedupedById = new Map();
+    mappedCourses.forEach((entry) => {
+      if (!entry?.id) {
+        return;
+      }
+      const existing = dedupedById.get(entry.id);
+      if (!existing) {
+        dedupedById.set(entry.id, entry);
+        return;
+      }
+      const nextComponentClasses = Array.from(
+        new Set([
+          ...(Array.isArray(existing?.componentClasses)
+            ? existing.componentClasses
+            : []),
+          ...(Array.isArray(entry?.componentClasses)
+            ? entry.componentClasses
+            : []),
+        ]),
+      ).filter((value) => String(value || "").trim());
+      dedupedById.set(entry.id, {
+        ...existing,
+        name: String(existing?.name || "").trim() || String(entry?.name || "").trim(),
+        code: String(existing?.code || "").trim() || String(entry?.code || "").trim(),
+        componentClass: String(nextComponentClasses[0] || "").trim(),
+        componentClasses: nextComponentClasses,
+      });
+    });
+
+    return Array.from(dedupedById.values());
+  }, [planner?.state?.courses]);
+
+  const activeTraceSourceLabel = useMemo(
+    () =>
+      MATERIAL_SOURCE_TABS.find((entry) => entry.key === materialSourceTab)?.label ||
+      "Trace Source",
+    [materialSourceTab],
+  );
+  const telegramDocumentMessages = useMemo(
+    () =>
+      (Array.isArray(messages) ? messages : []).filter((message) => {
+        const kind = String(message?.attachmentKind || "").trim().toLowerCase();
+        return kind === "document" || kind === "pdf" || kind === "photo";
+      }),
+    [messages],
+  );
+  const telegramDocumentTypeCounts = useMemo(() => {
+    const counts = {
+      all: telegramDocumentMessages.length,
+      image: 0,
+      pdf: 0,
+      word: 0,
+      excel: 0,
+      powerpoint: 0,
+      archive: 0,
+      code: 0,
+      other: 0,
+    };
+    telegramDocumentMessages.forEach((message) => {
+      const typeKey = classifyTelegramDocumentType(message);
+      counts[typeKey] = Number(counts[typeKey] || 0) + 1;
+    });
+    return counts;
+  }, [telegramDocumentMessages]);
+  const filteredTelegramDocumentMessages = useMemo(() => {
+    if (documentTypeTab === "all") {
+      return telegramDocumentMessages;
+    }
+    return telegramDocumentMessages.filter(
+      (message) => classifyTelegramDocumentType(message) === documentTypeTab,
+    );
+  }, [documentTypeTab, telegramDocumentMessages]);
+
+  useEffect(() => {
+    telegramImagePreviewUrlsRef.current = telegramImagePreviewUrls;
+  }, [telegramImagePreviewUrls]);
+
+  const getTelegramMessageMediaKey = (message = {}) =>
+    `${String(message?.groupReference || "").trim()}::${Number(message?.id || 0)}`;
+
+  const languageComponentClassOptions = LANGUAGE_COMPONENT_CLASS_OPTIONS;
+
+  const formatStoredGroupOptionLabel = (group = {}) => {
+    const title = String(group?.title || "").trim();
+    const reference = String(
+      group?.groupReference || group?.reference || group?.username || "",
+    ).trim();
+    if (title && reference) {
+      return `${title} (${reference})`;
+    }
+    return title || reference || "Telegram group";
+  };
+
+  const formatTelegramMessageDate = (value) => {
+    const nextDate = value ? new Date(value) : null;
+    if (!nextDate || Number.isNaN(nextDate.getTime())) {
+      return "";
+    }
+    return nextDate.toLocaleString();
+  };
+
+  const fetchStoredGroups = async () => {
+    if (!plannerToken) {
+      setError("Telegram login token is missing.");
+      setStoredGroups([]);
+      return [];
+    }
+    try {
+      const response = await fetch(apiUrl("/api/telegram/stored-groups"), {
+        headers: {
+          Authorization: `Bearer ${plannerToken}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load Telegram groups.");
+      }
+      const nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
+      setStoredGroups(nextGroups);
+      setSelectedGroupReference((currentValue) => {
+        const currentRef = String(currentValue || "").trim();
+        if (
+          currentRef &&
+          nextGroups.some(
+            (group) => String(group?.groupReference || "").trim() === currentRef,
+          )
+        ) {
+          return currentValue;
+        }
+        return String(nextGroups[0]?.groupReference || "");
+      });
+      return nextGroups;
+    } catch (nextError) {
+      setStoredGroups([]);
+      setError(nextError?.message || "Unable to load Telegram groups.");
+      return [];
+    }
+  };
+
+  const searchStoredMessages = async (groupReferenceOverride = "") => {
+    const groupReference = String(
+      groupReferenceOverride || selectedGroupReference || "",
+    ).trim();
+    if (!plannerToken) {
+      setError("Telegram login token is missing.");
+      return;
+    }
+    if (!groupReference) {
+      setMessages([]);
+      setError("Choose a stored group first.");
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    try {
+      const searchParams = new URLSearchParams();
+      searchParams.set("limit", "120");
+      searchParams.set("offset", "0");
+      searchParams.set("group", groupReference);
+      if (String(searchQuery || "").trim()) {
+        searchParams.set("q", String(searchQuery).trim());
+      }
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+        {
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to load Telegram messages.");
+      }
+      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+    } catch (nextError) {
+      setMessages([]);
+      setError(nextError?.message || "Unable to load Telegram messages.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadTelegramDocument = async (message = {}) => {
+    const groupReference = String(message?.groupReference || "").trim();
+    const messageId = Number(message?.id || 0);
+    if (!plannerToken || !groupReference || !messageId) {
+      return;
+    }
+    const downloadKey = `${groupReference}::${messageId}`;
+    setDownloadingMessageId(downloadKey);
+    try {
+      const params = new URLSearchParams({
+        groupReference,
+        messageId: String(messageId),
+      });
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+          },
+        },
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(
+          String(payload?.message || "Unable to download Telegram document."),
+        );
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = buildTelegramDocumentFilename(message);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (nextError) {
+      setError(
+        String(nextError?.message || "Unable to download Telegram document."),
+      );
+    } finally {
+      setDownloadingMessageId("");
+    }
+  };
+
+  const runTelegramImageOcr = async (message = {}) => {
+    const groupReference = String(message?.groupReference || "").trim();
+    const messageId = Number(message?.id || 0);
+    if (!plannerToken || !groupReference || !messageId || !isTelegramImageDocument(message)) {
+      return;
+    }
+    const messageKey = getTelegramMessageMediaKey(message);
+    setOcrLoadingMessageId(messageKey);
+    try {
+      const params = new URLSearchParams({
+        groupReference,
+        messageId: String(messageId),
+      });
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+          },
+        },
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(String(payload?.message || "Unable to load image for OCR."));
+      }
+      const imageBlob = await response.blob();
+      const worker = await createWorker("ara+eng");
+      const {
+        data: { text: extractedText },
+      } = await worker.recognize(imageBlob);
+      await worker.terminate();
+      const normalizedText = String(extractedText || "").trim();
+      setOcrExtractedByMessageId((currentValue) => ({
+        ...currentValue,
+        [messageKey]: normalizedText || "(No text detected)",
+      }));
+    } catch (nextError) {
+      setError(String(nextError?.message || "Unable to extract OCR text."));
+    } finally {
+      setOcrLoadingMessageId("");
+    }
+  };
+
+  const viewTelegramDocument = async (message = {}) => {
+    const groupReference = String(message?.groupReference || "").trim();
+    const messageId = Number(message?.id || 0);
+    if (!groupReference || !messageId) {
+      return;
+    }
+    if (isTelegramPdfDocument(message)) {
+      const params = new URLSearchParams({
+        source: "telegram",
+        groupReference,
+        messageId: String(messageId),
+        title: buildTelegramDocumentFilename(message),
+      });
+      window.open(`/phenomed/pdf-reader?${params.toString()}`, "_blank");
+      return;
+    }
+    if (!isTelegramImageDocument(message)) {
+      return;
+    }
+    const params = new URLSearchParams({
+      source: "telegram",
+      groupReference,
+      messageId: String(messageId),
+      title: buildTelegramDocumentFilename(message),
+    });
+    window.open(`/phenomed/pdf-reader?${params.toString()}`, "_blank");
+  };
+
+  useEffect(() => {
+    if (
+      traceMainTab !== "material" ||
+      materialSourceTab !== "telegram" ||
+      !plannerToken
+    ) {
+      return undefined;
+    }
+    const imageMessages = filteredTelegramDocumentMessages.filter((message) =>
+      isTelegramImageDocument(message),
+    );
+    if (imageMessages.length === 0) {
+      return undefined;
+    }
+    let isCancelled = false;
+    const run = async () => {
+      for (const message of imageMessages) {
+        if (isCancelled) {
+          return;
+        }
+        const groupReference = String(message?.groupReference || "").trim();
+        const messageId = Number(message?.id || 0);
+        const mediaKey = getTelegramMessageMediaKey(message);
+        if (
+          !groupReference ||
+          !messageId ||
+          telegramImagePreviewUrlsRef.current[mediaKey]
+        ) {
+          continue;
+        }
+        const inlineDataUrl = String(message?.photoDataUrl || "").trim();
+        if (inlineDataUrl.startsWith("data:image/")) {
+          setTelegramImagePreviewUrls((currentValue) => ({
+            ...currentValue,
+            [mediaKey]: inlineDataUrl,
+          }));
+          continue;
+        }
+        try {
+          const params = new URLSearchParams({
+            groupReference,
+            messageId: String(messageId),
+          });
+          const response = await fetch(
+            apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${plannerToken}`,
+              },
+            },
+          );
+          if (!response.ok) {
+            continue;
+          }
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          telegramImagePreviewBlobUrlsRef.current.add(objectUrl);
+          if (!isCancelled) {
+            setTelegramImagePreviewUrls((currentValue) => ({
+              ...currentValue,
+              [mediaKey]: objectUrl,
+            }));
+          }
+        } catch {
+          // Keep silent for preview failures; view/download still available.
+        }
+      }
+    };
+    run();
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    filteredTelegramDocumentMessages,
+    materialSourceTab,
+    plannerToken,
+    traceMainTab,
+  ]);
+
+  useEffect(
+    () => () => {
+      telegramImagePreviewBlobUrlsRef.current.forEach((url) => {
+        if (String(url || "").startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+      telegramImagePreviewBlobUrlsRef.current.clear();
+    },
+    [],
+  );
+
+  const handleUploadFiles = (fileList) => {
+    const nextFiles = Array.from(fileList || [])
+      .filter((file) => file)
+      .map((file, index) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Date.now()}-${index}`,
+        name: String(file.name || "").trim() || `file-${index + 1}`,
+        size: Number(file.size || 0),
+        type: String(file.type || "").trim(),
+        file,
+      }));
+    if (nextFiles.length === 0) {
+      return;
+    }
+    setUploadedFiles((currentValue) => [...currentValue, ...nextFiles]);
+  };
+
+  const removeUploadedFile = (fileId) => {
+    setUploadedFiles((currentValue) =>
+      currentValue.filter((entry) => entry.id !== fileId),
+    );
+  };
+
+  const addPhysicalDocument = () => {
+    const title = String(physicalDraft.title || "").trim();
+    const volume = String(physicalDraft.volume || "").trim();
+    const note = String(physicalDraft.note || "").trim();
+    if (!volume) {
+      return;
+    }
+    setPhysicalDocuments((currentValue) => [
+      ...currentValue,
+      {
+        id: `physical-${Date.now()}-${currentValue.length}`,
+        title: title || "Untitled physical document",
+        volume,
+        note,
+      },
+    ]);
+    setPhysicalDraft({
+      title: "",
+      volume: "",
+      note: "",
+    });
+  };
+
+  const removePhysicalDocument = (entryId) => {
+    setPhysicalDocuments((currentValue) =>
+      currentValue.filter((entry) => entry.id !== entryId),
+    );
+  };
+
+  const addLanguageCourseComponentClass = () => {
+    const nextValue = String(languageCourseDraft.componentClass || "").trim();
+    if (!nextValue) {
+      return;
+    }
+    setLanguageCourseDraft((currentValue) => {
+      const currentList = Array.isArray(currentValue?.componentClasses)
+        ? currentValue.componentClasses
+        : [];
+      if (currentList.includes(nextValue)) {
+        return currentValue;
+      }
+      return {
+        ...currentValue,
+        componentClasses: [...currentList, nextValue],
+      };
+    });
+  };
+
+  const removeLanguageCourseComponentClass = (targetValue = "") => {
+    const normalizedTarget = String(targetValue || "").trim();
+    if (!normalizedTarget) {
+      return;
+    }
+    setLanguageCourseDraft((currentValue) => ({
+      ...currentValue,
+      componentClasses: (Array.isArray(currentValue?.componentClasses)
+        ? currentValue.componentClasses
+        : []
+      ).filter((entry) => String(entry || "").trim() !== normalizedTarget),
+    }));
+  };
+
+  const addLanguageCourse = async () => {
+    const name = String(languageCourseDraft.name || "").trim();
+    const code = String(languageCourseDraft.code || "").trim();
+    const selectedComponentClasses = Array.from(
+      new Set(
+        (Array.isArray(languageCourseDraft?.componentClasses)
+          ? languageCourseDraft.componentClasses
+          : []
+        )
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    if (
+      !name ||
+      !code ||
+      selectedComponentClasses.length === 0 ||
+      !plannerToken ||
+      !plannerUserId
+    ) {
+      return;
+    }
+    try {
+      const response = await fetch(
+        apiUrl(`/api/user/addCourse/${plannerUserId}`),
+        {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            course_code: code,
+            course_name: name,
+            course_status: "NEW",
+            course_component: selectedComponentClasses[0],
+            course_class: selectedComponentClasses[0],
+            course_components: selectedComponentClasses.map((componentClass) => ({
+              component_class: componentClass,
+              course_class: componentClass,
+              class: componentClass,
+              status: "",
+            })),
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(payload?.message || "Failed to add language course."));
+      }
+      await planner?.retrieveCourses?.();
+      const createdId = String(payload?.course?._id || "").trim();
+      if (createdId) {
+        setSelectedLanguageCourseId(createdId);
+      }
+      setLanguageCourseDraft({
+        name: "",
+        code: "",
+        componentClass: "",
+        componentClasses: [],
+      });
+      planner?.props?.serverReply?.(String(payload?.message || "Language course saved."));
+    } catch (nextError) {
+      planner?.props?.serverReply?.(
+        String(nextError?.message || "Failed to save language course."),
+      );
+    }
+  };
+
+  const deleteSelectedLanguageCourse = async () => {
+    const selectedId = String(selectedLanguageCourseId || "").trim();
+    if (!selectedId || !plannerToken || !plannerUserId) {
+      return;
+    }
+    try {
+      const response = await fetch(
+        apiUrl(`/api/user/deleteCourse/${plannerUserId}/${selectedId}`),
+        {
+          method: "DELETE",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(payload?.message || "Failed to delete language course."));
+      }
+      await planner?.retrieveCourses?.();
+      setSelectedLanguageCourseId("");
+      planner?.props?.serverReply?.(String(payload?.message || "Language course deleted."));
+    } catch (nextError) {
+      planner?.props?.serverReply?.(
+        String(nextError?.message || "Failed to delete language course."),
+      );
+    }
+  };
+
+  const editSelectedLanguageCourse = async () => {
+    const selectedEntry = languageCourses.find(
+      (entry) => String(entry?.id || "") === String(selectedLanguageCourseId || ""),
+    );
+    if (!selectedEntry) {
+      return;
+    }
+    const editedName = String(languageCourseDraft.name || "").trim();
+    const editedCode = String(languageCourseDraft.code || "").trim();
+    const editedComponentClasses = Array.from(
+      new Set(
+        (Array.isArray(languageCourseDraft?.componentClasses)
+          ? languageCourseDraft.componentClasses
+          : []
+        )
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    if (
+      editedName &&
+      editedCode &&
+      editedComponentClasses.length > 0 &&
+      plannerToken &&
+      plannerUserId
+    ) {
+      try {
+        const response = await fetch(
+          apiUrl(`/api/user/editCourseBundle/${plannerUserId}/${selectedEntry.id}`),
+          {
+            method: "POST",
+            mode: "cors",
+            headers: {
+              Authorization: `Bearer ${plannerToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              course_name: editedName,
+              course_code: editedCode,
+              status: "NEW",
+              components: editedComponentClasses.map((componentClass) => ({
+                component_class: componentClass,
+                class: componentClass,
+                status: "",
+              })),
+            }),
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(String(payload?.message || "Failed to edit language course."));
+        }
+        await planner?.retrieveCourses?.(selectedEntry.id);
+        planner?.props?.serverReply?.(String(payload?.message || "Language course updated."));
+        return;
+      } catch (nextError) {
+        planner?.props?.serverReply?.(
+          String(nextError?.message || "Failed to update language course."),
+        );
+        return;
+      }
+    }
+    setLanguageCourseDraft({
+      name: String(selectedEntry.name || ""),
+      code: String(selectedEntry.code || ""),
+      componentClass: String(selectedEntry.componentClass || ""),
+      componentClasses: Array.isArray(selectedEntry.componentClasses)
+        ? selectedEntry.componentClasses
+        : String(selectedEntry.componentClass || "").trim()
+          ? [String(selectedEntry.componentClass || "").trim()]
+          : [],
+    });
+  };
+
+  const addLanguageLecture = () => {
+    const name = String(languageLectureDraft.name || "").trim();
+    const order = String(languageLectureDraft.order || "").trim();
+    if (!name || !order) {
+      return;
+    }
+    const nextEntry = {
+      id: `lecture-language-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      order,
+    };
+    setLanguageLectures((currentValue) => [...currentValue, nextEntry]);
+    setSelectedLanguageLectureId(nextEntry.id);
+    setLanguageLectureDraft({ name: "", order: "" });
+  };
+
+  const deleteSelectedLanguageLecture = () => {
+    const selectedId = String(selectedLanguageLectureId || "").trim();
+    if (!selectedId) {
+      return;
+    }
+    setLanguageLectures((currentValue) =>
+      currentValue.filter((entry) => entry.id !== selectedId),
+    );
+    setSelectedLanguageLectureId("");
+  };
+
+  const editSelectedLanguageLecture = () => {
+    const selectedEntry = languageLectures.find(
+      (entry) => String(entry?.id || "") === String(selectedLanguageLectureId || ""),
+    );
+    if (!selectedEntry) {
+      return;
+    }
+    setLanguageLectureDraft({
+      name: String(selectedEntry.name || ""),
+      order: String(selectedEntry.order || ""),
+    });
+  };
+
+  useEffect(() => {
+    if (traceMainTab !== "material" || materialSourceTab !== "telegram") {
+      return;
+    }
+    fetchStoredGroups();
+  }, [materialSourceTab, traceMainTab]);
+
+  useEffect(() => {
+    if (traceMainTab !== "material" || materialSourceTab !== "telegram") {
+      return;
+    }
+    if (!String(selectedGroupReference || "").trim()) {
+      setMessages([]);
+      return;
+    }
+    searchStoredMessages(selectedGroupReference);
+  }, [materialSourceTab, selectedGroupReference, traceMainTab]);
+  useEffect(() => {
+    if (
+      (traceMainTab !== "material" || materialSourceTab !== "telegram") &&
+      documentTypeTab !== "all"
+    ) {
+      setDocumentTypeTab("all");
+    }
+  }, [documentTypeTab, materialSourceTab, traceMainTab]);
+
+  const renderMaterialSourceTabs = () => (
+    <div className="nogaPlanner_tracesSourceTabs">
+      {MATERIAL_SOURCE_TABS.map((entry) => (
+        <button
+          key={entry.key}
+          type="button"
+          className={
+            "nogaPlanner_tracesMiniTabBtn" +
+            (materialSourceTab === entry.key
+              ? " nogaPlanner_tracesMiniTabBtn--active"
+              : "")
+          }
+          onClick={() => setMaterialSourceTab(entry.key)}
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderTelegramSource = () => (
+    <div id="telegramTrace" className="telegramTrace">
+      {renderMaterialSourceTabs()}
+      <div
+        id="nogaPlanner_auto_div_132"
+        className="nogaPlanner_tracesControls"
+      >
+        <select
+          id="nogaPlanner_tracesTelegramGroupSelect"
+          className="nogaPlanner_tracesInput"
+          value={selectedGroupReference}
+          onChange={(event) => setSelectedGroupReference(event.target.value)}
+        >
+          <option value="">Select stored group</option>
+          {storedGroups.map((group) => {
+            const reference = String(group?.groupReference || "").trim();
+            if (!reference) {
+              return null;
+            }
+            return (
+              <option key={`traces-telegram-group-${reference}`} value={reference}>
+                {formatStoredGroupOptionLabel(group)}
+              </option>
+            );
+          })}
+        </select>
+        <div
+          id="nogaPlanner_auto_div_140"
+          className="nogaPlanner_tracesSearchRow"
+        >
+          <input
+            id="nogaPlanner_tracesTelegramSearch"
+            className="nogaPlanner_tracesInput"
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search stored messages"
+          />
+          <button
+            id="nogaPlanner_tracesTelegramSearchBtn"
+            type="button"
+            className="nogaPlanner_tracesActionBtn"
+            onClick={() => searchStoredMessages()}
+            disabled={isLoading}
+          >
+            Search
+          </button>
+        </div>
+      </div>
+      <div className="nogaPlanner_tracesMiniTabsAndViewer">
+        <div className="nogaPlanner_tracesMiniTabs">
+          {TELEGRAM_DOCUMENT_TYPE_TABS.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              className={
+                "nogaPlanner_tracesMiniTabBtn" +
+                (documentTypeTab === entry.key
+                  ? " nogaPlanner_tracesMiniTabBtn--active"
+                  : "")
+              }
+              onClick={() => setDocumentTypeTab(entry.key)}
+            >
+              {`${entry.label} (${Number(telegramDocumentTypeCounts[entry.key] || 0)})`}
+            </button>
+          ))}
+        </div>
+        <div id="nogaPlanner_tracesViewer" className="nogaPlanner_tracesViewer">
+          {isLoading ? (
+            <p className="nogaPlanner_tracesStatus">Loading messages...</p>
+          ) : error ? (
+            <p className="nogaPlanner_tracesStatus">{error}</p>
+          ) : filteredTelegramDocumentMessages.length === 0 ? (
+            <p className="nogaPlanner_tracesStatus">No documents found.</p>
+          ) : (
+            filteredTelegramDocumentMessages.map((message, index) => {
+            const messageKey = String(
+              message?._id || message?.id || `${message?.date || ""}-${index}`,
+            );
+            const sender = String(
+              message?.senderName ||
+                message?.sender ||
+                message?.from ||
+                message?.author ||
+                "Unknown sender",
+            ).trim();
+            const text = String(message?.text || "").trim();
+            const fileName = buildTelegramDocumentFilename(message);
+            const isImageMessage = isTelegramImageDocument(message);
+            const mediaKey = getTelegramMessageMediaKey(message);
+            const downloadKey = mediaKey;
+            const previewUrl = telegramImagePreviewUrls[mediaKey] || "";
+            const ocrExtractedText = String(
+              ocrExtractedByMessageId[mediaKey] || "",
+            ).trim();
+            return (
+              <article
+                key={`traces-telegram-message-${messageKey}`}
+                className="nogaPlanner_tracesMessage"
+              >
+                <header>
+                  <strong>{sender || "Unknown sender"}</strong>
+                  <span>{formatTelegramMessageDate(message?.date)}</span>
+                </header>
+                <div className="nogaPlanner_tracesMessageMetaRow">
+                  <div className="nogaPlanner_tracesDocumentMeta">
+                    <strong>{fileName}</strong>
+                    <span>
+                      {[
+                        String(
+                          message?.attachmentMimeType || message?.mimeType || "",
+                        ).trim(),
+                        formatFileSize(
+                          message?.attachmentSizeBytes || message?.size,
+                        ),
+                      ]
+                        .filter(Boolean)
+                        .join(" | ") || "Stored Telegram document"}
+                    </span>
+                  </div>
+                  {isImageMessage ? (
+                    <div className="nogaPlanner_tracesMessagePreview">
+                      {previewUrl ? (
+                        <img
+                          className="nogaPlanner_tracesMessagePreviewImage"
+                          src={previewUrl}
+                          alt={fileName || "Telegram photo preview"}
+                          onClick={() => setZoomedTraceImageUrl(previewUrl)}
+                        />
+                      ) : (
+                        <span>Loading preview...</span>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                <p>{text || "(No text content)"}</p>
+                <div className="nogaPlanner_tracesMessageActions">
+                  {isTelegramPdfDocument(message) || isTelegramImageDocument(message) ? (
+                    <button
+                      id={`nogaPlanner_tracesTelegramView_${index}`}
+                      type="button"
+                      className="nogaPlanner_tracesActionBtn"
+                      onClick={() => viewTelegramDocument(message)}
+                    >
+                      View
+                    </button>
+                  ) : null}
+                  {isImageMessage ? (
+                    <button
+                      id={`nogaPlanner_tracesTelegramOcr_${index}`}
+                      type="button"
+                      className="nogaPlanner_tracesActionBtn"
+                      onClick={() => runTelegramImageOcr(message)}
+                      disabled={ocrLoadingMessageId === mediaKey}
+                    >
+                      {ocrLoadingMessageId === mediaKey
+                        ? "OCR..."
+                        : "OCR Extract text"}
+                    </button>
+                  ) : null}
+                  <button
+                    id={`nogaPlanner_tracesTelegramDownload_${index}`}
+                    type="button"
+                    className="nogaPlanner_tracesActionBtn"
+                    onClick={() => downloadTelegramDocument(message)}
+                    disabled={downloadingMessageId === downloadKey}
+                  >
+                    {downloadingMessageId === downloadKey
+                      ? "Downloading..."
+                      : "Download"}
+                  </button>
+                </div>
+                {ocrExtractedText ? (
+                  <div className="nogaPlanner_tracesOcrResult">
+                    <strong>OCR</strong>
+                    <p>{ocrExtractedText}</p>
+                  </div>
+                ) : null}
+              </article>
+            );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderUploadSource = () => (
+    <div id="telegramTrace" className="telegramTrace">
+      {renderMaterialSourceTabs()}
+      <div className="nogaPlanner_tracesControls">
+        <button
+          id="nogaPlanner_tracesUploadBtn"
+          type="button"
+          className="nogaPlanner_tracesActionBtn"
+          onClick={() => {
+            const input = document.getElementById("nogaPlanner_tracesUploadInput");
+            if (input) {
+              input.click();
+            }
+          }}
+        >
+          Upload documents
+        </button>
+        <input
+          id="nogaPlanner_tracesUploadInput"
+          type="file"
+          multiple
+          hidden
+          onChange={(event) => {
+            handleUploadFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+      </div>
+      <div className="nogaPlanner_tracesViewer">
+        {uploadedFiles.length === 0 ? (
+          <p className="nogaPlanner_tracesStatus">No uploaded documents.</p>
+        ) : (
+          <ul className="nogaPlanner_tracesList">
+            {uploadedFiles.map((entry, index) => (
+              <li key={entry.id} className="nogaPlanner_tracesListItem">
+                <div className="nogaPlanner_tracesListItemMeta">
+                  <strong>{entry.name}</strong>
+                  <span>{[formatFileSize(entry.size), entry.type].filter(Boolean).join(" | ")}</span>
+                </div>
+                <button
+                  id={`nogaPlanner_tracesUploadDelete_${index}`}
+                  type="button"
+                  className="nogaPlanner_tracesDeleteBtn"
+                  onClick={() => removeUploadedFile(entry.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderPhysicalSource = () => (
+    <div id="telegramTrace" className="telegramTrace">
+      {renderMaterialSourceTabs()}
+      <div className="nogaPlanner_tracesControls nogaPlanner_tracesControls--form">
+        <input
+          id="nogaPlanner_tracesPhysicalTitle"
+          className="nogaPlanner_tracesInput"
+          type="text"
+          value={physicalDraft.title}
+          onChange={(event) =>
+            setPhysicalDraft((currentValue) => ({
+              ...currentValue,
+              title: event.target.value,
+            }))
+          }
+          placeholder="Document title"
+        />
+        <input
+          id="nogaPlanner_tracesPhysicalVolume"
+          className="nogaPlanner_tracesInput"
+          type="number"
+          min="0"
+          value={physicalDraft.volume}
+          onChange={(event) =>
+            setPhysicalDraft((currentValue) => ({
+              ...currentValue,
+              volume: event.target.value,
+            }))
+          }
+          placeholder="Volume"
+        />
+        <input
+          id="nogaPlanner_tracesPhysicalNote"
+          className="nogaPlanner_tracesInput"
+          type="text"
+          value={physicalDraft.note}
+          onChange={(event) =>
+            setPhysicalDraft((currentValue) => ({
+              ...currentValue,
+              note: event.target.value,
+            }))
+          }
+          placeholder="Note"
+        />
+        <button
+          id="nogaPlanner_tracesPhysicalAddBtn"
+          type="button"
+          className="nogaPlanner_tracesActionBtn"
+          onClick={addPhysicalDocument}
+        >
+          Add physical document
+        </button>
+      </div>
+      <div className="nogaPlanner_tracesViewer">
+        {physicalDocuments.length === 0 ? (
+          <p className="nogaPlanner_tracesStatus">
+            No physical documents registered.
+          </p>
+        ) : (
+          <ul className="nogaPlanner_tracesList">
+            {physicalDocuments.map((entry, index) => (
+              <li key={entry.id} className="nogaPlanner_tracesListItem">
+                <div className="nogaPlanner_tracesListItemMeta">
+                  <strong>{entry.title}</strong>
+                  <span>{`Volume: ${entry.volume}`}</span>
+                  {entry.note ? <span>{entry.note}</span> : null}
+                </div>
+                <button
+                  id={`nogaPlanner_tracesPhysicalDelete_${index}`}
+                  type="button"
+                  className="nogaPlanner_tracesDeleteBtn"
+                  onClick={() => removePhysicalDocument(entry.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderLanguageSource = () => (
+    <div className="nogaPlanner_tracesLanguageGrid">
+      <article className="nogaPlanner_tracesLanguageCard">
+        <h4 className="nogaPlanner_tracesLanguageCardTitle">Courses</h4>
+        <div className="nogaPlanner_tracesControls nogaPlanner_tracesControls--form">
+          <input
+            id="nogaPlanner_tracesLanguageCourseName"
+            className="nogaPlanner_tracesInput"
+            type="text"
+            value={languageCourseDraft.name}
+            onChange={(event) =>
+              setLanguageCourseDraft((currentValue) => ({
+                ...currentValue,
+                name: event.target.value,
+              }))
+            }
+            placeholder="Course name"
+          />
+          <input
+            id="nogaPlanner_tracesLanguageCourseCode"
+            className="nogaPlanner_tracesInput"
+            type="text"
+            value={languageCourseDraft.code}
+            onChange={(event) =>
+              setLanguageCourseDraft((currentValue) => ({
+                ...currentValue,
+                code: event.target.value,
+              }))
+            }
+            placeholder="Course code"
+          />
+          <select
+            id="nogaPlanner_tracesLanguageCourseComponentClass"
+            className="nogaPlanner_tracesInput"
+            value={languageCourseDraft.componentClass}
+            onChange={(event) =>
+              setLanguageCourseDraft((currentValue) => ({
+                ...currentValue,
+                componentClass: event.target.value,
+              }))
+            }
+          >
+            <option value="">Select component class</option>
+            {languageComponentClassOptions.map((entry, index) => (
+              <option key={`nogaPlanner_tracesLanguageCourseComponentClass_${entry}_${index}`} value={entry}>
+                {entry}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="nogaPlanner_tracesActionBtn"
+            onClick={addLanguageCourseComponentClass}
+          >
+            Add component class
+          </button>
+          <ul className="nogaPlanner_tracesLanguageCourseComponentsList">
+            {(Array.isArray(languageCourseDraft?.componentClasses)
+              ? languageCourseDraft.componentClasses
+              : []
+            ).map((entry, index) => (
+              <li
+                key={`nogaPlanner_tracesLanguageCourseComponentsList_${entry}_${index}`}
+                className="nogaPlanner_tracesLanguageCourseComponentsItem"
+              >
+                <span>{entry}</span>
+                <button
+                  type="button"
+                  className="nogaPlanner_tracesDeleteBtn"
+                  onClick={() => removeLanguageCourseComponentClass(entry)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="nogaPlanner_tracesLanguageMiniBar">
+            <button type="button" className="nogaPlanner_tracesActionBtn" onClick={addLanguageCourse}>
+              Add
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesDeleteBtn"
+              onClick={deleteSelectedLanguageCourse}
+              disabled={!selectedLanguageCourseId}
+            >
+              Delete (selected)
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesActionBtn"
+              onClick={editSelectedLanguageCourse}
+              disabled={!selectedLanguageCourseId}
+            >
+              Edit (selected)
+            </button>
+          </div>
+        </div>
+        <div className="nogaPlanner_tracesViewer">
+          {languageCourses.length === 0 ? (
+            <p className="nogaPlanner_tracesStatus">No saved course labels.</p>
+          ) : (
+            <table className="nogaPlanner_tracesLanguageMiniTable">
+              <thead>
+                <tr>
+                  <th>course name</th>
+                  <th>component class</th>
+                  <th>status</th>
+                  <th>weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                {languageCourses.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className={
+                      selectedLanguageCourseId === entry.id
+                        ? "nogaPlanner_tracesLanguageMiniTableRow--selected"
+                        : ""
+                    }
+                    onClick={() => setSelectedLanguageCourseId(entry.id)}
+                  >
+                    <td>{entry.name || "-"}</td>
+                    <td>
+                      <ul className="nogaPlanner_tracesLanguageCourseComponentsList">
+                        {(Array.isArray(entry?.componentClasses)
+                          ? entry.componentClasses
+                          : []
+                        ).length > 0 ? (
+                          (Array.isArray(entry?.componentClasses)
+                            ? entry.componentClasses
+                            : []
+                          ).map((componentEntry, componentIndex) => (
+                            <li
+                              key={`nogaPlanner_tracesLanguageCourseComponentCell_${entry.id}_${componentEntry}_${componentIndex}`}
+                              className="nogaPlanner_tracesLanguageCourseComponentsItem"
+                            >
+                              <span>{componentEntry}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="nogaPlanner_tracesLanguageCourseComponentsItem">
+                            <span>-</span>
+                          </li>
+                        )}
+                      </ul>
+                    </td>
+                    <td>
+                      {formatPlannerStatusLabel(
+                        String(
+                          entry?.raw?.status || entry?.raw?.course_status || "",
+                        ).trim(),
+                      )}
+                    </td>
+                    <td>
+                      {Number.isFinite(
+                        Number(entry?.raw?.weight ?? entry?.raw?.course_totalWeight),
+                      )
+                        ? Number(entry?.raw?.weight ?? entry?.raw?.course_totalWeight)
+                        : 100}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </article>
+
+      <article className="nogaPlanner_tracesLanguageCard">
+        <h4 className="nogaPlanner_tracesLanguageCardTitle">Lectures</h4>
+        <div className="nogaPlanner_tracesControls nogaPlanner_tracesControls--form">
+          <input
+            id="nogaPlanner_tracesLanguageLectureName"
+            className="nogaPlanner_tracesInput"
+            type="text"
+            value={languageLectureDraft.name}
+            onChange={(event) =>
+              setLanguageLectureDraft((currentValue) => ({
+                ...currentValue,
+                name: event.target.value,
+              }))
+            }
+            placeholder="Lecture name"
+          />
+          <input
+            id="nogaPlanner_tracesLanguageLectureOrder"
+            className="nogaPlanner_tracesInput"
+            type="number"
+            min="0"
+            value={languageLectureDraft.order}
+            onChange={(event) =>
+              setLanguageLectureDraft((currentValue) => ({
+                ...currentValue,
+                order: event.target.value,
+              }))
+            }
+            placeholder="Lecture order"
+          />
+          <div className="nogaPlanner_tracesLanguageMiniBar">
+            <button type="button" className="nogaPlanner_tracesActionBtn" onClick={addLanguageLecture}>
+              Add
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesDeleteBtn"
+              onClick={deleteSelectedLanguageLecture}
+              disabled={!selectedLanguageLectureId}
+            >
+              Delete (selected)
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesActionBtn"
+              onClick={editSelectedLanguageLecture}
+              disabled={!selectedLanguageLectureId}
+            >
+              Edit (selected)
+            </button>
+          </div>
+        </div>
+        <div className="nogaPlanner_tracesViewer">
+          {languageLectures.length === 0 ? (
+            <p className="nogaPlanner_tracesStatus">No saved lecture labels.</p>
+          ) : (
+            <ul className="nogaPlanner_tracesList">
+              {languageLectures.map((entry) => (
+                <li
+                  key={entry.id}
+                  className={
+                    "nogaPlanner_tracesListItem" +
+                    (selectedLanguageLectureId === entry.id
+                      ? " nogaPlanner_tracesListItem--selected"
+                      : "")
+                  }
+                  onClick={() => setSelectedLanguageLectureId(entry.id)}
+                >
+                  <div className="nogaPlanner_tracesListItemMeta">
+                    <strong>{entry.name}</strong>
+                    <span>{`Order: ${entry.order}`}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </article>
+    </div>
+  );
+
+  return (
+    <section id="nogaPlanner_traces" className="nogaPlanner_traces">
+      <div className="nogaPlanner_tracesTabs">
+        <div className="nogaPlanner_tracesTabsButtons">
+          {TRACE_MAIN_TABS.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              className={
+                "nogaPlanner_tracesTabBtn" +
+                (traceMainTab === entry.key
+                  ? " nogaPlanner_tracesTabBtn--active"
+                  : "")
+              }
+              onClick={() => setTraceMainTab(entry.key)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <span className="nogaPlanner_tracesTabsStatus">
+          {traceMainTab === "material" && materialSourceTab === "telegram"
+            ? `${filteredTelegramDocumentMessages.length} documents`
+            : traceMainTab === "material"
+              ? activeTraceSourceLabel
+              : "Language traces"}
+        </span>
+      </div>
+      {traceMainTab === "material" ? (
+        <>
+          {materialSourceTab === "telegram"
+            ? renderTelegramSource()
+            : materialSourceTab === "upload"
+              ? renderUploadSource()
+              : renderPhysicalSource()}
+        </>
+      ) : (
+        renderLanguageSource()
+      )}
+      {zoomedTraceImageUrl ? (
+        <div
+          className="nogaPlanner_tracesImageZoomOverlay"
+          onClick={() => setZoomedTraceImageUrl("")}
+        >
+          <img
+            className="nogaPlanner_tracesImageZoomed"
+            src={zoomedTraceImageUrl}
+            alt="Zoomed Telegram preview"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+export default NogaPlannerTelegramPanel;

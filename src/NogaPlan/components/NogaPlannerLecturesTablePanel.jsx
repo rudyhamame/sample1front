@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 const NogaPlannerLecturesTablePanel = ({
   planner,
@@ -11,6 +11,8 @@ const NogaPlannerLecturesTablePanel = ({
     buildCourseLectureMatchLabel,
     NOGAPLANNER_TEXT,
   } = runtime;
+  const STUDY_PLAN_LABELS = NOGAPLANNER_TEXT.registryLabels.studyPlanAid;
+  const STUDY_PLAN_OPTIONS = NOGAPLANNER_TEXT.selectsOptions.common;
 
   const {
     selectedTabItemId,
@@ -21,6 +23,9 @@ const NogaPlannerLecturesTablePanel = ({
     inlineLectureRowVisible,
     inlineLectureDraft,
   } = planner.state;
+  const inlineLectureFormId = String(selectedTabItemId || "").trim()
+    ? "nogaPlanner_form_editLecture"
+    : "nogaPlanner_form_addLecture";
 
   const courseEntries = Array.isArray(planner.state?.courses)
     ? planner.state.courses
@@ -78,6 +83,26 @@ const NogaPlannerLecturesTablePanel = ({
     if (directValue) {
       return directValue;
     }
+
+    const lectureComponentId = String(
+      lecture?.lecture_componentId || lecture?.course_componentId || "",
+    ).trim();
+    if (lectureComponentId) {
+      const matchedCourse = resolveLectureCourse(lecture);
+      const matchedComponent = Array.isArray(matchedCourse?.course_components)
+        ? matchedCourse.course_components.find(
+            (component) =>
+              String(component?._id || "").trim() === lectureComponentId,
+          )
+        : null;
+      const fromMatchedComponent = String(
+        matchedComponent?.course_class || "",
+      ).trim();
+      if (fromMatchedComponent) {
+        return fromMatchedComponent;
+      }
+    }
+
     const matchedCourse = resolveLectureCourse(lecture);
     return String(matchedCourse?.course_class || "-").trim() || "-";
   };
@@ -133,9 +158,14 @@ const NogaPlannerLecturesTablePanel = ({
 
   const lecturesFormEditor =
     inlineLectureRowVisible && renderMode !== "table" ? (
-      <div
-        id="nogaPlanner_lecturesFormEditor"
+      <form
+        id={inlineLectureFormId}
         className="nogaPlanner_lecturesFormEditorLayout"
+        data-panel-id="nogaPlanner_lecturesFormEditor"
+        onSubmit={(event) => {
+          event.preventDefault();
+          planner.submitInlineLectureRow();
+        }}
       >
         <div className="nogaPlanner_formCardTitleRow">
           <p
@@ -165,6 +195,12 @@ const NogaPlannerLecturesTablePanel = ({
             id="nogaPlanner_lecturesFormCourseFieldsColumn_primary"
             className="nogaPlanner_lecturesFormFieldsColumn"
           >
+            <span
+              id="nogaPlanner_lecturesFieldLabel_columnPrimary"
+              className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle"
+            >
+              {NOGAPLANNER_TEXT.lectures.courseReferenceTitle}
+            </span>
             <div
               id="nogaPlanner_lecturesFieldCluster_course"
               className="nogaPlanner_lecturesFormFieldCluster"
@@ -253,6 +289,12 @@ const NogaPlannerLecturesTablePanel = ({
             id="nogaPlanner_lecturesFormCourseFieldsColumn_secondary"
             className="nogaPlanner_lecturesFormFieldsColumn"
           >
+            <span
+              id="nogaPlanner_lecturesFieldLabel_columnSecondary"
+              className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle"
+            >
+              {NOGAPLANNER_TEXT.lectures.lectureInfoTitle}
+            </span>
             <div
               id="nogaPlanner_lecturesFieldCluster_title"
               className="nogaPlanner_lecturesFormFieldCluster"
@@ -363,7 +405,7 @@ const NogaPlannerLecturesTablePanel = ({
                 id="nogaPlanner_lecturesFieldLabel_volume"
                 className="nogaPlanner_lecturesFieldEyebrow"
               >
-                الحجم
+                Volume
               </span>
               <div className="nogaPlanner_savedCourseDetailGroupsGrid">
                 <input
@@ -378,7 +420,7 @@ const NogaPlannerLecturesTablePanel = ({
                       event.target.value,
                     )
                   }
-                  placeholder="الكلي"
+                  placeholder="Total"
                 />
               </div>
               <div
@@ -407,8 +449,11 @@ const NogaPlannerLecturesTablePanel = ({
                   );
                 })}
               </div>
-              <p id="nogaPlanner_lecturesVolumeStats" className="nogaPlanner_lecturesVolumeStats">
-                {`المنتهي: ${lectureVolumeDone} | الباقي: ${lectureVolumeRemaining}`}
+              <p
+                id="nogaPlanner_lecturesVolumeStats"
+                className="nogaPlanner_lecturesVolumeStats"
+              >
+                {`Finished: ${lectureVolumeDone} | Remaining: ${lectureVolumeRemaining}`}
               </p>
             </div>
             <div
@@ -510,8 +555,191 @@ const NogaPlannerLecturesTablePanel = ({
               </div>
             </div>
           </div>
+          <div
+            id="nogaPlanner_lecturesFormCourseFieldsColumn_tertiary"
+            className="nogaPlanner_lecturesFormFieldsColumn"
+          >
+            <div
+              id="nogaPlanner_lecturesFieldCluster_plan"
+              className="nogaPlanner_lecturesFormFieldCluster"
+            >
+              <span
+                id="nogaPlanner_lecturesFieldLabel_plan"
+                className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle"
+              >
+                {NOGAPLANNER_TEXT.studyPlan.addPlanInfoTitle}
+              </span>
+              <div
+                id="nogaPlanner_studyPlanFieldsGrid_tertiary"
+                className="nogaPlanner_studyPlanFieldsGrid"
+              >
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planInput_lectureTargetHours"
+                >
+                  <span>{STUDY_PLAN_LABELS.lectureTargetHours}</span>
+                  <input
+                    id="nogaPlanner_planInput_lectureTargetHours"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    type="number"
+                    min="0"
+                    value={inlineLectureDraft?.lectureTargetHours || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lectureTargetHours",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planSelect_lectureDifficulty"
+                >
+                  <span>{STUDY_PLAN_LABELS.lectureDifficulty}</span>
+                  <select
+                    id="nogaPlanner_planSelect_lectureDifficulty"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={inlineLectureDraft?.lectureDifficulty || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lectureDifficulty",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="" disabled>
+                      {STUDY_PLAN_LABELS.lectureDifficulty}
+                    </option>
+                    {(
+                      Array.isArray(STUDY_PLAN_OPTIONS.planDifficultyOptions)
+                        ? STUDY_PLAN_OPTIONS.planDifficultyOptions
+                        : []
+                    ).map((optionValue, optionIndex) => (
+                      <option
+                        id={`nogaPlanner_planSelect_lectureDifficulty_option_${optionIndex}`}
+                        key={optionValue}
+                        value={optionValue}
+                      >
+                        {optionValue}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planSelect_lectureMastery"
+                >
+                  <span>{STUDY_PLAN_LABELS.lectureMastery}</span>
+                  <select
+                    id="nogaPlanner_planSelect_lectureMastery"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={inlineLectureDraft?.lectureMastery || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lectureMastery",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="" disabled>
+                      {STUDY_PLAN_LABELS.lectureMastery}
+                    </option>
+                    {(
+                      Array.isArray(STUDY_PLAN_OPTIONS.planMasteryOptions)
+                        ? STUDY_PLAN_OPTIONS.planMasteryOptions
+                        : []
+                    ).map((optionValue, optionIndex) => (
+                      <option
+                        id={`nogaPlanner_planSelect_lectureMastery_option_${optionIndex}`}
+                        key={optionValue}
+                        value={optionValue}
+                      >
+                        {optionValue}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planSelect_lecturePriority"
+                >
+                  <span>{STUDY_PLAN_LABELS.lecturePriority}</span>
+                  <select
+                    id="nogaPlanner_planSelect_lecturePriority"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={inlineLectureDraft?.lecturePriority || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lecturePriority",
+                        event.target.value,
+                      )
+                    }
+                  >
+                    <option value="" disabled>
+                      {STUDY_PLAN_LABELS.lecturePriority}
+                    </option>
+                    {(
+                      Array.isArray(STUDY_PLAN_OPTIONS.planPriorityOptions)
+                        ? STUDY_PLAN_OPTIONS.planPriorityOptions
+                        : []
+                    ).map((optionValue, optionIndex) => (
+                      <option
+                        id={`nogaPlanner_planSelect_lecturePriority_option_${optionIndex}`}
+                        key={optionValue}
+                        value={optionValue}
+                      >
+                        {optionValue}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planInput_lectureDailyHoursCap"
+                >
+                  <span>
+                    {STUDY_PLAN_LABELS.lectureDailyHoursCap ||
+                      "Lecture Daily Cap"}
+                  </span>
+                  <input
+                    id="nogaPlanner_planInput_lectureDailyHoursCap"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={inlineLectureDraft?.lectureDailyHoursCap || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lectureDailyHoursCap",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+                <label
+                  className="nogaPlanner_studyPlanField"
+                  htmlFor="nogaPlanner_planInput_lectureNote"
+                >
+                  <span>{STUDY_PLAN_LABELS.lectureNote}</span>
+                  <input
+                    id="nogaPlanner_planInput_lectureNote"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    type="text"
+                    value={inlineLectureDraft?.lectureNote || ""}
+                    onChange={(event) =>
+                      planner.handleInlineLectureDraftChange(
+                        "lectureNote",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </form>
     ) : null;
 
   if (renderMode === "form") {
@@ -537,7 +765,7 @@ const NogaPlannerLecturesTablePanel = ({
             id="nogaPlanner_lecturesTable"
             className="nogaPlanner_tabTable nogaPlanner_lecturesTable"
           >
-            <thead id="nogaPlanner_lecturesTableHead">
+            <thead id="nogaPlanner_lecturesTableHead" className="nogaPlanner_tableHead">
               <tr id="nogaPlanner_lecturesTableHeadRow">
                 <th id="nogaPlanner_lecturesTableHead_courseName">
                   {NOGAPLANNER_TEXT.lectures.courseName}
@@ -716,3 +944,5 @@ const NogaPlannerLecturesTablePanel = ({
 };
 
 export default NogaPlannerLecturesTablePanel;
+
+
