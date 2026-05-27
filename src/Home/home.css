@@ -4009,7 +4009,14 @@ body.dark #Main_article,
   padding: 10px 12px 5px;
   line-height: 1.55;
   font-size: 1rem;
-  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  font-family:
+    "Tajawal",
+    "Cairo",
+    "Segoe UI",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Noto Color Emoji",
+    sans-serif;
 }
 
 #Home_rightColumn_wrapper .sentMessagesLI p {
@@ -4128,7 +4135,14 @@ body.dark #Main_article,
 
 #Home_rightColumn_wrapper #Chat_textarea_input {
   flex: 1 1 auto;
-  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  font-family:
+    "Tajawal",
+    "Cairo",
+    "Segoe UI",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Noto Color Emoji",
+    sans-serif;
   font-weight: 500;
   line-height: 1.6;
   letter-spacing: 0.01em;

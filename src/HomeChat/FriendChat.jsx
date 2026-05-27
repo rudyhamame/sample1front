@@ -105,6 +105,26 @@ const formatCallElapsed = (elapsedMs) => {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
+const repairMojibakeText = (value) => {
+  const text = String(value ?? "");
+  if (!text) {
+    return "";
+  }
+  const hasLikelyMojibake =
+    text.includes("ðŸ") ||
+    text.includes("âœ") ||
+    text.includes("Ã") ||
+    text.includes("Â");
+  if (!hasLikelyMojibake) {
+    return text;
+  }
+  try {
+    return decodeURIComponent(escape(text));
+  } catch (_error) {
+    return text;
+  }
+};
+
 const FriendChat = ({
   state,
   content,
@@ -121,6 +141,31 @@ const FriendChat = ({
   const chatContent = content?.chat;
   const isChatting = Boolean(state?.isChatting);
   const hasActiveChat = Boolean(state?.activeChatFriendName);
+  const activeFriendRecord = React.useMemo(() => {
+    const targetId = String(state?.activeChatFriendId || "").trim();
+    if (!targetId) {
+      return null;
+    }
+    const friends = Array.isArray(state?.friends) ? state.friends : [];
+    return (
+      friends.find(
+        (friend) =>
+          String(friend?._id || friend?.id || "").trim() === targetId,
+      ) || null
+    );
+  }, [state?.activeChatFriendId, state?.friends]);
+  const activeFriendAvatarUrl = React.useMemo(
+    () =>
+      String(
+        activeFriendRecord?.avatarUrl ||
+          activeFriendRecord?.profile_picture ||
+          activeFriendRecord?.profilePicture ||
+          activeFriendRecord?.image ||
+          activeFriendRecord?.photo ||
+          "",
+      ).trim(),
+    [activeFriendRecord],
+  );
   const friendIsChatting = state?.activeChatFriendId
     ? Boolean(state?.friendChatPresence?.[state.activeChatFriendId])
     : false;
@@ -199,7 +244,7 @@ const FriendChat = ({
         id:
           String(message?.id || message?._id || "").trim() ||
           `remote-${message?.date || index}`,
-        text: String(message?.message || "").trim(),
+        text: repairMojibakeText(String(message?.message || "").trim()),
         sender: String(message?.from || "").trim() === "me" ? "me" : "friend",
         status: String(message?.status || "sent").trim().toLowerCase(),
         pending: false,
@@ -1295,9 +1340,22 @@ const FriendChat = ({
   const inlineChatHeader =
     hideTitleContainer && hasActiveChat ? (
       <section id="Chat_inlineHeader" className="fr">
-        <h1 id="Chat_inlineHeaderTitle">
-          {state?.activeChatFriendName || chatContent?.title || "Chat"}
-        </h1>
+        <div id="Chat_inlineHeaderIdentity" className="fr">
+          <span id="Chat_inlineHeaderAvatar" aria-hidden="true">
+            {activeFriendAvatarUrl ? (
+              <img
+                src={activeFriendAvatarUrl}
+                alt={`${state?.activeChatFriendName || "Friend"} avatar`}
+                id="Chat_inlineHeaderAvatarImage"
+              />
+            ) : (
+              <i className="fas fa-user"></i>
+            )}
+          </span>
+          <h1 id="Chat_inlineHeaderTitle">
+            {state?.activeChatFriendName || chatContent?.title || "Chat"}
+          </h1>
+        </div>
         {inlineCallActions}
       </section>
     ) : null;
@@ -1845,24 +1903,48 @@ const FriendChat = ({
     <section id="FriendChat_article" className="fc">
       <div id="FriendChat_content_container" className="fc">
         <section id="Chat_article" className="fc">
+          {hideTitleContainer && hasActiveChat ? (
+            <section id="Chat_inlineBackRow" className="fr">
+              <button
+                id="Chat_backToListBtn"
+                className="Chat_backToListBtn"
+                type="button"
+                aria-label="Back to chat list"
+                title="Back to chat list"
+                onClick={handleBackToChatList}
+              >
+                <i className="fi fi-br-left" aria-hidden="true"></i>
+              </button>
+            </section>
+          ) : null}
           {hideTitleContainer ? null : (
             <section id="Chat_title_container" className="fr">
-              <i
-                className="fas fa-chevron-circle-left"
-                id="Chat_goback_icon"
-                onClick={handleBackToChatList}
-              ></i>
               <button
                 id="Chat_backToListBtn"
                 type="button"
+                aria-label="Back to chat list"
+                title="Back to chat list"
                 onClick={handleBackToChatList}
               >
-                Back to chat list
+                <i className="fi fi-br-left" aria-hidden="true"></i>
               </button>
               <div id="Chat_title_copy" className="fc">
-                <h1 id="Chat_title_text">
-                  {state?.activeChatFriendName || chatContent?.title || "Chat"}
-                </h1>
+                <div id="Chat_title_identity" className="fr">
+                  <span id="Chat_title_avatar" aria-hidden="true">
+                    {activeFriendAvatarUrl ? (
+                      <img
+                        src={activeFriendAvatarUrl}
+                        alt={`${state?.activeChatFriendName || "Friend"} avatar`}
+                        id="Chat_title_avatarImage"
+                      />
+                    ) : (
+                      <i className="fas fa-user"></i>
+                    )}
+                  </span>
+                  <h1 id="Chat_title_text">
+                    {state?.activeChatFriendName || chatContent?.title || "Chat"}
+                  </h1>
+                </div>
                 {hasActiveChat && (
                   <p id="Chat_title_status">
                     {friendIsChatting
@@ -2157,7 +2239,7 @@ const FriendChat = ({
                             : undefined
                         }
                       >
-                        <p>{msg.text}</p>
+                        <p>{repairMojibakeText(msg.text)}</p>
                         <span className="Chat_messageMeta">
                           <span className="Chat_messageTimestamp">
                             {formatChatTimestamp(msg.rawDate, msg.timestamp)}

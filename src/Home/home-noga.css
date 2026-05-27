@@ -3954,6 +3954,13 @@ body.dark #Main_article,
   line-height: 1;
 }
 
+.Home_Noga_socialFriendUnreadBadge--empty {
+  background: #cfd6dc;
+  border-color: rgba(255, 255, 255, 0.42);
+  box-shadow: none;
+  color: #4f5b66;
+}
+
 .Home_Noga_socialFriendIncomingCall {
   gap: 10px;
   padding: 12px 14px;
@@ -4415,7 +4422,14 @@ body.dark #Main_article,
   padding: 10px 12px 5px;
   line-height: 1.55;
   font-size: 1rem;
-  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  font-family:
+    "Tajawal",
+    "Cairo",
+    "Segoe UI",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Noto Color Emoji",
+    sans-serif;
 }
 
 #Home_Noga_rightColumn_wrapper .sentMessagesLI p {
@@ -4534,7 +4548,14 @@ body.dark #Main_article,
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input {
   flex: 1 1 auto;
-  font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
+  font-family:
+    "Tajawal",
+    "Cairo",
+    "Segoe UI",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Noto Color Emoji",
+    sans-serif;
   font-weight: 500;
   line-height: 1.6;
   letter-spacing: 0.01em;

@@ -4262,16 +4262,10 @@ function HomeNoga(props) {
               </div>
             </div>
             <div className="Home_Noga_socialFriendPresence">
-              {unreadChatCount > 0 ? (
-                <span className="Home_Noga_socialFriendUnreadBadge">
-                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
-                </span>
-              ) : null}
               <span
-                className="Home_Noga_socialFriendChatIcon"
-                aria-hidden="true"
+                className={`Home_Noga_socialFriendUnreadBadge${unreadChatCount > 0 ? "" : " Home_Noga_socialFriendUnreadBadge--empty"}`}
               >
-                <i className="fas fa-comments"></i>
+                {unreadChatCount > 99 ? "99+" : unreadChatCount}
               </span>
               {isFriendChatOpen ? (
                 <div
