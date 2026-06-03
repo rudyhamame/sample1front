@@ -9,7 +9,6 @@ Active frontend entry flow:
 - `src/App/Header/Nav/**` for the nav pieces still rendered by `Greeting`
 - `src/App/SubApps/StudyPlannner/components/**`
 - `src/config/api.js`
-- `src/firebase.js`
 
 Archived here:
 - legacy entrypoint code that is no longer used by Vite

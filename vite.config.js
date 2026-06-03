@@ -1,13 +1,30 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import basicSsl from "@vitejs/plugin-basic-ssl";
+
+const backendProxyTarget = "http://localhost:4000";
+
+const sharedProxyConfig = {
+  "/api": {
+    target: backendProxyTarget,
+    changeOrigin: true,
+  },
+  "/socket.io": {
+    target: backendProxyTarget,
+    changeOrigin: true,
+    ws: true,
+  },
+};
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), basicSsl()],
   server: {
     host: "0.0.0.0",
+    proxy: sharedProxyConfig,
   },
   preview: {
     host: "0.0.0.0",
+    proxy: sharedProxyConfig,
   },
   esbuild: {
     loader: "jsx",
@@ -74,7 +91,6 @@ export default defineConfig({
           if (
             normalizedId.includes("@ffmpeg") ||
             normalizedId.includes("tesseract.js") ||
-            normalizedId.includes("firebase") ||
             normalizedId.includes("livekit-client")
           ) {
             return "vendor-heavy";

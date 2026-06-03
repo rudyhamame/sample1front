@@ -28,9 +28,76 @@
   border-right: 1px solid rgba(255, 222, 237, 0.36);
 }
 
+#server_answer_rightCluster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+  padding: 5px 0px;
+}
+
 #server_answer #SubApps_article {
   flex: 0 0 auto;
   margin-right: 2px;
+}
+
+#server_answer #SubApps_icon_container {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 2.35rem;
+  height: 100%;
+  min-height: 100%;
+  padding: 0 0.7rem;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  border-radius: 999px;
+  background: rgba(248, 251, 251, 0.56);
+  font-size: 0.74rem;
+  line-height: 1;
+  box-shadow: none;
+}
+
+#server_answer #SubApps_icon_container > i {
+  font-size: inherit;
+  color: rgba(120, 51, 62, 0.94);
+}
+
+#server_answer #SubApps_icon_container:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 157, 165, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 6px 12px rgba(6, 29, 31, 0.1);
+}
+
+#server_answer #SubApps_icon_container:hover > i {
+  color: #114a4f;
+}
+
+#app_page.app_page--home-dark #server_answer #SubApps_icon_container,
+body.dark #server_answer #SubApps_icon_container {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+}
+
+#app_page.app_page--home-dark #server_answer #SubApps_icon_container > i,
+body.dark #server_answer #SubApps_icon_container > i {
+  color: rgba(226, 242, 244, 0.88);
+}
+
+#app_page.app_page--home-dark #server_answer #SubApps_icon_container:hover,
+body.dark #server_answer #SubApps_icon_container:hover {
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.98);
+}
+
+#app_page.app_page--home-dark #server_answer #SubApps_icon_container:hover > i,
+body.dark #server_answer #SubApps_icon_container:hover > i {
+  color: #f5fcfc;
 }
 
 #server_answer #SubApps_dropMenu_container {
@@ -349,6 +416,33 @@ body.dark #server_answer_musicLabel {
   font-weight: 600;
   letter-spacing: 0.04em;
   color: rgba(255, 247, 251, 0.96);
+}
+
+#Home_voiceCallDock {
+  display: none;
+  align-items: center;
+  min-width: 0;
+}
+
+#Home_voiceCallDock.Home_voiceCallDock--visible {
+  display: flex;
+}
+
+#Home_voiceCallDock .Chat_callPanel {
+  width: auto;
+  min-width: 300px;
+  max-width: 520px;
+  margin-right: 6px;
+}
+
+#Home_voiceCallNotificationDock {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+#Home_voiceCallNotificationDock:empty {
+  display: none;
 }
 
 

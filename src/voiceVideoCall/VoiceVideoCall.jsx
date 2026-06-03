@@ -7,6 +7,10 @@ import {
   stopMediaStream,
 } from "../realtime/webrtcCall";
 import {
+  startIncomingCallTone,
+  stopIncomingCallTone,
+} from "../realtime/callTone";
+import {
   RoomEvent,
   Track,
   addTrackToStream,
@@ -15,7 +19,7 @@ import {
   removeTrackFromStream,
   syncParticipantTracks,
 } from "../realtime/livekitCall";
-import "./globalcall.css";
+import "./VoiceVideoCall.css";
 
 const DEFAULT_CALL_PANEL_LAYOUT = {
   x: 24,
@@ -27,6 +31,8 @@ const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
   x: 18,
   y: 18,
 };
+const VOICE_CALL_MINIMIZED_STORAGE_KEY =
+  "phenomed.voiceCall.windowMinimized";
 
 const logCallDebug = (scope, event, details = {}) => {
   try {
@@ -34,6 +40,19 @@ const logCallDebug = (scope, event, details = {}) => {
   } catch {
     // Ignore console failures.
   }
+};
+
+const formatCallElapsed = (elapsedMs) => {
+  const totalSeconds = Math.max(0, Math.floor((Number(elapsedMs) || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
 const getFriendDisplayName = (friends, userId, fallback = "") => {
@@ -59,7 +78,7 @@ const getFriendDisplayName = (friends, userId, fallback = "") => {
   );
 };
 
-function GlobalCallPanel({
+function VoiceVideoCall({
   appState,
   getRealtimeSocket,
   callRequest,
@@ -82,11 +101,17 @@ function GlobalCallPanel({
   const [callError, setCallError] = React.useState("");
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [callStartedAt, setCallStartedAt] = React.useState(null);
+  const [callElapsedMs, setCallElapsedMs] = React.useState(0);
   const [remoteStreamVersion, setRemoteStreamVersion] = React.useState(0);
   const [localStreamVersion, setLocalStreamVersion] = React.useState(0);
   const [isAudioMuted, setIsAudioMuted] = React.useState(false);
   const [isVideoMuted, setIsVideoMuted] = React.useState(false);
   const [activeCallDisplayName, setActiveCallDisplayName] = React.useState("");
+  const [isFooterCallMinimized, setIsFooterCallMinimized] = React.useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(VOICE_CALL_MINIMIZED_STORAGE_KEY) === "true"
+      : false,
+  );
 
   const friends = appState?.friends;
   const currentUserId = String(appState?.my_id || "").trim();
@@ -94,6 +119,38 @@ function GlobalCallPanel({
     `${String(appState?.firstname || "").trim()} ${String(appState?.lastname || "").trim()}`.trim() ||
     String(appState?.username || "").trim() ||
     "Doctor";
+  const ringtoneSourceKey = React.useMemo(
+    () => `global-call:${currentUserId || "unknown"}`,
+    [currentUserId],
+  );
+
+  const updateFooterMinimizedState = React.useCallback((nextValue) => {
+    const normalizedValue = Boolean(nextValue);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        VOICE_CALL_MINIMIZED_STORAGE_KEY,
+        normalizedValue ? "true" : "false",
+      );
+      window.dispatchEvent(
+        new CustomEvent(
+          normalizedValue
+            ? "voice-call-window-minimized"
+            : "voice-call-window-restored",
+        ),
+      );
+    }
+
+    setIsFooterCallMinimized(normalizedValue);
+  }, []);
+
+  const minimizeVoiceCallWindow = React.useCallback(() => {
+    updateFooterMinimizedState(true);
+  }, [updateFooterMinimizedState]);
+
+  const restoreVoiceCallWindow = React.useCallback(() => {
+    updateFooterMinimizedState(false);
+  }, [updateFooterMinimizedState]);
 
   const syncMediaElements = React.useCallback(() => {
     const activeLocalStream = localStreamRef.current || localPreviewStreamRef.current;
@@ -143,6 +200,7 @@ function GlobalCallPanel({
       nextState = "idle",
       clearIncoming = true,
     } = {}) => {
+      stopIncomingCallTone(ringtoneSourceKey);
       leaveRoom();
       resetMediaStreams();
       activeCallPartnerRef.current = "";
@@ -154,8 +212,14 @@ function GlobalCallPanel({
         setIncomingCall(null);
       }
       setCallError(keepError ? nextError : "");
+      updateFooterMinimizedState(false);
     },
-    [leaveRoom, resetMediaStreams],
+    [
+      leaveRoom,
+      resetMediaStreams,
+      ringtoneSourceKey,
+      updateFooterMinimizedState,
+    ],
   );
 
   const fetchLiveKitConnection = React.useCallback(
@@ -453,14 +517,15 @@ function GlobalCallPanel({
       });
     }
 
-    teardownCall({
-      keepError: true,
-      nextError: "Incoming call declined.",
-    });
+    teardownCall();
   }, [currentUserId, getRealtimeSocket, incomingCall, teardownCall]);
 
   const handleEndCall = React.useCallback(
     (reason = "ended") => {
+      const normalizedReason =
+        typeof reason === "string" && reason.trim()
+          ? reason.trim()
+          : "ended";
       const socket = getRealtimeSocket?.();
       const targetUserId =
         activeCallPartnerRef.current || String(incomingCall?.fromUserId || "").trim();
@@ -469,7 +534,7 @@ function GlobalCallPanel({
         socket.emit("call:end", {
           toUserId: targetUserId,
           fromUserId: currentUserId,
-          reason,
+          reason: normalizedReason,
         });
       }
 
@@ -511,6 +576,25 @@ function GlobalCallPanel({
       teardownCall();
     };
   }, [teardownCall]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleMinimized = () => setIsFooterCallMinimized(true);
+    const handleRestored = () => setIsFooterCallMinimized(false);
+
+    window.addEventListener("voice-call-window-minimized", handleMinimized);
+    window.addEventListener("voice-call-window-restored", handleRestored);
+    window.addEventListener("voice-call-window-closed", handleRestored);
+
+    return () => {
+      window.removeEventListener("voice-call-window-minimized", handleMinimized);
+      window.removeEventListener("voice-call-window-restored", handleRestored);
+      window.removeEventListener("voice-call-window-closed", handleRestored);
+    };
+  }, []);
 
   React.useEffect(() => {
     const socket = getRealtimeSocket?.();
@@ -664,6 +748,8 @@ function GlobalCallPanel({
         callMode === "video" && activeCallPartnerId && !incomingCall
           ? handleToggleCamera
           : null,
+      endCall:
+        activeCallPartnerId && !incomingCall ? handleEndCall : null,
       acceptIncomingCall: incomingCall ? handleAcceptIncomingCall : null,
       declineIncomingCall: incomingCall ? handleRejectIncomingCall : null,
     });
@@ -677,27 +763,73 @@ function GlobalCallPanel({
     handleRejectIncomingCall,
     handleToggleCamera,
     handleToggleMute,
+    handleEndCall,
     incomingCall,
     isAudioMuted,
     isVideoMuted,
     onSessionChange,
   ]);
 
+  React.useEffect(() => {
+    if (incomingCall && callState === "incoming") {
+      startIncomingCallTone(ringtoneSourceKey);
+    } else {
+      stopIncomingCallTone(ringtoneSourceKey);
+    }
+
+    return () => {
+      stopIncomingCallTone(ringtoneSourceKey);
+    };
+  }, [callState, incomingCall, ringtoneSourceKey]);
+
+  React.useEffect(() => {
+    if (callState !== "connected" || !callStartedAt) {
+      setCallElapsedMs(0);
+      return undefined;
+    }
+
+    const updateElapsed = () => {
+      setCallElapsedMs(Math.max(0, Date.now() - callStartedAt));
+    };
+
+    updateElapsed();
+    const intervalId = window.setInterval(updateElapsed, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [callStartedAt, callState]);
+
   const portalTarget =
     typeof document !== "undefined"
-      ? document.getElementById("app_page")
+      ? (Boolean(incomingCall) && callState === "incoming"
+          ? document.getElementById("Home_voiceCallNotificationDock")
+          : null) ||
+        (isFooterCallMinimized
+          ? document.getElementById("Home_voiceCallDock")
+          : null) ||
+        document.getElementById("Home_Noga_callDock") ||
+        document.getElementById("app_page")
       : null;
+  const isFooterDocked = portalTarget?.id === "Home_voiceCallDock";
+  const isFooterNotificationDock =
+    portalTarget?.id === "Home_voiceCallNotificationDock";
+  const isDockedInLeftColumn =
+    portalTarget?.id === "Home_Noga_callDock" ||
+    portalTarget?.id === "Home_callDock";
 
   if (!portalTarget || (!callMode && !incomingCall && !callError)) {
     return null;
   }
 
-  const callPanelStyle = {
-    left: `${DEFAULT_CALL_PANEL_LAYOUT.x}px`,
-    top: `${DEFAULT_CALL_PANEL_LAYOUT.y}px`,
-    width: `${DEFAULT_CALL_PANEL_LAYOUT.width}px`,
-    height: `${DEFAULT_CALL_PANEL_LAYOUT.height}px`,
-  };
+  const callPanelStyle = isDockedInLeftColumn
+    ? undefined
+    : {
+        left: `${DEFAULT_CALL_PANEL_LAYOUT.x}px`,
+        top: `${DEFAULT_CALL_PANEL_LAYOUT.y}px`,
+        width: `${DEFAULT_CALL_PANEL_LAYOUT.width}px`,
+        height: `${DEFAULT_CALL_PANEL_LAYOUT.height}px`,
+      };
 
   const showCallControls =
     Boolean(callMode) && callState !== "incoming" && callState !== "idle";
@@ -705,8 +837,88 @@ function GlobalCallPanel({
     callMode === "video" && callState === "connected";
   const shouldMountHiddenLocalVideoElement =
     callMode === "video" && !shouldShowVideoMonitor;
+  const shouldRenderCallPanel = callMode === "video";
+  const shouldRenderIncomingBanner = false;
+  const footerControlsPortalTarget =
+    typeof document !== "undefined"
+      ? document.getElementById("Home_voiceCallNotificationDock")
+      : null;
+  const shouldRenderFooterCallBar = Boolean(
+    footerControlsPortalTarget && (incomingCall || callMode || callError),
+  );
+  const shouldRenderFooterMiniPanel = false;
+  const footerCallBar = shouldRenderFooterCallBar ? (
+    <section
+      id="Chat_footerCallBar"
+      className={`fc Chat_footerCallBar${incomingCall ? " Chat_footerCallBar--incoming" : " Chat_footerCallBar--active"}`}
+    >
+      {incomingCall ? (
+        <>
+          <span className="Chat_footerCallMeta">
+            <strong>
+              Incoming {incomingCall.callType === "video" ? "video" : "voice"} call
+            </strong>
+            <span>
+              {incomingCall?.metadata?.fromDisplayName ||
+                activeCallDisplayName ||
+                "Your friend"}{" "}
+              is calling.
+            </span>
+          </span>
+          <button
+            type="button"
+            className="Chat_callControlButton Chat_callControlButton--accept"
+            onClick={handleAcceptIncomingCall}
+            title="Accept call"
+            aria-label="Accept call"
+          >
+            <i className="fas fa-phone"></i>
+          </button>
+          <button
+            type="button"
+            className="Chat_callControlButton Chat_callControlButton--end"
+            onClick={handleRejectIncomingCall}
+            title="Decline call"
+            aria-label="Decline call"
+          >
+            <i className="fas fa-phone-slash"></i>
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="Chat_footerCallMeta">
+            <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
+            <span className="Chat_callElapsed" aria-label="Call duration">
+              {formatCallElapsed(callElapsedMs)}
+            </span>
+          </span>
+          <button
+            type="button"
+            className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
+            onClick={handleToggleMute}
+            title={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+            aria-label={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+            disabled={!localStreamRef.current}
+          >
+            <i
+              className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+            ></i>
+          </button>
+          <button
+            type="button"
+            className="Chat_callControlButton Chat_callControlButton--end"
+            onClick={() => handleEndCall("hangup")}
+            title="End call"
+            aria-label="End call"
+          >
+            <i className="fas fa-phone-slash"></i>
+          </button>
+        </>
+      )}
+    </section>
+  ) : null;
 
-  return createPortal(
+  const mainPortal = createPortal(
     <React.Fragment>
       <audio ref={remoteAudioRef} autoPlay playsInline />
       <audio ref={localAudioRef} autoPlay playsInline muted />
@@ -719,8 +931,11 @@ function GlobalCallPanel({
           style={{ display: "none" }}
         />
       ) : null}
-      {incomingCall ? (
-        <section id="Chat_incomingCallBanner" className="fc">
+      {shouldRenderIncomingBanner ? (
+        <section
+          id="Chat_incomingCallBanner"
+          className={`fc${isDockedInLeftColumn ? " Chat_incomingCallBanner--docked" : ""}${isFooterNotificationDock ? " Chat_incomingCallBanner--footerDock" : ""}`}
+        >
           <strong>
             Incoming {incomingCall.callType === "video" ? "video" : "voice"} call
           </strong>
@@ -746,10 +961,76 @@ function GlobalCallPanel({
           </div>
         </section>
       ) : null}
-      {callMode ? (
+      {shouldRenderFooterMiniPanel ? (
         <section
           id="Chat_callPanel"
-          className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}`}
+          className={`fc Chat_callPanel Chat_callPanel--footerDock${callState === "connected" ? " is-connected" : ""}`}
+        >
+          <div className="Chat_callStatusRow fr Chat_callPanelHeader">
+            <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
+            <span>
+              {callState === "connected"
+                ? "Connected"
+                : callState === "connecting"
+                  ? "Connecting..."
+                  : callState === "requesting-media"
+                    ? "Requesting media..."
+                    : callState === "calling"
+                      ? "Calling..."
+                      : "Ready"}
+            </span>
+          </div>
+          <div className="Chat_callControls Chat_callControls--mini fr is-visible">
+            <button
+              type="button"
+              className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
+              onClick={handleToggleMute}
+              title={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+              aria-label={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+              disabled={!roomRef.current}
+            >
+              <i
+                className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+              ></i>
+            </button>
+            {callMode === "video" ? (
+              <button
+                type="button"
+                className={`Chat_callControlButton${isVideoMuted ? " is-muted" : ""}`}
+                onClick={handleToggleCamera}
+                title={isVideoMuted ? "Enable camera" : "Disable camera"}
+                aria-label={isVideoMuted ? "Enable camera" : "Disable camera"}
+                disabled={!roomRef.current}
+              >
+                <i
+                  className={`fas ${isVideoMuted ? "fa-video-slash" : "fa-video"}`}
+                ></i>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="Chat_callControlButton"
+              onClick={restoreVoiceCallWindow}
+              title="Restore call window"
+              aria-label="Restore call window"
+            >
+              <i className="fas fa-window-restore"></i>
+            </button>
+            <button
+              type="button"
+              className="Chat_callControlButton Chat_callControlButton--end"
+              onClick={() => handleEndCall("hangup")}
+              title="End call"
+              aria-label="End call"
+            >
+              <i className="fas fa-phone-slash"></i>
+            </button>
+          </div>
+        </section>
+      ) : shouldRenderCallPanel ? (
+        <section
+          id="Chat_callPanel"
+          className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}${isDockedInLeftColumn ? " Chat_callPanel--docked" : ""}`}
           style={callPanelStyle}
         >
           <div className="Chat_callStatusRow fr Chat_callPanelHeader">
@@ -811,37 +1092,6 @@ function GlobalCallPanel({
               </>
             )}
           </div>
-          <div
-            className={`Chat_callControls fr${showCallControls ? " is-visible" : ""}`}
-          >
-            <button
-              type="button"
-              className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
-              onClick={handleToggleMute}
-            >
-              <i
-                className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
-              ></i>
-            </button>
-            {callMode === "video" ? (
-              <button
-                type="button"
-                className={`Chat_callControlButton${isVideoMuted ? " is-muted" : ""}`}
-                onClick={handleToggleCamera}
-              >
-                <i
-                  className={`fas ${isVideoMuted ? "fa-video-slash" : "fa-video"}`}
-                ></i>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="Chat_callControlButton Chat_callControlButton--end"
-              onClick={() => handleEndCall("hangup")}
-            >
-              <i className="fas fa-phone-slash"></i>
-            </button>
-          </div>
         </section>
       ) : null}
       {callError ? (
@@ -852,6 +1102,15 @@ function GlobalCallPanel({
     </React.Fragment>,
     portalTarget,
   );
+
+  return (
+    <>
+      {mainPortal}
+      {footerCallBar && footerControlsPortalTarget
+        ? createPortal(footerCallBar, footerControlsPortalTarget)
+        : null}
+    </>
+  );
 }
 
-export default GlobalCallPanel;
+export default VoiceVideoCall;

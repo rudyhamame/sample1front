@@ -3940,6 +3940,8 @@ function Home(props) {
         String(friend.chatId || "").trim();
       const incomingCallMode =
         incomingCall?.callType === "video" ? "video" : "voice";
+      const isVoiceIncomingCallForFriend =
+        isIncomingCallForFriend && incomingCallMode === "voice";
       const inlineChatState = isFriendChatOpen
         ? {
             ...props.state,
@@ -4013,15 +4015,15 @@ function Home(props) {
                 <i className={`fas ${friendPresenceState.iconClass}`}></i>
                 <span>{friendPresenceState.label}</span>
               </span>
-              {isFriendChatOpen ? (
-                <div
-                  className="Home_socialFriendInlineCallActionsSlot"
-                  ref={handleInlineCallActionsTargetRef}
-                />
-              ) : null}
             </div>
           </button>
-          {isIncomingCallForFriend ? (
+          {isFriendChatOpen ? (
+            <div
+              className="Home_socialFriendInlineCallActionsSlot"
+              ref={handleInlineCallActionsTargetRef}
+            />
+          ) : null}
+          {isVoiceIncomingCallForFriend ? (
             <div className="Home_socialFriendIncomingCall">
               <div className="Home_socialFriendIncomingCallCopy">
                 <strong>Incoming {incomingCallMode} call</strong>

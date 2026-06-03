@@ -2,7 +2,12 @@ import React from "react";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import "./emojie_picker.css";
 import "./friendchat.css";
+import "../voiceVideoCall/VoiceVideoCall.css";
 import { apiUrl } from "../config/api";
+import {
+  startIncomingCallTone,
+  stopIncomingCallTone,
+} from "../realtime/callTone";
 import {
   attachStreamToElement,
   createPeerConnection,
@@ -13,11 +18,11 @@ import {
 } from "../realtime/webrtcCall";
 
 const CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY =
-  "phenomed.friendChat.callPanelLayout";
+  "phenomed.friendChat.callPan350pxelLayout";
 const DEFAULT_CALL_PANEL_LAYOUT = {
   x: 24,
   y: 24,
-  width: 360,
+  width: 100,
   height: 430,
 };
 const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
@@ -326,8 +331,18 @@ const FriendChat = ({
         rawDate: message?.date,
       }));
   }, [state?.activeChatFriendId, state?.chat]);
-  const activeFriendId = String(state?.activeChatFriendId || "").trim();
+  const activeFriendId = String(
+    state?.activeChatFriendId ||
+      state?.friendID_selected ||
+      activeFriendRecord?._id ||
+      activeFriendRecord?.id ||
+      "",
+  ).trim();
   const currentUserId = String(state?.my_id || "").trim();
+  const ringtoneSourceKey = React.useMemo(
+    () => `friend-chat:${currentUserId || activeFriendId || "unknown"}`,
+    [activeFriendId, currentUserId],
+  );
   const usesGlobalCallPanel = typeof requestGlobalCall === "function";
   const normalizedGlobalCallSession =
     globalCallSession && typeof globalCallSession === "object"
@@ -352,9 +367,9 @@ const FriendChat = ({
     typeof normalizedGlobalCallSession?.toggleMute === "function"
       ? normalizedGlobalCallSession.toggleMute
       : null;
-  const globalToggleCamera =
-    typeof normalizedGlobalCallSession?.toggleCamera === "function"
-      ? normalizedGlobalCallSession.toggleCamera
+  const globalEndCall =
+    typeof normalizedGlobalCallSession?.endCall === "function"
+      ? normalizedGlobalCallSession.endCall
       : null;
   const globalCallIsBusy =
     globalCallState !== "idle" ||
@@ -368,6 +383,10 @@ const FriendChat = ({
       globalCallState === "requesting-media" ||
       globalCallState === "connecting" ||
       globalCallState === "connected");
+  const isGlobalCallConnectedForFriend =
+    isGlobalCallActiveForFriend &&
+    globalCallState === "connected" &&
+    Boolean(globalCallStartedAt);
   const [inlineCallElapsedMs, setInlineCallElapsedMs] = React.useState(0);
   const currentUserDisplayName =
     `${String(state?.firstname || "").trim()} ${String(state?.lastname || "").trim()}`.trim() ||
@@ -518,6 +537,8 @@ const FriendChat = ({
       nextState = "idle",
       clearIncoming = true,
     } = {}) => {
+      stopIncomingCallTone(ringtoneSourceKey);
+
       if (diagnosticsIntervalRef.current) {
         window.clearInterval(diagnosticsIntervalRef.current);
         diagnosticsIntervalRef.current = null;
@@ -541,7 +562,7 @@ const FriendChat = ({
       setVideoOverlayScale(1);
       setVideoOverlayPosition({ x: 18, y: 18 });
     },
-    [releasePeerConnection, resetCallMedia],
+    [releasePeerConnection, resetCallMedia, ringtoneSourceKey],
   );
 
   const logPeerDiagnostics = React.useCallback(async (event, extraDetails = {}) => {
@@ -858,6 +879,18 @@ const FriendChat = ({
   React.useEffect(() => {
     teardownCall();
   }, [activeFriendId, teardownCall]);
+
+  React.useEffect(() => {
+    if (incomingCall && callState === "incoming") {
+      startIncomingCallTone(ringtoneSourceKey);
+    } else {
+      stopIncomingCallTone(ringtoneSourceKey);
+    }
+
+    return () => {
+      stopIncomingCallTone(ringtoneSourceKey);
+    };
+  }, [callState, incomingCall, ringtoneSourceKey]);
 
   React.useEffect(() => {
     const socket = getRealtimeSocket?.();
@@ -1312,6 +1345,8 @@ const FriendChat = ({
   };
 
   const handleEndCall = (reason = "ended") => {
+    const normalizedReason =
+      typeof reason === "string" && reason.trim() ? reason.trim() : "ended";
     const socket = getRealtimeSocket?.();
     const targetUserId =
       activeCallPartnerRef.current ||
@@ -1322,7 +1357,7 @@ const FriendChat = ({
       socket.emit("call:end", {
         toUserId: targetUserId,
         fromUserId: currentUserId,
-        reason,
+        reason: normalizedReason,
       });
     }
 
@@ -1332,49 +1367,8 @@ const FriendChat = ({
   const inlineCallActions =
     hideTitleContainer && hasActiveChat ? (
       <div className="Chat_inlineCallActions fr">
-        {isGlobalCallActiveForFriend ? (
-          <>
-            <span className="Chat_inlineCallElapsed" aria-label="Call duration">
-              {formatCallElapsed(inlineCallElapsedMs)}
-            </span>
-            <button
-              type="button"
-              className={`Chat_callButton${globalAudioMuted ? " is-muted" : ""}`}
-              title={globalAudioMuted ? "Enable microphone" : "Disable microphone"}
-              aria-label={globalAudioMuted ? "Enable microphone" : "Disable microphone"}
-              onClick={globalToggleMute || undefined}
-              disabled={!globalToggleMute}
-            >
-              <i
-                className={`fas ${globalAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
-                aria-hidden="true"
-              ></i>
-            </button>
-            {globalCallMode === "video" ? (
-              <button
-                type="button"
-                className={`Chat_callButton${globalVideoMuted ? " is-muted" : ""}`}
-                title={globalVideoMuted ? "Enable camera" : "Disable camera"}
-                aria-label={globalVideoMuted ? "Enable camera" : "Disable camera"}
-                onClick={globalToggleCamera || undefined}
-                disabled={!globalToggleCamera}
-              >
-                <i
-                  className={`fas ${globalVideoMuted ? "fa-video-slash" : "fa-video"}`}
-                  aria-hidden="true"
-                ></i>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="Chat_callButton Chat_callButton--end"
-              title="End call"
-              aria-label="End call"
-              onClick={() => handleEndCall("hangup")}
-            >
-              <i className="fas fa-phone-slash" aria-hidden="true"></i>
-            </button>
-          </>
+        {isGlobalCallConnectedForFriend ? (
+          null
         ) : (
           <>
             <button
@@ -1412,37 +1406,41 @@ const FriendChat = ({
 
   const inlineChatHeader =
     hideTitleContainer && hasActiveChat ? (
-      <section id="Chat_inlineHeader" className="fr">
-        <section id="Chat_inlineBackRow" className="fr">
-          <button
-            id="Chat_backToListBtn"
-            className="Chat_backToListBtn"
-            type="button"
-            aria-label="Back to chat list"
-            title="Back to chat list"
-            onClick={handleBackToChatList}
-          >
-            <i className="fi fi-br-left" aria-hidden="true"></i>
-          </button>
+      <>
+        <section id="Chat_inlineHeader" className="fr">
+          <section id="Chat_inlineBackRow" className="fr">
+            <button
+              id="Chat_backToListBtn"
+              className="Chat_backToListBtn"
+              type="button"
+              aria-label="Back to chat list"
+              title="Back to chat list"
+              onClick={handleBackToChatList}
+            >
+              <i className="fi fi-br-left" aria-hidden="true"></i>
+            </button>
+          </section>
+          <div id="Chat_inlineHeaderIdentity" className="fr">
+            <span id="Chat_inlineHeaderAvatar" aria-hidden="true">
+              {activeFriendAvatarUrl ? (
+                <img
+                  src={activeFriendAvatarUrl}
+                  alt={`${state?.activeChatFriendName || "Friend"} avatar`}
+                  id="Chat_inlineHeaderAvatarImage"
+                />
+              ) : (
+                <i className="fas fa-user"></i>
+              )}
+            </span>
+            <h1 id="Chat_inlineHeaderTitle">
+              {state?.activeChatFriendName || chatContent?.title || "Chat"}
+            </h1>
+          </div>
         </section>
-        <div id="Chat_inlineHeaderIdentity" className="fr">
-          <span id="Chat_inlineHeaderAvatar" aria-hidden="true">
-            {activeFriendAvatarUrl ? (
-              <img
-                src={activeFriendAvatarUrl}
-                alt={`${state?.activeChatFriendName || "Friend"} avatar`}
-                id="Chat_inlineHeaderAvatarImage"
-              />
-            ) : (
-              <i className="fas fa-user"></i>
-            )}
-          </span>
-          <h1 id="Chat_inlineHeaderTitle">
-            {state?.activeChatFriendName || chatContent?.title || "Chat"}
-          </h1>
-        </div>
-        {inlineCallActions}
-      </section>
+        {inlineCallActions ? (
+          <div id="Chat_inlineCallActionsRow">{inlineCallActions}</div>
+        ) : null}
+      </>
     ) : null;
 
   React.useEffect(() => {
@@ -1982,7 +1980,7 @@ const FriendChat = ({
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
   const shouldRenderCallPanel =
-    !usesGlobalCallPanel && Boolean(callMode) && callState !== "incoming";
+    !usesGlobalCallPanel && callMode === "video" && callState !== "incoming";
 
   return (
     <section id="FriendChat_article" className="fc">
@@ -2088,7 +2086,7 @@ const FriendChat = ({
               {inlineCallActions
                 ? inlineChatHeader
                 : null}
-              {!usesGlobalCallPanel && incomingCall ? (
+              {!usesGlobalCallPanel && incomingCall?.callType === "video" ? (
                 <section id="Chat_incomingCallBanner" className="fc">
                   <strong>
                     Incoming{" "}

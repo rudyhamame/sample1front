@@ -10,6 +10,8 @@ import {
 import "./Footer.css";
 
 const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
+  const VOICE_CALL_MINIMIZED_STORAGE_KEY =
+    "phenomed.voiceCall.windowMinimized";
   const [isDarkMode, setIsDarkMode] = React.useState(() =>
     typeof document !== "undefined"
       ? document.body.classList.contains("dark")
@@ -17,6 +19,11 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   );
   const [isHomeNogaVideoMinimized, setIsHomeNogaVideoMinimized] =
     React.useState(false);
+  const [isVoiceCallMinimized, setIsVoiceCallMinimized] = React.useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(VOICE_CALL_MINIMIZED_STORAGE_KEY) === "true"
+      : false,
+  );
   const [voicePromptState, setVoicePromptState] = React.useState({
     isOpen: false,
     tab: "",
@@ -228,6 +235,31 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const setMinimized = () => {
+      window.localStorage.setItem(VOICE_CALL_MINIMIZED_STORAGE_KEY, "true");
+      setIsVoiceCallMinimized(true);
+    };
+    const setRestored = () => {
+      window.localStorage.setItem(VOICE_CALL_MINIMIZED_STORAGE_KEY, "false");
+      setIsVoiceCallMinimized(false);
+    };
+
+    window.addEventListener("voice-call-window-minimized", setMinimized);
+    window.addEventListener("voice-call-window-restored", setRestored);
+    window.addEventListener("voice-call-window-closed", setRestored);
+
+    return () => {
+      window.removeEventListener("voice-call-window-minimized", setMinimized);
+      window.removeEventListener("voice-call-window-restored", setRestored);
+      window.removeEventListener("voice-call-window-closed", setRestored);
+    };
+  }, []);
+
   const toggleDarkMode = () => {
     if (typeof document === "undefined") {
       return;
@@ -395,68 +427,79 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
           </p>
         </div>
       </div>
-      <div
-        id="server_answer_musicPlayer"
-        className={
-          !plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""
-        }
-      >
-        <button
-          type="button"
-          id="server_answer_noga_prev"
-          className="server_answer_noga_playerButton"
-          onClick={() => playPreviousSharedPlannerMusicTrack(true)}
-          aria-label="Previous planner track"
-          title="Previous planner track"
-          disabled={!plannerMusic.isReady}
-        >
-          <i className="fi fi-rr-angle-small-left"></i>
-        </button>
-        <button
-          type="button"
-          id="server_answer_noga_toggle"
-          className="server_answer_noga_playerButton"
-          onClick={() => toggleSharedPlannerMusic()}
-          aria-label={
-            plannerMusic.isPlaying
-              ? "Pause planner music"
-              : "Play planner music"
+      <div id="server_answer_rightCluster">
+        <div
+          id="Home_voiceCallNotificationDock"
+          className="Home_voiceCallNotificationDock"
+        />
+        <div
+          id="Home_voiceCallDock"
+          className={`Home_voiceCallDock${isVoiceCallMinimized ? " Home_voiceCallDock--visible" : ""}`}
+          aria-hidden={!isVoiceCallMinimized}
+        />
+        <div
+          id="server_answer_musicPlayer"
+          className={
+            !plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""
           }
-          title={
-            plannerMusic.isPlaying
-              ? "Pause planner music"
-              : "Play planner music"
-          }
-          disabled={!plannerMusic.isReady}
         >
-          <i
-            className={
-              plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
-            }
-          ></i>
-        </button>
-        <button
-          type="button"
-          id="server_answer_noga_next"
-          className="server_answer_noga_playerButton"
-          onClick={() => playNextSharedPlannerMusicTrack(true)}
-          aria-label="Next planner track"
-          title="Next planner track"
-          disabled={!plannerMusic.isReady}
-        >
-          <i className="fi fi-rr-angle-small-right"></i>
-        </button>
-        <div id="server_answer_musicMeta">
-          <span id="server_answer_musicLabel">
-            {plannerMusic.isReady ? "Planner music" : "Music unavailable"}
-          </span>
-          <span
-            id="server_answer_musicTrack"
-            title={`${plannerMusic.trackTitle || "Planner Music"} - ${plannerMusic.trackArtist || "Internet Archive"}`}
+          <button
+            type="button"
+            id="server_answer_noga_prev"
+            className="server_answer_noga_playerButton"
+            onClick={() => playPreviousSharedPlannerMusicTrack(true)}
+            aria-label="Previous planner track"
+            title="Previous planner track"
+            disabled={!plannerMusic.isReady}
           >
-            {plannerMusic.trackTitle || "Planner Music"}
-            {plannerMusic.trackArtist ? ` / ${plannerMusic.trackArtist}` : ""}
-          </span>
+            <i className="fi fi-rr-angle-small-left"></i>
+          </button>
+          <button
+            type="button"
+            id="server_answer_noga_toggle"
+            className="server_answer_noga_playerButton"
+            onClick={() => toggleSharedPlannerMusic()}
+            aria-label={
+              plannerMusic.isPlaying
+                ? "Pause planner music"
+                : "Play planner music"
+            }
+            title={
+              plannerMusic.isPlaying
+                ? "Pause planner music"
+                : "Play planner music"
+            }
+            disabled={!plannerMusic.isReady}
+          >
+            <i
+              className={
+                plannerMusic.isPlaying ? "fi fi-rr-pause" : "fi fi-rr-play"
+              }
+            ></i>
+          </button>
+          <button
+            type="button"
+            id="server_answer_noga_next"
+            className="server_answer_noga_playerButton"
+            onClick={() => playNextSharedPlannerMusicTrack(true)}
+            aria-label="Next planner track"
+            title="Next planner track"
+            disabled={!plannerMusic.isReady}
+          >
+            <i className="fi fi-rr-angle-small-right"></i>
+          </button>
+          <div id="server_answer_musicMeta">
+            <span id="server_answer_musicLabel">
+              {plannerMusic.isReady ? "Planner music" : "Music unavailable"}
+            </span>
+            <span
+              id="server_answer_musicTrack"
+              title={`${plannerMusic.trackTitle || "Planner Music"} - ${plannerMusic.trackArtist || "Internet Archive"}`}
+            >
+              {plannerMusic.trackTitle || "Planner Music"}
+              {plannerMusic.trackArtist ? ` / ${plannerMusic.trackArtist}` : ""}
+            </span>
+          </div>
         </div>
       </div>
     </footer>

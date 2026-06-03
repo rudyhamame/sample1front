@@ -22,7 +22,7 @@ import PdfReaderPage from "../PdfReaderPage.jsx";
 import TelegramControlPage from "../TelegramControlPage.jsx";
 import JamendoPlayer from "../JamendoPlayer.jsx";
 import Profile from "../Profile/Profile.jsx";
-import GlobalCallPanel from "../HomeChat/GlobalCallPanel";
+import VoiceVideoCall from "../voiceVideoCall/VoiceVideoCall";
 import Footer from "./Footer/Footer";
 import SubApps from "../Nav/SubApps/SubApps";
 import { getHomeSubApps } from "../utils/homeSubApps";
@@ -2891,7 +2891,7 @@ class App extends React.Component {
             />
           </div>
         )}
-        <GlobalCallPanel
+        <VoiceVideoCall
           appState={this.state}
           getRealtimeSocket={this.getRealtimeSocket}
           callRequest={this.state.global_call_request}

@@ -1,0 +1,1222 @@
+
+.Chat_callControls,
+.Chat_callBannerActions,
+.Chat_callStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 10px;
+}
+#Home_rightColumn_wrapper #Chat_callActions,
+#Home_rightColumn_wrapper .Chat_inlineCallActions,
+#Home_Noga_rightColumn_wrapper #Chat_callActions,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#Chat_inlineCallActionsRow {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  min-width: 0;
+}
+
+#Chat_inlineCallActionsRow .Chat_inlineCallActions {
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#Home_voiceCallDock {
+  display: none;
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+}
+
+#Home_voiceCallDock.Home_voiceCallDock--visible {
+  display: flex;
+}
+
+#Home_voiceCallNotificationDock {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#Home_voiceCallNotificationDock:empty {
+  display: none;
+}
+
+.Chat_footerCallBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 222, 237, 0.28);
+  background: rgba(255, 245, 250, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 6px 14px rgba(86, 10, 41, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.Chat_footerCallBar--incoming {
+  padding-inline: 12px;
+}
+
+.Chat_footerCallBar--active {
+  padding-inline: 10px;
+}
+
+.Chat_footerCallMeta {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.Chat_footerCallMeta strong,
+.Chat_footerCallMeta span,
+.Chat_callElapsed {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.Chat_footerCallMeta strong {
+  font-size: 0.54rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.Chat_footerCallMeta span,
+.Chat_callElapsed {
+  font-size: 0.58rem;
+  font-weight: 600;
+}
+
+.Chat_callControls--footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.Chat_footerCallBar .Chat_callControlButton {
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  padding: 0;
+  border: 1px solid rgba(124, 157, 165, 0.12);
+  border-radius: 999px;
+  background: rgba(248, 251, 251, 0.56);
+  color: rgba(30, 82, 90, 0.78);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.Chat_footerCallBar .Chat_callControlButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(124, 157, 165, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  color: #114a4f;
+  box-shadow: 0 6px 12px rgba(6, 29, 31, 0.1);
+}
+
+.Chat_footerCallBar .Chat_callControlButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+.Chat_footerCallBar .Chat_callControlButton i {
+  font-size: 0.74rem;
+  line-height: 1;
+}
+
+.Chat_footerCallBar .Chat_callControlButton--accept {
+  background: rgba(232, 247, 240, 0.98);
+  border-color: rgba(17, 106, 77, 0.24);
+  color: #116a4d;
+}
+
+.Chat_footerCallBar .Chat_callControlButton--accept:hover:not(:disabled) {
+  background: rgba(223, 245, 235, 1);
+  border-color: rgba(17, 106, 77, 0.34);
+}
+
+.Chat_footerCallBar .Chat_callControlButton--end {
+  background: rgba(255, 238, 239, 0.98);
+  border-color: rgba(163, 55, 72, 0.22);
+  color: #9d3145;
+}
+
+.Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) {
+  background: rgba(255, 228, 231, 1);
+  border-color: rgba(163, 55, 72, 0.32);
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton,
+body.dark .Chat_footerCallBar .Chat_callControlButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(14, 39, 46, 0.94);
+  color: rgba(226, 242, 244, 0.88);
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton:hover:not(:disabled),
+body.dark .Chat_footerCallBar .Chat_callControlButton:hover:not(:disabled) {
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.98);
+  color: #f5fcfc;
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton--accept,
+body.dark .Chat_footerCallBar .Chat_callControlButton--accept {
+  border-color: rgba(88, 179, 146, 0.28);
+  background: rgba(17, 60, 49, 0.96);
+  color: rgba(224, 248, 239, 0.96);
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton--accept:hover:not(:disabled),
+body.dark .Chat_footerCallBar .Chat_callControlButton--accept:hover:not(:disabled) {
+  border-color: rgba(88, 179, 146, 0.38);
+  background: rgba(21, 70, 57, 0.98);
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton--end,
+body.dark .Chat_footerCallBar .Chat_callControlButton--end {
+  border-color: rgba(197, 119, 137, 0.28);
+  background: rgba(55, 18, 27, 0.96);
+  color: rgba(255, 236, 239, 0.96);
+}
+
+#app_page.app_page--home-dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled),
+body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) {
+  border-color: rgba(197, 119, 137, 0.38);
+  background: rgba(69, 22, 33, 0.98);
+}
+
+#Home_rightColumn_wrapper .Chat_callControls,
+#Home_Noga_rightColumn_wrapper .Chat_callControls {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5;
+  flex: 0 0 46px;
+  min-height: 46px;
+  height: 46px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 24px rgba(37, 73, 80, 0.18);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+#Home_rightColumn_wrapper .Chat_callControls.is-visible,
+#Home_Noga_rightColumn_wrapper .Chat_callControls.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#Home_rightColumn_wrapper #Chat_callActions,
+#Home_rightColumn_wrapper .Chat_inlineCallActions,
+#Home_Noga_rightColumn_wrapper #Chat_callActions,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions {
+  flex: 0 0 auto;
+}
+
+#Home_rightColumn_wrapper #Chat_backToListBtn,
+#Home_Noga_rightColumn_wrapper #Chat_backToListBtn,
+#Chat_backToListBtn,
+.Chat_backToListBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 105, 99, 0.18);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(20, 82, 89, 0.96);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#Home_rightColumn_wrapper #Chat_inlineHeaderTitle,
+#Home_Noga_rightColumn_wrapper #Chat_inlineHeaderTitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(24, 79, 88, 0.95);
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  width: 38px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 105, 99, 0.16);
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    var(--main-article-color1, rgba(234, 147, 128, 0.95)),
+    var(--main-article-color2, rgba(237, 159, 146, 0.92))
+  );
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i {
+  font-size: 0.76rem;
+  color: rgba(247, 251, 252, 0.98);
+  text-shadow: 0 1px 2px rgba(5, 24, 28, 0.24);
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled),
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.1) brightness(1.03);
+  border-color: rgba(20, 105, 99, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 12px 18px rgba(20, 105, 99, 0.18);
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:active:not(:disabled),
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:active:not(:disabled) {
+  transform: translateY(0);
+  filter: saturate(0.98) brightness(0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 5px 10px rgba(20, 105, 99, 0.16);
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled {
+  opacity: 0.5;
+  filter: grayscale(0.12) saturate(0.7);
+  cursor: not-allowed;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 10px rgba(94, 124, 133, 0.1);
+}
+
+#Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled i,
+#Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton:disabled i {
+  color: rgba(233, 242, 243, 0.84);
+  text-shadow: none;
+}
+
+#Home_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton,
+#Home_studysessions_article.Home_Noga_themeDark #Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton {
+  border-color: rgba(110, 168, 180, 0.18);
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.08), transparent 36%),
+    linear-gradient(135deg, rgba(24, 92, 96, 0.98), rgba(18, 70, 74, 0.98));
+  color: rgba(241, 248, 249, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+#Home_studysessions_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i,
+#Home_studysessions_article.Home_Noga_themeDark #Home_rightColumn_wrapper .Chat_inlineCallActions .Chat_callButton i {
+  color: rgba(241, 248, 249, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.34);
+}
+
+#Home_rightColumn_wrapper #Chat_backToListBtn:hover,
+#Home_Noga_rightColumn_wrapper #Chat_backToListBtn:hover,
+#Chat_backToListBtn:hover,
+.Chat_backToListBtn:hover {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+#Chat_inlineBackRow {
+  justify-content: flex-start;
+}
+
+#Chat_inlineHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+}
+
+#Chat_inlineBackRow {
+  justify-self: start;
+  min-width: 0;
+}
+
+#Chat_inlineHeaderIdentity {
+  justify-self: center;
+  min-width: 0;
+}
+
+#Chat_callActions {
+  justify-self: end;
+  min-width: 0;
+}
+
+#Chat_backToListBtn i,
+.Chat_backToListBtn i {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+#Chat_title_identity,
+#Chat_inlineHeaderIdentity,
+#Home_rightColumn_wrapper #Chat_title_identity,
+#Home_rightColumn_wrapper #Chat_inlineHeaderIdentity,
+#Home_Noga_rightColumn_wrapper #Chat_title_identity,
+#Home_Noga_rightColumn_wrapper #Chat_inlineHeaderIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#Chat_title_avatar,
+#Chat_inlineHeaderAvatar,
+#Home_rightColumn_wrapper #Chat_title_avatar,
+#Home_rightColumn_wrapper #Chat_inlineHeaderAvatar,
+#Home_Noga_rightColumn_wrapper #Chat_title_avatar,
+#Home_Noga_rightColumn_wrapper #Chat_inlineHeaderAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(214, 228, 232, 0.9);
+  color: rgba(20, 82, 89, 0.95);
+  flex: 0 0 28px;
+}
+
+#Chat_title_avatarImage,
+#Chat_inlineHeaderAvatarImage,
+#Home_rightColumn_wrapper #Chat_title_avatarImage,
+#Home_rightColumn_wrapper #Chat_inlineHeaderAvatarImage,
+#Home_Noga_rightColumn_wrapper #Chat_title_avatarImage,
+#Home_Noga_rightColumn_wrapper #Chat_inlineHeaderAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.Chat_callControls {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  z-index: 5;
+  flex: 0 0 46px;
+  min-height: 46px;
+  height: 46px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 24px rgba(37, 73, 80, 0.18);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.Chat_callControls.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.Chat_callControls--mini {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 0 10px 10px;
+  opacity: 1;
+  pointer-events: auto;
+  flex-wrap: wrap;
+}
+
+#Chat_incomingCallBanner,
+.Chat_callPanel,
+.Chat_callError {
+      background: linear-gradient(180deg, var(--home-bio-start, rgba(251, 233, 225, 0.96)) 0%, var(--home-bio-end, rgba(238, 198, 183, 0.92)) 100%);
+    }
+
+.Chat_callPanel--footerDock {
+  position: static;
+  left: auto;
+  top: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  flex: 1 1 auto;
+}
+
+#Chat_incomingCallBanner,
+.Chat_callPanel {
+  padding: 10px;
+  gap: 5px;
+}
+
+#Chat_incomingCallBanner {
+  position: fixed;
+  left: 24px;
+  top: 24px;
+  z-index: 50;
+  min-width: 280px;
+}
+
+.Chat_incomingCallBanner--footerDock {
+  position: static;
+  left: auto;
+  top: auto;
+  z-index: auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  flex: 0 1 auto;
+}
+
+.Chat_callPanel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#Home_rightColumn_wrapper .Chat_callPanelResizeHandle,
+#Home_Noga_rightColumn_wrapper .Chat_callPanelResizeHandle {
+  display: none;
+}
+
+
+
+
+#Home_Noga_main_leftColumn_wrapper .Chat_callPanel.Chat_callPanel--docked .Chat_mediaStage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#Home_rightColumn_wrapper .Chat_callPanel {
+  padding-bottom: 72px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_callPanel,
+#Home_Noga_main_leftColumn_wrapper .Chat_callPanel.Chat_callPanel--docked {
+  padding-bottom: 12px;
+}
+
+#Home_rightColumn_wrapper #Chat_incomingCallBanner strong,
+#Home_rightColumn_wrapper .Chat_callStatusRow strong,
+#Home_Noga_rightColumn_wrapper #Chat_incomingCallBanner strong,
+#Home_Noga_rightColumn_wrapper .Chat_callStatusRow strong {
+  color: #0f5f68;
+}
+
+#Home_rightColumn_wrapper #Chat_incomingCallBanner span,
+#Home_rightColumn_wrapper .Chat_callStatusRow span,
+#Home_rightColumn_wrapper .Chat_callError,
+#Home_rightColumn_wrapper .Chat_audioPlaceholder,
+#Home_Noga_rightColumn_wrapper #Chat_incomingCallBanner span,
+#Home_Noga_rightColumn_wrapper .Chat_callStatusRow span,
+#Home_Noga_rightColumn_wrapper .Chat_callError,
+#Home_Noga_rightColumn_wrapper .Chat_audioPlaceholder {
+  color: rgba(30, 82, 90, 0.76);
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#Home_rightColumn_wrapper .Chat_callBannerButton--accept,
+#Home_rightColumn_wrapper .Chat_callControlButton--accept,
+#Home_Noga_rightColumn_wrapper .Chat_callBannerButton--accept,
+#Home_Noga_rightColumn_wrapper .Chat_callControlButton--accept {
+  background: linear-gradient(135deg, #1c9a73, #17785b);
+}
+
+#Home_rightColumn_wrapper .Chat_callBannerButton--reject,
+#Home_rightColumn_wrapper .Chat_callControlButton--end,
+#Home_Noga_rightColumn_wrapper .Chat_callBannerButton--reject,
+#Home_Noga_rightColumn_wrapper .Chat_callControlButton--end {
+  background: linear-gradient(135deg, #c94f5d, #a23545);
+  border-color: rgba(169, 53, 69, 0.24);
+}
+
+#Home_rightColumn_wrapper .Chat_mediaStage,
+#Home_Noga_rightColumn_wrapper .Chat_mediaStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: stretch;
+  flex: 1 1 auto;
+}
+
+#Home_rightColumn_wrapper .Chat_mediaStage--floating,
+#Home_Noga_rightColumn_wrapper .Chat_mediaStage--floating {
+  position: relative;
+  display: block;
+  min-height: 272px;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px dashed rgba(124, 157, 165, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(225, 241, 237, 0.78), rgba(205, 228, 222, 0.72));
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlay,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlay {
+  position: absolute;
+  z-index: 2;
+  width: 96px;
+  transform-origin: top left;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlay:active,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlay:active {
+  cursor: grabbing;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayHeader,
+#Home_rightColumn_wrapper .Chat_videoOverlayScaleControls,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayHeader,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayScaleControls {
+  display: flex;
+  align-items: center;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayHeader,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayHeader {
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayHeader:active,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayHeader:active {
+  cursor: grabbing;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayHandle,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayHandle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(18, 82, 89, 0.9);
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle {
+  position: absolute;
+  z-index: 4;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s {
+  left: 12px;
+  right: 12px;
+  height: 12px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w {
+  top: 12px;
+  bottom: 12px;
+  width: 12px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw {
+  top: -6px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw {
+  bottom: -6px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se {
+  right: -6px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw {
+  left: -6px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw {
+  width: 16px;
+  height: 16px;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--n,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--s {
+  cursor: ns-resize;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--e,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--w {
+  cursor: ew-resize;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--ne,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--sw {
+  cursor: nesw-resize;
+}
+
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--nw,
+#Home_Noga_rightColumn_wrapper .Chat_videoOverlayResizeHandle--se {
+  cursor: nwse-resize;
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile {
+  position: relative;
+  overflow: hidden;
+  min-height: 96px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: linear-gradient(180deg, rgba(220, 238, 232, 0.96), rgba(198, 225, 218, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile--floatingRemote,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile--floatingRemote {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 20px;
+  border: none;
+  box-shadow: none;
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile--floatingLocal,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile--floatingLocal {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  min-height: 72px;
+  margin-top: 10px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 10px 22px rgba(8, 22, 27, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile video,
+#Home_rightColumn_wrapper .Chat_audioPlaceholder,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile video,
+#Home_Noga_rightColumn_wrapper .Chat_audioPlaceholder {
+  width: 100%;
+  height: 100%;
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile video,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile video {
+  display: block;
+  object-fit: cover;
+  background: rgba(11, 28, 32, 0.84);
+}
+
+#Home_rightColumn_wrapper .Chat_audioPlaceholder,
+#Home_Noga_rightColumn_wrapper .Chat_audioPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+}
+
+#Home_rightColumn_wrapper .Chat_audioPlaceholder i,
+#Home_Noga_rightColumn_wrapper .Chat_audioPlaceholder i {
+  font-size: 1.2rem;
+}
+
+#Home_rightColumn_wrapper .Chat_callControlButton.is-muted,
+#Home_Noga_rightColumn_wrapper .Chat_callControlButton.is-muted {
+  filter: saturate(0.5) brightness(0.9);
+}
+
+.Chat_callPanelHeader {
+  justify-content: space-between;
+  gap: 12px;
+  cursor: grab;
+  user-select: none;
+}
+
+.Chat_callPanelHeader:active {
+  cursor: grabbing;
+}
+
+.Chat_callPanelResizeHandle {
+  position: absolute;
+  z-index: 3;
+}
+
+.Chat_callPanelResizeHandle--n,
+.Chat_callPanelResizeHandle--s {
+  left: 16px;
+  right: 16px;
+  height: 12px;
+}
+
+.Chat_callPanelResizeHandle--e,
+.Chat_callPanelResizeHandle--w {
+  top: 16px;
+  bottom: 16px;
+  width: 12px;
+}
+
+.Chat_callPanelResizeHandle--n,
+.Chat_callPanelResizeHandle--ne,
+.Chat_callPanelResizeHandle--nw {
+  top: -6px;
+}
+
+.Chat_callPanelResizeHandle--s,
+.Chat_callPanelResizeHandle--se,
+.Chat_callPanelResizeHandle--sw {
+  bottom: -6px;
+}
+
+.Chat_callPanelResizeHandle--e,
+.Chat_callPanelResizeHandle--ne,
+.Chat_callPanelResizeHandle--se {
+  right: -6px;
+}
+
+.Chat_callPanelResizeHandle--w,
+.Chat_callPanelResizeHandle--nw,
+.Chat_callPanelResizeHandle--sw {
+  left: -6px;
+}
+
+.Chat_callPanelResizeHandle--ne,
+.Chat_callPanelResizeHandle--nw,
+.Chat_callPanelResizeHandle--se,
+.Chat_callPanelResizeHandle--sw {
+  width: 16px;
+  height: 16px;
+}
+
+.Chat_callPanelResizeHandle--n,
+.Chat_callPanelResizeHandle--s {
+  cursor: ns-resize;
+}
+
+.Chat_callPanelResizeHandle--e,
+.Chat_callPanelResizeHandle--w {
+  cursor: ew-resize;
+}
+
+.Chat_callPanelResizeHandle--ne,
+.Chat_callPanelResizeHandle--sw {
+  cursor: nesw-resize;
+}
+
+.Chat_callPanelResizeHandle--nw,
+.Chat_callPanelResizeHandle--se {
+  cursor: nwse-resize;
+}
+
+#Chat_incomingCallBanner strong,
+.Chat_callStatusRow strong {
+  color: #0f5f68;
+}
+
+#Chat_incomingCallBanner span,
+.Chat_callStatusRow span,
+.Chat_callError,
+.Chat_audioPlaceholder {
+  color: rgba(30, 82, 90, 0.76);
+  font-size: 0.68rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.Chat_callBannerButton,
+.Chat_callControlButton,
+.Chat_videoOverlayScaleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 105, 99, 0.16);
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.22), transparent 38%),
+    linear-gradient(135deg, rgba(29, 125, 117, 0.96), rgba(20, 105, 99, 0.9));
+  color: rgba(247, 251, 252, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 14px rgba(20, 105, 99, 0.14);
+}
+
+.Chat_callBannerButton--accept {
+  background: linear-gradient(135deg, #1c9a73, #17785b);
+}
+
+.Chat_callControlButton--accept {
+  background: linear-gradient(135deg, #1c9a73, #17785b);
+}
+
+.Chat_callBannerButton--reject,
+.Chat_callControlButton--end {
+  background: linear-gradient(135deg, #c94f5d, #a23545);
+  border-color: rgba(169, 53, 69, 0.24);
+}
+
+.Chat_mediaStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: stretch;
+  flex: 1 1 auto;
+}
+
+.Chat_mediaStage--floating {
+  position: relative;
+  display: block;
+  min-height: 272px;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px dashed rgba(124, 157, 165, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(225, 241, 237, 0.78), rgba(205, 228, 222, 0.72));
+}
+
+.Chat_videoOverlay {
+  position: absolute;
+  z-index: 2;
+  width: 96px;
+  transform-origin: top left;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.Chat_videoOverlay:active {
+  cursor: grabbing;
+}
+
+.Chat_videoOverlayHeader,
+.Chat_videoOverlayScaleControls {
+  display: flex;
+  align-items: center;
+}
+
+.Chat_videoOverlayHeader {
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+.Chat_videoOverlayHeader:active {
+  cursor: grabbing;
+}
+
+.Chat_videoOverlayHandle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(18, 82, 89, 0.9);
+  font-size: 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.Chat_videoOverlayResizeHandle {
+  position: absolute;
+  z-index: 4;
+}
+
+.Chat_videoOverlayResizeHandle--n,
+.Chat_videoOverlayResizeHandle--s {
+  left: 12px;
+  right: 12px;
+  height: 12px;
+}
+
+.Chat_videoOverlayResizeHandle--e,
+.Chat_videoOverlayResizeHandle--w {
+  top: 12px;
+  bottom: 12px;
+  width: 12px;
+}
+
+.Chat_videoOverlayResizeHandle--n,
+.Chat_videoOverlayResizeHandle--ne,
+.Chat_videoOverlayResizeHandle--nw {
+  top: -6px;
+}
+
+.Chat_videoOverlayResizeHandle--s,
+.Chat_videoOverlayResizeHandle--se,
+.Chat_videoOverlayResizeHandle--sw {
+  bottom: -6px;
+}
+
+.Chat_videoOverlayResizeHandle--e,
+.Chat_videoOverlayResizeHandle--ne,
+.Chat_videoOverlayResizeHandle--se {
+  right: -6px;
+}
+
+.Chat_videoOverlayResizeHandle--w,
+.Chat_videoOverlayResizeHandle--nw,
+.Chat_videoOverlayResizeHandle--sw {
+  left: -6px;
+}
+
+.Chat_videoOverlayResizeHandle--ne,
+.Chat_videoOverlayResizeHandle--nw,
+.Chat_videoOverlayResizeHandle--se,
+.Chat_videoOverlayResizeHandle--sw {
+  width: 16px;
+  height: 16px;
+}
+
+.Chat_videoOverlayResizeHandle--n,
+.Chat_videoOverlayResizeHandle--s {
+  cursor: ns-resize;
+}
+
+.Chat_videoOverlayResizeHandle--e,
+.Chat_videoOverlayResizeHandle--w {
+  cursor: ew-resize;
+}
+
+.Chat_videoOverlayResizeHandle--ne,
+.Chat_videoOverlayResizeHandle--sw {
+  cursor: nesw-resize;
+}
+
+.Chat_videoOverlayResizeHandle--nw,
+.Chat_videoOverlayResizeHandle--se {
+  cursor: nwse-resize;
+}
+
+.Chat_mediaTile {
+  position: relative;
+  overflow: hidden;
+  min-height: 96px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 157, 165, 0.16);
+  background: linear-gradient(180deg, rgba(220, 238, 232, 0.96), rgba(198, 225, 218, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.Chat_mediaTile--floatingRemote {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 20px;
+  border: none;
+  box-shadow: none;
+}
+
+.Chat_mediaTile--floatingLocal {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  min-height: 72px;
+  margin-top: 10px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 10px 22px rgba(8, 22, 27, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.Chat_mediaTile video,
+.Chat_audioPlaceholder {
+  width: 100%;
+  height: 100%;
+}
+
+.Chat_mediaTile video {
+  display: block;
+  object-fit: cover;
+  background: rgba(11, 28, 32, 0.84);
+}
+
+.Chat_audioPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+}
+
+.Chat_audioPlaceholder i {
+  font-size: 1.2rem;
+}
+
+.Chat_callControlButton.is-muted {
+  filter: saturate(0.5) brightness(0.9);
+}
+
+.Chat_callError {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 40;
+  padding: 10px 12px;
+}
+
+#app_page.app_page--home-dark #Chat_incomingCallBanner,
+#app_page.app_page--home-dark .Chat_callPanel,
+#app_page.app_page--home-dark .Chat_callError {
+  background: linear-gradient(180deg, rgba(8, 22, 27, 0.97), rgba(11, 31, 38, 0.95));
+  border-color: rgba(110, 168, 180, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 16px 30px rgba(0, 0, 0, 0.24);
+}
+
+#app_page.app_page--home-dark .Chat_callControls {
+  background: rgba(8, 22, 27, 0.72);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26);
+}
+
+#app_page.app_page--home-dark #Chat_incomingCallBanner strong,
+#app_page.app_page--home-dark .Chat_callStatusRow strong {
+  color: rgba(240, 247, 248, 0.94);
+}
+
+#app_page.app_page--home-dark #Chat_incomingCallBanner span,
+#app_page.app_page--home-dark .Chat_callStatusRow span,
+#app_page.app_page--home-dark .Chat_callError,
+#app_page.app_page--home-dark .Chat_audioPlaceholder {
+  color: rgba(214, 234, 238, 0.8);
+}
+
+#app_page.app_page--home-dark .Chat_mediaTile {
+  border-color: rgba(110, 168, 180, 0.14);
+  background: linear-gradient(180deg, rgba(14, 39, 46, 0.94), rgba(12, 30, 36, 0.94));
+}
+
+#app_page.app_page--home-dark .Chat_mediaStage--floating {
+  border-color: rgba(110, 168, 180, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 32%),
+    linear-gradient(180deg, rgba(12, 33, 39, 0.92), rgba(9, 24, 30, 0.92));
+}
+
+#app_page.app_page--home-dark .Chat_videoOverlay {
+  background: linear-gradient(180deg, rgba(10, 26, 31, 0.98), rgba(12, 33, 39, 0.96));
+  border-color: rgba(110, 168, 180, 0.16);
+}
+
+#app_page.app_page--home-dark .Chat_videoOverlayHandle {
+  color: rgba(226, 241, 243, 0.9);
+}

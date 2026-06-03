@@ -110,6 +110,12 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   left: 0;
 }
 
+#SubApps_article.SubApps_article--footer #SubApps_dropMenu_container,
+#SubApps_article.SubApps_article--footer .SubApps_settingsInlineList {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 #SubApps_dropMenu_container,
 .SubApps_settingsInlineList {
   display: none;

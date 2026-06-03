@@ -4203,6 +4203,8 @@ function HomeNoga(props) {
         String(friend.chatId || "").trim();
       const incomingCallMode =
         incomingCall?.callType === "video" ? "video" : "voice";
+      const isVoiceIncomingCallForFriend =
+        isIncomingCallForFriend && incomingCallMode === "voice";
 
       return (
         <li
@@ -4263,18 +4265,17 @@ function HomeNoga(props) {
               >
                 {unreadChatCount > 99 ? "99+" : unreadChatCount}
               </span>
-              {isFriendChatOpen ? (
-                <div
-                  className="Home_Noga_socialFriendInlineCallActionsSlot"
-                  ref={handleInlineCallActionsTargetRef}
-                />
-              ) : null}
             </div>
           </button>
-          {isIncomingCallForFriend ? (
-            <div className="Home_Noga_socialFriendIncomingCall">
+          {isFriendChatOpen ? (
+            <div
+              className="Home_Noga_socialFriendInlineCallActionsSlot"
+              ref={handleInlineCallActionsTargetRef}
+            />
+          ) : null}
+          {isVoiceIncomingCallForFriend ? (
+            <div className="Home_Noga_socialFriendIncomingCall Home_Noga_socialFriendIncomingCall--minibar">
               <div className="Home_Noga_socialFriendIncomingCallCopy">
-                <strong>Incoming {incomingCallMode} call</strong>
                 <span>
                   {friend.displayName || "Your friend"} is calling you.
                 </span>
@@ -8195,6 +8196,16 @@ function HomeNoga(props) {
       ? "repeat"
       : "no-repeat",
   };
+  const globalCallRequest = props.state?.global_call_request || null;
+  const globalCallSession = props.state?.global_call_session || null;
+  const hasHomeNogaCallDockMounted = Boolean(
+    globalCallRequest?.mode === "video" ||
+      (globalCallSession &&
+        (globalCallSession.callMode === "video" ||
+          globalCallSession.incomingCall?.callType === "video" ||
+          (globalCallSession.callState !== "idle" &&
+            globalCallSession.callMode === "video"))),
+  );
   const drawingControlsPanel = (
     <div className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open">
       <button
@@ -8426,142 +8437,152 @@ function HomeNoga(props) {
                 id="Home_Noga_main_leftColumn_wrapper"
                 className="Home_Noga_main_leftColumn_wrapper"
               >
+                {hasHomeNogaCallDockMounted ? (
+                  <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
+                ) : null}
                 {renderHomeDrawingVisibilityCanvas("leftColumn")}
-                <div
-                  id="Home_Noga_bioWrapper"
-                  className="Home_Noga_bioWrapper"
-                  style={bioWrapperStyle}
-                >
-                  {renderHomeDrawingVisibilityCanvas("bio")}
+                {!hasHomeNogaCallDockMounted ? (
                   <div
-                    id="Home_Noga_preStart_profileWrapper"
-                    ref={profilePictureWrapperRef}
-                    style={{ position: "relative" }}
+                    id="Home_Noga_bioProfileWrapper"
+                    className="Home_Noga_bioProfileWrapper"
                   >
-                    <div className="Home_Noga_preStart_profileViewportFrame">
-                      {renderHomeDrawingVisibilityCanvas("profile")}
-                      {displayedProfilePictureSrc ? (
-                        <img
-                          id="Home_Noga_preStart_profilePic"
-                          ref={profilePictureImageRef}
-                          src={displayedProfilePictureSrc}
-                          alt={compactDisplayName}
-                          onDoubleClick={
-                            isViewingExternalProfile
-                              ? undefined
-                              : resetProfilePictureViewport
-                          }
-                          onTouchStart={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePictureTouchStart
-                          }
-                          onTouchMove={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePictureTouchMove
-                          }
-                          onTouchEnd={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePictureTouchEnd
-                          }
-                          onTouchCancel={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePictureTouchEnd
-                          }
-                          onPointerDown={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePicturePointerDown
-                          }
-                          onPointerMove={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePicturePointerMove
-                          }
-                          onPointerUp={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePicturePointerUp
-                          }
-                          onPointerCancel={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePicturePointerUp
-                          }
-                          onWheel={
-                            isViewingExternalProfile
-                              ? undefined
-                              : handleProfilePictureWheel
-                          }
-                          className={
-                            !isViewingExternalProfile &&
-                            isProfilePictureDragging
-                              ? "isDragging"
-                              : ""
-                          }
-                        />
-                      ) : (
-                        <i className="fas fa-user" aria-hidden="true"></i>
-                      )}
-                      <input
-                        key={galleryTab}
-                        ref={galleryUploadInputRef}
-                        type="file"
-                        accept={activeGalleryUploadConfig.accept}
-                        className="Home_Noga_hiddenFileInput"
-                        disabled={isViewingExternalProfile}
-                        onChange={handleProfilePictureSelected}
-                      />
-                    </div>
-                    {isProfilePictureViewportDirty ? (
-                      <button
-                        type="button"
-                        className="Home_Noga_profileViewportApplyButton"
-                        onClick={applyProfilePictureViewportChange}
-                        disabled={isApplyingProfilePictureViewport}
-                      >
-                        {isApplyingProfilePictureViewport
-                          ? "Applying..."
-                          : "Apply Change"}
-                      </button>
-                    ) : null}
-                  </div>
-                  <div id="Home_Noga_preStart_personalBio" className="fc">
-                    {renderHomeDrawingVisibilityCanvas("bioText")}
                     <div
-                      id="Home_Noga_preStart_personalInfoGrid"
-                      className="Home_Noga_preStart_personalInfoGrid--compact"
+                      id="Home_Noga_bioWrapper"
+                      className="Home_Noga_bioWrapper"
+                      style={bioWrapperStyle}
                     >
-                      <div className="Home_Noga_compactBioCard">
-                        <div className="Home_Noga_compactBioIdentity">
-                          <h3 className="Home_Noga_compactBioName">
-                            {compactDisplayName}
-                          </h3>
-                          <p className="Home_Noga_compactBioUsername">
-                            {compactUsername}
-                          </p>
+                      {renderHomeDrawingVisibilityCanvas("bio")}
+                      <div
+                        id="Home_Noga_preStart_profileWrapper"
+                        ref={profilePictureWrapperRef}
+                        style={{ position: "relative" }}
+                      >
+                        <div className="Home_Noga_preStart_profileViewportFrame">
+                          {renderHomeDrawingVisibilityCanvas("profile")}
+                          {displayedProfilePictureSrc ? (
+                            <img
+                              id="Home_Noga_preStart_profilePic"
+                              ref={profilePictureImageRef}
+                              src={displayedProfilePictureSrc}
+                              alt={compactDisplayName}
+                              onDoubleClick={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : resetProfilePictureViewport
+                              }
+                              onTouchStart={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePictureTouchStart
+                              }
+                              onTouchMove={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePictureTouchMove
+                              }
+                              onTouchEnd={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePictureTouchEnd
+                              }
+                              onTouchCancel={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePictureTouchEnd
+                              }
+                              onPointerDown={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePicturePointerDown
+                              }
+                              onPointerMove={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePicturePointerMove
+                              }
+                              onPointerUp={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePicturePointerUp
+                              }
+                              onPointerCancel={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePicturePointerUp
+                              }
+                              onWheel={
+                                isViewingExternalProfile
+                                  ? undefined
+                                  : handleProfilePictureWheel
+                              }
+                              className={
+                                !isViewingExternalProfile &&
+                                isProfilePictureDragging
+                                  ? "isDragging"
+                                  : ""
+                              }
+                            />
+                          ) : (
+                            <i className="fas fa-user" aria-hidden="true"></i>
+                          )}
+                          <input
+                            key={galleryTab}
+                            ref={galleryUploadInputRef}
+                            type="file"
+                            accept={activeGalleryUploadConfig.accept}
+                            className="Home_Noga_hiddenFileInput"
+                            disabled={isViewingExternalProfile}
+                            onChange={handleProfilePictureSelected}
+                          />
                         </div>
-                        <div className="Home_Noga_compactBioSummary">
-                          <div className="Home_Noga_compactBioHeadingRow">
-                            <p className="Home_Noga_compactBioEyebrow">Bio</p>
-                            {!isViewingExternalProfile ? (
-                              <button
-                                type="button"
-                                className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
-                                onClick={() =>
-                                  startInlinePersonalInfoEdit("bio")
-                                }
-                                aria-label="Edit bio"
-                                title="Edit bio"
-                                disabled={isPersonalInfoInlineSubmitting}
-                              >
-                                <i className="fas fa-pen"></i>
-                              </button>
-                            ) : null}
-                          </div>
+                        {isProfilePictureViewportDirty ? (
+                          <button
+                            type="button"
+                            className="Home_Noga_profileViewportApplyButton"
+                            onClick={applyProfilePictureViewportChange}
+                            disabled={isApplyingProfilePictureViewport}
+                          >
+                            {isApplyingProfilePictureViewport
+                              ? "Applying..."
+                              : "Apply Change"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <div id="Home_Noga_preStart_personalBio" className="fc">
+                        {renderHomeDrawingVisibilityCanvas("bioText")}
+                        <div
+                          id="Home_Noga_preStart_personalInfoGrid"
+                          className="Home_Noga_preStart_personalInfoGrid--compact"
+                        >
+                          <div className="Home_Noga_compactBioCard">
+                            <div className="Home_Noga_compactBioIdentity">
+                              <h3 className="Home_Noga_compactBioName">
+                                {compactDisplayName}
+                              </h3>
+                              <p className="Home_Noga_compactBioUsername">
+                                {compactUsername}
+                              </p>
+                            </div>
+                            <div className="Home_Noga_compactBioSummary">
+                              <div className="Home_Noga_compactBioHeadingRow">
+                                <p className="Home_Noga_compactBioEyebrow">
+                                  Bio
+                                </p>
+                                {!isViewingExternalProfile ? (
+                                  <button
+                                    type="button"
+                                    className="Home_Noga_userMenu_infoEditIcon Home_Noga_compactBioEditButton"
+                                    onClick={() =>
+                                      startInlinePersonalInfoEdit("bio")
+                                    }
+                                    aria-label="Edit bio"
+                                    title="Edit bio"
+                                    disabled={isPersonalInfoInlineSubmitting}
+                                  >
+                                    <i className="fas fa-pen"></i>
+                                  </button>
+                                ) : null}
+                              </div>
                           {isEditingCompactBio ? (
                             <div className="Home_Noga_compactBioEditor fc">
                               <textarea
@@ -9274,6 +9295,8 @@ function HomeNoga(props) {
                   </div>
                 </div>
               </div>
+              ) : null}
+            </div>
               <section
                 id="Home_Noga_rightColumn_wrapper"
                 className="Home_Noga_socialFriendsPanel"
