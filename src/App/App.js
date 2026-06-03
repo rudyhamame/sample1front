@@ -1889,16 +1889,10 @@ class App extends React.Component {
             nextInfo?.term !== undefined
               ? String(nextInfo?.term || "").trim() || null
               : String(
-                  currentStudyingTimeCurrent.programTerm?.number ??
-                    currentStudyingTimeCurrent.programTerm ??
+                  currentStudyingTimeCurrent.programTerm ??
                     currentStudyingTimeCurrentDate.term ??
                     "",
                 ).trim() || null;
-          const nextCurrentProgramTermDetails =
-            nextInfo?.currentProgramTermDetails &&
-            typeof nextInfo.currentProgramTermDetails === "object"
-              ? nextInfo.currentProgramTermDetails
-              : null;
 
           return {
             ...currentStudying,
@@ -1943,34 +1937,7 @@ class App extends React.Component {
                 ...currentStudyingTimeCurrent,
                 programYearInterval: nextCurrentProgramYearInterval,
                 programYearNum: nextCurrentProgramYearNum,
-                programTerm: {
-                  ...(currentStudyingTimeCurrent.programTerm &&
-                  typeof currentStudyingTimeCurrent.programTerm === "object"
-                    ? currentStudyingTimeCurrent.programTerm
-                    : {}),
-                  number:
-                    String(
-                      nextCurrentProgramTermDetails?.number ??
-                        nextCurrentProgramTerm ??
-                        "",
-                    ).trim() || null,
-                  attendanceDate: Array.isArray(
-                    nextCurrentProgramTermDetails?.attendanceDate,
-                  )
-                    ? nextCurrentProgramTermDetails.attendanceDate
-                    : Array.isArray(
-                          currentStudyingTimeCurrent?.programTerm?.attendanceDate,
-                        )
-                      ? currentStudyingTimeCurrent.programTerm.attendanceDate
-                      : [],
-                  examDate: Array.isArray(nextCurrentProgramTermDetails?.examDate)
-                    ? nextCurrentProgramTermDetails.examDate
-                    : Array.isArray(
-                          currentStudyingTimeCurrent?.programTerm?.examDate,
-                        )
-                      ? currentStudyingTimeCurrent.programTerm.examDate
-                      : [],
-                },
+                programTerm: nextCurrentProgramTerm,
               },
               startDate: {
                 ...currentStudyingTimeStartDate,

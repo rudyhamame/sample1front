@@ -522,158 +522,158 @@ const SCHOOLPLANNER_TRANSLATIONS = {
     unknownDay: "Unknown day",
   },
   ar: {
-    add: "إضافة",
-    edit: "تعديل",
-    delete: "حذف",
-    close: "إغلاق",
-    send: "إرسال",
-    search: "بحث",
-    reset: "إعادة ضبط",
-    save: "حفظ",
-    saving: "جارٍ الحفظ...",
-    loadMore: "تحميل المزيد",
-    loadingArchive: "جارٍ تحميل الأرشيف",
-    loadingTelegramMessages: "جارٍ تحميل رسائل تيليجرام...",
-    noTelegramMessagesYet: "لا توجد رسائل تيليجرام بعد.",
-    noStoredMessagesYet: "لا توجد رسائل محفوظة بعد",
-    notSyncedYet: "لم تتم المزامنة بعد",
-    plannerControl: "لوحة التخطيط",
-    planDays: "أيام الخطة",
-    dailyLoad: "الحمل اليومي",
-    messageDesk: "مكتب الرسائل",
-    telegram: "تيليجرام",
-    archiveAndSearch: "الأرشفة + البحث",
+    add: "",
+    edit: "",
+    delete: "",
+    close: "",
+    send: "",
+    search: "",
+    reset: " ",
+    save: "",
+    saving: " ...",
+    loadMore: " ",
+    loadingArchive: "  ",
+    loadingTelegramMessages: "   ...",
+    noTelegramMessagesYet: "    .",
+    noStoredMessagesYet: "    ",
+    notSyncedYet: "   ",
+    plannerControl: " ",
+    planDays: " ",
+    dailyLoad: " ",
+    messageDesk: " ",
+    telegram: "",
+    archiveAndSearch: " + ",
     planDaysCopy:
-      "راجع عبء الدراسة لكل يوم وحافظ على توازن الأسبوع قبل الطباعة أو إرسال التحديثات.",
+      "             .",
     telegramDeskCopy:
-      "اربط مجموعة واحدة، وأرشف سجلها، وابحث فيها بتكلفة منخفضة، وأرسل ملاحظات المخطط من نفس اللوحة.",
-    telegramControl: "تحكم تيليجرام",
-    groupReference: "مرجع المجموعة / القناة",
-    historyStartDate: "تاريخ بدء الأرشيف",
-    groupReferencePlaceholder: "@اسم_المجموعة أو @اسم_القناة أو رابط المحادثة",
-    telegramGroupsLabel: "المجموعات",
-    telegramSupergroupsLabel: "المجموعات الكبرى",
-    telegramChannelsLabel: "القنوات",
-    telegramSearchPlaceholder: "ابحث في الرسائل",
+      "              .",
+    telegramControl: " ",
+    groupReference: "  / ",
+    historyStartDate: "  ",
+    groupReferencePlaceholder: "@_  @_   ",
+    telegramGroupsLabel: "",
+    telegramSupergroupsLabel: " ",
+    telegramChannelsLabel: "",
+    telegramSearchPlaceholder: "  ",
     telegramHint:
-      "احفظ مرجع المجموعة وتاريخ بدء الأرشيف مرة واحدة. سيقوم الخادم بأرشفة الرسائل القديمة من ذلك التاريخ ومتابعة حفظ الرسائل الجديدة تلقائياً.",
-    storedMessages: "الرسائل المحفوظة",
-    lastSync: "آخر مزامنة",
-    lastStoredMessage: "آخر رسالة محفوظة",
-    courseInformation: "معلومات المقرر",
-    examInformation: "معلومات الامتحان",
-    noExamEntries: "لا توجد بيانات امتحان.",
-    courseNote: "ملاحظة المقرر",
-    courseName: "اسم المقرر",
-    courseTime: "وقت المقرر",
-    courseYear: "سنة المقرر",
-    courseTerm: "فصل المقرر",
-    courseYearTerm: "سنة/فصل المقرر",
-    courseClass: "تصنيف المقرر",
-    courseStatus: "حالة المقرر",
-    courseInstructors: "مدرسو المقرر",
-    actualGrade: "الدرجة الفعلية",
-    courseLength: "طول المقرر",
-    courseProgress: "تقدم المقرر",
-    fullGrade: "الدرجة الكاملة",
-    coursePages: "صفحات المقرر",
-    targetPagesPerDay: "الصفحات المستهدفة يومياً",
-    examType: "نوع الامتحان",
-    examDate: "تاريخ الامتحان",
-    examTime: "وقت الامتحان",
-    grades: "الدرجات",
-    examDue: "موعد الامتحان",
-    lectureDetails: "تفاصيل المحاضرة",
-    title: "العنوان",
-    course: "المقرر",
-    instructor: "اسم المدرس",
-    writer: "اسم الكاتب",
-    date: "التاريخ",
-    corrections: "التصحيحات",
-    noCorrectionsYet: "لا توجد تصحيحات بعد.",
-    noCorrectionsForLectureYet: "لم تُضف تصحيحات لهذه المحاضرة بعد.",
-    writerLabel: "الكاتب",
-    page: "الصفحة {page}",
-    toggleFinishedPages: "إظهار الصفحات المنجزة",
-    hideLecturePages: "إخفاء صفحات المحاضرة",
-    showLecturePages: "إظهار صفحات المحاضرة",
-    telegramSummary: "ملخص تيليجرام",
+      "       .             .",
+    storedMessages: " ",
+    lastSync: " ",
+    lastStoredMessage: "  ",
+    courseInformation: " ",
+    examInformation: " ",
+    noExamEntries: "   .",
+    courseNote: " ",
+    courseName: " ",
+    courseTime: " ",
+    courseYear: " ",
+    courseTerm: " ",
+    courseYearTerm: "/ ",
+    courseClass: " ",
+    courseStatus: " ",
+    courseInstructors: " ",
+    actualGrade: " ",
+    courseLength: " ",
+    courseProgress: " ",
+    fullGrade: " ",
+    coursePages: " ",
+    targetPagesPerDay: "  ",
+    examType: " ",
+    examDate: " ",
+    examTime: " ",
+    grades: "",
+    examDue: " ",
+    lectureDetails: " ",
+    title: "",
+    course: "",
+    instructor: " ",
+    writer: " ",
+    date: "",
+    corrections: "",
+    noCorrectionsYet: "   .",
+    noCorrectionsForLectureYet: "     .",
+    writerLabel: "",
+    page: " {page}",
+    toggleFinishedPages: "  ",
+    hideLecturePages: "  ",
+    showLecturePages: "  ",
+    telegramSummary: " ",
     noLectureTelegramMatchesYet:
-      "لم يتم العثور بعد على ملاحظات تيليجرام مرتبطة بهذه المحاضرة.",
-    matchedTerms: "الكلمات المطابقة",
-    matchedTermsUnavailable: "الكلمات المطابقة غير متاحة",
-    latestRelatedMessage: "آخر رسالة مرتبطة",
-    unknownTime: "وقت غير معروف",
-    unknown: "غير معروف",
-    noText: "[بلا نص]",
-    addLecture: "إضافة محاضرة",
-    deleteLecture: "حذف محاضرة",
-    hideUncheckedLectures: "إخفاء المحاضرات غير المحددة",
-    unhideUncheckedLectures: "إظهار المحاضرات غير المحددة",
-    searchPlaceholder: "بحث",
-    titleHeader: "العنوان",
-    courseHeader: "المقرر",
-    instructorNameHeader: "اسم المدرس",
-    writerNameHeader: "اسم الكاتب",
-    lectureNamePlaceholder: "اسم المحاضرة",
-    lectureCoursePlaceholder: "مقرر المحاضرة",
-    lectureInstructorPlaceholder: "مدرس المحاضرة",
-    lectureWriterPlaceholder: "كاتب المحاضرة",
-    lectureLengthPlaceholder: "عدد صفحات المحاضرة",
-    correctionPagePlaceholder: "صفحة التصحيح",
-    correctionNotePlaceholder: "ملاحظة التصحيح",
-    lectureOutlinePlaceholder: "محور المحاضرة",
-    courseNamePlaceholder: "اسم المقرر",
-    courseComponentPlaceholder: "مكوّن المقرر",
-    inClass: "داخل القاعة",
-    outOfClass: "خارج القاعة",
-    courseDayPlaceholder: "يوم المقرر",
-    sunday: "الأحد",
-    monday: "الاثنين",
-    tuesday: "الثلاثاء",
-    wednesday: "الأربعاء",
-    thursday: "الخميس",
-    friday: "الجمعة",
-    saturday: "السبت",
-    courseYearPlaceholder: "سنة المقرر",
-    courseTermPlaceholder: "فصل المقرر",
-    fall: "خريف",
-    winter: "شتاء",
-    summer: "صيف",
-    courseClassificationPlaceholder: "تصنيف المقرر",
-    inClassGroup: "داخل القاعة",
-    outOfClassGroup: "خارج القاعة",
-    basicScience: "علوم أساسية",
-    appliedScience: "علوم تطبيقية",
-    lab: "مختبر",
-    clinicalRotation: "دورة سريرية",
-    courseStatusPlaceholder: "حالة المقرر",
-    unstarted: "لم يبدأ",
-    ongoing: "مستمر",
-    pass: "ناجح",
-    fail: "راسب",
-    courseInstructorsPlaceholder: "مدرسو المقرر",
-    examDateLabel: "تاريخ الامتحان",
-    examTimeLabel: "وقت الامتحان",
-    examTypeLabel: "نوع الامتحان",
-    gradesLabel: "الدرجات",
-    quiz: "كويز",
-    midterm: "نصفي",
-    final: "نهائي",
-    practical: "عملي",
-    oral: "شفهي",
-    postingFailedPleaseAddCourseName: "فشل الإرسال. الرجاء إضافة اسم المقرر",
-    music: "الموسيقى",
-    telegramGroup: "مجموعة تيليجرام",
-    showingResults: "عرض {count} نتيجة من أصل {rawCount} رسالة تم جلبها",
+      "         .",
+    matchedTerms: " ",
+    matchedTermsUnavailable: "   ",
+    latestRelatedMessage: "  ",
+    unknownTime: "  ",
+    unknown: " ",
+    noText: "[ ]",
+    addLecture: " ",
+    deleteLecture: " ",
+    hideUncheckedLectures: "   ",
+    unhideUncheckedLectures: "   ",
+    searchPlaceholder: "",
+    titleHeader: "",
+    courseHeader: "",
+    instructorNameHeader: " ",
+    writerNameHeader: " ",
+    lectureNamePlaceholder: " ",
+    lectureCoursePlaceholder: " ",
+    lectureInstructorPlaceholder: " ",
+    lectureWriterPlaceholder: " ",
+    lectureLengthPlaceholder: "  ",
+    correctionPagePlaceholder: " ",
+    correctionNotePlaceholder: " ",
+    lectureOutlinePlaceholder: " ",
+    courseNamePlaceholder: " ",
+    courseComponentPlaceholder: " ",
+    inClass: " ",
+    outOfClass: " ",
+    courseDayPlaceholder: " ",
+    sunday: "",
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+    courseYearPlaceholder: " ",
+    courseTermPlaceholder: " ",
+    fall: "",
+    winter: "",
+    summer: "",
+    courseClassificationPlaceholder: " ",
+    inClassGroup: " ",
+    outOfClassGroup: " ",
+    basicScience: " ",
+    appliedScience: " ",
+    lab: "",
+    clinicalRotation: " ",
+    courseStatusPlaceholder: " ",
+    unstarted: " ",
+    ongoing: "",
+    pass: "",
+    fail: "",
+    courseInstructorsPlaceholder: " ",
+    examDateLabel: " ",
+    examTimeLabel: " ",
+    examTypeLabel: " ",
+    gradesLabel: "",
+    quiz: "",
+    midterm: "",
+    final: "",
+    practical: "",
+    oral: "",
+    postingFailedPleaseAddCourseName: " .    ",
+    music: "",
+    telegramGroup: " ",
+    showingResults: " {count}    {rawCount}   ",
     pagesFinishedSummary:
-      "{progress} / {length} صفحة منجزة | {remaining} متبقية | {percent}%",
-    finishedPages: "الصفحات المنجزة",
-    remainingPages: "الصفحات المتبقية",
-    none: "لا يوجد",
-    unknownDay: "يوم غير معروف",
+      "{progress} / {length}   | {remaining}  | {percent}%",
+    finishedPages: " ",
+    remainingPages: " ",
+    none: " ",
+    unknownDay: "  ",
     dueIn:
-      "متبقٍ {days} يوم و{hours} ساعة و{mins} دقيقة، مع {examHour} ساعة و{examMins} دقيقة في يوم الامتحان",
+      " {days}  {hours}  {mins}   {examHour}  {examMins}    ",
   },
 };
 
@@ -695,7 +695,7 @@ const getCourseDueText = (course, locale = "en") => {
   }
 
   if (locale === "ar") {
-    return `متبقٍ ${diffDaysWithoutDecimals} يوم و${diffHoursWithoutDecimals} ساعة و${diffMinsWithoutDecimals} دقيقة، مع ${examTime_hour} ساعة و${examTime_mins} دقيقة في يوم الامتحان`;
+    return ` ${diffDaysWithoutDecimals}  ${diffHoursWithoutDecimals}  ${diffMinsWithoutDecimals}   ${examTime_hour}  ${examTime_mins}    `;
   }
 
   return (
@@ -938,14 +938,14 @@ export default class SchoolPlanner extends Component {
       music_isPlaying: false,
       music_volume: 0.42,
       music_trackTitle:
-        props.locale === "ar" ? "كلاسيكيات الأرشيف" : "Archive Classics",
+        props.locale === "ar" ? " " : "Archive Classics",
       music_trackArtist: "Internet Archive",
       music_isLoading: false,
       telegram_isLoading: false,
       telegram_error: "",
       telegram_messages: [],
       telegram_groupTitle:
-        props.locale === "ar" ? "مجموعة تيليجرام" : "Telegram Group",
+        props.locale === "ar" ? " " : "Telegram Group",
       telegram_groupReference: "",
       telegram_panelGroupTitle: "Telegram Group",
       telegram_panelGroupReference: "",
@@ -3484,7 +3484,7 @@ export default class SchoolPlanner extends Component {
     titleText.setAttribute("tabindex", "0");
     titleText.setAttribute(
       "title",
-      this.isArabic() ? "افتح تفاصيل المحاضرة" : "Open lecture details",
+      this.isArabic() ? "  " : "Open lecture details",
     );
     titleText.addEventListener("click", () => {
       this.openLectureDetails(lecture);
@@ -4464,7 +4464,7 @@ export default class SchoolPlanner extends Component {
       },
       {
         key: "delete-all",
-        label: this.isArabic() ? "حذف الكل" : "Delete All",
+        label: this.isArabic() ? " " : "Delete All",
         iconClass: "fi fi-rr-trash",
         allowWhenIdle: true,
         run: () => {
@@ -4487,10 +4487,10 @@ export default class SchoolPlanner extends Component {
         key: "plan",
         label: course?.course_partOfPlan
           ? this.isArabic()
-            ? "إزالة من الخطة"
+            ? "  "
             : "Remove from plan"
           : this.isArabic()
-            ? "إضافة إلى الخطة"
+            ? "  "
             : "Add to plan",
         iconClass: "fi fi-rr-layer-plus",
         run: () => {
@@ -4504,7 +4504,7 @@ export default class SchoolPlanner extends Component {
       },
       {
         key: "send",
-        label: this.isArabic() ? "إرسال إلى تيليجرام" : "Send to Telegram",
+        label: this.isArabic() ? "  " : "Send to Telegram",
         iconClass: "fi fi-rr-paper-plane",
         run: () => {
           this.sendPlannerInfoToTelegram(courseNote);
@@ -4512,7 +4512,7 @@ export default class SchoolPlanner extends Component {
       },
       {
         key: "ai-update",
-        label: this.isArabic() ? "تحديث بالذكاء" : "Update by AI",
+        label: this.isArabic() ? " " : "Update by AI",
         iconClass: "fi fi-rr-sparkles",
         run: () => {
           this.fillCourseDetailsWithTelegramAi(course);
@@ -5479,7 +5479,7 @@ export default class SchoolPlanner extends Component {
       telegram_courseAiStatusCourseId: courseId,
       telegram_courseAiStatusError: "",
       telegram_courseAiStatusMessage: this.isArabic()
-        ? "جارٍ حفظ تحديثات الذكاء..."
+        ? "   ..."
         : "Saving AI updates...",
     });
 
@@ -5511,7 +5511,7 @@ export default class SchoolPlanner extends Component {
         telegram_courseAiDraftSaving: false,
         telegram_courseAiStatusCourseId: courseId,
         telegram_courseAiStatusMessage: this.isArabic()
-          ? "تم حفظ تحديثات الذكاء في المقرر."
+          ? "     ."
           : "AI updates were saved to the course.",
         telegram_courseAiStatusError: "",
       });
@@ -5553,7 +5553,7 @@ export default class SchoolPlanner extends Component {
         telegram_courseAiStatusCourseId: courseId,
         telegram_courseAiStatusMessage: "",
         telegram_courseAiStatusError: this.isArabic()
-          ? "احفظ أو اختر مجموعة تيليجرام واسم مقرر أولاً."
+          ? "       ."
           : "Select a Telegram group and a course name first.",
       });
       return;
@@ -5563,7 +5563,7 @@ export default class SchoolPlanner extends Component {
       telegram_courseAiLoadingCourseId: courseId,
       telegram_courseAiStatusCourseId: courseId,
       telegram_courseAiStatusMessage: this.isArabic()
-        ? "جارٍ البحث عن تفاصيل المقرر من رسائل تيليجرام..."
+        ? "       ..."
         : "Searching Telegram evidence for the remaining course details...",
       telegram_courseAiStatusError: "",
     });
@@ -5609,7 +5609,7 @@ export default class SchoolPlanner extends Component {
           telegram_courseAiDraftPayload:
             getEditableCourseDraft(mergedCoursePayload),
           telegram_courseAiStatusMessage: this.isArabic()
-            ? "تم تجهيز نتائج الذكاء داخل حقول قابلة للتعديل. راجعها ثم احفظها."
+            ? "       .   ."
             : "AI results are ready in editable inputs. Review them, then save.",
           telegram_courseAiStatusError: "",
         },
@@ -5811,10 +5811,10 @@ export default class SchoolPlanner extends Component {
         const completionLine =
           Array.isArray(payload?.suggestions) && payload.suggestions.length > 0
             ? this.isArabic()
-              ? "اكتمل التحليل وتم تجهيز توقعات الأسماء للمراجعة."
+              ? "      ."
               : "Analysis complete. Name predictions are ready for review."
             : this.isArabic()
-              ? "اكتمل التحليل ولم يتم العثور على أسماء جديدة."
+              ? "       ."
               : "Analysis complete. No new course names were found.";
         this.setState({
           telegram_courseSuggestions:
@@ -5830,21 +5830,21 @@ export default class SchoolPlanner extends Component {
             ...(analyzedMessagesCount > 0
               ? [
                   this.isArabic()
-                    ? `تم تحليل ${analyzedMessagesCount} رسالة/مقطع محتمل.`
+                    ? `  ${analyzedMessagesCount} / .`
                     : `Analyzed ${analyzedMessagesCount} candidate message chunks.`,
                 ]
               : []),
             ...(searchedKeys.length > 0
               ? [
                   this.isArabic()
-                    ? `تمت المطابقة باستخدام ${searchedKeys.length} مفتاحاً من JSON.`
+                    ? `   ${searchedKeys.length}   JSON.`
                     : `Matched against ${searchedKeys.length} course JSON keys.`,
                 ]
               : []),
             ...(providerLabel
               ? [
                   this.isArabic()
-                    ? `المسار المستخدم: ${providerLabel}.`
+                    ? ` : ${providerLabel}.`
                     : `Execution path: ${providerLabel}.`,
                 ]
               : []),
@@ -6048,7 +6048,7 @@ export default class SchoolPlanner extends Component {
     this.setState({
       telegram_courseSuggestions: [],
       telegram_courseSuggestionsFeedback: this.isArabic()
-        ? "تم مسح بطاقات الاقتراح الحالية."
+        ? "    ."
         : "Cleared the current suggestion cards.",
       telegram_courseSuggestionsError: "",
       telegram_courseSuggestionsProgressSteps: [],
@@ -6151,7 +6151,7 @@ export default class SchoolPlanner extends Component {
             (suggestion) => suggestion.suggestionKey !== suggestionKey,
           ),
         telegram_courseSuggestionsFeedback: this.isArabic()
-          ? "تم تخطي اقتراح مكرر لأنه موجود بالفعل."
+          ? "      ."
           : "Skipped a duplicate suggestion because the course already exists.",
       });
       return;
@@ -6195,7 +6195,7 @@ export default class SchoolPlanner extends Component {
               (suggestion) => suggestion.suggestionKey !== suggestionKey,
             ),
           telegram_courseSuggestionsFeedback: this.isArabic()
-            ? "تمت إضافة المقرر الموافق عليه."
+            ? "    ."
             : "Approved course added.",
         }));
       }
@@ -6892,7 +6892,7 @@ export default class SchoolPlanner extends Component {
         ? true
         : window.confirm(
             this.isArabic()
-              ? "هل تريد حذف جميع المقررات؟"
+              ? "    "
               : "Delete all added courses?",
           );
 
@@ -7722,7 +7722,7 @@ export default class SchoolPlanner extends Component {
                       </p>
                       <p className="schoolPlanner_plan_telegramArchiveLine">
                         {this.isArabic()
-                          ? "نتيجة آخر مزامنة"
+                          ? "  "
                           : "Last sync result"}
                         :{" "}
                         {this.state.telegram_lastSyncMessage ||
@@ -7740,7 +7740,7 @@ export default class SchoolPlanner extends Component {
                       </p>
                       <p className="schoolPlanner_plan_telegramArchiveLine">
                         {this.isArabic()
-                          ? "الرسائل المفحوصة"
+                          ? " "
                           : "Scanned messages"}
                         : {this.state.telegram_lastSyncScannedCount}
                       </p>
@@ -7782,10 +7782,10 @@ export default class SchoolPlanner extends Component {
                         >
                           {this.state.telegram_courseSuggestionsLoading
                             ? this.isArabic()
-                              ? "جاري التحليل..."
+                              ? " ..."
                               : "Analyzing..."
                             : this.isArabic()
-                              ? "توقعات أسماء"
+                              ? " "
                               : "Name Predictions"}
                         </button>
                         <button
@@ -7857,7 +7857,7 @@ export default class SchoolPlanner extends Component {
                           <div className="fc schoolPlanner_plan_telegramSuggestionsHeader">
                             <p className="schoolPlanner_plan_telegramSuggestionsTitle">
                               {this.isArabic()
-                                ? "توقعات أسماء المقررات"
+                                ? "  "
                                 : this.state.telegram_courseSuggestionsView ===
                                     "rejected"
                                   ? "Rejected Course Suggestions"
@@ -7865,7 +7865,7 @@ export default class SchoolPlanner extends Component {
                             </p>
                             <p className="schoolPlanner_plan_telegramSuggestionsSubtitle">
                               {this.isArabic()
-                                ? "استخرج الاسم فقط أولاً، ثم اعتمد البطاقة المعلقة قبل طلب بقية التفاصيل لنفس المقرر."
+                                ? "             ."
                                 : "Extract the course name first, approve the pending card, then request the remaining details for that same course."}
                             </p>
                             <p className="schoolPlanner_plan_telegramSuggestionsSelectedPdf">
@@ -7912,7 +7912,7 @@ export default class SchoolPlanner extends Component {
                                   "ai"
                                   ? "Analyzing stored..."
                                   : this.isArabic()
-                                    ? "توقعات بالذكاء"
+                                    ? " "
                                     : "Stored AI Suggestions"}
                               </button>
                               <button
@@ -7996,14 +7996,14 @@ export default class SchoolPlanner extends Component {
                                     .length === 0
                                 }
                               >
-                                {this.isArabic() ? "مسح" : "Clear"}
+                                {this.isArabic() ? "" : "Clear"}
                               </button>
                             </div>
                           </div>
                           {this.state.telegram_courseSuggestionsPanelLoading ? (
                             <p className="schoolPlanner_plan_telegramSuggestionStatus">
                               {this.isArabic()
-                                ? "جارٍ تحميل توقعات الأسماء المحفوظة..."
+                                ? "    ..."
                                 : "Loading saved name predictions..."}
                             </p>
                           ) : null}
@@ -8045,7 +8045,7 @@ export default class SchoolPlanner extends Component {
                                     String(
                                       courseArabic.course_name || "",
                                     ).trim() ||
-                                    (/[ء-ي]/.test(rawCourseName)
+                                    (/[-]/.test(rawCourseName)
                                       ? rawCourseName
                                       : "");
                                   const englishTitle =
@@ -8093,7 +8093,7 @@ export default class SchoolPlanner extends Component {
                                         <p className="schoolPlanner_plan_telegramSuggestionRow">
                                           <strong>
                                             {this.isArabic()
-                                              ? "المفاتيح المطابقة"
+                                              ? " "
                                               : "Matched keys"}
                                             :
                                           </strong>{" "}
@@ -8133,10 +8133,10 @@ export default class SchoolPlanner extends Component {
                                           >
                                             {openingSuggestion
                                               ? this.isArabic()
-                                                ? "جاري الإضافة..."
+                                                ? " ..."
                                                 : "Adding..."
                                               : this.isArabic()
-                                                ? "اعتماد بطاقة معلقة"
+                                                ? "  "
                                                 : "Approve Pending Card"}
                                           </button>
                                           <button
@@ -8148,7 +8148,7 @@ export default class SchoolPlanner extends Component {
                                               )
                                             }
                                           >
-                                            {this.isArabic() ? "رفض" : "Reject"}
+                                            {this.isArabic() ? "" : "Reject"}
                                           </button>
                                         </div>
                                       ) : null}
@@ -8276,7 +8276,7 @@ export default class SchoolPlanner extends Component {
                                       ).trim()}:${Number(message?.id || 0)}`
                                         ? "Opening..."
                                         : this.isArabic()
-                                          ? "افتح"
+                                          ? ""
                                           : "Open"}
                                     </button>
                                     <button
@@ -8334,7 +8334,7 @@ export default class SchoolPlanner extends Component {
                                       }
                                     >
                                       {this.isArabic()
-                                        ? "علامة تبويب"
+                                        ? " "
                                         : "Open Tab"}
                                     </button>
                                   </div>
@@ -8413,19 +8413,19 @@ export default class SchoolPlanner extends Component {
             aria-label={
               this.state.planner_swipeView === "telegram"
                 ? this.isArabic()
-                  ? "العودة إلى المخطط"
+                  ? "  "
                   : "Return to planner"
                 : this.isArabic()
-                  ? "افتح صفحة تيليجرام"
+                  ? "  "
                   : "Open Telegram page"
             }
             title={
               this.state.planner_swipeView === "telegram"
                 ? this.isArabic()
-                  ? "العودة إلى المخطط"
+                  ? "  "
                   : "Return to planner"
                 : this.isArabic()
-                  ? "افتح صفحة تيليجرام"
+                  ? "  "
                   : "Open Telegram page"
             }
           >
@@ -8451,19 +8451,19 @@ export default class SchoolPlanner extends Component {
             aria-label={
               this.state.planner_swipeView === "schedule"
                 ? this.isArabic()
-                  ? "العودة إلى المخطط"
+                  ? "  "
                   : "Return to planner"
                 : this.isArabic()
-                  ? "افتح صفحة الجدول"
+                  ? "  "
                   : "Open schedule page"
             }
             title={
               this.state.planner_swipeView === "schedule"
                 ? this.isArabic()
-                  ? "العودة إلى المخطط"
+                  ? "  "
                   : "Return to planner"
                 : this.isArabic()
-                  ? "افتح صفحة الجدول"
+                  ? "  "
                   : "Open schedule page"
             }
           >

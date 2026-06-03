@@ -22,12 +22,12 @@ const DEPENDENCY_OPTIONS = [
 
 const TELEGRAM_MESSAGES_FETCH_LIMIT = 20;
 const TELEGRAM_MESSAGE_TYPE_TABS = [
-  { key: "all", labelEn: "All", labelAr: "الكل" },
-  { key: "texts", labelEn: "Texts", labelAr: "نصوص" },
-  { key: "photos", labelEn: "Photos", labelAr: "صور" },
-  { key: "videos", labelEn: "Videos", labelAr: "فيديو" },
-  { key: "audios", labelEn: "Audios", labelAr: "صوتيات" },
-  { key: "documents", labelEn: "Documents", labelAr: "ملفات" },
+  { key: "all", labelEn: "All", labelAr: "" },
+  { key: "texts", labelEn: "Texts", labelAr: "" },
+  { key: "photos", labelEn: "Photos", labelAr: "" },
+  { key: "videos", labelEn: "Videos", labelAr: "" },
+  { key: "audios", labelEn: "Audios", labelAr: "" },
+  { key: "documents", labelEn: "Documents", labelAr: "" },
 ];
 
 const TELEGRAM_DOCUMENT_TYPE_TABS = [
@@ -144,12 +144,12 @@ const DEPENDENCY_LABELS = {
     important_messages: "Pins",
   },
   ar: {
-    username: "اسم المستخدم",
-    program: "البرنامج",
-    university: "الجامعة",
-    study_year: "السنة الدراسية",
-    term: "الفصل",
-    important_messages: "المثبّتات",
+    username: " ",
+    program: "",
+    university: "",
+    study_year: " ",
+    term: "",
+    important_messages: "",
   },
 };
 
@@ -243,91 +243,91 @@ const STORAGE_COPY = {
     allCourses: "All Courses",
   },
   ar: {
-    storage: "التخزين",
-    searchStoredMessages: "البحث في الرسائل المخزنة",
-    searchPlaceholder: "ابحث في كل المجموعات المخزنة",
-    selectedOnly: "ابحث داخل مجموعة مخزنة واحدة فقط",
-    noStoredGroups: "لا توجد مجموعات مخزنة",
-    searchStorage: "ابحث في التخزين",
-    searching: "جارٍ البحث...",
-    language: "اللغة",
-    aiScope: "نطاق المجموعات المخزنة",
-    allGroups: "كل المجموعات",
-    conceptualizationLanguage: "لغة رد الذكاء الاصطناعي",
-    conceptualizationArabic: "العربية",
-    conceptualizationEnglish: "الإنجليزية",
-    conceptualizationBoth: "كلتاهما",
-    dependencies: "الاعتماديات",
-    addDependencyPlaceholder: "أضف اعتمادًا إلى طلب الذكاء الاصطناعي",
-    add: "إضافة",
-    predictCourses: "بلورة أسماء المواد بالذكاء الاصطناعي",
-    predictLectures: "بلورة أسماء المحاضرات بالذكاء الاصطناعي",
-    predictInstructors: "بلورة أسماء الأساتذة بالذكاء الاصطناعي",
-    predictionsSettingsTab: "الإعدادات",
-    predictionsCoursesTab: "المواد",
-    predictionsLecturesTab: "المحاضرات",
-    predictionsInstructorsTab: "الأساتذة",
-    predictionsPinsTab: "المثبّتات",
-    predict: "بلور",
-    predicting: "جارٍ البلورة...",
-    conceptualize: "بلورة الفكرة",
-    thinking: "جارٍ التفكير...",
-    noSavedCourses: "لا توجد مواد محفوظة بعد",
-    noCoursePredictions: "لا توجد بلورات مواد بعد",
-    noLecturePredictions: "لا توجد بلورات محاضرات بعد",
-    noInstructorPredictions: "لا توجد بلورات أساتذة بعد",
-    predictedBucket: "تمت البلورة",
-    deletePredicted: "حذف ما تمت بلورته",
-    acceptedBucket: "المقبول",
-    clearAccepted: "مسح المقبول",
-    noImportantMessages: "لا توجد رسائل مهمة مثبّتة بعد",
-    loadStoredPrompt: "لا توجد رسائل تيليجرام مخزنة للعرض بعد.",
-    loadingStored: "جارٍ تحميل رسائل تيليجرام المخزنة...",
-    pin: "تثبيت",
-    pinned: "مثبّتة",
-    storedGroup: "مجموعة مخزنة",
-    interval: "الفترة",
-    storedMessagesNumber: "عدد الرسائل المخزنة",
-    liveIntervalValue: "مباشر (رسائل جديدة فقط)",
-    notSet: "غير محدد",
-    present: "مستمر",
-    viewAction: "عرض",
-    downloadAction: "تنزيل",
-    editAction: "تعديل",
-    deleteAction: "حذف",
-    shown: "معروضة",
+    storage: "",
+    searchStoredMessages: "   ",
+    searchPlaceholder: "    ",
+    selectedOnly: "     ",
+    noStoredGroups: "   ",
+    searchStorage: "  ",
+    searching: " ...",
+    language: "",
+    aiScope: "  ",
+    allGroups: " ",
+    conceptualizationLanguage: "   ",
+    conceptualizationArabic: "",
+    conceptualizationEnglish: "",
+    conceptualizationBoth: "",
+    dependencies: "",
+    addDependencyPlaceholder: "     ",
+    add: "",
+    predictCourses: "    ",
+    predictLectures: "    ",
+    predictInstructors: "    ",
+    predictionsSettingsTab: "",
+    predictionsCoursesTab: "",
+    predictionsLecturesTab: "",
+    predictionsInstructorsTab: "",
+    predictionsPinsTab: "",
+    predict: "",
+    predicting: " ...",
+    conceptualize: " ",
+    thinking: " ...",
+    noSavedCourses: "    ",
+    noCoursePredictions: "    ",
+    noLecturePredictions: "    ",
+    noInstructorPredictions: "    ",
+    predictedBucket: " ",
+    deletePredicted: "   ",
+    acceptedBucket: "",
+    clearAccepted: " ",
+    noImportantMessages: "     ",
+    loadStoredPrompt: "      .",
+    loadingStored: "    ...",
+    pin: "",
+    pinned: "",
+    storedGroup: " ",
+    interval: "",
+    storedMessagesNumber: "  ",
+    liveIntervalValue: " (  )",
+    notSet: " ",
+    present: "",
+    viewAction: "",
+    downloadAction: "",
+    editAction: "",
+    deleteAction: "",
+    shown: "",
     builtCourses: (count) =>
-      `تم إنشاء ${count} بلورة/بلورات لمواد من تخزين تيليجرام.`,
+      `  ${count} /    .`,
     builtLectures: (count, courseName) =>
-      `تم إنشاء ${count} بلورة/بلورات لمحاضرات خاصة بـ ${courseName}.`,
+      `  ${count} /    ${courseName}.`,
     builtInstructors: (count) =>
-      `تم إنشاء ${count} بلورة/بلورات لأسماء الأساتذة من تخزين تيليجرام.`,
-    conceptualized: "تمت بلورة الرسالة المهمة.",
-    conceptSummary: "الملخص",
-    conceptKeyIdeas: "الأفكار الأساسية",
-    conceptAcademicRelevance: "الصلة الأكاديمية",
-    conceptNextAction: "الخطوة التالية",
-    conceptKeyIdeasPlaceholder: "فكرة واحدة في كل سطر",
-    saveConcept: "حفظ البلورة",
-    savingConcept: "جارٍ الحفظ...",
-    deleteConcept: "حذف البلورة",
-    deletingConcept: "جارٍ الحذف...",
-    conceptSaved: "تم حفظ بلورة الرسالة المهمة.",
-    conceptDeleted: "تم حذف بلورة الرسالة المهمة.",
-    chooseCourse: "اختر مادة محفوظة أولًا.",
-    chooseImportant: "اختر رسالة مهمة أولًا.",
-    chooseSingleImportant: "اختر رسالة مثبتة واحدة لبلورة الفكرة.",
-    pinnedMessagesTable: "جدول الرسائل المثبتة",
-    pinnedMessageColumn: "الرسالة المثبتة",
-    groupNameColumn: "اسم المجموعة",
-    targetCourseColumn: "المادة المستهدفة",
-    targetInstructorColumn: "الأستاذ المستهدف",
-    targetComponentColumn: "مكوّن المادة المستهدف",
-    targetLectureColumn: "المحاضرة المستهدفة",
-    conceptColumn: "البلورة",
-    goalColumn: "الهدف",
+      `  ${count} /     .`,
+    conceptualized: "   .",
+    conceptSummary: "",
+    conceptKeyIdeas: " ",
+    conceptAcademicRelevance: " ",
+    conceptNextAction: " ",
+    conceptKeyIdeasPlaceholder: "    ",
+    saveConcept: " ",
+    savingConcept: " ...",
+    deleteConcept: " ",
+    deletingConcept: " ...",
+    conceptSaved: "    .",
+    conceptDeleted: "    .",
+    chooseCourse: "   .",
+    chooseImportant: "   .",
+    chooseSingleImportant: "     .",
+    pinnedMessagesTable: "  ",
+    pinnedMessageColumn: " ",
+    groupNameColumn: " ",
+    targetCourseColumn: " ",
+    targetInstructorColumn: " ",
+    targetComponentColumn: "  ",
+    targetLectureColumn: " ",
+    conceptColumn: "",
+    goalColumn: "",
     notApplicable: "-",
-    allCourses: "كل المواد",
+    allCourses: " ",
   },
 };
 
@@ -836,6 +836,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const [migrationGroupTitle, setMigrationGroupTitle] =
     React.useState("Telegram Migration");
   const [storeMessagesMode, setStoreMessagesMode] = React.useState("all");
+  const [migrationRunMode, setMigrationRunMode] = React.useState("one-time");
   const defaultMigrationFromDate = React.useMemo(
     () => getDefaultMigrationFromAttendanceDate(state),
     [state],
@@ -1648,6 +1649,19 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         setStoreMessagesMode(
           payload?.historyStartDate || payload?.historyEndDate ? "interval" : "all",
         );
+        const payloadSync =
+          payload?.sync && typeof payload.sync === "object" ? payload.sync : {};
+        const payloadSyncEnabled = Boolean(
+          payloadSync?.syncEnabled ?? payload?.syncEnabled,
+        );
+        const payloadSyncMode = String(
+          payloadSync?.syncMode ?? payload?.syncMode ?? "one-time",
+        )
+          .trim()
+          .toLowerCase();
+        setMigrationRunMode(
+          payloadSyncEnabled || payloadSyncMode === "live" ? "sync" : "one-time",
+        );
         setGroupReference(nextReference);
         setGroupInput(nextReference);
         setMigrationFromDate(
@@ -2158,6 +2172,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         : isMigrationToPresent
           ? ""
           : String(migrationToDate || "").trim();
+    const shouldRunSync = migrationRunMode === "sync";
 
     setIsSaving(true);
     setFeedback("");
@@ -2172,8 +2187,8 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         },
         body: JSON.stringify({
           groupReference: nextGroupReference,
-          syncEnabled: false,
-          syncMode: "live",
+          syncEnabled: shouldRunSync,
+          syncMode: shouldRunSync ? "live" : "one-time",
           historyStartDate: nextHistoryStartDate,
           historyEndDate: nextHistoryEndDate,
           storeContent: {
@@ -4938,6 +4953,38 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                       </div>
                       <div className="telegramControlPage_migrationModeBlock">
                         <span className="telegramControlPage_label">
+                          Sync mode
+                        </span>
+                        <div className="telegramControlPage_storeModeTabs">
+                          <button
+                            type="button"
+                            className={`telegramControlPage_migrationModeButton${migrationRunMode === "one-time" ? " is-active" : ""}`}
+                            onClick={() => {
+                              setMigrationRunMode("one-time");
+                              setFeedback("");
+                              setTelegramImportSummary(null);
+                            }}
+                          >
+                            One-time
+                          </button>
+                          <button
+                            type="button"
+                            className={`telegramControlPage_migrationModeButton${migrationRunMode === "sync" ? " is-active" : ""}`}
+                            onClick={() => {
+                              setMigrationRunMode("sync");
+                              setFeedback("");
+                              setTelegramImportSummary(null);
+                            }}
+                          >
+                            Sync
+                          </button>
+                        </div>
+                        <p className="telegramControlPage_hint">
+                          Sync keeps this group updated after migration.
+                        </p>
+                      </div>
+                      <div className="telegramControlPage_migrationModeBlock">
+                        <span className="telegramControlPage_label">
                           Content filter
                         </span>
                         <div className="telegramControlPage_migrationContentLabels">
@@ -4955,7 +5002,6 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                             Pinned only
                           </label>
                           <p className="telegramControlPage_helperText">
-                            If unchecked, all messages are migrated regardless of type.
                           </p>
                         </div>
                       </div>

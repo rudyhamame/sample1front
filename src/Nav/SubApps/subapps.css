@@ -1,4 +1,12 @@
 #SubApps_article {
+  --subapps-surface-start: rgba(255, 255, 255, 0.98);
+  --subapps-surface-end: rgba(245, 248, 250, 0.96);
+  --subapps-border: rgba(124, 157, 165, 0.18);
+  --subapps-row-text: rgba(21, 57, 64, 0.92);
+  --subapps-row-hover-bg: rgba(236, 246, 247, 0.99);
+  --subapps-row-hover-text: #0b6a64;
+  --subapps-icon-bg: #e16354;
+  --subapps-icon-fg: #f4d1ca;
   position: relative;
   z-index: 10010;
   display: flex;
@@ -16,8 +24,8 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  border-left: 1px solid rgba(124, 157, 165, 0.18);
-  border-right: 1px solid rgba(124, 157, 165, 0.18);
+  border-left: 1px solid var(--subapps-border);
+  border-right: 1px solid var(--subapps-border);
   cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;  
   
@@ -40,10 +48,10 @@
 body.dark #server_answer #SubApps_icon_container {
   background: linear-gradient(
     180deg,
-    rgba(22, 53, 61, 0.98),
-    rgba(15, 37, 43, 0.94)
+    var(--subapps-surface-start),
+    var(--subapps-surface-end)
   );
-  border-color: rgba(110, 168, 180, 0.18);
+  border-color: var(--subapps-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 24px rgba(0, 0, 0, 0.2);
@@ -67,7 +75,7 @@ body.dark #server_answer #SubApps_icon_container {
 #Home_studysessions_article.Home_themeDark #SubApps_icon_container > i,
 #PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i,
 body.dark #server_answer #SubApps_icon_container > i {
-  color: rgba(226, 242, 244, 0.88);
+  color: var(--subapps-row-text);
 }
 
 #SubApps_icon_container > i:hover {
@@ -81,7 +89,7 @@ body.dark #server_answer #SubApps_icon_container > i {
 #Home_studysessions_article.Home_themeDark #SubApps_icon_container > i:hover,
 #PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i:hover,
 body.dark #server_answer #SubApps_icon_container > i:hover {
-  color: #7ad5d8;
+  color: var(--subapps-row-hover-text);
 }
 
 #SubApps_content_container {
@@ -113,6 +121,12 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   text-align: left;
   font-size: inherit;
   border-radius: 0;
+  background: linear-gradient(
+    180deg,
+    var(--subapps-surface-start),
+    var(--subapps-surface-end)
+  );
+  border: 1px solid var(--subapps-border);
 }
 
 
@@ -162,7 +176,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   font: inherit;
   cursor: pointer;
   text-decoration: none;
-  color: rgba(21, 57, 64, 0.92);
+  color: var(--subapps-row-text);
   text-align: left;
   border-radius: 0;
   background: transparent;
@@ -208,8 +222,8 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 #SubApps_dropMenu_container li button.SubApps_row:hover,
 .SubApps_settingsInlineList li a.SubApps_row:hover,
 .SubApps_settingsInlineList li button.SubApps_row:hover {
-  background: rgba(236, 246, 247, 0.99);
-  color: #0b6a64;
+  background: var(--subapps-row-hover-bg);
+  color: var(--subapps-row-hover-text);
 }
 
 
@@ -225,8 +239,8 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   height: 30px;
   flex-shrink: 0;
   border-radius: 0;
-  color: #f4d1ca;
-  background: #e16354;
+  color: var(--subapps-icon-fg);
+  background: var(--subapps-icon-bg);
   border: 0;
 }
 

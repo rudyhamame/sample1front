@@ -69,15 +69,15 @@ const normalizeCurrentProgramTerm = (value, fallback = "") => {
   const number = normalizeProgramTermNumber(
     rawValue?.number ?? value ?? fallback,
   );
-  return {
-    ...rawValue,
-    number: number || null,
-    attendanceDate: normalizeProgramTermScheduleEntries(rawValue?.attendanceDate),
-    examDate: normalizeProgramTermScheduleEntries(rawValue?.examDate),
-  };
+  return number || null;
 };
 
 const normalizeProfileStudyingTime = (studying = {}) => {
+  const studyingYears =
+    studying?.academicYearsIntervals &&
+    typeof studying.academicYearsIntervals === "object"
+      ? studying.academicYearsIntervals
+      : {};
   const studyingTime =
     studying?.time && typeof studying.time === "object" ? studying.time : {};
   const start =
@@ -98,25 +98,35 @@ const normalizeProfileStudyingTime = (studying = {}) => {
       : {};
 
   const totalYearsNum = normalizeNullableNumber(
-    studyingTime?.totalYearsNum ?? studyingTime?.totalYears,
+    studyingTime?.totalYearsNum ?? studyingTime?.totalYears ?? studyingYears?.total,
     0,
   );
   const startProgramYearInterval = String(
-    start?.programYearInterval ?? startDate?.startYear ?? "",
+    start?.programYearInterval ??
+      studyingYears?.first?.interval ??
+      startDate?.startYear ??
+      "",
   ).trim();
   const startProgramTerm = String(
-    start?.programTerm ?? startDate?.startTerm ?? "",
+    start?.programTerm ??
+      studyingYears?.first?.term ??
+      startDate?.startTerm ??
+      "",
   ).trim();
   const currentProgramYearInterval = String(
-    current?.programYearInterval ?? studyingTime?.currentAcademicYear ?? "",
+    current?.programYearInterval ??
+      studyingTime?.currentAcademicYear ??
+      studyingYears?.current?.interval ??
+      "",
   ).trim();
   const currentProgramYearNum = normalizeNullableNumber(
-    current?.programYearNum ?? currentDate?.year,
+    current?.programYearNum ?? currentDate?.year ?? studyingYears?.current?.num,
     null,
   );
   const currentProgramTermNumber = normalizeProgramTermNumber(
     current?.programTerm?.number ??
       current?.programTerm ??
+      studyingYears?.current?.term ??
       currentDate?.term ??
       studying?.term ??
       "",
@@ -214,6 +224,27 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
   const media = rawUser.media || {};
   const profile = rawUser.profile || rawUser.bio || {};
   const studying = profile.studying || {};
+  const studyingProgram = String(
+    studying?.program ?? studying?.id?.program ?? "",
+  ).trim();
+  const studyingFaculty = String(
+    studying?.faculty ?? studying?.location?.faculty ?? "",
+  ).trim();
+  const studyingUniversity = String(
+    studying?.university ?? studying?.location?.university ?? "",
+  ).trim();
+  const studyingComponentsClass = Array.from(
+    new Set(
+      (Array.isArray(studying?.componentsClass)
+        ? studying.componentsClass
+        : Array.isArray(studying?.id?.components)
+          ? studying.id.components
+          : []
+      )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    ),
+  );
   const normalizedStudyingTime = normalizeProfileStudyingTime(studying);
   const studyingTimeStartDate = normalizedStudyingTime.startDate || {};
   const studyingTimeCurrentDate = normalizedStudyingTime.currentDate || {};
@@ -221,6 +252,10 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
     studying && typeof studying === "object"
       ? {
           ...studying,
+          program: studyingProgram,
+          faculty: studyingFaculty,
+          university: studyingUniversity,
+          componentsClass: studyingComponentsClass,
           time: normalizedStudyingTime,
         }
       : {};
@@ -258,10 +293,10 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
         : { Country: "", City: "" }),
     studying: overrides.studying ?? normalizedStudying,
     working: overrides.working ?? profile.working ?? {},
-    faculty: String(overrides.faculty ?? studying.faculty ?? "").trim(),
-    program: String(overrides.program ?? studying.program ?? "").trim(),
+    faculty: String(overrides.faculty ?? studyingFaculty ?? "").trim(),
+    program: String(overrides.program ?? studyingProgram ?? "").trim(),
     university: String(
-      overrides.university ?? studying.university ?? "",
+      overrides.university ?? studyingUniversity ?? "",
     ).trim(),
     studyYear: String(
       overrides.studyYear ??
@@ -273,7 +308,6 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
     ).trim(),
     term: String(
       overrides.term ??
-        normalizedStudyingTime.current?.programTerm?.number ??
         normalizedStudyingTime.current?.programTerm ??
         studyingTimeCurrentDate.term ??
         studying.term ??

@@ -1,8 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;700&display=swap");
 
-.telegramControlPage {
-  --telegram-control-scale: 0.8;
-}
 
 .telegramControlPage {
   display: flex;
@@ -65,18 +62,24 @@
 
 .telegramControlPage_grid {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: row;
   gap: 0;
   align-items: stretch;
   min-height: 0;
+  height: 100%;
   padding: 20px 0px;
+  overflow: hidden;
 }
 
 .telegramControlPage_leftColumn {
   display: flex;
   flex-direction: column;
+  flex: 0 0 var(--telegram-grid-left, 320px);
   gap: 16px;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
@@ -225,7 +228,8 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
     0 18px 34px rgba(59, 100, 109, 0.08);
   backdrop-filter: blur(16px);
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .telegramControlPage_card.telegramControlPage_gridColumn {
@@ -243,7 +247,8 @@
 }
 
 .telegramControlPage_card--stream {
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .telegramControlPage_rightPool {
@@ -1865,4 +1870,3 @@
   border-top-color: rgba(22, 114, 121, 0.9);
   animation: telegramControlPageSpin 0.9s linear infinite;
 }
-

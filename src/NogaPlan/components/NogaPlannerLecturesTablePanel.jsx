@@ -761,6 +761,35 @@ const NogaPlannerLecturesTablePanel = ({
           id="nogaPlanner_lecturesTableColumn"
           className="nogaPlanner_lecturesTableColumn"
         >
+          <div className="nogaPlanner_tabToolbarMount">
+          <div
+            id="nogaPlanner_lecturesTableToolbar"
+            className="nogaPlanner_tableToolbarRow"
+          >
+            <div className="nogaPlanner_tableToolbarGroup">
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                Home
+              </button>
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                Insert
+              </button>
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                Layout
+              </button>
+            </div>
+            <div className="nogaPlanner_tableToolbarGroup">
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                Sort
+              </button>
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                Filter
+              </button>
+              <button type="button" className="nogaPlanner_tableToolbarBtn">
+                View
+              </button>
+            </div>
+          </div>
+          </div>
           <table
             id="nogaPlanner_lecturesTable"
             className="nogaPlanner_tabTable nogaPlanner_lecturesTable"

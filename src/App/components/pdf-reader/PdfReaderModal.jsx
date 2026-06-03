@@ -668,7 +668,7 @@ const PdfReaderModal = ({
           normalizedCandidate,
         );
         const startsWithAlBonus =
-          token.startsWith("ال") && candidate.startsWith("ال") ? -0.25 : 0;
+          token.startsWith("") && candidate.startsWith("") ? -0.25 : 0;
         const lengthPenalty = Math.abs(
           tokenNormalized.length - normalizedCandidate.length,
         ) * 0.2;

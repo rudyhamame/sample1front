@@ -347,11 +347,7 @@ const createEmptyProfileCompletionForm = () => ({
       current: {
         programYearNum: "",
         programYearInterval: "",
-        programTerm: {
-          number: "",
-          attendanceDate: [],
-          examDate: [],
-        },
+        programTerm: "",
       },
     },
     language: "",
@@ -1836,7 +1832,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         !String(studying?.time?.start?.programTerm || "").trim() ||
         !String(studying?.time?.current?.programYearNum || "").trim() ||
         !String(studying?.time?.current?.programYearInterval || "").trim() ||
-        !String(studying?.time?.current?.programTerm?.number || "").trim()
+        !String(studying?.time?.current?.programTerm || "").trim()
       ) {
         setSignup_ok(false);
         setSignupMessage("Please complete all education information.");
@@ -2101,7 +2097,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           !String(studying?.time?.start?.programTerm || "").trim() ||
           !String(studying?.time?.current?.programYearNum || "").trim() ||
           !String(studying?.time?.current?.programYearInterval || "").trim() ||
-          !String(studying?.time?.current?.programTerm?.number || "").trim()
+          !String(studying?.time?.current?.programTerm || "").trim()
         );
       }
       if (isWorking) {
@@ -2237,234 +2233,6 @@ const Login = ({ onLogin, onForceLogout }) => {
 
             return renderedCoreFields;
           })(),
-          // Studying section
-          <div key="studying-section" className="profile-section">
-            <h3>Education (Optional)</h3>
-            {completeProfileStudentFields.map((field) =>
-              field.key === "studying.componentsClass" ? (
-                <div
-                  key="complete-profile-studying-componentsClass"
-                  className="Login_authField"
-                >
-                  <span className="Login_authFieldLabel">
-                    {field.label}
-                  </span>
-                  <div className="Login_authInlineRow">
-                    <select
-                      id="complete-profile-studying-componentsClass-select"
-                      className="Login_authInput"
-                      value=""
-                      onChange={(event) => {
-                        const nextValue = String(event.target.value || "").trim();
-                        if (!nextValue) {
-                          return;
-                        }
-                        setProfileCompletionForm((current) => {
-                          const currentList = Array.isArray(
-                            current?.studying?.componentsClass,
-                          )
-                            ? current.studying.componentsClass
-                            : [];
-                          if (currentList.includes(nextValue)) {
-                            return current;
-                          }
-                          return {
-                            ...current,
-                            studying: {
-                              ...(current?.studying || {}),
-                              componentsClass: [...currentList, nextValue],
-                            },
-                          };
-                        });
-                      }}
-                    >
-                      <option value="">Add component class</option>
-                      {studyComponentsClassOptions.map((optionValue) => (
-                        <option
-                          key={`complete-profile-componentsClass-option-${optionValue}`}
-                          value={optionValue}
-                        >
-                          {optionValue}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="Login_authInlineRow">
-                    {(Array.isArray(
-                      profileCompletionForm?.studying?.componentsClass,
-                    )
-                      ? profileCompletionForm.studying.componentsClass
-                      : []
-                    ).map((value) => (
-                      <button
-                        key={`complete-profile-componentsClass-chip-${value}`}
-                        type="button"
-                        className="Login_authButton Login_authButton--ghost"
-                        onClick={() => {
-                          setProfileCompletionForm((current) => ({
-                            ...current,
-                            studying: {
-                              ...(current?.studying || {}),
-                              componentsClass: (
-                                Array.isArray(current?.studying?.componentsClass)
-                                  ? current.studying.componentsClass
-                                  : []
-                              ).filter(
-                                (entry) => String(entry || "").trim() !== value,
-                              ),
-                            },
-                          }));
-                        }}
-                      >
-                        {value} ×
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : renderTextField({
-                id: `complete-profile-${field.key.replaceAll(".", "-")}`,
-                label: field.label,
-                type: field.type,
-                value:
-                  field.type === "number"
-                    ? sanitizeNonNegativeNumberInput(
-                        getNestedValue(profileCompletionForm, field.key),
-                      )
-                    : getNestedValue(profileCompletionForm, field.key),
-                onChange: (value) =>
-                  updateNestedField(
-                    field.key,
-                    field.type === "number"
-                      ? sanitizeNonNegativeNumberInput(value)
-                      : value,
-                  ),
-                options:
-                  field.key === "studying.university"
-                    ? [
-                        ...new Set([
-                          ...getUniversityOptionsForCountry(
-                            profileCompletionForm.hometown.Country,
-                          ),
-                          ...universityOptions,
-                        ]),
-                      ]
-                    : field.options,
-                required:
-                  Boolean(field.required) &&
-                  isProfileCompletionStudyingStarted,
-              })
-            )}
-            <div className="Login_authFieldGroup">
-              <p className="Login_authFieldGroupTitle">
-                Total number of years of the program
-              </p>
-              {renderTextField({
-                id: "complete-profile-studying-time-totalYearsNum",
-                label: "Program total years",
-                type: "number",
-                value: sanitizeNonNegativeNumberInput(
-                  getNestedValue(
-                    profileCompletionForm,
-                    "studying.time.totalYearsNum",
-                  ),
-                ),
-                onChange: (value) =>
-                  updateNestedField(
-                    "studying.time.totalYearsNum",
-                    sanitizeNonNegativeNumberInput(value),
-                  ),
-                required: isProfileCompletionStudyingStarted,
-              })}
-            </div>
-            <div className="Login_authFieldGroup">
-              <p className="Login_authFieldGroupTitle">Start</p>
-              <div className="Login_authInlineRow">
-                {renderTextField({
-                  id: "complete-profile-studying-time-start-programYearInterval",
-                  label: "Start program year interval",
-                  type: "select",
-                  value: getNestedValue(
-                    profileCompletionForm,
-                    "studying.time.start.programYearInterval",
-                  ),
-                  onChange: (value) =>
-                    updateNestedField(
-                      "studying.time.start.programYearInterval",
-                      value,
-                    ),
-                  options: studyYearIntervalOptions,
-                  required: isProfileCompletionStudyingStarted,
-                })}
-                {renderTextField({
-                  id: "complete-profile-studying-time-start-programTerm",
-                  label: "Start term",
-                  type: "select",
-                  value: getNestedValue(
-                    profileCompletionForm,
-                    "studying.time.start.programTerm",
-                  ),
-                  onChange: (value) =>
-                    updateNestedField("studying.time.start.programTerm", value),
-                  options: studyTermOptions,
-                  required: isProfileCompletionStudyingStarted,
-                })}
-              </div>
-            </div>
-            <div className="Login_authFieldGroup">
-              <p className="Login_authFieldGroupTitle">Current</p>
-              <div className="Login_authInlineRow">
-                {renderTextField({
-                  id: "complete-profile-studying-time-current-programYearNum",
-                  label: "Current program year number",
-                  type: "number",
-                  value: sanitizeNonNegativeNumberInput(
-                    getNestedValue(
-                      profileCompletionForm,
-                      "studying.time.current.programYearNum",
-                    ),
-                  ),
-                  onChange: (value) =>
-                    updateNestedField(
-                      "studying.time.current.programYearNum",
-                      sanitizeNonNegativeNumberInput(value),
-                    ),
-                  required: isProfileCompletionStudyingStarted,
-                })}
-                {renderTextField({
-                  id: "complete-profile-studying-time-current-programYearInterval",
-                  label: "Current program year interval",
-                  type: "select",
-                  value: getNestedValue(
-                    profileCompletionForm,
-                    "studying.time.current.programYearInterval",
-                  ),
-                  onChange: (value) =>
-                    updateNestedField(
-                      "studying.time.current.programYearInterval",
-                      value,
-                    ),
-                  options: studyYearIntervalOptions,
-                  required: isProfileCompletionStudyingStarted,
-                })}
-                {renderTextField({
-                  id: "complete-profile-studying-time-current-programTerm",
-                  label: "Current term",
-                  type: "select",
-                  value: getNestedValue(
-                    profileCompletionForm,
-                    "studying.time.current.programTerm.number",
-                  ),
-                  onChange: (value) =>
-                    updateNestedField(
-                      "studying.time.current.programTerm.number",
-                      value,
-                    ),
-                  options: studyTermOptions,
-                  required: isProfileCompletionStudyingStarted,
-                })}
-              </div>
-            </div>
-          </div>,
           // Working section
           <div key="working-section" className="profile-section">
             <h3>Professional (Optional)</h3>

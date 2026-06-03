@@ -46,15 +46,15 @@ const normalizeCurrentProgramTerm = (value, fallback = "") => {
   const number = normalizeProgramTermNumber(
     rawValue?.number ?? value ?? fallback,
   );
-  return {
-    ...rawValue,
-    number: number || null,
-    attendanceDate: normalizeProgramTermScheduleEntries(rawValue?.attendanceDate),
-    examDate: normalizeProgramTermScheduleEntries(rawValue?.examDate),
-  };
+  return number || null;
 };
 
 const normalizeProfileStudyingTime = (studying = {}) => {
+  const studyingYears =
+    studying?.academicYearsIntervals &&
+    typeof studying.academicYearsIntervals === "object"
+      ? studying.academicYearsIntervals
+      : {};
   const studyingTime =
     studying?.time && typeof studying.time === "object" ? studying.time : {};
   const start =
@@ -75,25 +75,35 @@ const normalizeProfileStudyingTime = (studying = {}) => {
       : {};
 
   const totalYearsNum = normalizeNullableNumber(
-    studyingTime?.totalYearsNum ?? studyingTime?.totalYears,
+    studyingTime?.totalYearsNum ?? studyingTime?.totalYears ?? studyingYears?.total,
     0,
   );
   const startProgramYearInterval = String(
-    start?.programYearInterval ?? startDate?.startYear ?? "",
+    start?.programYearInterval ??
+      studyingYears?.first?.interval ??
+      startDate?.startYear ??
+      "",
   ).trim();
   const startProgramTerm = String(
-    start?.programTerm ?? startDate?.startTerm ?? "",
+    start?.programTerm ??
+      studyingYears?.first?.term ??
+      startDate?.startTerm ??
+      "",
   ).trim();
   const currentProgramYearInterval = String(
-    current?.programYearInterval ?? studyingTime?.currentAcademicYear ?? "",
+    current?.programYearInterval ??
+      studyingTime?.currentAcademicYear ??
+      studyingYears?.current?.interval ??
+      "",
   ).trim();
   const currentProgramYearNum = normalizeNullableNumber(
-    current?.programYearNum ?? currentDate?.year,
+    current?.programYearNum ?? currentDate?.year ?? studyingYears?.current?.num,
     null,
   );
   const currentProgramTermNumber = normalizeProgramTermNumber(
     current?.programTerm?.number ??
       current?.programTerm ??
+      studyingYears?.current?.term ??
       currentDate?.term ??
       studying?.term ??
       "",
@@ -288,6 +298,27 @@ export const normalizeUserUpdatePayload = (payload) => {
     profile?.studying && typeof profile.studying === "object"
       ? profile.studying
       : {};
+  const studyingProgram = String(
+    studying?.program ?? studying?.id?.program ?? "",
+  ).trim();
+  const studyingFaculty = String(
+    studying?.faculty ?? studying?.location?.faculty ?? "",
+  ).trim();
+  const studyingUniversity = String(
+    studying?.university ?? studying?.location?.university ?? "",
+  ).trim();
+  const studyingComponentsClass = Array.from(
+    new Set(
+      (Array.isArray(studying?.componentsClass)
+        ? studying.componentsClass
+        : Array.isArray(studying?.id?.components)
+          ? studying.id.components
+          : []
+      )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    ),
+  );
   const normalizedStudyingTime = normalizeProfileStudyingTime(studying);
   const memory = normalizeMemoryPayload(payload);
 
@@ -303,17 +334,16 @@ export const normalizeUserUpdatePayload = (payload) => {
     personal: {
       ...personal,
       faculty: String(
-        personal?.faculty ?? studying?.faculty ?? profile?.faculty ?? "",
+        personal?.faculty ?? studyingFaculty ?? profile?.faculty ?? "",
       ).trim(),
       program: String(
-        personal?.program ?? studying?.program ?? profile?.program ?? "",
+        personal?.program ?? studyingProgram ?? profile?.program ?? "",
       ).trim(),
       university: String(
-        personal?.university ?? studying?.university ?? profile?.university ?? "",
+        personal?.university ?? studyingUniversity ?? profile?.university ?? "",
       ).trim(),
       term: String(
         personal?.term ??
-          normalizedStudyingTime?.current?.programTerm?.number ??
           normalizedStudyingTime?.current?.programTerm ??
           normalizedStudyingTime?.currentDate?.term ??
           studying?.term ??
@@ -335,9 +365,13 @@ export const normalizeUserUpdatePayload = (payload) => {
     studying:
       studying && typeof studying === "object"
         ? {
-            ...studying,
-            time: normalizedStudyingTime,
-          }
+          ...studying,
+          program: studyingProgram,
+          faculty: studyingFaculty,
+          university: studyingUniversity,
+          componentsClass: studyingComponentsClass,
+          time: normalizedStudyingTime,
+        }
         : {},
     settings,
     media,

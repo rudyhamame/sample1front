@@ -1558,6 +1558,12 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
 };
 
 function Home(props) {
+  const readProgramTermValue = (value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return String(value.number || "").trim();
+    }
+    return String(value || "").trim();
+  };
   const isNaghamtrkmani = false;
   const homeThemeClassName = "Home_themeGreen";
   const [isHomeDarkTheme, setIsHomeDarkTheme] = useState(() =>
@@ -3174,8 +3180,9 @@ function Home(props) {
       ),
       term: String(
         props.state?.term ||
-          props.state?.studying?.time?.current?.programTerm?.number ||
-          props.state?.studying?.time?.current?.programTerm ||
+          readProgramTermValue(
+            props.state?.studying?.time?.current?.programTerm,
+          ) ||
           "",
       ),
     };
@@ -3193,7 +3200,6 @@ function Home(props) {
     props.state?.university,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
-    props.state?.studying?.time?.current?.programTerm?.number,
     props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
@@ -3678,8 +3684,7 @@ function Home(props) {
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.current?.programTerm?.number ||
-                profileStudying?.time?.current?.programTerm ||
+              profileStudying?.time?.current?.programTerm ||
                 profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
@@ -7316,8 +7321,7 @@ function Home(props) {
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrent.programTerm?.number ||
-              profileStudyingCurrent.programTerm ||
+            readProgramTermValue(profileStudyingCurrent.programTerm) ||
               profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,

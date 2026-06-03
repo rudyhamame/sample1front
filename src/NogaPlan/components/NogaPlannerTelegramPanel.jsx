@@ -5,7 +5,6 @@ import { createWorker } from "tesseract.js";
 
 const TRACE_MAIN_TABS = [
   { key: "material", label: "material of study" },
-  { key: "language", label: "Language" },
 ];
 
 const MATERIAL_SOURCE_TABS = [
@@ -83,6 +82,18 @@ const buildTelegramDocumentFilename = (message = {}) => {
                 : "bin";
   const messageId = Number(message?.id || 0) || Date.now();
   return `telegram-document-${messageId}.${extension}`;
+};
+
+const getFileNameWithoutExtension = (filename = "") => {
+  const nextFilename = String(filename || "").trim();
+  if (!nextFilename) {
+    return "";
+  }
+  const lastDotIndex = nextFilename.lastIndexOf(".");
+  if (lastDotIndex <= 0) {
+    return nextFilename;
+  }
+  return nextFilename.slice(0, lastDotIndex);
 };
 
 const classifyTelegramDocumentType = (message = {}) => {
@@ -174,13 +185,52 @@ const classifyTelegramDocumentType = (message = {}) => {
   return "other";
 };
 
+const formatKnownTelegramDocumentType = (typeKey = "") => {
+  const normalized = String(typeKey || "").trim().toLowerCase();
+  const labelMap = {
+    image: "Image",
+    pdf: "PDF",
+    word: "Word",
+    excel: "Excel",
+    powerpoint: "PowerPoint",
+    archive: "Archive",
+    code: "Code",
+    other: "Other",
+    all: "All",
+  };
+  return labelMap[normalized] || "Other";
+};
+
+const formatStoredMediaErrorMessage = (payload = {}, fallbackMessage = "") => {
+  const reason = String(payload?.reason || "")
+    .trim()
+    .toLowerCase();
+  if (reason === "stored-message-mismatch") {
+    return "Media entry does not match stored group/message id.";
+  }
+  if (reason === "telegram-download-empty") {
+    return "Telegram returned no media bytes for this message.";
+  }
+  if (reason === "telegram-timeout") {
+    return "Telegram media fetch timed out. Try again.";
+  }
+  if (reason === "telegram-download-failed") {
+    return "Telegram media download failed. Reconnect Telegram and try again.";
+  }
+  return String(payload?.message || fallbackMessage || "Unable to load Telegram media.");
+};
+
 const isTelegramPdfDocument = (message = {}) =>
   classifyTelegramDocumentType(message) === "pdf";
 
 const isTelegramImageDocument = (message = {}) =>
   classifyTelegramDocumentType(message) === "image";
 
-const NogaPlannerTelegramPanel = ({ planner }) => {
+const NogaPlannerTelegramPanel = ({
+  planner,
+  mode = "default",
+  languageSection = "all",
+}) => {
   const [traceMainTab, setTraceMainTab] = useState("material");
   const [materialSourceTab, setMaterialSourceTab] = useState("telegram");
   const [documentTypeTab, setDocumentTypeTab] = useState("all");
@@ -191,6 +241,7 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [downloadingMessageId, setDownloadingMessageId] = useState("");
+  const [activeTelegramRowActionKey, setActiveTelegramRowActionKey] = useState("");
   const [telegramImagePreviewUrls, setTelegramImagePreviewUrls] = useState({});
   const [ocrLoadingMessageId, setOcrLoadingMessageId] = useState("");
   const [ocrExtractedByMessageId, setOcrExtractedByMessageId] = useState({});
@@ -356,6 +407,20 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
     return nextDate.toLocaleString();
   };
 
+  const getStoredGroupLabelByReference = (groupReferenceValue = "") => {
+    const targetRef = String(groupReferenceValue || "").trim();
+    if (!targetRef) {
+      return "-";
+    }
+    const matchedGroup = storedGroups.find(
+      (groupEntry) =>
+        String(groupEntry?.groupReference || "").trim() === targetRef,
+    );
+    return matchedGroup
+      ? formatStoredGroupOptionLabel(matchedGroup)
+      : targetRef;
+  };
+
   const fetchStoredGroups = async () => {
     if (!plannerToken) {
       setError("Telegram login token is missing.");
@@ -463,7 +528,10 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(
-          String(payload?.message || "Unable to download Telegram document."),
+          formatStoredMediaErrorMessage(
+            payload,
+            "Unable to download Telegram document.",
+          ),
         );
       }
       const blob = await response.blob();
@@ -508,7 +576,9 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
       );
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(String(payload?.message || "Unable to load image for OCR."));
+        throw new Error(
+          formatStoredMediaErrorMessage(payload, "Unable to load image for OCR."),
+        );
       }
       const imageBlob = await response.blob();
       const worker = await createWorker("ara+eng");
@@ -1068,112 +1138,99 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
           ) : filteredTelegramDocumentMessages.length === 0 ? (
             <p className="nogaPlanner_tracesStatus">No documents found.</p>
           ) : (
-            filteredTelegramDocumentMessages.map((message, index) => {
-            const messageKey = String(
-              message?._id || message?.id || `${message?.date || ""}-${index}`,
-            );
-            const sender = String(
-              message?.senderName ||
-                message?.sender ||
-                message?.from ||
-                message?.author ||
-                "Unknown sender",
-            ).trim();
-            const text = String(message?.text || "").trim();
-            const fileName = buildTelegramDocumentFilename(message);
-            const isImageMessage = isTelegramImageDocument(message);
-            const mediaKey = getTelegramMessageMediaKey(message);
-            const downloadKey = mediaKey;
-            const previewUrl = telegramImagePreviewUrls[mediaKey] || "";
-            const ocrExtractedText = String(
-              ocrExtractedByMessageId[mediaKey] || "",
-            ).trim();
-            return (
-              <article
-                key={`traces-telegram-message-${messageKey}`}
-                className="nogaPlanner_tracesMessage"
-              >
-                <header>
-                  <strong>{sender || "Unknown sender"}</strong>
-                  <span>{formatTelegramMessageDate(message?.date)}</span>
-                </header>
-                <div className="nogaPlanner_tracesMessageMetaRow">
-                  <div className="nogaPlanner_tracesDocumentMeta">
-                    <strong>{fileName}</strong>
-                    <span>
-                      {[
-                        String(
-                          message?.attachmentMimeType || message?.mimeType || "",
-                        ).trim(),
-                        formatFileSize(
-                          message?.attachmentSizeBytes || message?.size,
-                        ),
-                      ]
-                        .filter(Boolean)
-                        .join(" | ") || "Stored Telegram document"}
-                    </span>
-                  </div>
-                  {isImageMessage ? (
-                    <div className="nogaPlanner_tracesMessagePreview">
-                      {previewUrl ? (
-                        <img
-                          className="nogaPlanner_tracesMessagePreviewImage"
-                          src={previewUrl}
-                          alt={fileName || "Telegram photo preview"}
-                          onClick={() => setZoomedTraceImageUrl(previewUrl)}
-                        />
-                      ) : (
-                        <span>Loading preview...</span>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-                <p>{text || "(No text content)"}</p>
-                <div className="nogaPlanner_tracesMessageActions">
-                  {isTelegramPdfDocument(message) || isTelegramImageDocument(message) ? (
-                    <button
-                      id={`nogaPlanner_tracesTelegramView_${index}`}
-                      type="button"
-                      className="nogaPlanner_tracesActionBtn"
-                      onClick={() => viewTelegramDocument(message)}
+            <table className="nogaPlanner_tracesTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Uploader</th>
+                  <th>Type</th>
+                  <th>Telegram group</th>
+                  <th>Created at</th>
+                  <th>Tag</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTelegramDocumentMessages.map((message, index) => {
+                  const messageKey = String(
+                    message?._id || message?.id || `${message?.date || ""}-${index}`,
+                  );
+                  const sender = String(
+                    message?.senderName ||
+                      message?.sender ||
+                      message?.from ||
+                      message?.author ||
+                      "Unknown sender",
+                  ).trim();
+                  const fileName = buildTelegramDocumentFilename(message);
+                  const fileNameNoExt = getFileNameWithoutExtension(fileName);
+                  const mediaKey = getTelegramMessageMediaKey(message);
+                  const downloadKey = mediaKey;
+                  const documentType = classifyTelegramDocumentType(message);
+                  const groupReference = String(
+                    message?.groupReference || selectedGroupReference || "",
+                  ).trim();
+                  const text = String(message?.text || "").trim();
+                  const firstHashtag = (text.match(/#[^\s#]+/) || [])[0] || "";
+                  const tagValue = firstHashtag || documentType.toUpperCase();
+                  const isOpenSupported =
+                    isTelegramPdfDocument(message) || isTelegramImageDocument(message);
+                  return (
+                    <tr
+                      key={`traces-telegram-message-row-${messageKey}`}
+                      className={`nogaPlanner_tracesTableRow${activeTelegramRowActionKey === messageKey ? " is-active" : ""}`}
+                      onClick={() =>
+                        setActiveTelegramRowActionKey((currentValue) =>
+                          currentValue === messageKey ? "" : messageKey,
+                        )
+                      }
                     >
-                      View
-                    </button>
-                  ) : null}
-                  {isImageMessage ? (
-                    <button
-                      id={`nogaPlanner_tracesTelegramOcr_${index}`}
-                      type="button"
-                      className="nogaPlanner_tracesActionBtn"
-                      onClick={() => runTelegramImageOcr(message)}
-                      disabled={ocrLoadingMessageId === mediaKey}
-                    >
-                      {ocrLoadingMessageId === mediaKey
-                        ? "OCR..."
-                        : "OCR Extract text"}
-                    </button>
-                  ) : null}
-                  <button
-                    id={`nogaPlanner_tracesTelegramDownload_${index}`}
-                    type="button"
-                    className="nogaPlanner_tracesActionBtn"
-                    onClick={() => downloadTelegramDocument(message)}
-                    disabled={downloadingMessageId === downloadKey}
-                  >
-                    {downloadingMessageId === downloadKey
-                      ? "Downloading..."
-                      : "Download"}
-                  </button>
-                </div>
-                {ocrExtractedText ? (
-                  <div className="nogaPlanner_tracesOcrResult">
-                    <strong>OCR</strong>
-                    <p>{ocrExtractedText}</p>
-                  </div>
-                ) : null}
-              </article>
-            );
-            })
+                      <td title={fileNameNoExt || fileName}>
+                        {fileNameNoExt || fileName || "-"}
+                      </td>
+                      <td>{sender || "-"}</td>
+                      <td>{formatKnownTelegramDocumentType(documentType)}</td>
+                      <td>{getStoredGroupLabelByReference(groupReference)}</td>
+                      <td>{formatTelegramMessageDate(message?.date) || "-"}</td>
+                      <td className="nogaPlanner_tracesTableTagCell">
+                        <span className="nogaPlanner_tracesTableTag">{tagValue}</span>
+                        {activeTelegramRowActionKey === messageKey ? (
+                          <div className="nogaPlanner_tracesMessageActionsPopover">
+                            <button
+                              id={`nogaPlanner_tracesTelegramView_${index}`}
+                              type="button"
+                              className="nogaPlanner_tracesActionBtn"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (isOpenSupported) {
+                                  viewTelegramDocument(message);
+                                }
+                              }}
+                              disabled={!isOpenSupported}
+                            >
+                              Open
+                            </button>
+                            <button
+                              id={`nogaPlanner_tracesTelegramDownload_${index}`}
+                              type="button"
+                              className="nogaPlanner_tracesActionBtn"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                downloadTelegramDocument(message);
+                              }}
+                              disabled={downloadingMessageId === downloadKey}
+                            >
+                              {downloadingMessageId === downloadKey
+                                ? "Downloading..."
+                                : "Download"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
@@ -1320,173 +1377,7 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
 
   const renderLanguageSource = () => (
     <div className="nogaPlanner_tracesLanguageGrid">
-      <article className="nogaPlanner_tracesLanguageCard">
-        <h4 className="nogaPlanner_tracesLanguageCardTitle">Courses</h4>
-        <div className="nogaPlanner_tracesControls nogaPlanner_tracesControls--form">
-          <input
-            id="nogaPlanner_tracesLanguageCourseName"
-            className="nogaPlanner_tracesInput"
-            type="text"
-            value={languageCourseDraft.name}
-            onChange={(event) =>
-              setLanguageCourseDraft((currentValue) => ({
-                ...currentValue,
-                name: event.target.value,
-              }))
-            }
-            placeholder="Course name"
-          />
-          <input
-            id="nogaPlanner_tracesLanguageCourseCode"
-            className="nogaPlanner_tracesInput"
-            type="text"
-            value={languageCourseDraft.code}
-            onChange={(event) =>
-              setLanguageCourseDraft((currentValue) => ({
-                ...currentValue,
-                code: event.target.value,
-              }))
-            }
-            placeholder="Course code"
-          />
-          <select
-            id="nogaPlanner_tracesLanguageCourseComponentClass"
-            className="nogaPlanner_tracesInput"
-            value={languageCourseDraft.componentClass}
-            onChange={(event) =>
-              setLanguageCourseDraft((currentValue) => ({
-                ...currentValue,
-                componentClass: event.target.value,
-              }))
-            }
-          >
-            <option value="">Select component class</option>
-            {languageComponentClassOptions.map((entry, index) => (
-              <option key={`nogaPlanner_tracesLanguageCourseComponentClass_${entry}_${index}`} value={entry}>
-                {entry}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="nogaPlanner_tracesActionBtn"
-            onClick={addLanguageCourseComponentClass}
-          >
-            Add component class
-          </button>
-          <ul className="nogaPlanner_tracesLanguageCourseComponentsList">
-            {(Array.isArray(languageCourseDraft?.componentClasses)
-              ? languageCourseDraft.componentClasses
-              : []
-            ).map((entry, index) => (
-              <li
-                key={`nogaPlanner_tracesLanguageCourseComponentsList_${entry}_${index}`}
-                className="nogaPlanner_tracesLanguageCourseComponentsItem"
-              >
-                <span>{entry}</span>
-                <button
-                  type="button"
-                  className="nogaPlanner_tracesDeleteBtn"
-                  onClick={() => removeLanguageCourseComponentClass(entry)}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="nogaPlanner_tracesLanguageMiniBar">
-            <button type="button" className="nogaPlanner_tracesActionBtn" onClick={addLanguageCourse}>
-              Add
-            </button>
-            <button
-              type="button"
-              className="nogaPlanner_tracesDeleteBtn"
-              onClick={deleteSelectedLanguageCourse}
-              disabled={!selectedLanguageCourseId}
-            >
-              Delete (selected)
-            </button>
-            <button
-              type="button"
-              className="nogaPlanner_tracesActionBtn"
-              onClick={editSelectedLanguageCourse}
-              disabled={!selectedLanguageCourseId}
-            >
-              Edit (selected)
-            </button>
-          </div>
-        </div>
-        <div className="nogaPlanner_tracesViewer">
-          {languageCourses.length === 0 ? (
-            <p className="nogaPlanner_tracesStatus">No saved course labels.</p>
-          ) : (
-            <table className="nogaPlanner_tracesLanguageMiniTable">
-              <thead>
-                <tr>
-                  <th>course name</th>
-                  <th>component class</th>
-                  <th>status</th>
-                  <th>weight</th>
-                </tr>
-              </thead>
-              <tbody>
-                {languageCourses.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className={
-                      selectedLanguageCourseId === entry.id
-                        ? "nogaPlanner_tracesLanguageMiniTableRow--selected"
-                        : ""
-                    }
-                    onClick={() => setSelectedLanguageCourseId(entry.id)}
-                  >
-                    <td>{entry.name || "-"}</td>
-                    <td>
-                      <ul className="nogaPlanner_tracesLanguageCourseComponentsList">
-                        {(Array.isArray(entry?.componentClasses)
-                          ? entry.componentClasses
-                          : []
-                        ).length > 0 ? (
-                          (Array.isArray(entry?.componentClasses)
-                            ? entry.componentClasses
-                            : []
-                          ).map((componentEntry, componentIndex) => (
-                            <li
-                              key={`nogaPlanner_tracesLanguageCourseComponentCell_${entry.id}_${componentEntry}_${componentIndex}`}
-                              className="nogaPlanner_tracesLanguageCourseComponentsItem"
-                            >
-                              <span>{componentEntry}</span>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="nogaPlanner_tracesLanguageCourseComponentsItem">
-                            <span>-</span>
-                          </li>
-                        )}
-                      </ul>
-                    </td>
-                    <td>
-                      {formatPlannerStatusLabel(
-                        String(
-                          entry?.raw?.status || entry?.raw?.course_status || "",
-                        ).trim(),
-                      )}
-                    </td>
-                    <td>
-                      {Number.isFinite(
-                        Number(entry?.raw?.weight ?? entry?.raw?.course_totalWeight),
-                      )
-                        ? Number(entry?.raw?.weight ?? entry?.raw?.course_totalWeight)
-                        : 100}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </article>
-
+      {languageSection === "all" || languageSection === "lectures" ? (
       <article className="nogaPlanner_tracesLanguageCard">
         <h4 className="nogaPlanner_tracesLanguageCardTitle">Lectures</h4>
         <div className="nogaPlanner_tracesControls nogaPlanner_tracesControls--form">
@@ -1565,8 +1456,20 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
           )}
         </div>
       </article>
+      ) : null}
     </div>
   );
+
+  if (mode === "language-only") {
+    return (
+      <section
+        id="nogaPlanner_tracesLanguageMount"
+        className="nogaPlanner_tracesLanguageMount"
+      >
+        {renderLanguageSource()}
+      </section>
+    );
+  }
 
   return (
     <section id="nogaPlanner_traces" className="nogaPlanner_traces">
@@ -1596,17 +1499,11 @@ const NogaPlannerTelegramPanel = ({ planner }) => {
               : "Language traces"}
         </span>
       </div>
-      {traceMainTab === "material" ? (
-        <>
-          {materialSourceTab === "telegram"
-            ? renderTelegramSource()
-            : materialSourceTab === "upload"
-              ? renderUploadSource()
-              : renderPhysicalSource()}
-        </>
-      ) : (
-        renderLanguageSource()
-      )}
+      {materialSourceTab === "telegram"
+        ? renderTelegramSource()
+        : materialSourceTab === "upload"
+          ? renderUploadSource()
+          : renderPhysicalSource()}
       {zoomedTraceImageUrl ? (
         <div
           className="nogaPlanner_tracesImageZoomOverlay"

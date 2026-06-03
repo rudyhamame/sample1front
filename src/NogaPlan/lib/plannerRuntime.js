@@ -1948,18 +1948,7 @@ export const buildDefaultPlannerSelectSettings = () => ({
 
 // Build the empty persisted planning-input payload for the main planner tab.
 export const getDefaultStudyPlanAid = () => ({
-  enabled: true,
-  viewMode: "timeline",
-  timelineUnit: "day",
-  defaults: {
-    defaultDailyHours: 0,
-    defaultDifficulty: "",
-    defaultMastery: "",
-    defaultPriority: "",
-  },
-  coursePlans: [],
-  dayPlans: [],
-  note: "",
+  intervals: [],
 });
 
 const normalizeStudyPlanAidNumber = (value, fallbackValue = 0) => {
@@ -1977,136 +1966,54 @@ export const normalizeStudyPlanAid = (value = {}) => {
   const fallback = getDefaultStudyPlanAid();
 
   return {
-    enabled:
-      typeof nextValue?.enabled === "boolean"
-        ? nextValue.enabled
-        : fallback.enabled,
-    viewMode: String(nextValue?.viewMode || fallback.viewMode).trim() || fallback.viewMode,
-    timelineUnit:
-      String(nextValue?.timelineUnit || fallback.timelineUnit).trim() ||
-      fallback.timelineUnit,
+    enabled: true,
+    viewMode: "timeline",
+    timelineUnit: "day",
     defaults: {
-      defaultDailyHours: normalizeStudyPlanAidNumber(
-        nextValue?.defaults?.defaultDailyHours,
-        fallback.defaults.defaultDailyHours,
-      ),
-      defaultDifficulty: String(
-        nextValue?.defaults?.defaultDifficulty ||
-          fallback.defaults.defaultDifficulty,
-      ).trim(),
-      defaultMastery: String(
-        nextValue?.defaults?.defaultMastery || fallback.defaults.defaultMastery,
-      ).trim(),
-      defaultPriority: String(
-        nextValue?.defaults?.defaultPriority ||
-          fallback.defaults.defaultPriority,
-      ).trim(),
+      defaultDailyHours: 0,
+      defaultDifficulty: "",
+      defaultMastery: "",
+      defaultPriority: "",
     },
-    coursePlans: (Array.isArray(nextValue?.coursePlans) ? nextValue.coursePlans : [])
-      .map((coursePlanEntry) => {
-        const courseId = normalizeStudyPlanAidId(coursePlanEntry?.courseId);
-        if (!courseId) {
+    coursePlans: [],
+    dayPlans: [],
+    note: "",
+    intervals: (Array.isArray(nextValue?.intervals) ? nextValue.intervals : [])
+      .map((intervalEntry) => {
+        const intervalId = String(intervalEntry?.intervalId || "").trim();
+        if (intervalId) {
+          return {
+            intervalId,
+            intervalCourses: Array.isArray(intervalEntry?.intervalCourses)
+              ? intervalEntry.intervalCourses
+              : [],
+          };
+        }
+        const year = String(intervalEntry?.year || "").trim();
+        const term = String(intervalEntry?.term || "").trim();
+        if (year && term) {
+          return {
+            intervalId: `${year}${term}`,
+            intervalCourses: [],
+          };
+        }
+        const componentClass = String(
+          intervalEntry?.componentClass ||
+            intervalEntry?.component_class ||
+            "",
+        ).trim();
+        const startDate = String(intervalEntry?.startDate || "").trim();
+        const endDate = String(intervalEntry?.endDate || "").trim();
+        if (!componentClass || !startDate || !endDate) {
           return null;
         }
         return {
-          _id: coursePlanEntry?._id || null,
-          courseId,
-          note: String(coursePlanEntry?.note || "").trim(),
-          componentPlans: (
-            Array.isArray(coursePlanEntry?.componentPlans)
-              ? coursePlanEntry.componentPlans
-              : []
-          )
-            .map((componentPlanEntry) => {
-              const componentId = normalizeStudyPlanAidId(
-                componentPlanEntry?.componentId,
-              );
-              if (!componentId) {
-                return null;
-              }
-              return {
-                _id: componentPlanEntry?._id || null,
-                componentId,
-                targetHours: normalizeStudyPlanAidNumber(
-                  componentPlanEntry?.targetHours,
-                  0,
-                ),
-                difficulty: String(componentPlanEntry?.difficulty || "").trim(),
-                mastery: String(componentPlanEntry?.mastery || "").trim(),
-                priority: String(componentPlanEntry?.priority || "").trim(),
-                dailyHoursCap: normalizeStudyPlanAidNumber(
-                  componentPlanEntry?.dailyHoursCap,
-                  0,
-                ),
-                note: String(componentPlanEntry?.note || "").trim(),
-                lectureOverrides: (
-                  Array.isArray(componentPlanEntry?.lectureOverrides)
-                    ? componentPlanEntry.lectureOverrides
-                    : []
-                )
-                  .map((lectureOverrideEntry) => {
-                    const lectureId = normalizeStudyPlanAidId(
-                      lectureOverrideEntry?.lectureId,
-                    );
-                    if (!lectureId) {
-                      return null;
-                    }
-                    return {
-                      _id: lectureOverrideEntry?._id || null,
-                      lectureId,
-                      targetHours: normalizeStudyPlanAidNumber(
-                        lectureOverrideEntry?.targetHours,
-                        0,
-                      ),
-                      difficulty: String(
-                        lectureOverrideEntry?.difficulty || "",
-                      ).trim(),
-                      mastery: String(lectureOverrideEntry?.mastery || "").trim(),
-                      priority: String(
-                        lectureOverrideEntry?.priority || "",
-                      ).trim(),
-                      dailyHoursCap: normalizeStudyPlanAidNumber(
-                        lectureOverrideEntry?.dailyHoursCap,
-                        0,
-                      ),
-                      note: String(lectureOverrideEntry?.note || "").trim(),
-                    };
-                  })
-                  .filter(Boolean),
-              };
-            })
-            .filter(Boolean),
+          componentClass,
+          startDate,
+          endDate,
         };
       })
       .filter(Boolean),
-    dayPlans: (Array.isArray(nextValue?.dayPlans) ? nextValue.dayPlans : [])
-      .map((dayPlanEntry) => {
-        const periodType = String(dayPlanEntry?.periodType || "").trim();
-        const groupKey = String(dayPlanEntry?.groupKey || "").trim();
-        const dayNumber = normalizeStudyPlanAidNumber(dayPlanEntry?.dayNumber, 0);
-        if (!periodType || !groupKey || dayNumber <= 0) {
-          return null;
-        }
-        return {
-          _id: dayPlanEntry?._id || null,
-          periodType,
-          groupKey,
-          label: String(dayPlanEntry?.label || "").trim(),
-          dayNumber,
-          dailyHoursCap: normalizeStudyPlanAidNumber(
-            dayPlanEntry?.dailyHoursCap,
-            0,
-          ),
-          lectureIds: (Array.isArray(dayPlanEntry?.lectureIds)
-            ? dayPlanEntry.lectureIds
-            : []
-          )
-            .map((lectureId) => normalizeStudyPlanAidId(lectureId))
-            .filter(Boolean),
-        };
-      })
-      .filter(Boolean),
-    note: String(nextValue?.note || "").trim(),
   };
 };
 

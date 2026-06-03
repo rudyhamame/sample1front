@@ -1648,6 +1648,12 @@ const VideoViewerModal = ({ isOpen, video, onClose, title }) => {
 };
 
 function HomeNoga(props) {
+  const readProgramTermValue = (value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return String(value.number || "").trim();
+    }
+    return String(value || "").trim();
+  };
   const isNaghamtrkmani = true;
   const homeThemeClassName = isNaghamtrkmani
     ? "Home_Noga_themeNoga"
@@ -3322,8 +3328,9 @@ function HomeNoga(props) {
       ),
       term: String(
         props.state?.term ||
-          props.state?.studying?.time?.current?.programTerm?.number ||
-          props.state?.studying?.time?.current?.programTerm ||
+          readProgramTermValue(
+            props.state?.studying?.time?.current?.programTerm,
+          ) ||
           "",
       ),
     };
@@ -3348,7 +3355,6 @@ function HomeNoga(props) {
     props.state?.studying?.time?.currentAcademicYear,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studyYear,
-    props.state?.studying?.time?.current?.programTerm?.number,
     props.state?.studying?.time?.current?.programTerm,
     props.state?.term,
   ]);
@@ -3391,18 +3397,11 @@ function HomeNoga(props) {
         props.state?.studying?.time?.current?.programYearInterval || "",
       ),
       currentProgramTerm: String(
-        props.state?.studying?.time?.current?.programTerm?.number ||
-          props.state?.studying?.time?.current?.programTerm ||
+        readProgramTermValue(props.state?.studying?.time?.current?.programTerm) ||
           "",
       ),
-      currentProgramTermAttendanceDateEntries:
-        normalizeProgramTermScheduleEntriesForDraft(
-          props.state?.studying?.time?.current?.programTerm?.attendanceDate,
-        ),
-      currentProgramTermExamDateEntries:
-        normalizeProgramTermScheduleEntriesForDraft(
-          props.state?.studying?.time?.current?.programTerm?.examDate,
-        ),
+      currentProgramTermAttendanceDateEntries: [],
+      currentProgramTermExamDateEntries: [],
       language: String(props.state?.studying?.language || ""),
       company: String(props.state?.working?.company || ""),
       position: String(props.state?.working?.position || ""),
@@ -3433,8 +3432,6 @@ function HomeNoga(props) {
     props.state?.studying?.time?.start?.programTerm,
     props.state?.studying?.time?.current?.programYearNum,
     props.state?.studying?.time?.current?.programTerm,
-    props.state?.studying?.time?.current?.programTerm?.attendanceDate,
-    props.state?.studying?.time?.current?.programTerm?.examDate,
     props.state?.studying?.time?.current?.programYearInterval,
     props.state?.studying?.language,
     props.state?.working?.company,
@@ -3950,8 +3947,7 @@ function HomeNoga(props) {
                 "",
             ).trim(),
             term: String(
-              profileStudying?.time?.current?.programTerm?.number ||
-                profileStudying?.time?.current?.programTerm ||
+              profileStudying?.time?.current?.programTerm ||
                 profileStudying?.time?.currentDate?.term ||
                 profileStudying?.term ||
                 "",
@@ -7543,15 +7539,9 @@ function HomeNoga(props) {
     });
 
     try {
-      const nextCurrentProgramTermDetails = {
-        number: aboutProfileDraft.currentProgramTerm,
-        attendanceDate: serializeProgramTermScheduleEntries(
-          aboutProfileDraft.currentProgramTermAttendanceDateEntries,
-        ),
-        examDate: serializeProgramTermScheduleEntries(
-          aboutProfileDraft.currentProgramTermExamDateEntries,
-        ),
-      };
+      const nextCurrentProgramTerm = String(
+        aboutProfileDraft.currentProgramTerm || "",
+      ).trim();
 
       const response = await fetch(apiUrl("/api/user/profile"), {
         method: "PUT",
@@ -7582,7 +7572,7 @@ function HomeNoga(props) {
           currentProgramYearNum: aboutProfileDraft.currentProgramYearNum,
           currentProgramYearInterval:
             aboutProfileDraft.currentProgramYearInterval,
-          currentProgramTerm: nextCurrentProgramTermDetails,
+          currentProgramTerm: nextCurrentProgramTerm,
           language: aboutProfileDraft.language,
           company: aboutProfileDraft.company,
           position: aboutProfileDraft.position,
@@ -7630,8 +7620,6 @@ function HomeNoga(props) {
           aboutProfileDraft.currentProgramYearNum,
         term:
           nextInfo?.currentProgramTerm ?? aboutProfileDraft.currentProgramTerm,
-        currentProgramTermDetails:
-          nextInfo?.currentProgramTermDetails ?? nextCurrentProgramTermDetails,
         language: nextInfo?.language ?? aboutProfileDraft.language,
         company: nextInfo?.company ?? aboutProfileDraft.company,
         position: nextInfo?.position ?? aboutProfileDraft.position,
@@ -8125,8 +8113,7 @@ function HomeNoga(props) {
         {
           label: "Current term",
           value: formatProfileValue(
-            profileStudyingCurrent.programTerm?.number ||
-              profileStudyingCurrent.programTerm ||
+            readProgramTermValue(profileStudyingCurrent.programTerm) ||
               profileStudyingCurrentDate.term ||
               profileStudying.term ||
               profileState.term,
@@ -8134,28 +8121,6 @@ function HomeNoga(props) {
           fieldName: "currentProgramTerm",
           inputType: "select",
           options: ["First", "Second", "Third"],
-        },
-        {
-          label: "Current term attendance dates",
-          value: formatProfileValue(
-            formatProgramTermScheduleDisplay(
-              profileStudyingCurrent.programTerm?.attendanceDate,
-            ),
-          ),
-          fieldName: "currentProgramTermAttendanceDateEntries",
-          inputType: "schedule",
-          displayEntries: profileStudyingCurrent.programTerm?.attendanceDate,
-        },
-        {
-          label: "Current term exam dates",
-          value: formatProfileValue(
-            formatProgramTermScheduleDisplay(
-              profileStudyingCurrent.programTerm?.examDate,
-            ),
-          ),
-          fieldName: "currentProgramTermExamDateEntries",
-          inputType: "schedule",
-          displayEntries: profileStudyingCurrent.programTerm?.examDate,
         },
         {
           label: "Language",

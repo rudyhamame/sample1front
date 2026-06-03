@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useHistory } from "react-router-dom";
 import PdfReaderModal from "./App/components/pdf-reader/PdfReaderModal";
 import { apiUrl } from "./config/api";
 import { normalizePlannerSelectSettings } from "./NogaPlan/lib/plannerRuntime";
@@ -123,6 +124,7 @@ const convertImageBlobToPdfBlob = async (imageBlob) => {
 const PdfReaderPage = ({
   state,
 }) => {
+  const history = useHistory();
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUrl, setFileUrl] = useState("");
   const [remoteTitle, setRemoteTitle] = useState("");
@@ -575,6 +577,18 @@ const PdfReaderPage = ({
     event.target.value = "";
   };
 
+  const handleCloseReader = () => {
+    if (typeof window !== "undefined" && window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+    if (history.length > 1) {
+      history.goBack();
+      return;
+    }
+    history.push("/");
+  };
+
   return (
     <section id="pdfReader_page" className="pdfReader_page">
       <input
@@ -631,7 +645,7 @@ const PdfReaderPage = ({
           onStudyConceptCourseChange={handleStudyConceptCourseChange}
           onStudyConceptLectureChange={handleStudyConceptLectureChange}
           onStudyConceptFieldChange={handleStudyConceptFieldChange}
-          onClose={() => {}}
+          onClose={handleCloseReader}
           onChooseFile={handleChooseFile}
         />
       )}

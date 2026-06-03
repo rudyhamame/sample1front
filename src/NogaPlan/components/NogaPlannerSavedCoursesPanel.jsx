@@ -18,6 +18,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const [telegramMessages, setTelegramMessages] = useState([]);
   const [telegramChatLoading, setTelegramChatLoading] = useState(false);
   const [telegramChatError, setTelegramChatError] = useState("");
+  const [showNewCourseToolbar, setShowNewCourseToolbar] = useState(false);
   const [telegramChatFrame, setTelegramChatFrame] = useState({
     top: 84,
     right: 16,
@@ -66,8 +67,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const SAVED_TEXT = NOGAPLANNER_TEXT.savedCourses;
   const WRAPPER_TABS = [
     {
+      key: "home",
+      label: "Home",
+      icon: "fi fi-rr-house-blank",
+    },
+    {
       key: "traces",
-      label: "Traces",
+      label: "Study Materials",
       icon: "fi fi-rr-folder",
     },
     {
@@ -264,6 +270,15 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const showComponentSaveCancelActions =
     Boolean(savedCourseComponentDraftActive) && hasSelectedComponentType;
   const hasPendingUnsavedComponentDraft = Boolean(savedCourseComponentDraftActive);
+  const isNewCourseToolbarDraftReady = Boolean(
+    String(savedCourseDraft?.course_name || "").trim() &&
+      String(savedCourseDraft?.course_code || "").trim() &&
+      String(
+        savedCourseDraft?.course_classSelection ||
+          savedCourseDraft?.course_class ||
+          "",
+      ).trim(),
+  );
   const syncTelegramChatFrame = (nextFrame) => {
     telegramChatFrameRef.current = nextFrame;
     setTelegramChatFrame(nextFrame);
@@ -1216,7 +1231,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
             className="nogaPlanner_savedCourseEditor_courseFormFieldsWrapper"
           >
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
-              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_name"), {
+              {renderSavedCourseFieldEyebrow("Name", {
                 fieldName: "course_name",
               })}
               <input
@@ -1230,7 +1245,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                     event.target.value,
                   )
                 }
-                placeholder={courseFieldLabel("course_name")}
+                placeholder="Name"
               />
             </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
@@ -1252,7 +1267,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
               />
             </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
-              {renderSavedCourseFieldEyebrow(courseFieldLabel("course_status"), {
+              {renderSavedCourseFieldEyebrow("Status", {
                 fieldName: "course_status",
                 readOnly: true,
               })}
@@ -1267,16 +1282,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                     : formatPlannerStatusLabel(savedCourseDraft.course_status)
                 }
                 readOnly
-                placeholder={courseFieldLabel("course_status")}
+                placeholder="Status"
               />
             </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
-              {renderSavedCourseFieldEyebrow(
-                courseFieldLabel("course_totalWeight"),
-                {
-                  fieldName: "course_totalWeight",
-                },
-              )}
+              {renderSavedCourseFieldEyebrow("Weight", {
+                fieldName: "course_totalWeight",
+              })}
               <input
                 id="nogaPlanner_savedCourseInput_course_totalWeight"
                 className="nogaPlanner_savedCoursesDetailsInput"
@@ -1290,7 +1302,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                     event.target.value,
                   )
                 }
-                placeholder={courseFieldLabel("course_totalWeight")}
+                placeholder="Weight"
               />
             </div>
           </div>
@@ -2261,17 +2273,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
           id="nogaPlanner_savedCoursesTableHead"
           className="nogaPlanner_tableHead"
         >
-          <tr id="nogaPlanner_savedCoursesTableHead_row_1">
-            <th id="nogaPlanner_savedCoursesTableHead_courseGroup" colSpan={3}>
-              {courseUi.table.courseGroup}
-            </th>
-            <th
-              id="nogaPlanner_savedCoursesTableHead_componentsGroup"
-              colSpan={11}
-            >
-              {courseUi.table.componentsGroup}
-            </th>
-          </tr>
           <tr id="nogaPlanner_savedCoursesTableHead_row_2">
             <th id="nogaPlanner_savedCoursesTableHead_courseName" rowSpan={3}>
               <span
@@ -2280,27 +2281,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                 tabIndex={0}
                 onClick={() => planner.handleSavedCourseSort("course_name")}
               >
-                {renderSavedCourseSortLabel(
-                  "course_name",
-                  courseFieldLabel("course_name"),
-                )}
+                {renderSavedCourseSortLabel("course_name", "Name")}
               </span>
-            </th>
-            <th id="nogaPlanner_savedCoursesTableHead_courseStatus" rowSpan={3}>
-              <span
-                className="nogaPlanner_tabTableSortLabel"
-                role="button"
-                tabIndex={0}
-                onClick={() => planner.handleSavedCourseSort("course_status")}
-              >
-                {renderSavedCourseSortLabel(
-                  "course_status",
-                  courseFieldLabel("course_status"),
-                )}
-              </span>
-            </th>
-            <th id="nogaPlanner_savedCoursesTableHead_courseWeight" rowSpan={3}>
-              {courseFieldLabel("course_totalWeight")}
             </th>
             <th
               id="nogaPlanner_savedCoursesTableHead_componentType"
@@ -2312,26 +2294,27 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                 tabIndex={0}
                 onClick={() => planner.handleSavedCourseSort("course_class")}
               >
-                {renderSavedCourseSortLabel(
-                  "course_class",
-                  courseFieldLabel("course_classSelection"),
-                )}
+                {renderSavedCourseSortLabel("course_class", "Component")}
               </span>
             </th>
-            <th
-              id="nogaPlanner_savedCoursesTableHead_componentStatus"
-              rowSpan={3}
-            >
-              {courseFieldLabel("component_status")}
+            <th id="nogaPlanner_savedCoursesTableHead_courseStatus" rowSpan={3}>
+              <span
+                className="nogaPlanner_tabTableSortLabel"
+                role="button"
+                tabIndex={0}
+                onClick={() => planner.handleSavedCourseSort("course_status")}
+              >
+                {renderSavedCourseSortLabel("course_status", "Status")}
+              </span>
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_timingGroup" colSpan={4}>
-              {courseUi.table.timing}
+            <th id="nogaPlanner_savedCoursesTableHead_enrollmentInterval" colSpan={2}>
+              Enrollment Interval
             </th>
             <th
               id="nogaPlanner_savedCoursesTableHead_scheduleGroup"
               colSpan={2}
             >
-              {courseUi.editor.scheduleGroupTitle}
+              Attendance Schedule
             </th>
             <th
               id="nogaPlanner_savedCoursesTableHead_locationGroup"
@@ -2344,40 +2327,23 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
             </th>
           </tr>
           <tr id="nogaPlanner_savedCoursesTableHead_row_3">
-            <th
-              id="nogaPlanner_savedCoursesTableHead_normativeGroup"
-              colSpan={2}
-            >
-              {courseUi.table.normative}
+            <th id="nogaPlanner_savedCoursesTableHead_programYear">
+              Program Year
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_actualGroup" colSpan={2}>
-              {courseUi.table.actual}
+            <th id="nogaPlanner_savedCoursesTableHead_programTerm">
+              Program Term
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_day" rowSpan={2}>
+            <th id="nogaPlanner_savedCoursesTableHead_day" rowSpan={1}>
               {courseFieldLabel("course_daySelection")}
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_time" rowSpan={2}>
+            <th id="nogaPlanner_savedCoursesTableHead_time" rowSpan={1}>
               {courseFieldLabel("course_timeSelection")}
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_building" rowSpan={2}>
+            <th id="nogaPlanner_savedCoursesTableHead_building" rowSpan={1}>
               Building
             </th>
-            <th id="nogaPlanner_savedCoursesTableHead_room" rowSpan={2}>
+            <th id="nogaPlanner_savedCoursesTableHead_room" rowSpan={1}>
               Room
-            </th>
-          </tr>
-          <tr id="nogaPlanner_savedCoursesTableHead_row_4">
-            <th id="nogaPlanner_savedCoursesTableHead_normativeYear">
-              {courseUi.table.academicYear}
-            </th>
-            <th id="nogaPlanner_savedCoursesTableHead_normativeTerm">
-              {courseUi.table.term}
-            </th>
-            <th id="nogaPlanner_savedCoursesTableHead_actualYear">
-              {courseUi.table.academicYear}
-            </th>
-            <th id="nogaPlanner_savedCoursesTableHead_actualTerm">
-              {courseUi.table.term}
             </th>
           </tr>
         </thead>
@@ -2386,7 +2352,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
             <tr id="nogaPlanner_savedCoursesTableBody_emptyRow">
               <td
                 id="nogaPlanner_savedCoursesTableBody_emptyCell"
-                colSpan={14}
+                colSpan={10}
                 className="nogaPlanner_savedCoursesEmpty"
               >
                 {courseUi.table.empty}
@@ -2442,35 +2408,28 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                         >
                           {formatSavedCourseTitle(course)}
                         </td>
+                      </>
+                    ) : null}
+                    <td>{course?.course_class || "-"}</td>
+                    {groupIndex === 0 ? (
+                      <>
                         <td
                           rowSpan={group.length}
                           className="nogaPlanner_savedCoursesTableCell--courseStatusMerged"
                         >
                           {formatPlannerStatusLabel(group[0]?.course_status)}
                         </td>
-                        <td
-                          rowSpan={group.length}
-                          className="nogaPlanner_savedCoursesTableCell--courseWeightMerged"
-                        >
-                          {formatCourseWeightDisplay(
-                            group[0]?.course_totalWeight,
-                          )}
-                        </td>
                       </>
                     ) : null}
-                    <td>{course?.course_class || "-"}</td>
                     <td>
-                      {formatPlannerStatusLabel(course?.component_status)}
-                    </td>
-                    <td>{course?.normativeCourseYearInterval || "-"}</td>
-                    <td>
-                      {formatAcademicTermDisplay(course?.normativeCourseTerm) ||
+                      {course?.actualCourseYearInterval ||
+                        course?.normativeCourseYearInterval ||
                         "-"}
                     </td>
-                    <td>{course?.actualCourseYearInterval || "-"}</td>
                     <td>
-                      {formatAcademicTermDisplay(course?.actualCourseTerm) ||
-                        "-"}
+                      {formatAcademicTermDisplay(
+                        course?.actualCourseTerm || course?.normativeCourseTerm,
+                      ) || "-"}
                     </td>
                     <td>{scheduleParts.day}</td>
                     <td>{scheduleParts.time}</td>
@@ -2498,6 +2457,123 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       </table>
   );
 
+  const renderCoursesTableToolbar = () => (
+    <div id="nogaPlanner_coursesTableToolbarMount" className="nogaPlanner_tabToolbarMount">
+      <div
+        id="nogaPlanner_coursesTableToolbar"
+        className="nogaPlanner_tableToolbarRow"
+      >
+        <div className="nogaPlanner_tableToolbarGroup">
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            Home
+          </button>
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            Insert
+          </button>
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            Layout
+          </button>
+          <button
+            type="button"
+            className={
+              "nogaPlanner_tableToolbarBtn" +
+              (showNewCourseToolbar ? " nogaPlanner_tableToolbarBtn--active" : "") +
+              (showNewCourseToolbar && isNewCourseToolbarDraftReady
+                ? " nogaPlanner_tableToolbarBtn--ready"
+                : "")
+            }
+            onClick={() => setShowNewCourseToolbar((previous) => !previous)}
+          >
+            {showNewCourseToolbar && isNewCourseToolbarDraftReady
+              ? "Add"
+              : "New Course"}
+          </button>
+        </div>
+        <div className="nogaPlanner_tableToolbarGroup">
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            Sort
+          </button>
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            Filter
+          </button>
+          <button type="button" className="nogaPlanner_tableToolbarBtn">
+            View
+          </button>
+        </div>
+      </div>
+      {showNewCourseToolbar ? (
+        <div
+          id="nogaPlanner_newCourseToolbarRow"
+          className="nogaPlanner_tableToolbarRow nogaPlanner_tableToolbarRow--sub"
+        >
+          <label
+            className="nogaPlanner_tableToolbarField"
+            htmlFor="nogaPlanner_newCourseToolbar_courseName"
+          >
+            <span>Course name</span>
+            <input
+              id="nogaPlanner_newCourseToolbar_courseName"
+              type="text"
+              value={savedCourseDraft?.course_name || ""}
+              onChange={(event) =>
+                planner.handleSavedCourseDraftChange(
+                  "course_name",
+                  event.target.value,
+                )
+              }
+            />
+          </label>
+          <label
+            className="nogaPlanner_tableToolbarField"
+            htmlFor="nogaPlanner_newCourseToolbar_courseCode"
+          >
+            <span>Course code</span>
+            <input
+              id="nogaPlanner_newCourseToolbar_courseCode"
+              type="text"
+              value={savedCourseDraft?.course_code || ""}
+              onChange={(event) =>
+                planner.handleSavedCourseDraftChange(
+                  "course_code",
+                  event.target.value,
+                )
+              }
+            />
+          </label>
+          <label
+            className="nogaPlanner_tableToolbarField"
+            htmlFor="nogaPlanner_newCourseToolbar_component"
+          >
+            <span>Component</span>
+            <select
+              id="nogaPlanner_newCourseToolbar_component"
+              value={
+                String(
+                  savedCourseDraft?.course_classSelection ||
+                    savedCourseDraft?.course_class ||
+                    "",
+                ).trim()
+              }
+              onChange={(event) =>
+                planner.handleSavedCourseDraftChange(
+                  "course_classSelection",
+                  event.target.value,
+                )
+              }
+            >
+              <option value="">Select component</option>
+              {componentClassOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
+    </div>
+  );
+
   if (shellOnly) {
     return (
       <aside
@@ -2518,6 +2594,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
           <p>{messageFromFriendText}</p>
         </div>
       ) : null}
+      {isCoursesTab ? renderCoursesTableToolbar() : null}
       {renderTable()}
     </>
   );

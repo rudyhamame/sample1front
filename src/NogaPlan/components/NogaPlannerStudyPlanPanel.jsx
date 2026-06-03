@@ -49,27 +49,6 @@ const formatStudyPlanReportDate = (value) => {
   });
 };
 
-const formatRemainingDuration = (targetDate, nowDate) => {
-  const parsedTargetDate = parsePanelDateValue(targetDate);
-  const parsedNowDate = parsePanelDateValue(nowDate);
-  if (!parsedTargetDate || !parsedNowDate) {
-    return "Not set";
-  }
-  const diffMs = parsedTargetDate.getTime() - parsedNowDate.getTime();
-  const isPast = diffMs < 0;
-  let remainingMinutes = Math.floor(Math.abs(diffMs) / 60000);
-  const months = Math.floor(remainingMinutes / (60 * 24 * 30));
-  remainingMinutes -= months * 60 * 24 * 30;
-  const weeks = Math.floor(remainingMinutes / (60 * 24 * 7));
-  remainingMinutes -= weeks * 60 * 24 * 7;
-  const days = Math.floor(remainingMinutes / (60 * 24));
-  remainingMinutes -= days * 60 * 24;
-  const hours = Math.floor(remainingMinutes / 60);
-  const minutes = remainingMinutes - hours * 60;
-  const readableDuration = `${months}mo ${weeks}w ${days}d ${hours}h ${minutes}m`;
-  return isPast ? `${readableDuration} ago` : readableDuration;
-};
-
 
 const normalizeComponentClassKey = (value) =>
   String(value || "")
@@ -106,10 +85,23 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedComponentId, setSelectedComponentId] = useState("");
   const [selectedLectureId, setSelectedLectureId] = useState("");
-  const [activeViewTab, setActiveViewTab] = useState("attendance");
-  const [selectedAttendanceComponentKey, setSelectedAttendanceComponentKey] =
-    useState("all");
-  const [nowDate, setNowDate] = useState(() => new Date());
+  const selectedAttendanceComponentKey = String(
+    planner.state?.studyPlanAttendanceComponentKey || "all",
+  );
+  const attendanceExcludeMode = Boolean(
+    planner.state?.studyPlanAttendanceExcludeMode,
+  );
+  const excludedAttendanceDates = Array.isArray(
+    planner.state?.studyPlanExcludedAttendanceDates,
+  )
+    ? planner.state.studyPlanExcludedAttendanceDates
+    : [];
+  const [selectedReportComponentKey, setSelectedReportComponentKey] = useState("");
+  const intervalDraft = planner.state?.studyPlanIntervalDraft || {
+    componentClass: "",
+    startDate: "",
+    endDate: "",
+  };
   const [componentDraft, setComponentDraft] = useState({
     targetHours: "",
     difficulty: "",
@@ -127,13 +119,6 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
   });
   const [isSaving, setIsSaving] = useState(false);
   const defaultsDraft = studyPlanAid.defaults;
-
-  useEffect(() => {
-    const timerId = window.setInterval(() => {
-      setNowDate(new Date());
-    }, 60000);
-    return () => window.clearInterval(timerId);
-  }, []);
 
   const timeline = useMemo(
     () =>
@@ -297,16 +282,25 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
   const globalDailyCap = Number(studyPlanAid?.defaults?.defaultDailyHours) || 0;
   const componentDailyCap = Number(selectedComponentRow?.dailyHoursCap) || 0;
   const lectureDailyCap = Number(selectedLectureRow?.dailyHoursCap) || 0;
-  const attendanceEntries = Array.isArray(
-    profile?.studying?.time?.current?.programTerm?.attendanceDate,
-  )
-    ? profile.studying.time.current.programTerm.attendanceDate
+  const planIntervals = Array.isArray(studyPlanAid?.intervals)
+    ? studyPlanAid.intervals
     : [];
-  const finalExamEntries = Array.isArray(
-    profile?.studying?.time?.current?.programTerm?.examDate,
-  )
-    ? profile.studying.time.current.programTerm.examDate
-    : [];
+  const attendanceEntries = planIntervals.map((entry) => ({
+    component_class: String(entry?.componentClass || "").trim(),
+    start_date: String(entry?.startDate || "").trim(),
+    end_date: String(entry?.endDate || "").trim(),
+  }));
+  const finalExamEntries = [];
+  const profileComponentsClass = Array.from(
+    new Set(
+      (Array.isArray(profile?.studying?.componentsClass)
+        ? profile.studying.componentsClass
+        : [profile?.studying?.componentsClass]
+      )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    ),
+  );
   const attendanceComponentMap = useMemo(
     () =>
       attendanceEntries.reduce((accumulator, entry) => {
@@ -359,17 +353,35 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
     [attendanceComponentMap, componentRows],
   );
   const attendanceComponentTabs = useMemo(() => {
-    const tabs = [{ key: "all", label: "All Components" }];
-    attendanceEntries.forEach((entry) => {
-      const key = normalizeComponentClassKey(entry?.component_class);
-      const label = String(entry?.component_class || "").trim();
+    const tabs = [{ key: "all", label: "All" }];
+    profileComponentsClass.forEach((componentClassLabel) => {
+      const key = normalizeComponentClassKey(componentClassLabel);
+      const label = String(componentClassLabel || "").trim();
       if (!key || !label || tabs.some((tab) => tab.key === key)) {
         return;
       }
       tabs.push({ key, label });
     });
     return tabs;
-  }, [attendanceEntries]);
+  }, [profileComponentsClass]);
+
+  useEffect(() => {
+    if (
+      attendanceComponentTabs.some(
+        (tabEntry) => tabEntry.key === selectedAttendanceComponentKey,
+      )
+    ) {
+      return;
+    }
+    planner.setStudyPlanAttendanceComponentKey?.("all");
+  }, [attendanceComponentTabs, selectedAttendanceComponentKey, planner]);
+  useEffect(() => {
+    if (!intervalDraft.componentClass && attendanceComponentTabs.length > 1) {
+      planner.setStudyPlanIntervalDraft?.({
+        componentClass: attendanceComponentTabs[1].label,
+      });
+    }
+  }, [attendanceComponentTabs, intervalDraft.componentClass, planner]);
 
   const attendanceIntervalDays = useMemo(() => {
     const scopedEntries =
@@ -449,85 +461,72 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
     [attendanceIntervalDays],
   );
   const componentTimeReportRows = useMemo(() => {
-    const componentLabelById = new Map();
-    const componentLabelByKey = new Map();
     const reportRowsByKey = new Map();
-
-    const ensureReportRow = (labelValue) => {
-      const label = String(labelValue || "").trim();
-      const key = normalizeComponentClassKey(label);
+    profileComponentsClass.forEach((componentClassLabel) => {
+      const key = normalizeComponentClassKey(componentClassLabel);
       if (!key) {
-        return null;
+        return;
       }
-      if (!reportRowsByKey.has(key)) {
-        reportRowsByKey.set(key, {
-          key,
-          label,
-          attendanceDate: null,
-          midExamDates: [],
-          finalExamDate: null,
-        });
-      }
-      return reportRowsByKey.get(key);
-    };
-
-    const getCourseComponents = (courseEntry) =>
-      Array.isArray(courseEntry?.course_components)
-        ? courseEntry.course_components
-        : Array.isArray(courseEntry?.components)
-          ? courseEntry.components
-          : [];
-
-    courses.forEach((courseEntry) => {
-      getCourseComponents(courseEntry).forEach((componentEntry) => {
-        const componentLabel = String(
-          componentEntry?.component_class ||
-            componentEntry?.course_class ||
-            componentEntry?.class ||
-            componentEntry?.componentType ||
-            courseEntry?.course_class ||
-            "",
-        ).trim();
-        if (!componentLabel) {
-          return;
-        }
-        const componentKey = normalizeComponentClassKey(componentLabel);
-        const componentId = String(
-          componentEntry?._id || componentEntry?.id || "",
-        ).trim();
-        if (componentId) {
-          componentLabelById.set(componentId, componentLabel);
-        }
-        componentLabelByKey.set(componentKey, componentLabel);
-        ensureReportRow(componentLabel);
+      reportRowsByKey.set(key, {
+        key,
+        label: componentClassLabel,
+        attendanceStartDate: null,
+        attendanceEndDate: null,
+        attendanceTotalDays: 0,
+        examStartDate: null,
+        examEndDate: null,
+        midExamDates: [],
+        finalExamDate: null,
       });
     });
 
     attendanceEntries.forEach((entry) => {
-      const reportRow = ensureReportRow(entry?.component_class);
+      const entryKey = normalizeComponentClassKey(entry?.component_class);
+      const reportRow = reportRowsByKey.get(entryKey) || null;
+      const startDate = getDayStart(entry?.start_date);
       const endDate = getDayStart(entry?.end_date || entry?.start_date);
-      if (!reportRow || !endDate) {
+      if (!reportRow || !startDate || !endDate) {
         return;
       }
       if (
-        !reportRow.attendanceDate ||
-        endDate.getTime() > reportRow.attendanceDate.getTime()
+        !reportRow.attendanceStartDate ||
+        startDate.getTime() < reportRow.attendanceStartDate.getTime()
       ) {
-        reportRow.attendanceDate = endDate;
+        reportRow.attendanceStartDate = startDate;
+      }
+      if (
+        !reportRow.attendanceEndDate ||
+        endDate.getTime() > reportRow.attendanceEndDate.getTime()
+      ) {
+        reportRow.attendanceEndDate = endDate;
       }
     });
 
     finalExamEntries.forEach((entry) => {
-      const reportRow = ensureReportRow(entry?.component_class);
-      const finalDate = getDayStart(entry?.end_date || entry?.start_date);
-      if (!reportRow || !finalDate) {
+      const entryKey = normalizeComponentClassKey(entry?.component_class);
+      const reportRow = reportRowsByKey.get(entryKey) || null;
+      const startDate = getDayStart(entry?.start_date);
+      const endDate = getDayStart(entry?.end_date || entry?.start_date);
+      if (!reportRow || !startDate || !endDate) {
         return;
       }
       if (
-        !reportRow.finalExamDate ||
-        finalDate.getTime() > reportRow.finalExamDate.getTime()
+        !reportRow.examStartDate ||
+        startDate.getTime() < reportRow.examStartDate.getTime()
       ) {
-        reportRow.finalExamDate = finalDate;
+        reportRow.examStartDate = startDate;
+      }
+      if (
+        !reportRow.examEndDate ||
+        endDate.getTime() > reportRow.examEndDate.getTime()
+      ) {
+        reportRow.examEndDate = endDate;
+      }
+      if (
+        !reportRow.finalExamDate ||
+        endDate.getTime() > reportRow.finalExamDate.getTime()
+      ) {
+        reportRow.finalExamDate = endDate;
       }
     });
 
@@ -545,10 +544,9 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
         const componentLabel =
           String(
             examEntry?.componentType || examEntry?.course_class || "",
-          ).trim() ||
-          componentLabelById.get(String(examEntry?.componentId || "").trim()) ||
-          String(courseEntry?.course_class || "").trim();
-        const reportRow = ensureReportRow(componentLabel);
+          ).trim() || String(courseEntry?.course_class || "").trim();
+        const reportRow =
+          reportRowsByKey.get(normalizeComponentClassKey(componentLabel)) || null;
         const midExamDate = parsePanelDateValue(
           examEntry?.exam_date || examEntry?.date,
         );
@@ -562,98 +560,36 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
     return Array.from(reportRowsByKey.values())
       .map((reportRow) => ({
         ...reportRow,
-        label: componentLabelByKey.get(reportRow.key) || reportRow.label,
+        attendanceTotalDays:
+          reportRow.attendanceStartDate && reportRow.attendanceEndDate
+            ? Math.max(
+                0,
+                Math.floor(
+                  (reportRow.attendanceEndDate.getTime() -
+                    reportRow.attendanceStartDate.getTime()) /
+                    86400000,
+                ) + 1,
+              )
+            : 0,
         midExamDates: reportRow.midExamDates.sort(
           (leftDate, rightDate) => leftDate.getTime() - rightDate.getTime(),
         ),
       }))
       .sort((leftRow, rightRow) => leftRow.label.localeCompare(rightRow.label));
-  }, [attendanceEntries, courses, finalExamEntries]);
+  }, [attendanceEntries, courses, finalExamEntries, profileComponentsClass]);
 
-  const studyCalendarDays = useMemo(() => {
-    const earliestAttendanceDate = attendanceEntries
-      .map((entry) => getDayStart(entry?.start_date))
-      .filter(Boolean)
-      .sort((leftDate, rightDate) => leftDate.getTime() - rightDate.getTime())[0];
-
-    const latestExamDate = finalExamEntries
-      .map((entry) => getDayStart(entry?.end_date || entry?.start_date))
-      .filter(Boolean)
-      .sort((leftDate, rightDate) => rightDate.getTime() - leftDate.getTime())[0];
-
-    if (!earliestAttendanceDate || !latestExamDate) {
-      return [];
+  useEffect(() => {
+    if (
+      selectedReportComponentKey &&
+      componentTimeReportRows.some((entry) => entry.key === selectedReportComponentKey)
+    ) {
+      return;
     }
-
-    const lectureNameMap = new Map(
-      (Array.isArray(lectures) ? lectures : []).map((lectureEntry) => [
-        String(lectureEntry?._id || "").trim(),
-        String(
-          lectureEntry?.lecture_name ||
-            lectureEntry?.lecture_title ||
-            lectureEntry?.title ||
-            "",
-        ).trim(),
-      ]),
-    );
-    const dayPlanMap = (Array.isArray(studyPlanAid?.dayPlans) ? studyPlanAid.dayPlans : [])
-      .reduce((accumulator, dayPlanEntry) => {
-        const dayNumber = Number(dayPlanEntry?.dayNumber || 0);
-        if (!Number.isFinite(dayNumber) || dayNumber <= 0) {
-          return accumulator;
-        }
-        const existingEntry = accumulator.get(dayNumber) || {
-          dailyHoursCap: 0,
-          lectureIds: [],
-        };
-        accumulator.set(dayNumber, {
-          dailyHoursCap: Math.max(
-            Number(existingEntry.dailyHoursCap || 0),
-            Number(dayPlanEntry?.dailyHoursCap || 0),
-          ),
-          lectureIds: Array.from(
-            new Set([
-              ...existingEntry.lectureIds,
-              ...(Array.isArray(dayPlanEntry?.lectureIds)
-                ? dayPlanEntry.lectureIds
-                    .map((lectureId) => String(lectureId || "").trim())
-                    .filter(Boolean)
-                : []),
-            ]),
-          ),
-        });
-        return accumulator;
-      }, new Map());
-
-    const totalDays = Math.max(
-      0,
-      Math.floor(
-        (latestExamDate.getTime() - earliestAttendanceDate.getTime()) / 86400000,
-      ),
-    );
-
-    return Array.from({ length: totalDays + 1 }, (_, index) => {
-      const currentDate = new Date(earliestAttendanceDate);
-      currentDate.setDate(earliestAttendanceDate.getDate() + index);
-      const dayNumber = index + 1;
-      const mappedDayPlan = dayPlanMap.get(dayNumber) || {
-        dailyHoursCap: 0,
-        lectureIds: [],
-      };
-      const lectureNames = mappedDayPlan.lectureIds
-        .map((lectureId) => lectureNameMap.get(lectureId) || lectureId)
-        .filter(Boolean);
-
-      return {
-        dayNumber,
-        isoDate: currentDate.toISOString(),
-        label: formatCalendarDayLabel(currentDate),
-        dailyHoursCap: Number(mappedDayPlan.dailyHoursCap || 0),
-        lectureCount: lectureNames.length,
-        lectureNames,
-      };
-    });
-  }, [attendanceEntries, finalExamEntries, lectures, studyPlanAid]);
+    setSelectedReportComponentKey(componentTimeReportRows[0]?.key || "");
+  }, [componentTimeReportRows, selectedReportComponentKey]);
+  const selectedReportRow =
+    componentTimeReportRows.find((entry) => entry.key === selectedReportComponentKey) ||
+    null;
 
   const renderRegistryControl = ({
     fieldName,
@@ -711,16 +647,7 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
 
   const handleSave = async () => {
     const nextStudyPlanAid = normalizeStudyPlanAid({
-      ...studyPlanAid,
-      enabled: true,
-      viewMode: "timeline",
-      timelineUnit: "day",
-      defaults: {
-        defaultDailyHours: Number(defaultsDraft.defaultDailyHours) || 0,
-        defaultDifficulty: defaultsDraft.defaultDifficulty,
-        defaultMastery: defaultsDraft.defaultMastery,
-        defaultPriority: defaultsDraft.defaultPriority,
-      },
+      intervals: Array.isArray(studyPlanAid?.intervals) ? studyPlanAid.intervals : [],
     });
 
     if (selectedCourseId && selectedComponentId) {
@@ -836,22 +763,16 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
     setSelectedLectureId(row.lectureId || "");
   };
 
-  const renderReportDeadline = (label, targetDate, key) => (
-    <div
-      key={key}
-      className="nogaPlanner_studyPlanTimeReportDeadline"
-    >
-      <span className="nogaPlanner_studyPlanTimeReportDeadlineLabel">
-        {label}
-      </span>
-      <strong className="nogaPlanner_studyPlanTimeReportDuration">
-        {formatRemainingDuration(targetDate, nowDate)}
-      </strong>
-      <span className="nogaPlanner_studyPlanTimeReportDate">
-        {formatStudyPlanReportDate(targetDate) || "Missing date"}
-      </span>
-    </div>
-  );
+  const toggleExcludedAttendanceDay = (dayEntry) => {
+    if (!attendanceExcludeMode) {
+      return;
+    }
+    const dayKey = String(dayEntry?.isoDate || "").slice(0, 10);
+    if (!dayKey) {
+      return;
+    }
+    planner.toggleStudyPlanExcludedDay?.(dayKey);
+  };
 
   return (
     <>
@@ -860,153 +781,58 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
         className="nogaPlanner_studyPlanTabs"
       >
         <div
-          id="nogaPlanner_studyPlanTabsHeader"
-          className="nogaPlanner_studyPlanTabsHeader"
-        >
-          <button
-            id="nogaPlanner_studyPlanTab_attendance"
-            type="button"
-            className={`nogaPlanner_studyPlanTabBtn${activeViewTab === "attendance" ? " is-active" : ""}`}
-            onClick={() => setActiveViewTab("attendance")}
-          >
-            Attendance Schedule
-          </button>
-          <button
-            id="nogaPlanner_studyPlanTab_calendar"
-            type="button"
-            className={`nogaPlanner_studyPlanTabBtn${activeViewTab === "calendar" ? " is-active" : ""}`}
-            onClick={() => setActiveViewTab("calendar")}
-          >
-            Study Calender
-          </button>
-        </div>
-        <div
-          id="nogaPlanner_studyPlanTabsBody"
-          className="nogaPlanner_studyPlanTabsBody"
-        >
-        <div
           id="nogaPlanner_studyPlanCardsMount"
           className="nogaPlanner_studyPlanCardsMount"
         >
-          {activeViewTab === "attendance" ? (
+          {attendanceIntervalDays.length === 0 ? (
             <div
-              id="nogaPlanner_studyPlanAttendanceCards"
-              className="nogaPlanner_studyPlanCardsGrid nogaPlanner_studyPlanCardsGrid--attendance"
+              id="nogaPlanner_studyPlanAttendanceEmpty"
+              className="nogaPlanner_studyPlanEmptyCard"
             >
-              <div
-                id="nogaPlanner_studyPlanAttendanceComponentTabs"
-                className="nogaPlanner_studyPlanAttendanceComponentTabs"
-              >
-                {attendanceComponentTabs.map((tabEntry) => (
-                  <button
-                    id={`nogaPlanner_studyPlanAttendanceComponentTab_${tabEntry.key}`}
-                    key={`nogaPlanner_studyPlanAttendanceComponentTab_${tabEntry.key}`}
-                    type="button"
-                    className={`nogaPlanner_studyPlanAttendanceComponentTabBtn${selectedAttendanceComponentKey === tabEntry.key ? " is-active" : ""}`}
-                    onClick={() =>
-                      setSelectedAttendanceComponentKey(tabEntry.key)
-                    }
-                  >
-                    {tabEntry.label}
-                  </button>
-                ))}
-              </div>
-              {attendanceIntervalDays.length === 0 ? (
-                <div
-                  id="nogaPlanner_studyPlanAttendanceEmpty"
-                  className="nogaPlanner_studyPlanEmptyCard"
-                >
-                  {PLAN_TEXT.noRows}
-                </div>
-              ) : (
-                <div
-                  id="nogaPlanner_studyPlanAttendanceDaysGrid"
-                  className="nogaPlanner_studyPlanAttendanceDaysGrid"
-                >
-                  {attendanceWeekRows.map((weekEntry) => (
-                    <div
-                      id={`nogaPlanner_studyPlanAttendanceWeek_${weekEntry.weekNumber}`}
-                      key={`attendance-week-${weekEntry.weekNumber}`}
-                      className="nogaPlanner_studyPlanAttendanceWeekRow"
-                    >
-                      <span className="nogaPlanner_studyPlanAttendanceWeekLabel">
-                        Week {weekEntry.weekNumber}
-                      </span>
-                      <div className="nogaPlanner_studyPlanAttendanceWeekDays">
-                        {weekEntry.days.map((dayEntry) => (
-                          <div
-                            id={`nogaPlanner_studyPlanAttendanceDay_${dayEntry.dayNumber}`}
-                            key={`attendance-day-${dayEntry.dayNumber}`}
-                            className="nogaPlanner_studyPlanAttendanceDaySquare"
-                          >
-                            <strong className="nogaPlanner_studyPlanCardTitle">
-                              Day {dayEntry.dayNumber}
-                            </strong>
-                            <span className="nogaPlanner_studyPlanCardEyebrow">
-                              {dayEntry.weekday}
-                            </span>
-                            <span className="nogaPlanner_studyPlanCalendarBadge">
-                              {String(dayEntry.isoDate).slice(0, 10)}
-                            </span>
-                            <span className="nogaPlanner_studyPlanAttendanceDayComponents">
-                              {Array.isArray(dayEntry.componentClasses) &&
-                              dayEntry.componentClasses.length > 0
-                                ? dayEntry.componentClasses.join(", ")
-                                : "-"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {PLAN_TEXT.noRows}
             </div>
           ) : (
             <div
-              id="nogaPlanner_studyCalendarCards"
-              className="nogaPlanner_studyPlanCardsGrid nogaPlanner_studyPlanCardsGrid--calendar"
+              id="nogaPlanner_studyPlanAttendanceDaysGrid"
+              className="nogaPlanner_studyPlanAttendanceDaysGrid"
             >
-              {studyCalendarDays.length === 0 ? (
+              {attendanceWeekRows.map((weekEntry) => (
                 <div
-                  id="nogaPlanner_studyCalendarEmpty"
-                  className="nogaPlanner_studyPlanEmptyCard"
+                  id={`nogaPlanner_studyPlanAttendanceWeek_${weekEntry.weekNumber}`}
+                  key={`attendance-week-${weekEntry.weekNumber}`}
+                  className="nogaPlanner_studyPlanAttendanceWeekRow"
                 >
-                  {PLAN_TEXT.noRows}
-                </div>
-              ) : (
-                studyCalendarDays.map((dayEntry, rowIndex) => (
-                  <div
-                    id={`nogaPlanner_studyCalendarCard_${rowIndex}`}
-                    key={`calendar-day-${dayEntry.dayNumber}`}
-                    className="nogaPlanner_studyPlanCard nogaPlanner_studyPlanCard--calendar"
-                  >
-                    <strong className="nogaPlanner_studyPlanCardTitle">
-                      Day {dayEntry.dayNumber}
-                    </strong>
-                    <span className="nogaPlanner_studyPlanCardEyebrow">
-                      {dayEntry.label}
-                    </span>
-                    <div className="nogaPlanner_studyPlanCardFacts">
-                      <span className="nogaPlanner_studyPlanCalendarBadge">
-                        {String(dayEntry.isoDate).slice(0, 10)}
-                      </span>
-                      <span>
-                        {STUDY_PLAN_LABELS.dailyHoursCap || "Daily Cap"}:{" "}
-                        {dayEntry.dailyHoursCap}
-                      </span>
-                      <span>
-                        Planned lectures: {dayEntry.lectureCount}
-                      </span>
-                      <span>
-                        {dayEntry.lectureNames.length > 0
-                          ? dayEntry.lectureNames.join(", ")
-                          : "No planned lectures"}
-                      </span>
-                    </div>
+                  <span className="nogaPlanner_studyPlanAttendanceWeekLabel">
+                    Week {weekEntry.weekNumber}
+                  </span>
+                  <div className="nogaPlanner_studyPlanAttendanceWeekDays">
+                    {weekEntry.days.map((dayEntry) => (
+                      <div
+                        id={`nogaPlanner_studyPlanAttendanceDay_${dayEntry.dayNumber}`}
+                        key={`attendance-day-${dayEntry.dayNumber}`}
+                        className={`nogaPlanner_studyPlanAttendanceDaySquare${attendanceExcludeMode && excludedAttendanceDates.includes(String(dayEntry?.isoDate || "").slice(0, 10)) ? " is-excluded" : ""}`}
+                        onClick={() => toggleExcludedAttendanceDay(dayEntry)}
+                      >
+                        <strong className="nogaPlanner_studyPlanCardTitle">
+                          Day {dayEntry.dayNumber}
+                        </strong>
+                        <span className="nogaPlanner_studyPlanCardEyebrow">
+                          {dayEntry.weekday}
+                        </span>
+                        <span className="nogaPlanner_studyPlanCalendarBadge">
+                          {String(dayEntry.isoDate).slice(0, 10)}
+                        </span>
+                        <span className="nogaPlanner_studyPlanAttendanceDayComponents">
+                          {Array.isArray(dayEntry.componentClasses) &&
+                          dayEntry.componentClasses.length > 0
+                            ? dayEntry.componentClasses.join(", ")
+                            : "-"}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1018,8 +844,8 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
             id="nogaPlanner_studyPlanTimeReportHeader"
             className="nogaPlanner_studyPlanTimeReportHeader"
           >
-            <strong>Time Report</strong>
-            <span>Compared with now</span>
+            <strong>Component Classes Time Report</strong>
+            <span>Compared with now by component class</span>
           </div>
           {componentTimeReportRows.length === 0 ? (
             <div
@@ -1029,46 +855,79 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
               No component dates.
             </div>
           ) : (
-            <div
-              id="nogaPlanner_studyPlanTimeReportList"
-              className="nogaPlanner_studyPlanTimeReportList"
-            >
-              {componentTimeReportRows.map((reportRow) => (
-                <article
-                  id={`nogaPlanner_studyPlanTimeReportCard_${reportRow.key}`}
-                  key={reportRow.key}
-                  className="nogaPlanner_studyPlanTimeReportCard"
+            <>
+              <label
+                htmlFor="nogaPlanner_studyPlanTimeReportComponentClassSelect"
+                className="nogaPlanner_studyPlanTimeReportSelectField"
+              >
+                <span>component_class</span>
+                <select
+                  id="nogaPlanner_studyPlanTimeReportComponentClassSelect"
+                  className="nogaPlanner_savedCoursesDetailsInput"
+                  value={selectedReportComponentKey}
+                  onChange={(event) =>
+                    setSelectedReportComponentKey(event.target.value)
+                  }
                 >
-                  <h4>{reportRow.label}</h4>
-                  {renderReportDeadline(
-                    "Last day of Attendance",
-                    reportRow.attendanceDate,
-                    `${reportRow.key}-attendance`,
-                  )}
-                  {reportRow.midExamDates.length > 0
-                    ? reportRow.midExamDates.map((midExamDate, midExamIndex) =>
-                        renderReportDeadline(
-                          `Mid-Exam due ${midExamIndex + 1}`,
-                          midExamDate,
-                          `${reportRow.key}-mid-${midExamIndex}`,
-                        ),
-                      )
-                    : renderReportDeadline(
-                        "Mid-Exam due",
-                        null,
-                        `${reportRow.key}-mid-empty`,
-                      )}
-                  {renderReportDeadline(
-                    "Final exam due",
-                    reportRow.finalExamDate,
-                    `${reportRow.key}-final`,
-                  )}
-                </article>
-              ))}
-            </div>
+                  {componentTimeReportRows.map((reportRow) => (
+                    <option key={reportRow.key} value={reportRow.key}>
+                      {reportRow.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div
+                id="nogaPlanner_studyPlanTimeReportRows"
+                className="nogaPlanner_studyPlanTimeReportRows"
+              >
+                {selectedReportRow ? (
+                  <>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>first day of Attendance</strong>
+                      <span>{formatStudyPlanReportDate(selectedReportRow.attendanceStartDate) || "-"}</span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Last day of Attendance</strong>
+                      <span>{formatStudyPlanReportDate(selectedReportRow.attendanceEndDate) || "-"}</span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Attendance total days</strong>
+                      <span>{selectedReportRow.attendanceTotalDays ? `${selectedReportRow.attendanceTotalDays} day(s)` : "-"}</span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Exam period first day</strong>
+                      <span>{formatStudyPlanReportDate(selectedReportRow.examStartDate) || "-"}</span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Exam period last day</strong>
+                      <span>{formatStudyPlanReportDate(selectedReportRow.examEndDate) || "-"}</span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Mid-Exam due</strong>
+                      <span>
+                        {selectedReportRow.midExamDates.length > 0
+                          ? selectedReportRow.midExamDates
+                              .map((entry) => formatStudyPlanReportDate(entry))
+                              .filter(Boolean)
+                              .join(" | ")
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="nogaPlanner_studyPlanTimeReportRow">
+                      <strong>Final exam due</strong>
+                      <span>{formatStudyPlanReportDate(selectedReportRow.finalExamDate) || "-"}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="nogaPlanner_studyPlanTimeReportRow">
+                    <strong>Details</strong>
+                    <span>-</span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </aside>
-        </div>
       </section>
       {selectedComponentRow ? (
         <section
