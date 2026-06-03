@@ -5,7 +5,9 @@ import "./friendchat.css";
 import "../voiceVideoCall/VoiceVideoCall.css";
 import { apiUrl } from "../config/api";
 import {
+  startOutgoingCallTone,
   startIncomingCallTone,
+  stopOutgoingCallTone,
   stopIncomingCallTone,
 } from "../realtime/callTone";
 import {
@@ -35,6 +37,7 @@ const CALL_PANEL_MIN_HEIGHT = 220;
 const CALL_PANEL_MARGIN = 16;
 const VIDEO_OVERLAY_MIN_SCALE = 0.6;
 const VIDEO_OVERLAY_MAX_SCALE = 2;
+const CALL_NO_ANSWER_TIMEOUT_MS = 30000;
 const CALL_CONNECTING_TIMEOUT_MS = 20000;
 const CALL_DISCONNECTED_GRACE_MS = 8000;
 
@@ -881,6 +884,15 @@ const FriendChat = ({
   }, [activeFriendId, teardownCall]);
 
   React.useEffect(() => {
+    if (callState === "calling") {
+      startOutgoingCallTone(ringtoneSourceKey);
+      return () => {
+        stopOutgoingCallTone(ringtoneSourceKey);
+      };
+    }
+
+    stopOutgoingCallTone(ringtoneSourceKey);
+
     if (incomingCall && callState === "incoming") {
       startIncomingCallTone(ringtoneSourceKey);
     } else {
@@ -1024,6 +1036,45 @@ const FriendChat = ({
     getRealtimeSocket,
     teardownCall,
   ]);
+
+  React.useEffect(() => {
+    if (callState !== "calling") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (
+        peerConnectionRef.current?.connectionState === "connected" ||
+        callState !== "calling"
+      ) {
+        return;
+      }
+
+      logPeerDiagnostics("ice-diagnostics-no-answer-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
+      const socket = getRealtimeSocket?.();
+      const targetUserId = activeCallPartnerRef.current;
+
+      if (socket && targetUserId) {
+        socket.emit("call:end", {
+          toUserId: targetUserId,
+          fromUserId: currentUserId,
+          reason: "no-answer",
+        });
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError: "No answer from the receiver.",
+      });
+    }, CALL_NO_ANSWER_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [callState, currentUserId, getRealtimeSocket, logPeerDiagnostics, teardownCall]);
 
   React.useEffect(() => {
     if (callState !== "connecting") {

@@ -7,9 +7,6 @@ import "../Nav/nav.css";
 import { Route } from "react-router-dom";
 import Home from "../Home/Home";
 import HomeNoga from "../Home/Home_noga";
-import Study from "./SubApps/StudyPlannner/components/Study/Study";
-import NogaPlan from "../NogaPlan/NogaPlanner.jsx";
-import StudyPlanner from "./SubApps/StudyPlannner/StudyPlanner";
 import {
   getPlannerMusicSnapshot,
   playNextSharedPlannerMusicTrack,
@@ -17,11 +14,6 @@ import {
   toggleSharedPlannerMusic,
   warmSharedPlannerMusic,
 } from "../music/globalMusicPlayer";
-import PhenomedECG from "./SubApps/PhenomedECG/PhenomedECG";
-import PdfReaderPage from "../PdfReaderPage.jsx";
-import TelegramControlPage from "../TelegramControlPage.jsx";
-import JamendoPlayer from "../JamendoPlayer.jsx";
-import Profile from "../Profile/Profile.jsx";
 import VoiceVideoCall from "../voiceVideoCall/VoiceVideoCall";
 import Footer from "./Footer/Footer";
 import SubApps from "../Nav/SubApps/SubApps";
@@ -36,6 +28,22 @@ import {
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
+const LazyStudyPlanner = React.lazy(
+  () => import("./SubApps/StudyPlannner/StudyPlanner"),
+);
+const LazyNogaPlan = React.lazy(() => import("../NogaPlan/NogaPlanner.jsx"));
+const LazyPhenomedECG = React.lazy(
+  () => import("./SubApps/PhenomedECG/PhenomedECG"),
+);
+const LazyPdfReaderPage = React.lazy(() => import("../PdfReaderPage.jsx"));
+const LazyTelegramControlPage = React.lazy(
+  () => import("../TelegramControlPage.jsx"),
+);
+const LazyJamendoPlayer = React.lazy(() => import("../JamendoPlayer.jsx"));
+const LazyProfile = React.lazy(() => import("../Profile/Profile.jsx"));
+const LazyStudy = React.lazy(
+  () => import("./SubApps/StudyPlannner/components/Study/Study"),
+);
 //...........component..................
 class App extends React.Component {
   //..........states...........
@@ -2562,309 +2570,321 @@ class App extends React.Component {
     const showServerAnswerFooter = !this.state.hide_app_footer;
     const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
     const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
+    const routeFallback = (
+      <section
+        id="App_routeLoading"
+        className="fc"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        Loading...
+      </section>
+    );
 
     return (
       <React.Fragment>
-        <Route exact path="/phenomed/home">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <Home
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                dismissFriendRequest={this.dismissFriendRequest}
-                cancelSentFriendRequest={this.cancelSentFriendRequest}
-                removeFriend={this.removeFriend}
-                unblockFriend={this.unblockFriend}
-                updateUserInfo={this.updateUserInfo}
-                selectFriendChat={this.get_current_friend_chat_id}
-                closeActiveChat={this.closeActiveChat}
-                sendToThemMessage={this.sendToThemMessage}
-                updateMyTypingPresence={this.updateMyTypingPresence}
-                markMessagesRead={this.markMessagesRead}
-                serverReply={this.serverReply}
-                requestGlobalCall={this.requestGlobalCall}
-                setAppFooterHidden={this.setAppFooterHidden}
-                setUserAcademicInfo={this.setUserAcademicInfo}
-                setUserMediaInfo={this.setUserMediaInfo}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/home/noga">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <HomeNoga
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                dismissFriendRequest={this.dismissFriendRequest}
-                cancelSentFriendRequest={this.cancelSentFriendRequest}
-                removeFriend={this.removeFriend}
-                unblockFriend={this.unblockFriend}
-                updateUserInfo={this.updateUserInfo}
-                selectFriendChat={this.get_current_friend_chat_id}
-                closeActiveChat={this.closeActiveChat}
-                sendToThemMessage={this.sendToThemMessage}
-                updateMyTypingPresence={this.updateMyTypingPresence}
-                markMessagesRead={this.markMessagesRead}
-                serverReply={this.serverReply}
-                requestGlobalCall={this.requestGlobalCall}
-                setAppFooterHidden={this.setAppFooterHidden}
-                setUserAcademicInfo={this.setUserAcademicInfo}
-                setUserMediaInfo={this.setUserMediaInfo}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route path="/study">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <Study
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                type={this.type}
-                show_profile={this.show_profile}
-                serverReply={this.serverReply}
-              />{" "}
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/schoolplanner/nogaplan">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <NogaPlan
-                locale="ar"
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                type={this.type}
-                show_profile={this.show_profile}
-                memory={this.memory}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/nogaplan">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <NogaPlan
-                locale="ar"
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                type={this.type}
-                show_profile={this.show_profile}
-                memory={this.memory}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/schoolplanner/ar">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <StudyPlanner
-                locale="ar"
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                type={this.type}
-                show_profile={this.show_profile}
-                memory={this.memory}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/schoolplanner">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <StudyPlanner
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                type={this.type}
-                show_profile={this.show_profile}
-                memory={this.memory}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route path="/ecg">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <PhenomedECG
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/pdf-reader">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <PdfReaderPage
-                state={this.state}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/telegram-control">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <TelegramControlPage
-                state={this.state}
-                memory={this.memory}
-                logOut={this.logOut}
-                acceptFriend={this.acceptFriend}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/jamendo-player">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <JamendoPlayer
-                state={this.state}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/deezer-player">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <JamendoPlayer
-                state={this.state}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path="/phenomed/soundcloud-player">
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <JamendoPlayer
-                state={this.state}
-                serverReply={this.serverReply}
-              />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
-        <Route exact path={["/profile/:username", "/phenomed/:username"]}>
-          <article id="app_page" className={appPageClassName}>
-            <main id="Main_article" className="fr">
-              <Profile viewerState={this.state} logOut={this.logOut} />
-            </main>
-            {showServerAnswerFooter ? (
-              <Footer
-                appState={this.state}
-                onSetSelectedAiProvider={this.setSelectedAiProvider}
-                onLogout={this.logOut}
-              />
-            ) : null}
-          </article>
-        </Route>
+        <React.Suspense fallback={routeFallback}>
+          <Route exact path="/phenomed/home">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <Home
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  dismissFriendRequest={this.dismissFriendRequest}
+                  cancelSentFriendRequest={this.cancelSentFriendRequest}
+                  removeFriend={this.removeFriend}
+                  unblockFriend={this.unblockFriend}
+                  updateUserInfo={this.updateUserInfo}
+                  selectFriendChat={this.get_current_friend_chat_id}
+                  closeActiveChat={this.closeActiveChat}
+                  sendToThemMessage={this.sendToThemMessage}
+                  updateMyTypingPresence={this.updateMyTypingPresence}
+                  markMessagesRead={this.markMessagesRead}
+                  serverReply={this.serverReply}
+                  requestGlobalCall={this.requestGlobalCall}
+                  setAppFooterHidden={this.setAppFooterHidden}
+                  setUserAcademicInfo={this.setUserAcademicInfo}
+                  setUserMediaInfo={this.setUserMediaInfo}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/home/noga">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <HomeNoga
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  dismissFriendRequest={this.dismissFriendRequest}
+                  cancelSentFriendRequest={this.cancelSentFriendRequest}
+                  removeFriend={this.removeFriend}
+                  unblockFriend={this.unblockFriend}
+                  updateUserInfo={this.updateUserInfo}
+                  selectFriendChat={this.get_current_friend_chat_id}
+                  closeActiveChat={this.closeActiveChat}
+                  sendToThemMessage={this.sendToThemMessage}
+                  updateMyTypingPresence={this.updateMyTypingPresence}
+                  markMessagesRead={this.markMessagesRead}
+                  serverReply={this.serverReply}
+                  requestGlobalCall={this.requestGlobalCall}
+                  setAppFooterHidden={this.setAppFooterHidden}
+                  setUserAcademicInfo={this.setUserAcademicInfo}
+                  setUserMediaInfo={this.setUserMediaInfo}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route path="/study">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyStudy
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  type={this.type}
+                  show_profile={this.show_profile}
+                  serverReply={this.serverReply}
+                />{" "}
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/schoolplanner/nogaplan">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyNogaPlan
+                  locale="ar"
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  type={this.type}
+                  show_profile={this.show_profile}
+                  memory={this.memory}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/nogaplan">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyNogaPlan
+                  locale="ar"
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  type={this.type}
+                  show_profile={this.show_profile}
+                  memory={this.memory}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/schoolplanner/ar">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyStudyPlanner
+                  locale="ar"
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  type={this.type}
+                  show_profile={this.show_profile}
+                  memory={this.memory}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/schoolplanner">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyStudyPlanner
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  type={this.type}
+                  show_profile={this.show_profile}
+                  memory={this.memory}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route path="/ecg">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyPhenomedECG
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/pdf-reader">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyPdfReaderPage
+                  state={this.state}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/telegram-control">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyTelegramControlPage
+                  state={this.state}
+                  memory={this.memory}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/jamendo-player">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyJamendoPlayer
+                  state={this.state}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/deezer-player">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyJamendoPlayer
+                  state={this.state}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path="/phenomed/soundcloud-player">
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyJamendoPlayer
+                  state={this.state}
+                  serverReply={this.serverReply}
+                />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          <Route exact path={["/profile/:username", "/phenomed/:username"]}>
+            <article id="app_page" className={appPageClassName}>
+              <main id="Main_article" className="fr">
+                <LazyProfile viewerState={this.state} logOut={this.logOut} />
+              </main>
+              {showServerAnswerFooter ? (
+                <Footer
+                  appState={this.state}
+                  onSetSelectedAiProvider={this.setSelectedAiProvider}
+                  onLogout={this.logOut}
+                />
+              ) : null}
+            </article>
+          </Route>
+          </React.Suspense>
         {this.state.app_is_loading && (
           <div
             style={{

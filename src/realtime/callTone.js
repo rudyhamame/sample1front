@@ -8,7 +8,7 @@ const getRingtoneAudio = () => {
   }
 
   if (!ringtoneAudio) {
-    ringtoneAudio = new Audio("/sounds/call-ringtone.wav");
+    ringtoneAudio = new Audio("/sounds/call-ringtone.mp3");
     ringtoneAudio.loop = true;
     ringtoneAudio.preload = "auto";
   }
@@ -55,4 +55,12 @@ export const stopIncomingCallTone = (sourceKey) => {
 
   ringtoneSources.delete(normalizedKey);
   syncPlayback();
+};
+
+export const startOutgoingCallTone = (sourceKey) => {
+  startIncomingCallTone(sourceKey);
+};
+
+export const stopOutgoingCallTone = (sourceKey) => {
+  stopIncomingCallTone(sourceKey);
 };

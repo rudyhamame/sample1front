@@ -7,7 +7,9 @@ import {
   stopMediaStream,
 } from "../realtime/webrtcCall";
 import {
+  startOutgoingCallTone,
   startIncomingCallTone,
+  stopOutgoingCallTone,
   stopIncomingCallTone,
 } from "../realtime/callTone";
 import {
@@ -31,6 +33,7 @@ const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
   x: 18,
   y: 18,
 };
+const CALL_NO_ANSWER_TIMEOUT_MS = 30000;
 const VOICE_CALL_MINIMIZED_STORAGE_KEY =
   "phenomed.voiceCall.windowMinimized";
 
@@ -771,6 +774,15 @@ function VoiceVideoCall({
   ]);
 
   React.useEffect(() => {
+    if (callState === "calling") {
+      startOutgoingCallTone(ringtoneSourceKey);
+      return () => {
+        stopOutgoingCallTone(ringtoneSourceKey);
+      };
+    }
+
+    stopOutgoingCallTone(ringtoneSourceKey);
+
     if (incomingCall && callState === "incoming") {
       startIncomingCallTone(ringtoneSourceKey);
     } else {
@@ -781,6 +793,42 @@ function VoiceVideoCall({
       stopIncomingCallTone(ringtoneSourceKey);
     };
   }, [callState, incomingCall, ringtoneSourceKey]);
+
+  React.useEffect(() => {
+    if (callState !== "calling") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (callState !== "calling") {
+        return;
+      }
+
+      logCallDebug("global", "no-answer-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
+      const socket = getRealtimeSocket?.();
+      const targetUserId = activeCallPartnerRef.current;
+
+      if (socket && targetUserId) {
+        socket.emit("call:end", {
+          toUserId: targetUserId,
+          fromUserId: currentUserId,
+          reason: "no-answer",
+        });
+      }
+
+      teardownCall({
+        keepError: true,
+        nextError: "No answer from the receiver.",
+      });
+    }, CALL_NO_ANSWER_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [callState, currentUserId, getRealtimeSocket, teardownCall]);
 
   React.useEffect(() => {
     if (callState !== "connected" || !callStartedAt) {
