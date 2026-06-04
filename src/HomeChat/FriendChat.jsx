@@ -2222,7 +2222,11 @@ const FriendChat = ({
                       ? "In Chat"
                       : activeFriendPresence.mode === "connected"
                         ? "Online"
-                        : chatContent?.offlineLabel || "offline"}
+                        : activeFriendPresence.mode === "unknown"
+                          ? chatContent?.unknownLabel ||
+                            chatContent?.offlineLabel ||
+                            "unknown"
+                          : chatContent?.offlineLabel || "offline"}
                   </p>
                 )}
               </div>

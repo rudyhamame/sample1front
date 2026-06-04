@@ -146,9 +146,17 @@ export const getFriendPresenceState = (
 
   if (isTruthyPresence(onlineFlag) && !isFresh) {
     return {
-      mode: "offline",
-      label: "Offline",
-      iconClass: "fa-circle",
+      mode: "unknown",
+      label: "Unknown",
+      iconClass: "fa-circle-question",
+    };
+  }
+
+  if (presenceUpdatedAt && !isFresh) {
+    return {
+      mode: "unknown",
+      label: "Unknown",
+      iconClass: "fa-circle-question",
     };
   }
 

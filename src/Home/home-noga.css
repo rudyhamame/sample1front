@@ -4684,6 +4684,13 @@ body.dark #Main_article,
   filter: grayscale(0.3);
 }
 
+.Home_Noga_socialFriendStatus--unknown {
+  border: 1.5px dashed #9aa6ad;
+  color: #9aa6ad !important;
+  background: rgba(234, 238, 240, 0.5);
+  opacity: 0.85;
+}
+
 .Home_Noga_socialFriendStatus i {
   font-size: 0.52rem;
 }

@@ -48,6 +48,7 @@ const HOME_CHAT_CONTENT = {
     title: "Chat",
     onlineLabel: "online",
     offlineLabel: "offline",
+    unknownLabel: "unknown",
     typingLabel: "typing...",
     empty: "Open a conversation to view messages here.",
     inputPlaceholder: "Write a message",
@@ -4091,6 +4092,8 @@ function HomeNoga(props) {
             ? "Home_Noga_socialFriendStatus--online"
             : presenceState.mode === "connected"
               ? "Home_Noga_socialFriendStatus--connected"
+              : presenceState.mode === "unknown"
+                ? "Home_Noga_socialFriendStatus--unknown"
               : "Home_Noga_socialFriendStatus--offline",
       };
     },
@@ -4808,6 +4811,8 @@ function HomeNoga(props) {
                 ? "Home_Noga_socialFriendStatus--online"
                 : presenceState.mode === "connected"
                   ? "Home_Noga_socialFriendStatus--connected"
+                  : presenceState.mode === "unknown"
+                    ? "Home_Noga_socialFriendStatus--unknown"
                   : "Home_Noga_socialFriendStatus--offline",
             iconClass: presenceState.iconClass,
             label: presenceState.label,
