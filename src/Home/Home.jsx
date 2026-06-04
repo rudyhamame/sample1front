@@ -15,6 +15,9 @@ import compressImageUpload, {
   canCompressImageUpload,
 } from "../utils/compressImageUpload";
 import FriendChat from "../HomeChat/FriendChat";
+import {
+  getFriendPresenceState as resolveFriendPresenceState,
+} from "../utils/friendPresence";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 import io from "socket.io-client";
 
@@ -3343,6 +3346,9 @@ function Home(props) {
             username ||
             index,
         ).trim();
+        const presenceState = resolveFriendPresenceState(friend, {
+          chatPresence: props.state?.friendChatPresence,
+        });
 
         return {
           id: String(friend?._id || friend?.id || chatId || index),
@@ -3351,9 +3357,9 @@ function Home(props) {
           displayName,
           initials,
           avatarUrl,
-          isConnected: Boolean(
-            friend?.isConnected || props.state?.friendChatPresence?.[chatId],
-          ),
+          isConnected: presenceState.mode !== "offline",
+          presenceMode: presenceState.mode,
+          presenceLabel: presenceState.label,
         };
       })
       .filter((friend) => friend.chatId);
@@ -3644,16 +3650,16 @@ function Home(props) {
           profile?.hometown && typeof profile.hometown === "object"
             ? profile.hometown
             : {};
+        const presenceState = resolveFriendPresenceState(entry, {
+          chatPresence: props.state?.friendChatPresence,
+        });
         return {
           id: String(entry?._id || entry?.id || info?._id || username || index),
           displayName,
           username,
           initials,
-          isConnected: Boolean(
-            entry?.status?.isConnected ??
-              entry?.status?.isLoggedIn ??
-              entry?.identity?.status?.isLoggedIn,
-          ),
+          isConnected: presenceState.mode !== "offline",
+          presenceMode: presenceState.mode,
           userMode: normalizeFriendUserMode(
             entry?.userMode ||
               entry?.mode ||
@@ -3825,32 +3831,19 @@ function Home(props) {
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
-      const friendId = String(friend?.chatId || "").trim();
-      const isConnected = Boolean(friend?.isConnected);
-      const isAvailableInChat = friendId
-        ? Boolean(props.state?.friendChatPresence?.[friendId])
-        : false;
-
-      if (!isConnected) {
-        return {
-          iconClass: "fa-circle",
-          label: "Offline",
-          modifierClass: "Home_socialFriendStatus--offline",
-        };
-      }
-
-      if (isAvailableInChat) {
-        return {
-          iconClass: "fa-comments",
-          label: "In Chat",
-          modifierClass: "Home_socialFriendStatus--online",
-        };
-      }
+      const presenceState = resolveFriendPresenceState(friend, {
+        chatPresence: props.state?.friendChatPresence,
+      });
 
       return {
-        iconClass: "fa-signal",
-        label: "Online",
-        modifierClass: "Home_socialFriendStatus--connected",
+        iconClass: presenceState.iconClass,
+        label: presenceState.label,
+        modifierClass:
+          presenceState.mode === "chatting"
+            ? "Home_socialFriendStatus--online"
+            : presenceState.mode === "connected"
+              ? "Home_socialFriendStatus--connected"
+              : "Home_socialFriendStatus--offline",
       };
     },
     [props.state?.friendChatPresence],
@@ -4558,18 +4551,22 @@ function Home(props) {
       const canAcceptRequest = userMode === "requestreceived";
       const isSentRequest = userMode === "requestsent";
       const showFriendPresence = userMode === "friend";
-      const friendPresenceState = showFriendPresence
-        ? user?.isConnected
-          ? {
-              modifierClass: "Home_socialFriendStatus--connected",
-              iconClass: "fa-circle",
-              label: "Online",
-            }
-          : {
-              modifierClass: "Home_socialFriendStatus--offline",
-              iconClass: "fa-circle",
-              label: "Offline",
-            }
+      const presenceState = showFriendPresence
+        ? resolveFriendPresenceState(user, {
+            chatPresence: props.state?.friendChatPresence,
+          })
+        : null;
+      const friendPresenceState = presenceState
+        ? {
+            modifierClass:
+              presenceState.mode === "chatting"
+                ? "Home_socialFriendStatus--online"
+                : presenceState.mode === "connected"
+                  ? "Home_socialFriendStatus--connected"
+                  : "Home_socialFriendStatus--offline",
+            iconClass: presenceState.iconClass,
+            label: presenceState.label,
+          }
         : null;
 
       return (

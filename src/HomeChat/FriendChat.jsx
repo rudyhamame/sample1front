@@ -18,6 +18,10 @@ import {
   requestCallMedia,
   stopMediaStream,
 } from "../realtime/webrtcCall";
+import {
+  getFriendPresenceState as resolveFriendPresenceState,
+  getFriendChatPresenceKey,
+} from "../utils/friendPresence";
 
 const CHAT_CALL_PANEL_LAYOUT_STORAGE_KEY =
   "phenomed.friendChat.callPan350pxelLayout";
@@ -2152,6 +2156,33 @@ const FriendChat = ({
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
   const shouldRenderCallPanel =
     !usesGlobalCallPanel && callMode === "video" && callState !== "incoming";
+  const normalizedActiveFriendId = String(activeFriendId || "").trim().toLowerCase();
+  const activeFriendPresenceFriend = React.useMemo(
+    () =>
+      state?.friends?.find?.((friend) => {
+        const candidateIds = [
+          friend?._id,
+          friend?.id,
+          friend?.chatId,
+          friend?.friendId,
+          getFriendChatPresenceKey(friend),
+        ];
+
+        return candidateIds.some(
+          (candidateId) =>
+            String(candidateId || "").trim().toLowerCase() ===
+            normalizedActiveFriendId,
+        );
+      }) || null,
+    [normalizedActiveFriendId, state?.friends],
+  );
+  const activeFriendPresence = React.useMemo(
+    () =>
+      resolveFriendPresenceState(activeFriendPresenceFriend || {}, {
+        chatPresence: state?.friendChatPresence,
+      }),
+    [activeFriendPresenceFriend, state?.friendChatPresence],
+  );
 
   return (
     <section id="FriendChat_article" className="fc">
@@ -2189,11 +2220,7 @@ const FriendChat = ({
                   <p id="Chat_title_status">
                     {friendIsChatting
                       ? "In Chat"
-                      : state?.friends?.find?.(
-                            (friend) =>
-                              String(friend?._id || "").trim() ===
-                              activeFriendId,
-                          )?.status?.isConnected
+                      : activeFriendPresence.mode === "connected"
                         ? "Online"
                         : chatContent?.offlineLabel || "offline"}
                   </p>

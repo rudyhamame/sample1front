@@ -15,6 +15,9 @@ import compressImageUpload, {
   canCompressImageUpload,
 } from "../utils/compressImageUpload";
 import FriendChat from "../HomeChat/FriendChat";
+import {
+  getFriendPresenceState as resolveFriendPresenceState,
+} from "../utils/friendPresence";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 import io from "socket.io-client";
 
@@ -3584,24 +3587,9 @@ function HomeNoga(props) {
         const normalizedUsername = String(username || "")
           .trim()
           .toLowerCase();
-        const presenceMap =
-          props.state?.friendChatPresence &&
-          typeof props.state.friendChatPresence === "object"
-            ? props.state.friendChatPresence
-            : null;
-        const isPresentInChat = Boolean(
-          (chatId && presenceMap?.[chatId]) ||
-          (normalizedUsername && presenceMap?.[normalizedUsername]) ||
-          (info?._id && presenceMap?.[String(info._id)]) ||
-          (friend?._id && presenceMap?.[String(friend._id)]),
-        );
-        const isConnected = Boolean(
-          friend?.isConnected ??
-          friend?.status?.isConnected ??
-          friend?.status?.isLoggedIn ??
-          friend?.identity?.status?.isLoggedIn ??
-          isPresentInChat,
-        );
+        const presenceState = resolveFriendPresenceState(friend, {
+          chatPresence: props.state?.friendChatPresence,
+        });
 
         return {
           id: String(friend?._id || friend?.id || chatId || index),
@@ -3610,7 +3598,9 @@ function HomeNoga(props) {
           displayName,
           initials,
           avatarUrl,
-          isConnected,
+          isConnected: presenceState.mode !== "offline",
+          presenceMode: presenceState.mode,
+          presenceLabel: presenceState.label,
         };
       })
       .filter((friend) => friend.chatId);
@@ -3907,16 +3897,16 @@ function HomeNoga(props) {
           profile?.hometown && typeof profile.hometown === "object"
             ? profile.hometown
             : {};
+        const presenceState = resolveFriendPresenceState(entry, {
+          chatPresence: props.state?.friendChatPresence,
+        });
         return {
           id: String(entry?._id || entry?.id || info?._id || username || index),
           displayName,
           username,
           initials,
-          isConnected: Boolean(
-            entry?.status?.isConnected ??
-            entry?.status?.isLoggedIn ??
-            entry?.identity?.status?.isLoggedIn,
-          ),
+          isConnected: presenceState.mode !== "offline",
+          presenceMode: presenceState.mode,
           userMode: normalizeFriendUserMode(
             entry?.userMode ||
               entry?.mode ||
@@ -4089,32 +4079,19 @@ function HomeNoga(props) {
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
-      const friendId = String(friend?.chatId || "").trim();
-      const isConnected = Boolean(friend?.isConnected);
-      const isAvailableInChat = friendId
-        ? Boolean(props.state?.friendChatPresence?.[friendId])
-        : false;
-
-      if (!isConnected) {
-        return {
-          iconClass: "fa-circle",
-          label: "Offline",
-          modifierClass: "Home_Noga_socialFriendStatus--offline",
-        };
-      }
-
-      if (isAvailableInChat) {
-        return {
-          iconClass: "fa-comments",
-          label: "In Chat",
-          modifierClass: "Home_Noga_socialFriendStatus--online",
-        };
-      }
+      const presenceState = resolveFriendPresenceState(friend, {
+        chatPresence: props.state?.friendChatPresence,
+      });
 
       return {
-        iconClass: "fa-signal",
-        label: "Online",
-        modifierClass: "Home_Noga_socialFriendStatus--connected",
+        iconClass: presenceState.iconClass,
+        label: presenceState.label,
+        modifierClass:
+          presenceState.mode === "chatting"
+            ? "Home_Noga_socialFriendStatus--online"
+            : presenceState.mode === "connected"
+              ? "Home_Noga_socialFriendStatus--connected"
+              : "Home_Noga_socialFriendStatus--offline",
       };
     },
     [props.state?.friendChatPresence],
@@ -4819,18 +4796,22 @@ function HomeNoga(props) {
       const canAcceptRequest = userMode === "requestreceived";
       const isSentRequest = userMode === "requestsent";
       const showFriendPresence = userMode === "friend";
-      const friendPresenceState = showFriendPresence
-        ? user?.isConnected
-          ? {
-              modifierClass: "Home_Noga_socialFriendStatus--connected",
-              iconClass: "fa-circle",
-              label: "Online",
-            }
-          : {
-              modifierClass: "Home_Noga_socialFriendStatus--offline",
-              iconClass: "fa-circle",
-              label: "Offline",
-            }
+      const presenceState = showFriendPresence
+        ? resolveFriendPresenceState(user, {
+            chatPresence: props.state?.friendChatPresence,
+          })
+        : null;
+      const friendPresenceState = presenceState
+        ? {
+            modifierClass:
+              presenceState.mode === "chatting"
+                ? "Home_Noga_socialFriendStatus--online"
+                : presenceState.mode === "connected"
+                  ? "Home_Noga_socialFriendStatus--connected"
+                  : "Home_Noga_socialFriendStatus--offline",
+            iconClass: presenceState.iconClass,
+            label: presenceState.label,
+          }
         : null;
 
       return (

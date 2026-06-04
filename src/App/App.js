@@ -25,6 +25,7 @@ import {
   readStoredSession,
   writeStoredSession,
 } from "../utils/sessionCleanup";
+import { getFriendChatPresenceKey } from "../utils/friendPresence";
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
@@ -168,6 +169,7 @@ class App extends React.Component {
   serverReplyAudioContext = null;
   realtimeSocket = null;
   backendHealthPollInterval = null;
+  userInfoPollInterval = null;
   sessionHeartbeatInterval = null;
   isUnmounted = false;
   backendHealthAbortController = null;
@@ -241,6 +243,9 @@ class App extends React.Component {
       this.pollBackendHealth,
       30000,
     );
+    this.userInfoPollInterval = window.setInterval(() => {
+      this.updateUserInfo({ force: true });
+    }, 45000);
     this.startSessionHeartbeat();
     window.addEventListener(
       "planner-music-session-change",
@@ -289,6 +294,10 @@ class App extends React.Component {
     if (this.backendHealthPollInterval) {
       window.clearInterval(this.backendHealthPollInterval);
       this.backendHealthPollInterval = null;
+    }
+    if (this.userInfoPollInterval) {
+      window.clearInterval(this.userInfoPollInterval);
+      this.userInfoPollInterval = null;
     }
     if (this.sessionHeartbeatInterval) {
       window.clearInterval(this.sessionHeartbeatInterval);
@@ -1694,6 +1703,21 @@ class App extends React.Component {
       })
       .then((jsonData) => {
         const normalizedPayload = normalizeUserUpdatePayload(jsonData);
+        const presenceUpdatedAt = Date.now();
+        const nextFriends = Array.isArray(normalizedPayload.friends)
+          ? normalizedPayload.friends.map((friend) =>
+              friend && typeof friend === "object"
+                ? {
+                    ...friend,
+                    presenceUpdatedAt:
+                      friend.presenceUpdatedAt || presenceUpdatedAt,
+                    chatId:
+                      String(friend?.chatId || getFriendChatPresenceKey(friend))
+                        .trim() || friend?.chatId,
+                  }
+                : friend,
+            )
+          : [];
         const personal = normalizedPayload.personal || {};
         const nextStudying =
           normalizedPayload.studying &&
@@ -1749,7 +1773,7 @@ class App extends React.Component {
           studyYear: personal?.year || personal?.studyYear || "",
           term: personal?.term || "",
           aiProvider: normalizedPayload.aiProvider,
-          friends: normalizedPayload.friends,
+          friends: nextFriends,
           friend_requests: normalizedPayload.friendRequests,
           sent_friend_requests: normalizedPayload.sentFriendRequests,
           rejected_users: normalizedPayload.rejectedUsers,
@@ -1779,7 +1803,7 @@ class App extends React.Component {
           profilePictureViewport: nextProfilePictureViewport,
           homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
-          friends: normalizedPayload.friends,
+          friends: nextFriends,
           friend_requests: normalizedPayload.friendRequests,
           sent_friend_requests: normalizedPayload.sentFriendRequests,
           rejected_users: normalizedPayload.rejectedUsers,
