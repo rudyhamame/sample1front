@@ -20,6 +20,7 @@ import {
 } from "../realtime/webrtcCall";
 import {
   getFriendPresenceState as resolveFriendPresenceState,
+  getFriendPresenceStateForChatPanel as resolveFriendPresenceStateForChatPanel,
   getFriendChatPresenceKey,
 } from "../utils/friendPresence";
 
@@ -220,6 +221,7 @@ const FriendChat = ({
   globalCallSession,
   closeActiveChat,
   hideTitleContainer = false,
+  showInlineBackButton = true,
   inlineCallActionsTarget = null,
 }) => {
   const chatContent = content?.chat;
@@ -251,12 +253,6 @@ const FriendChat = ({
       ).trim(),
     [activeFriendRecord, state?.activeChatFriendAvatarUrl],
   );
-  const friendIsChatting = state?.activeChatFriendId
-    ? Boolean(state?.friendChatPresence?.[state.activeChatFriendId])
-    : false;
-  const friendIsTyping = state?.activeChatFriendId
-    ? Boolean(state?.friendTypingPresence?.[state.activeChatFriendId])
-    : false;
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = React.useState(false);
   const emojiPickerWrapRef = React.useRef(null);
   const emojiPickerRef = React.useRef(null);
@@ -1579,11 +1575,57 @@ const FriendChat = ({
       </div>
     ) : null;
 
+  const normalizedActiveFriendId = String(activeFriendId || "").trim().toLowerCase();
+  const activeFriendPresenceFriend = React.useMemo(
+    () =>
+      state?.friends?.find?.((friend) => {
+        const candidateIds = [
+          friend?._id,
+          friend?.id,
+          friend?.chatId,
+          friend?.friendId,
+          getFriendChatPresenceKey(friend),
+        ];
+
+        return candidateIds.some(
+          (candidateId) =>
+            String(candidateId || "").trim().toLowerCase() ===
+            normalizedActiveFriendId,
+        );
+      }) || null,
+    [normalizedActiveFriendId, state?.friends],
+  );
+  const activeFriendGlobalPresence = React.useMemo(
+    () => resolveFriendPresenceState(activeFriendPresenceFriend || {}),
+    [activeFriendPresenceFriend],
+  );
+  const activeFriendLocalPresence = React.useMemo(() => {
+    const liveLocalStatus =
+      state?.friendLocalStatusById &&
+      typeof state.friendLocalStatusById === "object"
+        ? state.friendLocalStatusById[String(activeFriendId || "").trim()] || null
+        : null;
+    const localValue = String(
+      liveLocalStatus?.value || activeFriendPresenceFriend?.localStatus?.value || "",
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!localValue) {
+      return null;
+    }
+
+    return {
+      iconClass: localValue === "typing" ? "fa-keyboard" : "fa-comments",
+      label: localValue === "typing" ? "Typing" : "In my chat",
+    };
+  }, [activeFriendId, activeFriendPresenceFriend, state?.friendLocalStatusById]);
+
   const inlineChatHeader =
     hideTitleContainer && hasActiveChat ? (
       <>
         <section id="Chat_inlineHeader" className="fr">
-          <section id="Chat_inlineBackRow" className="fr">
+          {showInlineBackButton ? (
             <button
               id="Chat_backToListBtn"
               className="Chat_backToListBtn"
@@ -1594,7 +1636,7 @@ const FriendChat = ({
             >
               <i className="fi fi-br-left" aria-hidden="true"></i>
             </button>
-          </section>
+          ) : null}
           <div id="Chat_inlineHeaderIdentity" className="fr">
             <span id="Chat_inlineHeaderAvatar" aria-hidden="true">
               {activeFriendAvatarUrl ? (
@@ -1607,9 +1649,19 @@ const FriendChat = ({
                 <i className="fas fa-user"></i>
               )}
             </span>
-            <h1 id="Chat_inlineHeaderTitle">
-              {state?.activeChatFriendName || chatContent?.title || "Chat"}
-            </h1>
+            <div id="Chat_inlineHeaderIdentityCopy" className="fc">
+              <h1 id="Chat_inlineHeaderTitle">
+                {state?.activeChatFriendName || chatContent?.title || "Chat"}
+              </h1>
+              {activeFriendLocalPresence ? (
+                <p id="Chat_inlineHeaderLocalStatus">
+                  <span className="Chat_titleSourceBadge Chat_titleSourceBadge--local">
+                    <i className={`fas ${activeFriendLocalPresence.iconClass}`}></i>
+                    <span>{activeFriendLocalPresence.label}</span>
+                  </span>
+                </p>
+              ) : null}
+            </div>
           </div>
         </section>
         {inlineCallActions ? (
@@ -2125,10 +2177,12 @@ const FriendChat = ({
   };
 
   const callPanelStyle = {
+    position: "absolute",
     left: `${callPanelLayout.x}px`,
-    top: `${callPanelLayout.y}px`,
+    bottom: "0px",
     width: `${callPanelLayout.width}px`,
     height: `${callPanelLayout.height}px`,
+    zIndex: 4,
   };
   function handleBackToChatList() {
     const phenomedIntro = document.querySelector(".PhenomedSocial_intro");
@@ -2155,35 +2209,7 @@ const FriendChat = ({
   const showCallControls =
     callMode !== "video" || isRemoteVideoHovered || isCallControlsPinned;
   const shouldRenderCallPanel =
-    !usesGlobalCallPanel && callMode === "video" && callState !== "incoming";
-  const normalizedActiveFriendId = String(activeFriendId || "").trim().toLowerCase();
-  const activeFriendPresenceFriend = React.useMemo(
-    () =>
-      state?.friends?.find?.((friend) => {
-        const candidateIds = [
-          friend?._id,
-          friend?.id,
-          friend?.chatId,
-          friend?.friendId,
-          getFriendChatPresenceKey(friend),
-        ];
-
-        return candidateIds.some(
-          (candidateId) =>
-            String(candidateId || "").trim().toLowerCase() ===
-            normalizedActiveFriendId,
-        );
-      }) || null,
-    [normalizedActiveFriendId, state?.friends],
-  );
-  const activeFriendPresence = React.useMemo(
-    () =>
-      resolveFriendPresenceState(activeFriendPresenceFriend || {}, {
-        chatPresence: state?.friendChatPresence,
-      }),
-    [activeFriendPresenceFriend, state?.friendChatPresence],
-  );
-
+    !usesGlobalCallPanel && callMode === "video" && callState === "connected";
   return (
     <section id="FriendChat_article" className="fc">
       <div id="FriendChat_content_container" className="fc">
@@ -2212,21 +2238,28 @@ const FriendChat = ({
                       <i className="fas fa-user"></i>
                     )}
                   </span>
-                  <h1 id="Chat_title_text">
-                    {state?.activeChatFriendName || chatContent?.title || "Chat"}
-                  </h1>
+                  <div id="Chat_title_identityCopy" className="fc">
+                    <h1 id="Chat_title_text">
+                      {state?.activeChatFriendName || chatContent?.title || "Chat"}
+                    </h1>
+                    {activeFriendLocalPresence ? (
+                      <p id="Chat_title_localStatus">
+                        <span className="Chat_titleSourceBadge Chat_titleSourceBadge--local">
+                          <i className={`fas ${activeFriendLocalPresence.iconClass}`}></i>
+                          <span>{activeFriendLocalPresence.label}</span>
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 {hasActiveChat && (
                   <p id="Chat_title_status">
-                    {friendIsChatting
-                      ? "In Chat"
-                      : activeFriendPresence.mode === "connected"
-                        ? "Online"
-                        : activeFriendPresence.mode === "unknown"
-                          ? chatContent?.unknownLabel ||
-                            chatContent?.offlineLabel ||
-                            "unknown"
-                          : chatContent?.offlineLabel || "offline"}
+                    <span
+                      className={`Chat_titleSourceBadge Chat_titleSourceBadge--${activeFriendGlobalPresence.mode}`}
+                    >
+                      <i className={`fas ${activeFriendGlobalPresence.iconClass}`}></i>
+                      <span>{activeFriendGlobalPresence.label}</span>
+                    </span>
                   </p>
                 )}
               </div>

@@ -330,7 +330,10 @@ export const normalizeUserPayload = (rawUser = {}, overrides = {}) => {
     ),
     dob: overrides.dob ?? profile.dob ?? personal.dob ?? null,
     token: overrides.token ?? rawUser.token ?? "",
-    isConnected: overrides.isConnected ?? rawUser.isConnected ?? true,
+    isLoggedIn:
+      overrides.isLoggedIn ?? rawUser.isLoggedIn ?? rawUser.isConnected ?? true,
+    isConnected:
+      overrides.isConnected ?? rawUser.isConnected ?? rawUser.isLoggedIn ?? true,
     notes: overrides.notes ?? rawUser.notes,
     friends: Array.isArray(overrides.friends)
       ? overrides.friends

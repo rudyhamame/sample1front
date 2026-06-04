@@ -972,13 +972,11 @@ function VoiceVideoCall({
 
   const portalTarget =
     typeof document !== "undefined"
-      ? (Boolean(incomingCall) && callState === "incoming"
-          ? document.getElementById("Home_voiceCallNotificationDock")
-          : null) ||
-        (isFooterCallMinimized
+      ? (isFooterCallMinimized
           ? document.getElementById("Home_voiceCallDock")
           : null) ||
         document.getElementById("Home_Noga_callDock") ||
+        document.getElementById("Home_callDock") ||
         document.getElementById("app_page")
       : null;
   const isFooterDocked = portalTarget?.id === "Home_voiceCallDock";
@@ -1007,7 +1005,7 @@ function VoiceVideoCall({
     callMode === "video" && callState === "connected";
   const shouldMountHiddenLocalVideoElement =
     callMode === "video" && !shouldShowVideoMonitor;
-  const shouldRenderCallPanel = callMode === "video";
+  const shouldRenderCallPanel = callMode === "video" && callState === "connected";
   const shouldRenderIncomingBanner = false;
   const footerControlsPortalTarget =
     typeof document !== "undefined"

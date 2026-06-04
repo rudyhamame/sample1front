@@ -129,6 +129,40 @@ body.dark .nogaPlanner_wrapperTabBtn--active,
     0 10px 20px rgba(0, 0, 0, 0.34);
 }
 
+body.dark .nogaPlanner_homePanelModesHeader,
+.dark .nogaPlanner_homePanelModesHeader {
+  border-color: rgba(110, 168, 180, 0.26);
+  background: linear-gradient(
+    180deg,
+    rgba(17, 46, 54, 0.96),
+    rgba(11, 33, 40, 0.94)
+  );
+  color: var(--nogaPlanner-ink);
+}
+
+body.dark .nogaPlanner_homePanelModesHeader > strong,
+.dark .nogaPlanner_homePanelModesHeader > strong {
+  color: var(--nogaPlanner-heading);
+}
+
+body.dark .nogaPlanner_homePanelModeTab,
+.dark .nogaPlanner_homePanelModeTab {
+  border-color: rgba(110, 168, 180, 0.24);
+  background: rgba(9, 24, 31, 0.54);
+  color: var(--nogaPlanner-chip-text);
+}
+
+body.dark .nogaPlanner_homePanelModeTab.is-active,
+.dark .nogaPlanner_homePanelModeTab.is-active {
+  background: linear-gradient(
+    180deg,
+    rgba(126, 216, 232, 0.94),
+    rgba(136, 212, 199, 0.94)
+  );
+  color: #042028;
+  border-color: rgba(126, 216, 232, 0.62);
+}
+
 /* Main cards */
 body.dark #nogaPlanner_courses_aside,
 body.dark #nogaPlanner_lectures_section,

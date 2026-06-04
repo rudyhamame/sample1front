@@ -1304,7 +1304,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           if (response.status === 202 && payload.requiresProfileCompletion) {
             const normalizedPendingUser = normalizeUserPayload(payload.user, {
               token: payload.token,
-              isConnected: true,
+              isLoggedIn: true,
             });
 
             if (
@@ -1342,14 +1342,14 @@ const Login = ({ onLogin, onForceLogout }) => {
 
           throw new Error(
             payload?.message ||
-              "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+              "The backend request failed or the API server is not responding at the configured URL.",
           );
         })
         .then((userdata) => {
           if (userdata && login === true) {
             const nextAuthReport = normalizeUserPayload(userdata.user, {
               token: userdata.token,
-              isConnected: true,
+              isLoggedIn: true,
             });
 
             runIfMounted(() => {
@@ -1391,7 +1391,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         .catch(() => {
           runIfMounted(() => {
             setLoginMessage(
-              "The app backend is currently unavailable as I am working on the ECG Digitizer project.",
+              "The backend request failed or the API server is not responding at the configured URL.",
             );
             setLogin_ok(false);
             setIs_loading(false);
@@ -1749,7 +1749,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         .then((data) => {
           const nextPendingAuthReport = normalizeUserPayload(data.user, {
             token: data.token,
-            isConnected: true,
+            isLoggedIn: true,
           });
 
           if (loginFormRef.current) {
@@ -1897,7 +1897,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       .then((data) => {
         const nextAuthReport = normalizeUserPayload(data.user, {
           token: pendingSignupAuthReport.token,
-          isConnected: true,
+          isLoggedIn: true,
         });
 
         runIfMounted(() => {

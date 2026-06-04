@@ -105,11 +105,19 @@ class App extends React.Component {
           : true,
       dob: storedSession.dob || null,
       token: storedSession.token || "",
+      isLoggedIn: Boolean(
+        storedSession.isLoggedIn ?? storedSession.isConnected ?? true,
+      ),
       isConnected: Boolean(storedSession.isConnected ?? true),
       isOnline: false,
       friends: Array.isArray(storedSession.friends)
         ? storedSession.friends
         : [],
+      friendLocalStatusById:
+        storedSession.friendLocalStatusById &&
+        typeof storedSession.friendLocalStatusById === "object"
+          ? storedSession.friendLocalStatusById
+          : {},
       friend_requests: Array.isArray(storedSession.friend_requests)
         ? storedSession.friend_requests
         : [],
@@ -131,8 +139,6 @@ class App extends React.Component {
       activeChatFriendName: "",
       isChatting: false,
       isSendingMessage: false,
-      friendChatPresence: {},
-      friendTypingPresence: {},
       searching_on: false,
       friendsPosts_retrieved: false,
       retrievingFriendsPosts_DONE: false,
@@ -163,6 +169,7 @@ class App extends React.Component {
       hide_app_footer: hideFooterPreference,
       global_call_request: null,
       global_call_session: null,
+      activeSubAppPresenceMode: "",
     };
   }
   serverReplyTimeout = null;
@@ -176,8 +183,15 @@ class App extends React.Component {
   userInfoAbortController = null;
   userInfoRequestPromise = null;
   userInfoRefreshQueued = false;
+  userInfoRequestVersion = 0;
+  latestAppliedUserInfoVersion = 0;
   lastUserInfoFetchAt = 0;
   minUserInfoRefreshIntervalMs = 2500;
+  lastPresenceStatusValue = "";
+  friendChatPresenceById = new Map();
+  friendTypingPresenceById = new Map();
+  friendLocalStatusClearTimersById = new Map();
+  friendLocalStatusClearDelayMs = 2000;
   ////////////////////////////////////////Variables//////////////
   // posts = [];
   // lectures = [];
@@ -237,6 +251,9 @@ class App extends React.Component {
     });
     this.updateUserInfo();
     this.connectRealtime();
+    this.syncPresenceStatus({
+      force: true,
+    });
     warmSharedPlannerMusic().catch(() => null);
     this.pollBackendHealth();
     this.backendHealthPollInterval = window.setInterval(
@@ -265,10 +282,20 @@ class App extends React.Component {
     if (
       this.state.friendID_selected &&
       (prevState.chat !== this.state.chat ||
-        prevState.friendID_selected !== this.state.friendID_selected ||
-        prevState.friendTypingPresence !== this.state.friendTypingPresence)
+        prevState.friendID_selected !== this.state.friendID_selected)
     ) {
       this.RetrievingMySendingMessages(this.state.friendID_selected);
+    }
+
+    if (
+      prevState.isChatting !== this.state.isChatting ||
+      prevState.activeChatFriendId !== this.state.activeChatFriendId ||
+      prevState.global_call_session !== this.state.global_call_session ||
+      prevState.activeSubAppPresenceMode !==
+        this.state.activeSubAppPresenceMode
+    ) {
+      this.syncPresenceStatus({
+      });
     }
   }
   componentWillUnmount() {
@@ -311,6 +338,10 @@ class App extends React.Component {
       this.userInfoAbortController.abort();
       this.userInfoAbortController = null;
     }
+    this.friendLocalStatusClearTimersById.forEach((timerId) => {
+      window.clearTimeout(timerId);
+    });
+    this.friendLocalStatusClearTimersById.clear();
     this.userInfoRequestPromise = null;
     this.userInfoRefreshQueued = false;
     // if (this.props.path === "/") {
@@ -361,6 +392,8 @@ class App extends React.Component {
       this.updateMyTypingPresence(this.state.activeChatFriendId, false);
     }
 
+    this.sendOfflinePresenceBeacon();
+
     logoutStoredSession({
       clear: false,
       tokenless: false,
@@ -373,27 +406,145 @@ class App extends React.Component {
       this.updateMyTypingPresence(this.state.activeChatFriendId, false);
     }
 
+    this.sendOfflinePresenceBeacon();
+
     logoutStoredSession({
       clear: false,
       tokenless: false,
     });
   };
 
-  sendSessionHeartbeat = () => {
-    if (!this.state?.my_id || typeof fetch !== "function") {
-      return Promise.resolve();
+  handleSubAppPresenceChange = (nextPresenceMode = "") => {
+    const normalizedPresenceMode = String(nextPresenceMode || "")
+      .trim()
+      .toLowerCase();
+    const nextValue = normalizedPresenceMode === "studying" ? "studying" : "";
+
+    if (this.state.activeSubAppPresenceMode === nextValue) {
+      return;
     }
 
-    return fetch(apiUrl(`/api/user/heartbeat/${this.state.my_id}`), {
+    this.safeSetState(
+      {
+        activeSubAppPresenceMode: nextValue,
+      },
+      () => {
+        this.syncPresenceStatus({
+        });
+      },
+    );
+  };
+
+  getDesiredPresenceStatusValue = () => {
+    if (!this.state?.my_id) {
+      return "offline";
+    }
+
+    if (this.state?.global_call_session) {
+      return "busy";
+    }
+
+    if (this.state?.isChatting && this.state?.activeChatFriendId) {
+      return "busy";
+    }
+
+    if (this.state?.activeSubAppPresenceMode === "studying") {
+      return "studying";
+    }
+
+    return "online";
+  };
+
+  syncPresenceStatus = ({
+    statusValue = null,
+    force = false,
+    keepalive = false,
+  } = {}) => {
+    if (!this.state?.my_id || typeof fetch !== "function") {
+      return Promise.resolve(null);
+    }
+
+    const nextStatusValue = String(
+      statusValue || this.getDesiredPresenceStatusValue(),
+    )
+      .trim()
+      .toLowerCase();
+    const normalizedStatusValue = ["online", "busy", "studying", "offline"].includes(
+      nextStatusValue,
+    )
+      ? nextStatusValue
+      : this.getDesiredPresenceStatusValue();
+
+    if (!force && this.lastPresenceStatusValue === normalizedStatusValue) {
+      return Promise.resolve(normalizedStatusValue);
+    }
+
+    this.lastPresenceStatusValue = normalizedStatusValue;
+
+    const requestOptions = {
+      method: "PUT",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.state?.token
+          ? {
+              Authorization: `Bearer ${this.state.token}`,
+            }
+          : {}),
+      },
+      keepalive: Boolean(keepalive),
+      body: JSON.stringify({
+        statusValue: normalizedStatusValue,
+      }),
+    };
+
+    return fetch(apiUrl(`/api/user/isOnline/${this.state.my_id}`), requestOptions)
+      .then(() => normalizedStatusValue)
+      .catch(() => normalizedStatusValue);
+  };
+
+  sendOfflinePresenceBeacon = () => {
+    if (!this.state?.my_id || typeof navigator === "undefined") {
+      return false;
+    }
+
+    const endpoint = apiUrl(`/api/user/isOnline/${this.state.my_id}`);
+    const payload = JSON.stringify({
+      statusValue: "offline",
+    });
+
+    if (typeof navigator.sendBeacon === "function") {
+      try {
+        return navigator.sendBeacon(
+          endpoint,
+          new Blob([payload], {
+            type: "application/json",
+          }),
+        );
+      } catch {
+        // Fall through to the keepalive fetch fallback below.
+      }
+    }
+
+    fetch(endpoint, {
       method: "PUT",
       mode: "cors",
       headers: {
         "Content-Type": "application/json",
       },
       keepalive: true,
-    })
-      .then(() => undefined)
-      .catch(() => undefined);
+      body: payload,
+    }).catch(() => null);
+
+    return true;
+  };
+
+  sendSessionHeartbeat = () => {
+    return this.syncPresenceStatus({
+      statusValue: this.getDesiredPresenceStatusValue(),
+      force: true,
+      keepalive: true,
+    });
   };
 
   startSessionHeartbeat = () => {
@@ -484,37 +635,34 @@ class App extends React.Component {
 
     this.realtimeSocket = connectRealtime({
       userId: this.state.my_id,
-      onUserRefresh: () => {
-        this.updateUserInfo();
+      onUserRefresh: (payload = {}) => {
+        if (
+          String(payload?.reason || "").trim().toLowerCase() ===
+            "connection:changed" &&
+          String(payload?.targetUserId || "").trim() ===
+            String(this.state.my_id || "").trim() &&
+          payload?.friendId &&
+          payload?.localStatus
+        ) {
+          this.applyFriendLocalStatusFromBackend(
+            payload.friendId,
+            payload.localStatus,
+            new Date(),
+          );
+        }
+
+        this.updateUserInfo({ force: true });
+      },
+      onChatPresence: (payload) => {
+        this.handleFriendChatPresence(payload || {});
+      },
+      onTypingPresence: (payload) => {
+        this.handleFriendTypingPresence(payload || {});
       },
       onChatRead: ({ friendId }) => {
         this.handleChatRead({
           friendId,
         });
-      },
-      onChatPresence: ({ userId, isChatting }) => {
-        if (!userId || userId === this.state.my_id) {
-          return;
-        }
-
-        this.safeSetState((prevState) => ({
-          friendChatPresence: {
-            ...prevState.friendChatPresence,
-            [userId]: Boolean(isChatting),
-          },
-        }));
-      },
-      onTypingPresence: ({ userId, isTyping }) => {
-        if (!userId || userId === this.state.my_id) {
-          return;
-        }
-
-        this.safeSetState((prevState) => ({
-          friendTypingPresence: {
-            ...prevState.friendTypingPresence,
-            [userId]: Boolean(isTyping),
-          },
-        }));
       },
       onVisitLog: ({ visitLog }) => {
         if (this.state.username !== "rudyhamame" || !visitLog) {
@@ -555,6 +703,10 @@ class App extends React.Component {
           this.updateMyChatPresence(this.state.activeChatFriendId, true);
         }
 
+        this.syncPresenceStatus({
+          force: true,
+        });
+
         if (
           this.state.username === "rudyhamame" &&
           typeof window !== "undefined" &&
@@ -589,6 +741,197 @@ class App extends React.Component {
       friendId,
       isTyping,
     });
+  };
+
+  getLocalStatusTimestamp = (localStatus) => {
+    const rawValue =
+      localStatus?.updatedAt ||
+      localStatus?.lastTypingAt ||
+      localStatus?.lastChatAt ||
+      null;
+
+    if (!rawValue) {
+      return 0;
+    }
+
+    const timestamp = new Date(rawValue).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  };
+
+  clearFriendLocalStatusTimer = (friendId) => {
+    const normalizedFriendId = String(friendId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    const existingTimer =
+      this.friendLocalStatusClearTimersById.get(normalizedFriendId);
+
+    if (existingTimer) {
+      window.clearTimeout(existingTimer);
+      this.friendLocalStatusClearTimersById.delete(normalizedFriendId);
+    }
+  };
+
+  scheduleFriendLocalStatusClear = (friendId) => {
+    const normalizedFriendId = String(friendId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.clearFriendLocalStatusTimer(normalizedFriendId);
+
+    const timerId = window.setTimeout(() => {
+      this.friendLocalStatusClearTimersById.delete(normalizedFriendId);
+
+      const stillTyping = Boolean(
+        this.friendTypingPresenceById.get(normalizedFriendId),
+      );
+      const stillChatting = Boolean(
+        this.friendChatPresenceById.get(normalizedFriendId),
+      );
+
+      if (stillTyping) {
+        this.applyFriendLocalStatusFromBackend(
+          normalizedFriendId,
+          "typing",
+          new Date(),
+        );
+        return;
+      }
+
+      if (stillChatting) {
+        this.applyFriendLocalStatusFromBackend(
+          normalizedFriendId,
+          "in my chat",
+          new Date(),
+        );
+        return;
+      }
+
+      this.applyFriendLocalStatusFromBackend(normalizedFriendId, null, new Date());
+    }, this.friendLocalStatusClearDelayMs);
+
+    this.friendLocalStatusClearTimersById.set(normalizedFriendId, timerId);
+  };
+
+  applyFriendLocalStatusFromBackend = (friendId, value, updatedAt = new Date()) => {
+    const normalizedFriendId = String(friendId || "").trim();
+    const normalizedValue = String(value || "").trim().toLowerCase();
+    const nextValue = ["in my chat", "typing"].includes(normalizedValue)
+      ? normalizedValue
+      : null;
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.safeSetState((prevState) => ({
+      friendLocalStatusById: {
+        ...(prevState.friendLocalStatusById || {}),
+        [normalizedFriendId]: {
+          value: nextValue,
+          updatedAt,
+          lastChatAt:
+            nextValue === "in my chat"
+              ? updatedAt
+              : prevState.friendLocalStatusById?.[normalizedFriendId]?.lastChatAt ||
+                null,
+          lastTypingAt:
+            nextValue === "typing"
+              ? updatedAt
+              : prevState.friendLocalStatusById?.[normalizedFriendId]?.lastTypingAt ||
+                null,
+        },
+      },
+      friends: Array.isArray(prevState.friends)
+        ? prevState.friends.map((friend) => {
+            const candidateId = String(
+              friend?._id || friend?.id || friend?.userID || friend?.chatId || "",
+            ).trim();
+
+            if (candidateId !== normalizedFriendId) {
+              return friend;
+            }
+
+            const currentLocalStatus =
+              friend?.localStatus && typeof friend.localStatus === "object"
+                ? friend.localStatus
+                : {};
+
+            return {
+              ...friend,
+              localStatus: {
+                ...currentLocalStatus,
+                value: nextValue,
+                updatedAt,
+                lastChatAt:
+                  nextValue === "in my chat"
+                    ? updatedAt
+                    : currentLocalStatus?.lastChatAt || null,
+                lastTypingAt:
+                  nextValue === "typing"
+                    ? updatedAt
+                    : currentLocalStatus?.lastTypingAt || null,
+              },
+            };
+          })
+        : prevState.friends,
+    }));
+  };
+
+  handleFriendChatPresence = ({ userId, isChatting }) => {
+    const normalizedFriendId = String(userId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.friendChatPresenceById.set(normalizedFriendId, Boolean(isChatting));
+    if (isChatting) {
+      this.clearFriendLocalStatusTimer(normalizedFriendId);
+    }
+
+    this.applyFriendLocalStatusFromBackend(
+      normalizedFriendId,
+      isChatting ? "in my chat" : null,
+      new Date(),
+    );
+  };
+
+  handleFriendTypingPresence = ({ userId, isTyping }) => {
+    const normalizedFriendId = String(userId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    this.friendTypingPresenceById.set(normalizedFriendId, Boolean(isTyping));
+    if (isTyping) {
+      this.clearFriendLocalStatusTimer(normalizedFriendId);
+    }
+
+    if (isTyping) {
+      this.applyFriendLocalStatusFromBackend(
+        normalizedFriendId,
+        "typing",
+        new Date(),
+      );
+      return;
+    }
+
+    if (this.friendChatPresenceById.get(normalizedFriendId)) {
+      this.applyFriendLocalStatusFromBackend(
+        normalizedFriendId,
+        "in my chat",
+        new Date(),
+      );
+      return;
+    }
+
+    this.scheduleFriendLocalStatusClear(normalizedFriendId);
   };
 
   markMessagesRead = (friendId) => {
@@ -666,11 +1009,14 @@ class App extends React.Component {
     this.safeSetState({
       global_call_session:
         session && typeof session === "object" ? session : null,
+    }, () => {
+      this.syncPresenceStatus({
+      });
     });
   };
 
-  availableToChat = (isConnected) => {
-    return Promise.resolve({ isConnected: Boolean(isConnected) });
+  availableToChat = (isLoggedIn) => {
+    return Promise.resolve({ isLoggedIn: Boolean(isLoggedIn) });
   };
 
   //......END OF MAKE YOURSELF AVAILABLE TO CHAT......
@@ -1128,9 +1474,15 @@ class App extends React.Component {
     }
 
     const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
-    const friendReadyToReply = Boolean(
-      this.state.friendTypingPresence?.[friend_id],
-    );
+    const friendReadyToReply = Array.isArray(this.state.friends)
+      ? this.state.friends.some(
+          (friend) =>
+            String(friend?._id || friend?.id || "").trim() ===
+              String(friend_id || "").trim() &&
+            String(friend?.localStatus?.value || "").trim().toLowerCase() ===
+              "typing",
+        )
+      : false;
 
     ul.innerHTML = "";
     let previousDayKey = null;
@@ -1488,13 +1840,19 @@ class App extends React.Component {
             friends: jsonData.friends,
           });
           //For every friend
+          const currentFriend = jsonData.friends[i] || {};
+          const currentStatusValue = String(
+            currentFriend?.status?.value || "offline",
+          )
+            .trim()
+            .toLowerCase();
           if (this.app_friends[i] !== jsonData.friends[i]._id) {
             //If a friend is new to the app add it to the friends list with respect to the online status and to the app memory
             let p = document.createElement("p");
             let li = document.createElement("li");
             let icon = document.createElement("i");
 
-            const friendIdentity = jsonData.friends[i]?.identity || {};
+            const friendIdentity = currentFriend?.identity || {};
             const friendPersonal = friendIdentity.personal || {};
             p.textContent =
               String(friendPersonal.firstname || "") +
@@ -1516,25 +1874,31 @@ class App extends React.Component {
             icon.setAttribute("class", "fas fa-circle");
             li.appendChild(icon);
             ul.appendChild(li);
-            if (Boolean(jsonData.friends[i]?.identity?.status?.isLoggedIn)) {
-              icon.style.color = "#32cd32";
-            } else {
-              icon.style.color = "var(--black)";
-            }
+            icon.style.color =
+              currentStatusValue === "busy"
+                ? "#ff9800"
+                : currentStatusValue === "studying"
+                  ? "#1e88e5"
+                  : currentStatusValue === "offline"
+                    ? "var(--black)"
+                    : "#32cd32";
             this.app_friends[i] = jsonData.friends[i]._id;
           }
-          // if (this.app_friends[i] === jsonData.friends[i]._id) {
-          //   // if we already have this friend in the memory app just check their online status and change it
-          //   if (jsonData.friends[i].status.isConnected) {
-          //     document.getElementById(
-          //       "online_icon" + jsonData.friends[i]._id
-          //     ).style.color = "#32cd32";
-          //   } else {
-          //     document.getElementById(
-          //       "online_icon" + jsonData.friends[i]._id
-          //     ).style.color = "var(--black)";
-          //   }
-          // }
+          if (this.app_friends[i] === currentFriend._id) {
+            const iconElement = document.getElementById(
+              "online_icon" + currentFriend._id,
+            );
+            if (iconElement) {
+              iconElement.style.color =
+                currentStatusValue === "busy"
+                  ? "#ff9800"
+                  : currentStatusValue === "studying"
+                    ? "#1e88e5"
+                    : currentStatusValue === "offline"
+                      ? "var(--black)"
+                      : "#32cd32";
+            }
+          }
         }
       });
   };
@@ -1557,6 +1921,9 @@ class App extends React.Component {
       activeChatFriendId: friendID,
       activeChatFriendName,
       isChatting: true,
+    }, () => {
+      this.syncPresenceStatus({
+      });
     });
 
     this.updateMyChatPresence(friendID, true);
@@ -1566,6 +1933,8 @@ class App extends React.Component {
   };
 
   closeActiveChat = () => {
+    const activeFriendId = this.state.activeChatFriendId;
+
     if (this.state.activeChatFriendId) {
       this.updateMyChatPresence(this.state.activeChatFriendId, false);
       this.updateMyTypingPresence(this.state.activeChatFriendId, false);
@@ -1576,6 +1945,9 @@ class App extends React.Component {
       activeChatFriendId: null,
       activeChatFriendName: "",
       isChatting: false,
+    }, () => {
+      this.syncPresenceStatus({
+      });
     });
   };
 
@@ -1703,6 +2075,7 @@ class App extends React.Component {
       signal: this.userInfoAbortController.signal,
     });
     this.lastUserInfoFetchAt = Date.now();
+    const requestVersion = ++this.userInfoRequestVersion;
 
     this.userInfoRequestPromise = fetch(req)
       .then((response) => {
@@ -1712,21 +2085,107 @@ class App extends React.Component {
         throw new Error(`Failed to load user info: ${response.status}`);
       })
       .then((jsonData) => {
+        if (requestVersion < this.latestAppliedUserInfoVersion) {
+          return null;
+        }
+
         const normalizedPayload = normalizeUserUpdatePayload(jsonData);
-        const presenceUpdatedAt = Date.now();
+        const currentFriends = Array.isArray(this.state.friends)
+          ? this.state.friends
+          : [];
+        const currentFriendsById = new Map(
+          currentFriends
+            .filter((friend) => friend && typeof friend === "object")
+            .map((friend) => [
+              String(friend?._id || friend?.id || friend?.chatId || "").trim(),
+              friend,
+            ])
+            .filter(([friendId]) => Boolean(friendId)),
+        );
         const nextFriends = Array.isArray(normalizedPayload.friends)
-          ? normalizedPayload.friends.map((friend) =>
-              friend && typeof friend === "object"
-                ? {
-                    ...friend,
-                    presenceUpdatedAt:
-                      friend.presenceUpdatedAt || presenceUpdatedAt,
-                    chatId:
-                      String(friend?.chatId || getFriendChatPresenceKey(friend))
-                        .trim() || friend?.chatId,
-                  }
-                : friend,
-            )
+          ? normalizedPayload.friends.map((friend) => {
+              if (!friend || typeof friend !== "object") {
+                return friend;
+              }
+
+              const friendId = String(
+                friend?._id || friend?.id || friend?.chatId || "",
+              ).trim();
+              const currentFriend = friendId
+                ? currentFriendsById.get(friendId)
+                : null;
+              const currentLocalStatus =
+                currentFriend?.localStatus &&
+                typeof currentFriend.localStatus === "object"
+                  ? currentFriend.localStatus
+                  : null;
+              const incomingLocalStatus =
+                friend?.localStatus && typeof friend.localStatus === "object"
+                  ? friend.localStatus
+                  : null;
+              const liveLocalStatus =
+                this.state.friendLocalStatusById &&
+                typeof this.state.friendLocalStatusById === "object"
+                  ? this.state.friendLocalStatusById[friendId] || null
+                  : null;
+              const currentLocalStatusTimestamp = this.getLocalStatusTimestamp(
+                currentLocalStatus,
+              );
+              const incomingLocalStatusTimestamp = this.getLocalStatusTimestamp(
+                incomingLocalStatus,
+              );
+              const liveLocalStatusTimestamp = this.getLocalStatusTimestamp(
+                liveLocalStatus,
+              );
+              const shouldPreserveCurrentLocalStatus =
+                Boolean(
+                  currentLocalStatus?.value &&
+                    ["in my chat", "typing"].includes(
+                      String(currentLocalStatus.value || "")
+                        .trim()
+                        .toLowerCase(),
+                    ),
+                ) &&
+                currentLocalStatusTimestamp > incomingLocalStatusTimestamp;
+              const shouldPreserveLiveLocalStatus =
+                Boolean(
+                  liveLocalStatus?.value &&
+                    ["in my chat", "typing"].includes(
+                      String(liveLocalStatus.value || "")
+                        .trim()
+                        .toLowerCase(),
+                    ),
+                ) &&
+                liveLocalStatusTimestamp >=
+                  Math.max(
+                    incomingLocalStatusTimestamp,
+                    currentLocalStatusTimestamp,
+                  );
+
+              return {
+                ...friend,
+                presenceUpdatedAt:
+                  friend.presenceUpdatedAt ||
+                  friend?.status?.updatedAt ||
+                  friend?.status?.lastSeenAt ||
+                  friend?.identity?.status?.updatedAt ||
+                  friend?.identity?.status?.lastSeenAt ||
+                  null,
+                chatId:
+                  String(friend?.chatId || getFriendChatPresenceKey(friend))
+                    .trim() || friend?.chatId,
+                localStatus: shouldPreserveLiveLocalStatus
+                  ? liveLocalStatus
+                  : shouldPreserveCurrentLocalStatus
+                  ? currentLocalStatus
+                  : incomingLocalStatus || {
+                      value: null,
+                      updatedAt: null,
+                      lastChatAt: null,
+                      lastTypingAt: null,
+                    },
+              };
+            })
           : [];
         const personal = normalizedPayload.personal || {};
         const nextStudying =
@@ -1819,8 +2278,15 @@ class App extends React.Component {
           rejected_users: normalizedPayload.rejectedUsers,
           posts: normalizedPayload.posts,
           login_record: [],
+          friendLocalStatusById:
+            this.state.friendLocalStatusById &&
+            typeof this.state.friendLocalStatusById === "object"
+              ? this.state.friendLocalStatusById
+              : {},
         });
+        this.latestAppliedUserInfoVersion = requestVersion;
         this.memory.courses = normalizedPayload.memory.courses;
+        return normalizedPayload;
       })
       .catch((err) => {
         if (err?.name === "AbortError") {
@@ -2340,6 +2806,17 @@ class App extends React.Component {
   /////////////////////////Log out//////////////////////
   logOut = () => {
     const finishLogout = () => {
+      this.syncPresenceStatus({
+        statusValue: "offline",
+        force: true,
+        keepalive: true,
+      });
+
+      logoutStoredSession({
+        clear: false,
+        tokenless: false,
+      });
+
       if (this.realtimeSocket) {
         this.realtimeSocket.disconnect();
         this.realtimeSocket = null;
@@ -2352,17 +2829,23 @@ class App extends React.Component {
 
     this.safeSetState(
       {
+        isLoggedIn: false,
         isConnected: false,
       },
       () => {
+        this.syncPresenceStatus({
+          statusValue: "offline",
+          force: true,
+          keepalive: true,
+        });
         finishLogout();
         this.availableToChat(false).catch(() => null);
       },
     );
   };
 
-  friendConnectionColor = (isConnected) => {
-    if (isConnected) {
+  friendConnectionColor = (isLoggedIn) => {
+    if (isLoggedIn) {
       return "#32cd32";
     }
 
@@ -2711,6 +3194,7 @@ class App extends React.Component {
                 <LazyNogaPlan
                   locale="ar"
                   state={this.state}
+                  onPresenceModeChange={this.handleSubAppPresenceChange}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   type={this.type}
@@ -2734,6 +3218,7 @@ class App extends React.Component {
                 <LazyNogaPlan
                   locale="ar"
                   state={this.state}
+                  onPresenceModeChange={this.handleSubAppPresenceChange}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   type={this.type}

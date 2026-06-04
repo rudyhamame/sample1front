@@ -37,7 +37,8 @@ const getHomeRouteForUser = (authState) => {
 
 const AppRouter = () => {
   const [authState, setAuthState] = useState(getStoredAuth);
-  const isAuthenticated = authState?.isConnected === true;
+  const isAuthenticated =
+    authState?.isLoggedIn === true || authState?.isConnected === true;
   const profileIsAllowed = authState?.profileCompleted !== false;
   const canAccessAuthenticatedRoutes = isAuthenticated && profileIsAllowed;
   const isAuthenticatedNogaUser =

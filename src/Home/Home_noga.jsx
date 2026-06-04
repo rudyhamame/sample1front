@@ -17,6 +17,7 @@ import compressImageUpload, {
 import FriendChat from "../HomeChat/FriendChat";
 import {
   getFriendPresenceState as resolveFriendPresenceState,
+  getFriendPresenceStateForChatPanel as resolveFriendPresenceStateForChatPanel,
 } from "../utils/friendPresence";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 import io from "socket.io-client";
@@ -3588,9 +3589,25 @@ function HomeNoga(props) {
         const normalizedUsername = String(username || "")
           .trim()
           .toLowerCase();
-        const presenceState = resolveFriendPresenceState(friend, {
-          chatPresence: props.state?.friendChatPresence,
-        });
+        const presenceState =
+          openChatFriendId && openChatFriendId === chatId
+            ? resolveFriendPresenceStateForChatPanel(friend)
+            : resolveFriendPresenceState(friend);
+        const localStatus =
+          friend?.localStatus && typeof friend.localStatus === "object"
+            ? {
+                ...friend.localStatus,
+                value:
+                  String(friend.localStatus.value || "")
+                    .trim()
+                    .toLowerCase() || null,
+              }
+            : {
+                value: null,
+                updatedAt: null,
+                lastChatAt: null,
+                lastTypingAt: null,
+              };
 
         return {
           id: String(friend?._id || friend?.id || chatId || index),
@@ -3599,13 +3616,30 @@ function HomeNoga(props) {
           displayName,
           initials,
           avatarUrl,
-          isConnected: presenceState.mode !== "offline",
+          status:
+            friend?.status && typeof friend.status === "object"
+              ? {
+                  ...friend.status,
+                  value:
+                    String(friend.status.value || "")
+                      .trim()
+                      .toLowerCase() || null,
+                }
+              : {
+                  value: null,
+                  updatedAt: null,
+                  lastSeenAt: null,
+                  loggedInAt: null,
+                  loggedOutAt: null,
+                },
+          localStatus,
+          statusValue: presenceState.mode,
           presenceMode: presenceState.mode,
           presenceLabel: presenceState.label,
         };
       })
       .filter((friend) => friend.chatId);
-  }, [props.state?.friendChatPresence, props.state?.friends]);
+  }, [props.state?.friends]);
 
   // TODO: Refactor unreadChatCountsByFriendId to use chat state or friends[].userMode if needed
   const unreadChatCountsByFriendId = React.useMemo(() => ({}), []);
@@ -3898,15 +3932,13 @@ function HomeNoga(props) {
           profile?.hometown && typeof profile.hometown === "object"
             ? profile.hometown
             : {};
-        const presenceState = resolveFriendPresenceState(entry, {
-          chatPresence: props.state?.friendChatPresence,
-        });
+        const presenceState = resolveFriendPresenceState(entry);
         return {
           id: String(entry?._id || entry?.id || info?._id || username || index),
           displayName,
           username,
           initials,
-          isConnected: presenceState.mode !== "offline",
+          statusValue: presenceState.mode,
           presenceMode: presenceState.mode,
           userMode: normalizeFriendUserMode(
             entry?.userMode ||
@@ -4080,24 +4112,26 @@ function HomeNoga(props) {
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
-      const presenceState = resolveFriendPresenceState(friend, {
-        chatPresence: props.state?.friendChatPresence,
-      });
+      const presenceState = resolveFriendPresenceState(friend);
 
       return {
         iconClass: presenceState.iconClass,
         label: presenceState.label,
         modifierClass:
-          presenceState.mode === "chatting"
-            ? "Home_Noga_socialFriendStatus--online"
-            : presenceState.mode === "connected"
-              ? "Home_Noga_socialFriendStatus--connected"
-              : presenceState.mode === "unknown"
-                ? "Home_Noga_socialFriendStatus--unknown"
-              : "Home_Noga_socialFriendStatus--offline",
+          presenceState.mode === "in_my_chat"
+            ? "Home_Noga_socialFriendStatus--chatting"
+            : presenceState.mode === "typing"
+              ? "Home_Noga_socialFriendStatus--typing"
+              : presenceState.mode === "busy"
+                ? "Home_Noga_socialFriendStatus--busy"
+                : presenceState.mode === "studying"
+                  ? "Home_Noga_socialFriendStatus--studying"
+                  : presenceState.mode === "online"
+                    ? "Home_Noga_socialFriendStatus--online"
+                    : "Home_Noga_socialFriendStatus--offline",
       };
     },
-    [props.state?.friendChatPresence],
+    [],
   );
 
   const getSearchCandidateUserModeMeta = React.useCallback((candidate) => {
@@ -4172,10 +4206,43 @@ function HomeNoga(props) {
 
   const renderFriendListItem = React.useCallback(
     (friend) => {
-      const isFriendChatOpen = openChatFriendId === friend.chatId;
+      const normalizedFriendChatId = String(friend?.chatId || "").trim();
+      const normalizedOpenChatFriendId = String(openChatFriendId || "").trim();
+      const normalizedActiveChatFriendId = String(
+        props.state?.activeChatFriendId || "",
+      ).trim();
+      const isFriendChatOpen =
+        normalizedFriendChatId &&
+        (normalizedOpenChatFriendId === normalizedFriendChatId ||
+          normalizedActiveChatFriendId === normalizedFriendChatId);
       const unreadChatCount = isFriendChatOpen
         ? 0
         : unreadChatCountsByFriendId[friend.chatId] || 0;
+      const globalPresenceState = getFriendPresenceState(friend);
+      const liveLocalStatus =
+        props.state?.friendLocalStatusById &&
+        typeof props.state.friendLocalStatusById === "object"
+          ? props.state.friendLocalStatusById[normalizedFriendChatId] || null
+          : null;
+      const chatPanelLocalStatusValue = String(
+        liveLocalStatus?.value || friend?.localStatus?.value || "",
+      )
+        .trim()
+        .toLowerCase();
+      const localPresenceState =
+        chatPanelLocalStatusValue === "typing"
+          ? {
+              iconClass: "fa-keyboard",
+              label: "Typing",
+              source: "local",
+            }
+          : chatPanelLocalStatusValue === "in my chat"
+            ? {
+                iconClass: "fa-comments",
+                label: "In my chat",
+                source: "local",
+              }
+            : null;
       const incomingCall =
         props.state?.global_call_session?.incomingCall || null;
       const isIncomingCallForFriend =
@@ -4234,8 +4301,18 @@ function HomeNoga(props) {
                 <span className="Home_Noga_socialFriendUsername">
                   {friend.username || "Phenomed user"}
                 </span>
-                <span className="Home_Noga_socialFriendStatusText">
-                  {friend?.isConnected ? "online" : "offline"}
+                <span className="Home_Noga_socialFriendStatusLine">
+                  <span
+                    className={`Home_Noga_socialFriendStatusText${globalPresenceState?.mode ? ` Home_Noga_socialFriendStatusText--${globalPresenceState.mode}` : ""}`}
+                  >
+                    {globalPresenceState?.label || "Offline"}
+                  </span>
+                  {localPresenceState ? (
+                    <span className="Home_Noga_socialFriendSourceBadge Home_Noga_socialFriendSourceBadge--local">
+                      <i className={`fas ${localPresenceState.iconClass}`}></i>
+                      <span>{localPresenceState.label}</span>
+                    </span>
+                  ) : null}
                 </span>
               </div>
             </div>
@@ -4800,20 +4877,22 @@ function HomeNoga(props) {
       const isSentRequest = userMode === "requestsent";
       const showFriendPresence = userMode === "friend";
       const presenceState = showFriendPresence
-        ? resolveFriendPresenceState(user, {
-            chatPresence: props.state?.friendChatPresence,
-          })
+        ? resolveFriendPresenceState(user)
         : null;
       const friendPresenceState = presenceState
         ? {
             modifierClass:
-              presenceState.mode === "chatting"
-                ? "Home_Noga_socialFriendStatus--online"
-                : presenceState.mode === "connected"
-                  ? "Home_Noga_socialFriendStatus--connected"
-                  : presenceState.mode === "unknown"
-                    ? "Home_Noga_socialFriendStatus--unknown"
-                  : "Home_Noga_socialFriendStatus--offline",
+              presenceState.mode === "in_my_chat"
+                ? "Home_Noga_socialFriendStatus--chatting"
+                : presenceState.mode === "typing"
+                    ? "Home_Noga_socialFriendStatus--typing"
+                    : presenceState.mode === "busy"
+                    ? "Home_Noga_socialFriendStatus--busy"
+                    : presenceState.mode === "studying"
+                      ? "Home_Noga_socialFriendStatus--studying"
+                      : presenceState.mode === "online"
+                        ? "Home_Noga_socialFriendStatus--online"
+                        : "Home_Noga_socialFriendStatus--offline",
             iconClass: presenceState.iconClass,
             label: presenceState.label,
           }
@@ -4876,6 +4955,11 @@ function HomeNoga(props) {
                 >
                   <i className={`fas ${friendPresenceState.iconClass}`}></i>
                   <span>{friendPresenceState.label}</span>
+                  {friendPresenceState.source ? (
+                    <span className={`Home_Noga_socialFriendSourceBadge Home_Noga_socialFriendSourceBadge--${friendPresenceState.source}`}>
+                      {friendPresenceState.source}
+                    </span>
+                  ) : null}
                 </span>
               </div>
             ) : null}
@@ -8185,12 +8269,10 @@ function HomeNoga(props) {
   const globalCallRequest = props.state?.global_call_request || null;
   const globalCallSession = props.state?.global_call_session || null;
   const hasHomeNogaCallDockMounted = Boolean(
-    globalCallRequest?.mode === "video" ||
+    globalCallRequest?.mode === "video" &&
       (globalCallSession &&
-        (globalCallSession.callMode === "video" ||
-          globalCallSession.incomingCall?.callType === "video" ||
-          (globalCallSession.callState !== "idle" &&
-            globalCallSession.callMode === "video"))),
+        globalCallSession.callMode === "video" &&
+        globalCallSession.callState === "connected"),
   );
   const drawingControlsPanel = (
     <div className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open">
@@ -8427,119 +8509,118 @@ function HomeNoga(props) {
                   <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
                 ) : null}
                 {renderHomeDrawingVisibilityCanvas("leftColumn")}
-                {!hasHomeNogaCallDockMounted ? (
+                <div
+                  id="Home_Noga_bioProfileWrapper"
+                  className="Home_Noga_bioProfileWrapper"
+                >
                   <div
-                    id="Home_Noga_bioProfileWrapper"
-                    className="Home_Noga_bioProfileWrapper"
+                    id="Home_Noga_bioWrapper"
+                    className="Home_Noga_bioWrapper"
+                    style={bioWrapperStyle}
                   >
+                    {renderHomeDrawingVisibilityCanvas("bio")}
                     <div
-                      id="Home_Noga_bioWrapper"
-                      className="Home_Noga_bioWrapper"
-                      style={bioWrapperStyle}
+                      id="Home_Noga_preStart_profileWrapper"
+                      ref={profilePictureWrapperRef}
+                      style={{ position: "relative" }}
                     >
-                      {renderHomeDrawingVisibilityCanvas("bio")}
-                      <div
-                        id="Home_Noga_preStart_profileWrapper"
-                        ref={profilePictureWrapperRef}
-                        style={{ position: "relative" }}
-                      >
-                        <div className="Home_Noga_preStart_profileViewportFrame">
-                          {renderHomeDrawingVisibilityCanvas("profile")}
-                          {displayedProfilePictureSrc ? (
-                            <img
-                              id="Home_Noga_preStart_profilePic"
-                              ref={profilePictureImageRef}
-                              src={displayedProfilePictureSrc}
-                              alt={compactDisplayName}
-                              onDoubleClick={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : resetProfilePictureViewport
-                              }
-                              onTouchStart={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePictureTouchStart
-                              }
-                              onTouchMove={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePictureTouchMove
-                              }
-                              onTouchEnd={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePictureTouchEnd
-                              }
-                              onTouchCancel={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePictureTouchEnd
-                              }
-                              onPointerDown={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePicturePointerDown
-                              }
-                              onPointerMove={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePicturePointerMove
-                              }
-                              onPointerUp={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePicturePointerUp
-                              }
-                              onPointerCancel={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePicturePointerUp
-                              }
-                              onWheel={
-                                isViewingExternalProfile
-                                  ? undefined
-                                  : handleProfilePictureWheel
-                              }
-                              className={
-                                !isViewingExternalProfile &&
-                                isProfilePictureDragging
-                                  ? "isDragging"
-                                  : ""
-                              }
-                            />
-                          ) : (
-                            <i className="fas fa-user" aria-hidden="true"></i>
-                          )}
-                          <input
-                            key={galleryTab}
-                            ref={galleryUploadInputRef}
-                            type="file"
-                            accept={activeGalleryUploadConfig.accept}
-                            className="Home_Noga_hiddenFileInput"
-                            disabled={isViewingExternalProfile}
-                            onChange={handleProfilePictureSelected}
+                      <div className="Home_Noga_preStart_profileViewportFrame">
+                        {renderHomeDrawingVisibilityCanvas("profile")}
+                        {displayedProfilePictureSrc ? (
+                          <img
+                            id="Home_Noga_preStart_profilePic"
+                            ref={profilePictureImageRef}
+                            src={displayedProfilePictureSrc}
+                            alt={compactDisplayName}
+                            onDoubleClick={
+                              isViewingExternalProfile
+                                ? undefined
+                                : resetProfilePictureViewport
+                            }
+                            onTouchStart={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePictureTouchStart
+                            }
+                            onTouchMove={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePictureTouchMove
+                            }
+                            onTouchEnd={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePictureTouchEnd
+                            }
+                            onTouchCancel={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePictureTouchEnd
+                            }
+                            onPointerDown={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePicturePointerDown
+                            }
+                            onPointerMove={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePicturePointerMove
+                            }
+                            onPointerUp={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePicturePointerUp
+                            }
+                            onPointerCancel={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePicturePointerUp
+                            }
+                            onWheel={
+                              isViewingExternalProfile
+                                ? undefined
+                                : handleProfilePictureWheel
+                            }
+                            className={
+                              !isViewingExternalProfile &&
+                              isProfilePictureDragging
+                                ? "isDragging"
+                                : ""
+                            }
                           />
-                        </div>
-                        {isProfilePictureViewportDirty ? (
-                          <button
-                            type="button"
-                            className="Home_Noga_profileViewportApplyButton"
-                            onClick={applyProfilePictureViewportChange}
-                            disabled={isApplyingProfilePictureViewport}
-                          >
-                            {isApplyingProfilePictureViewport
-                              ? "Applying..."
-                              : "Apply Change"}
-                          </button>
-                        ) : null}
+                        ) : (
+                          <i className="fas fa-user" aria-hidden="true"></i>
+                        )}
+                        <input
+                          key={galleryTab}
+                          ref={galleryUploadInputRef}
+                          type="file"
+                          accept={activeGalleryUploadConfig.accept}
+                          className="Home_Noga_hiddenFileInput"
+                          disabled={isViewingExternalProfile}
+                          onChange={handleProfilePictureSelected}
+                        />
                       </div>
-                      <div id="Home_Noga_preStart_personalBio" className="fc">
-                        {renderHomeDrawingVisibilityCanvas("bioText")}
-                        <div
-                          id="Home_Noga_preStart_personalInfoGrid"
-                          className="Home_Noga_preStart_personalInfoGrid--compact"
+                      {isProfilePictureViewportDirty ? (
+                        <button
+                          type="button"
+                          className="Home_Noga_profileViewportApplyButton"
+                          onClick={applyProfilePictureViewportChange}
+                          disabled={isApplyingProfilePictureViewport}
                         >
+                          {isApplyingProfilePictureViewport
+                            ? "Applying..."
+                            : "Apply Change"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div id="Home_Noga_preStart_personalBio" className="fc">
+                      {renderHomeDrawingVisibilityCanvas("bioText")}
+                      <div
+                        id="Home_Noga_preStart_personalInfoGrid"
+                        className="Home_Noga_preStart_personalInfoGrid--compact"
+                      >
                           <div className="Home_Noga_compactBioCard">
                             <div className="Home_Noga_compactBioIdentity">
                               <h3 className="Home_Noga_compactBioName">
@@ -9278,11 +9359,11 @@ function HomeNoga(props) {
                             : "No media uploaded yet."}
                       </div>
                     )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              ) : null}
-            </div>
               <section
                 id="Home_Noga_rightColumn_wrapper"
                 className="Home_Noga_socialFriendsPanel"
@@ -9294,12 +9375,6 @@ function HomeNoga(props) {
                 >
                   {isReportsWrapperOpen ? null : (
                     <>
-                      <div className="Home_Noga_chatColumnTitleRow">
-                        <h3 className="Home_Noga_chatColumnTitle">Chat</h3>
-                        <span className="Home_Noga_socialFriendsCount">
-                          {chatFriends.length}
-                        </span>
-                      </div>
                       {activeFriendCard?.chatId ? (
                         <div className="Home_Noga_chatPanelHost">
                           <FriendChat
@@ -9315,7 +9390,6 @@ function HomeNoga(props) {
                               setOpenChatFriendId(null);
                               props.closeActiveChat?.();
                             }}
-                            hideTitleContainer
                             inlineCallActionsTarget={inlineCallActionsTarget}
                           />
                         </div>
@@ -9336,7 +9410,6 @@ function HomeNoga(props) {
               </section>
             </div>
             {/* /Home_Noga_preStart_leftPanel */}
-          </div>
           <div
             id="Home_Noga_preStart_reportsWrapper"
             className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reportsWrapper--closed"}`}
