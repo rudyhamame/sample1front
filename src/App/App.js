@@ -356,16 +356,26 @@ class App extends React.Component {
   };
 
   handlePageHide = () => {
+    if (this.state?.activeChatFriendId) {
+      this.updateMyChatPresence(this.state.activeChatFriendId, false);
+      this.updateMyTypingPresence(this.state.activeChatFriendId, false);
+    }
+
     logoutStoredSession({
       clear: false,
-      tokenless: true,
+      tokenless: false,
     });
   };
 
   handleBeforeUnload = () => {
+    if (this.state?.activeChatFriendId) {
+      this.updateMyChatPresence(this.state.activeChatFriendId, false);
+      this.updateMyTypingPresence(this.state.activeChatFriendId, false);
+    }
+
     logoutStoredSession({
       clear: false,
-      tokenless: true,
+      tokenless: false,
     });
   };
 

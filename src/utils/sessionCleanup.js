@@ -49,7 +49,7 @@ export const notifyBackendLogout = ({ userId, token } = {}) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      keepalive: false,
+      keepalive: true,
       signal: controller?.signal,
     })
       .then(() => undefined)
