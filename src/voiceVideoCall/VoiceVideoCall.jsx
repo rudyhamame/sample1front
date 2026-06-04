@@ -823,10 +823,7 @@ function VoiceVideoCall({
         });
       }
 
-      teardownCall({
-        keepError: true,
-        nextError: "No answer from the receiver.",
-      });
+      teardownCall();
     }, CALL_NO_ANSWER_TIMEOUT_MS);
 
     return () => {
