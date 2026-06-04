@@ -110,6 +110,17 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   left: 0;
 }
 
+#SubApps_article.SubApps_article--footer {
+  align-self: stretch;
+  height: 100%;
+}
+
+#SubApps_article.SubApps_article--footer #SubApps_icon_container {
+  height: 100%;
+  min-height: 100%;
+  align-self: stretch;
+}
+
 #SubApps_article.SubApps_article--footer #SubApps_dropMenu_container,
 #SubApps_article.SubApps_article--footer .SubApps_settingsInlineList {
   margin-top: 0;

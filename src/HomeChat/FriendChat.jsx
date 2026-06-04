@@ -274,6 +274,8 @@ const FriendChat = ({
   const remoteStreamRef = React.useRef(null);
   const rtcConfigRef = React.useRef(null);
   const queuedIceCandidatesRef = React.useRef([]);
+  const activeCallIdRef = React.useRef("");
+  const callDeliveryNoticeTimeoutRef = React.useRef(null);
   const typingDebounceTimeoutRef = React.useRef(null);
   const lastTypingStateRef = React.useRef(false);
   const activeCallPartnerRef = React.useRef("");
@@ -282,6 +284,7 @@ const FriendChat = ({
   const [callState, setCallState] = React.useState("idle");
   const [callMode, setCallMode] = React.useState("");
   const [callError, setCallError] = React.useState("");
+  const [callDeliveryStatus, setCallDeliveryStatus] = React.useState("idle");
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [remoteStreamVersion, setRemoteStreamVersion] = React.useState(0);
   const [localStreamVersion, setLocalStreamVersion] = React.useState(0);
@@ -395,6 +398,41 @@ const FriendChat = ({
     `${String(state?.firstname || "").trim()} ${String(state?.lastname || "").trim()}`.trim() ||
     String(state?.username || "").trim() ||
     "Doctor";
+  const callPanelStatusLabel = React.useMemo(() => {
+    if (callState === "calling") {
+      if (callDeliveryStatus === "pending") {
+        return "Calling (sent)...";
+      }
+
+      if (callDeliveryStatus === "delivered") {
+        return "Ringing (delivered)...";
+      }
+
+      if (callDeliveryStatus === "failed") {
+        return "Call not delivered.";
+      }
+
+      return "Calling...";
+    }
+
+    if (callState === "incoming") {
+      return "Incoming call";
+    }
+
+    if (callState === "requesting-media") {
+      return "Requesting media...";
+    }
+
+    if (callState === "connecting") {
+      return "Connecting...";
+    }
+
+    if (callState === "connected") {
+      return "Connected";
+    }
+
+    return "Ready";
+  }, [callDeliveryStatus, callState]);
 
   React.useEffect(() => {
     if (
@@ -541,6 +579,7 @@ const FriendChat = ({
       clearIncoming = true,
     } = {}) => {
       stopIncomingCallTone(ringtoneSourceKey);
+      stopOutgoingCallTone(ringtoneSourceKey);
 
       if (diagnosticsIntervalRef.current) {
         window.clearInterval(diagnosticsIntervalRef.current);
@@ -556,12 +595,18 @@ const FriendChat = ({
       resetCallMedia();
       queuedIceCandidatesRef.current = [];
       activeCallPartnerRef.current = "";
+      activeCallIdRef.current = "";
       setCallMode("");
       setCallState(nextState);
       if (clearIncoming) {
         setIncomingCall(null);
       }
       setCallError(keepError ? nextError : "");
+      setCallDeliveryStatus("idle");
+      if (callDeliveryNoticeTimeoutRef.current) {
+        window.clearTimeout(callDeliveryNoticeTimeoutRef.current);
+        callDeliveryNoticeTimeoutRef.current = null;
+      }
       setVideoOverlayScale(1);
       setVideoOverlayPosition({ x: 18, y: 18 });
     },
@@ -911,7 +956,13 @@ const FriendChat = ({
       return undefined;
     }
 
-    const handleOffer = ({ fromUserId, offer, callType, metadata }) => {
+    const handleOffer = ({
+      fromUserId,
+      offer,
+      callType,
+      metadata,
+      callId,
+    }) => {
       if (!fromUserId || String(fromUserId).trim() !== activeFriendId) {
         return;
       }
@@ -925,11 +976,19 @@ const FriendChat = ({
         fromUserId: String(fromUserId).trim(),
         offer,
         callType: callType === "video" ? "video" : "audio",
+        callId: String(callId || "").trim(),
         metadata: metadata && typeof metadata === "object" ? metadata : {},
       });
       setCallMode(callType === "video" ? "video" : "audio");
       setCallState("incoming");
       setCallError("");
+
+      socket.emit("call:offer-received", {
+        toUserId: String(fromUserId).trim(),
+        fromUserId: currentUserId,
+        callId: String(callId || "").trim(),
+        callType: callType === "video" ? "video" : "audio",
+      });
     };
 
     const handleAnswer = async ({ fromUserId, answer }) => {
@@ -948,6 +1007,7 @@ const FriendChat = ({
       }
 
       try {
+        setCallDeliveryStatus("delivered");
         await peerConnection.setRemoteDescription(
           new RTCSessionDescription(answer),
         );
@@ -1011,10 +1071,22 @@ const FriendChat = ({
         return;
       }
 
-      teardownCall({
-        keepError: true,
-        nextError: "The call was declined.",
-      });
+      teardownCall();
+    };
+
+    const handleOfferReceived = ({ fromUserId, callId }) => {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+      const normalizedCallId = String(callId || "").trim();
+
+      if (
+        normalizedFromUserId !== activeCallPartnerRef.current ||
+        normalizedCallId !== activeCallIdRef.current ||
+        callDeliveryStatus !== "pending"
+      ) {
+        return;
+      }
+
+      setCallDeliveryStatus("delivered");
     };
 
     socket.on("call:offer", handleOffer);
@@ -1022,6 +1094,7 @@ const FriendChat = ({
     socket.on("call:ice-candidate", handleIceCandidate);
     socket.on("call:end", handleEnd);
     socket.on("call:reject", handleReject);
+    socket.on("call:offer-received", handleOfferReceived);
 
     return () => {
       socket.off("call:offer", handleOffer);
@@ -1029,24 +1102,60 @@ const FriendChat = ({
       socket.off("call:ice-candidate", handleIceCandidate);
       socket.off("call:end", handleEnd);
       socket.off("call:reject", handleReject);
+      socket.off("call:offer-received", handleOfferReceived);
     };
   }, [
     activeFriendId,
+    callDeliveryStatus,
     flushQueuedIceCandidates,
     getRealtimeSocket,
     teardownCall,
   ]);
 
   React.useEffect(() => {
-    if (callState !== "calling") {
+    if (callState !== "calling" || callDeliveryStatus !== "pending") {
       return undefined;
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (
-        peerConnectionRef.current?.connectionState === "connected" ||
-        callState !== "calling"
-      ) {
+      if (callState !== "calling" || callDeliveryStatus !== "pending") {
+        return;
+      }
+
+      logPeerDiagnostics("ice-diagnostics-delivery-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
+      stopOutgoingCallTone(ringtoneSourceKey);
+      setCallDeliveryStatus("failed");
+      setCallError("Call not delivered.");
+
+      if (callDeliveryNoticeTimeoutRef.current) {
+        window.clearTimeout(callDeliveryNoticeTimeoutRef.current);
+      }
+      callDeliveryNoticeTimeoutRef.current = window.setTimeout(() => {
+        teardownCall();
+      }, 6000);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    callDeliveryStatus,
+    callState,
+    logPeerDiagnostics,
+    ringtoneSourceKey,
+    teardownCall,
+  ]);
+
+  React.useEffect(() => {
+    if (callState !== "calling" || callDeliveryStatus !== "delivered") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (callState !== "calling" || callDeliveryStatus !== "delivered") {
         return;
       }
 
@@ -1071,7 +1180,14 @@ const FriendChat = ({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [callState, currentUserId, getRealtimeSocket, logPeerDiagnostics, teardownCall]);
+  }, [
+    callDeliveryStatus,
+    callState,
+    currentUserId,
+    getRealtimeSocket,
+    logPeerDiagnostics,
+    teardownCall,
+  ]);
 
   React.useEffect(() => {
     if (callState !== "connecting") {
@@ -1272,11 +1388,17 @@ const FriendChat = ({
       return;
     }
 
+    const callId = `call-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+
     try {
       setCallError("");
       setIncomingCall(null);
       setCallMode(nextCallMode);
       setCallState("requesting-media");
+      setCallDeliveryStatus("pending");
+      activeCallIdRef.current = callId;
 
       const socket = getRealtimeSocket?.();
 
@@ -1307,6 +1429,7 @@ const FriendChat = ({
         fromUserId: currentUserId,
         callType: nextCallMode,
         offer: peerConnection.localDescription,
+        callId,
         metadata: {
           fromDisplayName: currentUserDisplayName,
         },
@@ -2177,19 +2300,7 @@ const FriendChat = ({
                     <strong>
                       {callMode === "video" ? "Video call" : "Voice call"}
                     </strong>
-                    <span>
-                      {callState === "calling"
-                        ? "Calling..."
-                        : callState === "incoming"
-                          ? "Incoming call"
-                          : callState === "requesting-media"
-                            ? "Requesting media..."
-                            : callState === "connecting"
-                              ? "Connecting..."
-                              : callState === "connected"
-                                ? "Connected"
-                                : "Ready"}
-                    </span>
+                    <span>{callPanelStatusLabel}</span>
                   </div>
                   <div
                     ref={videoStageRef}

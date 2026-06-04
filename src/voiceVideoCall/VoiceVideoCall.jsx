@@ -33,7 +33,9 @@ const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
   x: 18,
   y: 18,
 };
+const CALL_OFFER_DELIVERY_TIMEOUT_MS = 5000;
 const CALL_NO_ANSWER_TIMEOUT_MS = 30000;
+const CALL_DELIVERY_NOTICE_MS = 6000;
 const VOICE_CALL_MINIMIZED_STORAGE_KEY =
   "phenomed.voiceCall.windowMinimized";
 
@@ -97,11 +99,14 @@ function VoiceVideoCall({
   const localPreviewStreamRef = React.useRef(null);
   const remoteStreamRef = React.useRef(null);
   const activeCallPartnerRef = React.useRef("");
+  const activeCallIdRef = React.useRef("");
   const activeRoomNameRef = React.useRef("");
   const manualDisconnectRef = React.useRef(false);
+  const callDeliveryNoticeTimeoutRef = React.useRef(null);
   const [callState, setCallState] = React.useState("idle");
   const [callMode, setCallMode] = React.useState("");
   const [callError, setCallError] = React.useState("");
+  const [callDeliveryStatus, setCallDeliveryStatus] = React.useState("idle");
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [callStartedAt, setCallStartedAt] = React.useState(null);
   const [callElapsedMs, setCallElapsedMs] = React.useState(0);
@@ -122,6 +127,41 @@ function VoiceVideoCall({
     `${String(appState?.firstname || "").trim()} ${String(appState?.lastname || "").trim()}`.trim() ||
     String(appState?.username || "").trim() ||
     "Doctor";
+  const callPanelStatusLabel = React.useMemo(() => {
+    if (callState === "calling") {
+      if (callDeliveryStatus === "pending") {
+        return "Calling (sent)...";
+      }
+
+      if (callDeliveryStatus === "delivered") {
+        return "Ringing (delivered)...";
+      }
+
+      if (callDeliveryStatus === "failed") {
+        return "Call not delivered.";
+      }
+
+      return "Calling...";
+    }
+
+    if (callState === "incoming") {
+      return "Incoming call";
+    }
+
+    if (callState === "requesting-media") {
+      return "Requesting media...";
+    }
+
+    if (callState === "connecting") {
+      return "Connecting...";
+    }
+
+    if (callState === "connected") {
+      return "Connected";
+    }
+
+    return "Ready";
+  }, [callDeliveryStatus, callState]);
   const ringtoneSourceKey = React.useMemo(
     () => `global-call:${currentUserId || "unknown"}`,
     [currentUserId],
@@ -204,13 +244,20 @@ function VoiceVideoCall({
       clearIncoming = true,
     } = {}) => {
       stopIncomingCallTone(ringtoneSourceKey);
+      stopOutgoingCallTone(ringtoneSourceKey);
+      if (callDeliveryNoticeTimeoutRef.current) {
+        window.clearTimeout(callDeliveryNoticeTimeoutRef.current);
+        callDeliveryNoticeTimeoutRef.current = null;
+      }
       leaveRoom();
       resetMediaStreams();
       activeCallPartnerRef.current = "";
+      activeCallIdRef.current = "";
       setActiveCallDisplayName("");
       setCallStartedAt(null);
       setCallMode("");
       setCallState(nextState);
+      setCallDeliveryStatus("idle");
       if (clearIncoming) {
         setIncomingCall(null);
       }
@@ -386,6 +433,9 @@ function VoiceVideoCall({
     async ({ friendId, friendName, mode }) => {
       const targetUserId = String(friendId || "").trim();
       const nextCallMode = mode === "video" ? "video" : "audio";
+      const callId = `call-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
 
       if (!targetUserId || !currentUserId) {
         return;
@@ -400,11 +450,13 @@ function VoiceVideoCall({
         }
 
         activeCallPartnerRef.current = targetUserId;
+        activeCallIdRef.current = callId;
         activeRoomNameRef.current = roomName;
         setCallError("");
         setIncomingCall(null);
         setCallMode(nextCallMode);
         setCallState("requesting-media");
+        setCallDeliveryStatus("pending");
         setActiveCallDisplayName(
           getFriendDisplayName(friends, targetUserId, friendName),
         );
@@ -419,6 +471,7 @@ function VoiceVideoCall({
           offer: {
             roomName,
           },
+          callId,
           metadata: {
             fromDisplayName: currentUserDisplayName,
             roomName,
@@ -465,6 +518,7 @@ function VoiceVideoCall({
       setCallError("");
       setCallMode(incomingCall.callType);
       setCallState("requesting-media");
+      setCallDeliveryStatus("delivered");
       setActiveCallDisplayName(
         getFriendDisplayName(
           friends,
@@ -606,7 +660,7 @@ function VoiceVideoCall({
       return undefined;
     }
 
-    const handleOffer = ({ fromUserId, offer, callType, metadata }) => {
+    const handleOffer = ({ fromUserId, offer, callType, metadata, callId }) => {
       const normalizedFromUserId = String(fromUserId || "").trim();
       const roomName = String(offer?.roomName || metadata?.roomName || "").trim();
 
@@ -628,6 +682,7 @@ function VoiceVideoCall({
           roomName,
         },
         callType: callType === "video" ? "video" : "audio",
+        callId: String(callId || "").trim(),
         metadata: metadata && typeof metadata === "object" ? metadata : {},
       });
       setActiveCallDisplayName(
@@ -640,10 +695,18 @@ function VoiceVideoCall({
       setCallMode(callType === "video" ? "video" : "audio");
       setCallState("incoming");
       setCallError("");
+
+      socket.emit("call:offer-received", {
+        toUserId: normalizedFromUserId,
+        fromUserId: currentUserId,
+        callId: String(callId || "").trim(),
+        callType: callType === "video" ? "video" : "audio",
+      });
     };
 
     const handleAnswer = async ({ fromUserId, answer }) => {
-      if (String(fromUserId || "").trim() !== activeCallPartnerRef.current) {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+      if (normalizedFromUserId !== activeCallPartnerRef.current) {
         return;
       }
 
@@ -656,11 +719,12 @@ function VoiceVideoCall({
       }
 
       try {
+        setCallDeliveryStatus("delivered");
         setCallState("connecting");
         await joinRoom({
           roomName:
             String(answer?.roomName || activeRoomNameRef.current || "").trim(),
-          partnerUserId: fromUserId,
+          partnerUserId: normalizedFromUserId,
           nextCallMode: callMode || "audio",
         });
       } catch (error) {
@@ -697,20 +761,38 @@ function VoiceVideoCall({
       teardownCall();
     };
 
+    const handleOfferReceived = ({ fromUserId, callId }) => {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+      const normalizedCallId = String(callId || "").trim();
+
+      if (
+        normalizedFromUserId !== activeCallPartnerRef.current ||
+        normalizedCallId !== activeCallIdRef.current ||
+        callDeliveryStatus !== "pending"
+      ) {
+        return;
+      }
+
+      setCallDeliveryStatus("delivered");
+    };
+
     socket.on("call:offer", handleOffer);
     socket.on("call:answer", handleAnswer);
     socket.on("call:end", handleEnd);
     socket.on("call:reject", handleReject);
+    socket.on("call:offer-received", handleOfferReceived);
 
     return () => {
       socket.off("call:offer", handleOffer);
       socket.off("call:answer", handleAnswer);
       socket.off("call:end", handleEnd);
       socket.off("call:reject", handleReject);
+      socket.off("call:offer-received", handleOfferReceived);
     };
   }, [
     callMode,
     callState,
+    callDeliveryStatus,
     currentUserId,
     friends,
     getRealtimeSocket,
@@ -799,12 +881,45 @@ function VoiceVideoCall({
   }, [callState, incomingCall, ringtoneSourceKey]);
 
   React.useEffect(() => {
-    if (callState !== "calling") {
+    if (callState !== "calling" || callDeliveryStatus !== "pending") {
       return undefined;
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (callState !== "calling") {
+      if (
+        callState !== "calling" ||
+        callDeliveryStatus !== "pending"
+      ) {
+        return;
+      }
+
+      logCallDebug("global", "no-answer-timeout", {
+        friendId: activeCallPartnerRef.current,
+      });
+
+      stopOutgoingCallTone(ringtoneSourceKey);
+      setCallDeliveryStatus("failed");
+      setCallError("Call not delivered.");
+      if (callDeliveryNoticeTimeoutRef.current) {
+        window.clearTimeout(callDeliveryNoticeTimeoutRef.current);
+      }
+      callDeliveryNoticeTimeoutRef.current = window.setTimeout(() => {
+        teardownCall();
+      }, CALL_DELIVERY_NOTICE_MS);
+    }, CALL_OFFER_DELIVERY_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [callDeliveryStatus, callState, ringtoneSourceKey, teardownCall]);
+
+  React.useEffect(() => {
+    if (callState !== "calling" || callDeliveryStatus !== "delivered") {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (callState !== "calling" || callDeliveryStatus !== "delivered") {
         return;
       }
 
@@ -829,7 +944,13 @@ function VoiceVideoCall({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [callState, currentUserId, getRealtimeSocket, teardownCall]);
+  }, [
+    callDeliveryStatus,
+    callState,
+    currentUserId,
+    getRealtimeSocket,
+    teardownCall,
+  ]);
 
   React.useEffect(() => {
     if (callState !== "connected" || !callStartedAt) {
@@ -1017,17 +1138,7 @@ function VoiceVideoCall({
         >
           <div className="Chat_callStatusRow fr Chat_callPanelHeader">
             <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
-            <span>
-              {callState === "connected"
-                ? "Connected"
-                : callState === "connecting"
-                  ? "Connecting..."
-                  : callState === "requesting-media"
-                    ? "Requesting media..."
-                    : callState === "calling"
-                      ? "Calling..."
-                      : "Ready"}
-            </span>
+            <span>{callPanelStatusLabel}</span>
           </div>
           <div className="Chat_callControls Chat_callControls--mini fr is-visible">
             <button
@@ -1084,17 +1195,7 @@ function VoiceVideoCall({
         >
           <div className="Chat_callStatusRow fr Chat_callPanelHeader">
             <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
-            <span>
-              {callState === "calling"
-                ? "Calling..."
-                : callState === "incoming"
-                  ? "Incoming call"
-                  : callState === "connecting"
-                    ? "Connecting..."
-                    : callState === "connected"
-                      ? "Connected"
-                      : "Ready"}
-            </span>
+            <span>{callPanelStatusLabel}</span>
           </div>
           <div
             className={`Chat_mediaStage${callMode === "video" ? " Chat_mediaStage--floating" : " fr"}`}
