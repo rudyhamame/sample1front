@@ -1,29 +1,43 @@
-const ringtoneSources = new Set();
+const incomingToneSources = new Set();
+const outgoingToneSources = new Set();
 
-let ringtoneAudio = null;
+let incomingToneAudio = null;
+let outgoingToneAudio = null;
 
-const getRingtoneAudio = () => {
+const getIncomingToneAudio = () => {
   if (typeof window === "undefined" || typeof Audio === "undefined") {
     return null;
   }
 
-  if (!ringtoneAudio) {
-    ringtoneAudio = new Audio("/sounds/call-ringtone.mp3");
-    ringtoneAudio.loop = true;
-    ringtoneAudio.preload = "auto";
+  if (!incomingToneAudio) {
+    incomingToneAudio = new Audio("/sounds/call-ringtone.mp3");
+    incomingToneAudio.loop = true;
+    incomingToneAudio.preload = "auto";
   }
 
-  return ringtoneAudio;
+  return incomingToneAudio;
 };
 
-const syncPlayback = () => {
-  const audio = getRingtoneAudio();
+const getOutgoingToneAudio = () => {
+  if (typeof window === "undefined" || typeof Audio === "undefined") {
+    return null;
+  }
 
+  if (!outgoingToneAudio) {
+    outgoingToneAudio = new Audio("/sounds/ringing.mp3");
+    outgoingToneAudio.loop = true;
+    outgoingToneAudio.preload = "auto";
+  }
+
+  return outgoingToneAudio;
+};
+
+const syncPlayback = (audio, sources) => {
   if (!audio) {
     return;
   }
 
-  if (ringtoneSources.size > 0) {
+  if (sources.size > 0) {
     const playPromise = audio.play();
     if (playPromise && typeof playPromise.catch === "function") {
       playPromise.catch(() => {});
@@ -42,8 +56,8 @@ export const startIncomingCallTone = (sourceKey) => {
     return;
   }
 
-  ringtoneSources.add(normalizedKey);
-  syncPlayback();
+  incomingToneSources.add(normalizedKey);
+  syncPlayback(getIncomingToneAudio(), incomingToneSources);
 };
 
 export const stopIncomingCallTone = (sourceKey) => {
@@ -53,14 +67,28 @@ export const stopIncomingCallTone = (sourceKey) => {
     return;
   }
 
-  ringtoneSources.delete(normalizedKey);
-  syncPlayback();
+  incomingToneSources.delete(normalizedKey);
+  syncPlayback(getIncomingToneAudio(), incomingToneSources);
 };
 
 export const startOutgoingCallTone = (sourceKey) => {
-  startIncomingCallTone(sourceKey);
+  const normalizedKey = String(sourceKey || "").trim();
+
+  if (!normalizedKey) {
+    return;
+  }
+
+  outgoingToneSources.add(normalizedKey);
+  syncPlayback(getOutgoingToneAudio(), outgoingToneSources);
 };
 
 export const stopOutgoingCallTone = (sourceKey) => {
-  stopIncomingCallTone(sourceKey);
+  const normalizedKey = String(sourceKey || "").trim();
+
+  if (!normalizedKey) {
+    return;
+  }
+
+  outgoingToneSources.delete(normalizedKey);
+  syncPlayback(getOutgoingToneAudio(), outgoingToneSources);
 };

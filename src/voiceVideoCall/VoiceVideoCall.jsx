@@ -672,25 +672,29 @@ function VoiceVideoCall({
     };
 
     const handleEnd = ({ fromUserId }) => {
-      if (String(fromUserId || "").trim() !== activeCallPartnerRef.current) {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+      const expectedPartnerId =
+        activeCallPartnerRef.current ||
+        String(incomingCall?.fromUserId || "").trim();
+
+      if (!normalizedFromUserId || normalizedFromUserId !== expectedPartnerId) {
         return;
       }
 
-      teardownCall({
-        keepError: true,
-        nextError: "The call ended.",
-      });
+      teardownCall();
     };
 
     const handleReject = ({ fromUserId }) => {
-      if (String(fromUserId || "").trim() !== activeCallPartnerRef.current) {
+      const normalizedFromUserId = String(fromUserId || "").trim();
+      const expectedPartnerId =
+        activeCallPartnerRef.current ||
+        String(incomingCall?.fromUserId || "").trim();
+
+      if (!normalizedFromUserId || normalizedFromUserId !== expectedPartnerId) {
         return;
       }
 
-      teardownCall({
-        keepError: true,
-        nextError: "The call was declined.",
-      });
+      teardownCall();
     };
 
     socket.on("call:offer", handleOffer);
