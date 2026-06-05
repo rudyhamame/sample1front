@@ -2227,22 +2227,6 @@ color: var(--home-pattern-button-text);
   );
 }
 
-#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit {
-color: var(--home-pattern-button-text);
-  border-color: var(--home-pattern-button-border);
-  background: linear-gradient(
-    180deg,
-    var(--home-pattern-button-bg-start),
-    var(--home-pattern-button-bg-end)
-  );
-color: var(--home-pattern-button-primary-text);
-  border-color: var(--home-pattern-button-primary-border);
-  background: linear-gradient(
-    180deg,
-    var(--home-pattern-button-primary-start),
-    var(--home-pattern-button-primary-end)
-  );
-}
 
 #app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon {
 color: var(--home-pattern-button-text);
@@ -2313,10 +2297,6 @@ color: var(--home-pattern-button-icon);
 color: var(--home-pattern-button-icon);
 }
 
-#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit i {
-color: var(--home-pattern-button-icon);
-color: rgba(255, 244, 236, 0.96);
-}
 
 #app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon i {
 color: var(--home-pattern-button-icon);
@@ -2351,11 +2331,6 @@ color: var(--home-pattern-button-hover-text);
   background: var(--home-pattern-button-hover-bg);
 }
 
-#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit:hover {
-color: var(--home-pattern-button-hover-text);
-  border-color: var(--home-pattern-button-hover-border);
-  background: var(--home-pattern-button-hover-bg);
-}
 
 #app_page.app_page--has-background-pattern .Home_Noga_userMenu_infoEditIcon:hover {
 color: var(--home-pattern-button-hover-text);
@@ -2525,9 +2500,10 @@ min-width: 0;
   min-height: 0;
   gap: 10px;
   padding: 14px;
+  background-color: var(--home-main-wrapper-soft);
   color: rgba(88, 45, 57, 0.92);
   border-right:1px dashed rgba(240, 230, 229, 0.897);
-  background-color:#eb9c9c67;
+  backdrop-filter: blur(12px);
 }
 
 .Home_Noga_aboutPanel {
@@ -2952,7 +2928,7 @@ display: inline-flex;
 align-self: flex-start;
 }
 
-.Home_Noga_friendsGalleryHeader > .Home_Noga_friendsGalleryUploadButton {
+.Home_Noga_friendsGalleryHeader > .Home_Noga_changePasswordSubmit {
 align-self: flex-start;
 }
 
@@ -3037,15 +3013,15 @@ margin: 0;
   line-height: 1.35;
 }
 
-.Home_Noga_friendsGalleryHeaderTitleRow .Home_Noga_friendsGalleryUploadButton {
+.Home_Noga_friendsGalleryHeaderTitleRow .Home_Noga_changePasswordSubmit {
 margin-left: 0;
 }
 
-.Home_Noga_friendsGalleryHeaderControls .Home_Noga_friendsGalleryUploadButton {
+.Home_Noga_friendsGalleryHeaderControls .Home_Noga_changePasswordSubmit {
 margin-left: 0;
 }
 
-.Home_Noga_friendsGalleryUploadButton {
+.Home_Noga_friendsGalleryHeader .Home_Noga_changePasswordSubmit {
 display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3196,14 +3172,8 @@ display: flex;
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_friendsEvents {
 border-top-color: rgba(110, 168, 180, 0.18);
-  background: rgba(9, 24, 31, 0.3);
   color: rgba(216, 232, 237, 0.84);
-background: linear-gradient(
-    180deg,
-    var(--home-dark-surface-2) 0%,
-    var(--home-dark-surface-1) 54%,
-    var(--home-dark-surface-0) 100%
-  ) !important;
+  background: rgba(9, 24, 31, 0.3);
 }
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_aboutPanel .Home_Noga_profileInfoColumn {
@@ -3564,11 +3534,11 @@ gap: 3px;
 }
 
 .Home_Noga_galleryItemActions {
-position: absolute;
-  right: calc(100% + 10px);
-  left: auto;
-  top: 50%;
-  bottom: auto;
+	position: absolute;
+	  left: calc(100% + 18px);
+	  right: auto;
+	  top: 50%;
+	  bottom: auto;
   z-index: 20;
   display: flex;
   flex-direction: row;
@@ -3582,8 +3552,8 @@ position: absolute;
     0 18px 34px rgba(10, 35, 38, 0.18),
     0 6px 16px rgba(10, 35, 38, 0.1);
   opacity: 0;
-  transform: translate(6px, -50%) scale(0.98);
-  transform-origin: center right;
+	  transform: translate(-8px, -50%) scale(0.98);
+	  transform-origin: center left;
   pointer-events: none;
   transition:
     opacity 160ms ease,
@@ -3593,17 +3563,17 @@ position: absolute;
 }
 
 .Home_Noga_galleryItemActions::after {
-content: "";
-  position: absolute;
-  left: calc(100% - 7px);
-  right: auto;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  background: rgba(248, 250, 250, 0.98);
-  border-top: 1px solid rgba(124, 157, 165, 0.2);
-  border-right: 1px solid rgba(124, 157, 165, 0.2);
-  transform: translate(0, -50%) rotate(45deg);
+	content: "";
+	  position: absolute;
+	  right: calc(100% - 7px);
+	  left: auto;
+	  top: 50%;
+	  width: 14px;
+	  height: 14px;
+	  background: rgba(248, 250, 250, 0.98);
+	  border-top: 1px solid rgba(124, 157, 165, 0.2);
+	  border-left: 1px solid rgba(124, 157, 165, 0.2);
+	  transform: translate(0, -50%) rotate(45deg);
 }
 
 .Home_Noga_galleryItemActions.Home_Noga_galleryItemActions--open {
@@ -3831,7 +3801,7 @@ margin: 0;
 padding: 3px 12px;
   border-radius: 999px;
   background: var(--noga-6);
-  color: var(--home-main-wrapper-text);
+  color: #fff;
   font-size: 0.9rem;
   font-family: "IBM Plex Mono", monospace;
   font-weight: 700;
@@ -4356,10 +4326,6 @@ width: 100%;
 
 .Home_Noga_settingsPanelHost {
 display: none;
-}
-
-.Home_Noga_galleryUploadButton {
-align-self: flex-start;
 }
 
 .Home_Noga_socialFriendItem {
@@ -5023,6 +4989,51 @@ font-family: "Noto Naskh Arabic", "Tajawal", "Cairo", sans-serif;
 text-align: left;
 }
 
+#Home_Noga_rightColumn_wrapper .Chat_messageImages {
+display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageCard {
+display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageLink {
+display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImage {
+display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageSaveButton {
+display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(205, 107, 106, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(120, 51, 62, 0.92);
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
 #Home_Noga_rightColumn_wrapper .Chat_messageMeta {
 display: inline-flex;
   align-items: center;
@@ -5106,10 +5117,11 @@ position: relative;
   z-index: 1;
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: nowrap;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
   overflow: visible;
-  padding: 2px;
+  padding: 8px;
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0.92),
@@ -5119,6 +5131,51 @@ position: relative;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.84),
     0 10px 22px rgba(94, 124, 133, 0.08);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_formControls {
+display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewRow {
+display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard {
+position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(205, 107, 106, 0.18);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewImage {
+display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewRemove {
+position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(18, 26, 30, 0.72);
+  color: rgba(255, 255, 255, 0.96);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input {
@@ -5168,7 +5225,27 @@ display: inline-flex;
   border-radius: 0px;
 }
 
-#Home_Noga_rightColumn_wrapper #Chat_submit_button:hover:not(:disabled) {
+#Home_Noga_rightColumn_wrapper #Chat_attachment_button {
+display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: 0 0 44px;
+  border: 1px solid rgba(124, 157, 165, 0.18);
+  padding: 0;
+  color: rgba(30, 82, 90, 0.82);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(246, 250, 250, 0.96)
+  );
+  cursor: pointer;
+  border-radius: 0px;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_submit_button:hover:not(:disabled),
+#Home_Noga_rightColumn_wrapper #Chat_attachment_button:hover:not(:disabled),
+#Home_Noga_rightColumn_wrapper .Chat_messageImageSaveButton:hover:not(:disabled) {
 transform: translateY(-1px);
   filter: saturate(1.05);
 }
@@ -5261,6 +5338,20 @@ color: rgba(230, 242, 244, 0.94);
 
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageLink {
+background: rgba(255, 255, 255, 0.06);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageSaveButton {
+border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(13, 34, 41, 0.94);
+  color: rgba(230, 242, 244, 0.92);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
   .sentMessagesLI
   .Chat_messageTimestamp {
 color: rgba(216, 232, 237, 0.66);
@@ -5323,6 +5414,13 @@ color: rgba(216, 232, 237, 0.5);
 
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
+  .Chat_attachmentPreviewCard {
+border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(9, 24, 31, 0.82);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
   #Chat_article {
 background: transparent !important;
 }
@@ -5343,6 +5441,14 @@ background: linear-gradient(
   ) !important;
   border-color: rgba(110, 168, 180, 0.28) !important;
   color: rgba(230, 242, 244, 0.95) !important;
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_attachment_button {
+background: rgba(15, 44, 50, 0.96) !important;
+  border-color: rgba(110, 168, 180, 0.24) !important;
+  color: rgba(230, 242, 244, 0.92) !important;
 }
 
 .Home_Noga_socialFriendStatus {
@@ -6266,17 +6372,6 @@ color: rgba(226, 242, 244, 0.88);
   );
 }
 
-#app_page.app_page--has-background-pattern
-  #Home_Noga_article.Home_Noga_themeDark
-  .Home_Noga_changePasswordSubmit {
-color: rgba(226, 242, 244, 0.88);
-  border-color: rgba(110, 168, 180, 0.18);
-  background: linear-gradient(
-    180deg,
-    rgba(14, 39, 46, 0.96),
-    rgba(11, 31, 39, 0.94)
-  );
-}
 
 #app_page.app_page--has-background-pattern
   #Home_Noga_article.Home_Noga_themeDark
@@ -6334,13 +6429,6 @@ color: #f5fcfc;
   background: rgba(15, 44, 50, 0.96);
 }
 
-#app_page.app_page--has-background-pattern
-  #Home_Noga_article.Home_Noga_themeDark
-  .Home_Noga_changePasswordSubmit:hover {
-color: #f5fcfc;
-  border-color: rgba(31, 181, 156, 0.28);
-  background: rgba(15, 44, 50, 0.96);
-}
 
 #app_page.app_page--has-background-pattern
   #Home_Noga_article.Home_Noga_themeDark
@@ -6370,11 +6458,6 @@ color: #7ad5d8;
 color: #7ad5d8;
 }
 
-#app_page.app_page--has-background-pattern
-  #Home_Noga_article.Home_Noga_themeDark
-  .Home_Noga_changePasswordSubmit i {
-color: #7ad5d8;
-}
 
 #app_page.app_page--has-background-pattern
   #Home_Noga_article.Home_Noga_themeDark
@@ -7627,21 +7710,52 @@ border-color: rgba(110, 168, 180, 0.18);
 
 .Home_Noga_changePasswordSubmit {
 width: 100%;
-  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 15px;
   border: 1px solid rgba(15, 127, 120, 0.18);
   border-radius: 14px;
   background: linear-gradient(
     180deg,
-    rgba(34, 207, 187, 0.98),
-    rgba(15, 162, 147, 0.98)
+    rgba(233, 127, 132, 0.96),
+    rgba(207, 91, 101, 0.94)
   );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 10px 22px rgba(160, 62, 79, 0.2);
   color: var(--home-readable-ink);
   font-size: 0.62rem;
   font-weight: 700;
   font-family: "IBM Plex Mono", monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  line-height: 1.1;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.Home_Noga_changePasswordSubmit:hover {
+  color: rgba(255, 248, 244, 0.98);
+  border-color: rgba(181, 83, 92, 0.34);
+  background: linear-gradient(
+    180deg,
+    rgba(239, 135, 140, 0.98),
+    rgba(214, 97, 108, 0.96)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 12px 24px rgba(160, 62, 79, 0.24);
+}
+
+.Home_Noga_changePasswordSubmit i {
+  color: rgba(255, 244, 236, 0.96);
 }
 
 .Home_Noga_changePasswordSubmit:disabled {
@@ -7649,7 +7763,7 @@ cursor: wait;
   opacity: 0.76;
 }
 
-.Home_Noga_friendsGalleryHeader .Home_Noga_friendsGalleryUploadButton {
+.Home_Noga_friendsGalleryHeader .Home_Noga_changePasswordSubmit {
 width: fit-content;
   flex: 0 0 auto;
   align-self: center;
@@ -7668,6 +7782,66 @@ border-color: rgba(110, 168, 180, 0.18);
     rgba(20, 109, 114, 0.98),
     rgba(12, 80, 88, 0.98)
   );
+  color: rgba(236, 245, 247, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_article.Home_Noga_themeDark .Home_Noga_changePasswordSubmit:hover {
+  color: #f5fcfc;
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.96);
+}
+
+#Home_Noga_article.Home_Noga_themeDark .Home_Noga_changePasswordSubmit i {
+  color: #7ad5d8;
+}
+
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit {
+  color: var(--home-pattern-button-primary-text);
+  border-color: var(--home-pattern-button-primary-border);
+  background: linear-gradient(
+    180deg,
+    var(--home-pattern-button-primary-start),
+    var(--home-pattern-button-primary-end)
+  );
+}
+
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit:hover {
+  color: var(--home-pattern-button-hover-text);
+  border-color: var(--home-pattern-button-hover-border);
+  background: var(--home-pattern-button-hover-bg);
+}
+
+#app_page.app_page--has-background-pattern .Home_Noga_changePasswordSubmit i {
+  color: rgba(255, 244, 236, 0.96);
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit {
+  color: rgba(226, 242, 244, 0.88);
+  border-color: rgba(110, 168, 180, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 39, 46, 0.96),
+    rgba(11, 31, 39, 0.94)
+  );
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit:hover {
+  color: #f5fcfc;
+  border-color: rgba(31, 181, 156, 0.28);
+  background: rgba(15, 44, 50, 0.96);
+}
+
+#app_page.app_page--has-background-pattern
+  #Home_Noga_article.Home_Noga_themeDark
+  .Home_Noga_changePasswordSubmit i {
+  color: #7ad5d8;
 }
 
 #timer_container {

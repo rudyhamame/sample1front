@@ -3646,8 +3646,69 @@ function HomeNoga(props) {
   // TODO: Refactor unreadChatCountsByFriendId to use chat state or friends[].userMode if needed
   const unreadChatCountsByFriendId = React.useMemo(() => ({}), []);
 
-  // TODO: Refactor friendRequestNotifications to use friends[].userMode if needed
-  const friendRequestNotifications = React.useMemo(() => [], []);
+  const friendRequestNotifications = React.useMemo(() => {
+    const rawRequests = Array.isArray(props.state?.friend_requests)
+      ? props.state.friend_requests
+      : [];
+
+    return rawRequests
+      .filter((request) => request && typeof request === "object")
+      .filter((request) => {
+        const normalizedStatus = String(request?.status || "")
+          .trim()
+          .toLowerCase();
+
+        return ![
+          "accepted",
+          "rejected",
+          "declined",
+          "cancelled",
+          "canceled",
+        ].includes(normalizedStatus);
+      })
+      .map((request, index) => {
+        const info =
+          request?.info ||
+          request?.user?.info ||
+          request?.user ||
+          request?.fromUser?.info ||
+          request?.fromUser ||
+          request;
+        const firstName = String(info?.firstname || "").trim();
+        const lastName = String(info?.lastname || "").trim();
+        const username = String(info?.username || request?.username || "").trim();
+        const displayName =
+          `${firstName} ${lastName}`.trim() || username || "User";
+
+        return {
+          id: String(
+            request?._id ||
+              request?.id ||
+              info?._id ||
+              info?.id ||
+              username ||
+              index,
+          ).trim(),
+          username,
+          displayName,
+          initials:
+            `${firstName.charAt(0) || displayName.charAt(0) || "U"}${
+              lastName.charAt(0) || username.charAt(0) || ""
+            }`.toUpperCase() || "U",
+          avatarUrl: String(
+            request?.media?.profilePicture?.url ||
+              info?.profilePicture ||
+              request?.profilePicture ||
+              "",
+          ).trim(),
+          userMode: "requestreceived",
+          statusValue: "requestreceived",
+          presenceMode: "requestreceived",
+          profileState: {},
+        };
+      })
+      .filter((request) => request.id);
+  }, [props.state?.friend_requests]);
 
   React.useEffect(() => {
     if (activeFriendsMiniTab === "search") {
@@ -4094,15 +4155,31 @@ function HomeNoga(props) {
     });
   }, [socialFriends, resolveFriendPresenceState]);
 
-  const requestsPanelEntries = React.useMemo(
-    () =>
-      blockedListTabs
-        .filter(
-          (tab) => getBlockedListGroupIdForMode(tab.id) === "pending",
-        )
-        .flatMap((tab) => tab.entries),
-    [blockedListTabs],
-  );
+  const requestsPanelEntries = React.useMemo(() => {
+    const pendingRelationshipEntries = blockedListTabs
+      .filter((tab) => getBlockedListGroupIdForMode(tab.id) === "pending")
+      .flatMap((tab) => tab.entries);
+
+    const mergedEntries = new Map();
+
+    [...friendRequestNotifications, ...pendingRelationshipEntries].forEach(
+      (entry) => {
+        const entryId = String(entry?.id || "").trim();
+        const username = String(entry?.username || "")
+          .trim()
+          .toLowerCase();
+        const mapKey = entryId || username;
+
+        if (!mapKey || mergedEntries.has(mapKey)) {
+          return;
+        }
+
+        mergedEntries.set(mapKey, entry);
+      },
+    );
+
+    return Array.from(mergedEntries.values());
+  }, [blockedListTabs, friendRequestNotifications]);
 
   const blocklistPanelEntries = React.useMemo(
     () =>
@@ -8943,7 +9020,7 @@ function HomeNoga(props) {
                         <h3>Gallery</h3>
                         <button
                           type="button"
-                          className="Home_Noga_changePasswordSubmit Home_Noga_galleryUploadButton Home_Noga_friendsGalleryUploadButton"
+                          className="Home_Noga_changePasswordSubmit"
                           onClick={openGalleryUploadPicker}
                           disabled={
                             isImageGalleryUploading || isViewingExternalProfile
@@ -9408,12 +9485,14 @@ function HomeNoga(props) {
 	                {isReportsWrapperOpen ? null : (
 	                  <>
 	                    {activeFriendCard?.chatId ? (
-	                      <FriendChat
-	                        state={activeFriendChatState}
-	                        content={HOME_CHAT_CONTENT}
-	                        sendToThemMessage={props.sendToThemMessage}
-	                        updateMyTypingPresence={props.updateMyTypingPresence}
-	                        markMessagesRead={props.markMessagesRead}
+		                      <FriendChat
+		                        state={activeFriendChatState}
+		                        content={HOME_CHAT_CONTENT}
+		                        sendToThemMessage={props.sendToThemMessage}
+		                        uploadChatImages={props.uploadChatImages}
+		                        saveChatImageToGallery={props.saveChatImageToGallery}
+		                        updateMyTypingPresence={props.updateMyTypingPresence}
+		                        markMessagesRead={props.markMessagesRead}
 	                        requestGlobalCall={props.requestGlobalCall}
 	                        globalCallSession={props.state?.global_call_session}
 	                        closeActiveChat={() => {

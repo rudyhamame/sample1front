@@ -26,6 +26,10 @@ import {
 } from "../utils/sessionCleanup";
 import { getFriendChatPresenceKey } from "../utils/friendPresence";
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
+import {
+  saveRemoteImageToUserGallery,
+  uploadImageFileToUserGallery,
+} from "../utils/userImageGallery";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 const APP_SCALE_STORAGE_KEY = "phenomed.appScale";
@@ -1683,8 +1687,88 @@ class App extends React.Component {
     ul.scrollTop = ul.scrollHeight;
   };
 
-  sendToThemMessage = (message) => {
-    const normalizedMessage = String(message || "");
+  uploadChatImages = async (files = []) => {
+    const validFiles = (Array.isArray(files) ? files : [])
+      .filter(Boolean)
+      .filter((file) => String(file?.type || "").trim().toLowerCase().startsWith("image/"));
+
+    if (validFiles.length === 0) {
+      return [];
+    }
+
+    const uploadedMedia = [];
+
+    for (const file of validFiles) {
+      let uploadResult;
+      try {
+        uploadResult = await uploadImageFileToUserGallery({
+          token: this.state.token,
+          file,
+          visibility: "public",
+          onStatus: (message) => this.serverReply(message),
+        });
+      } catch (error) {
+        this.serverReply(error?.message || "Unable to upload chat image.");
+        throw error;
+      }
+      const { payload, media } = uploadResult;
+
+      if (payload) {
+        this.setUserMediaInfo({
+          profilePicture: this.state.profilePicture,
+          imageGallery: Array.isArray(payload?.imageGallery) ? payload.imageGallery : [],
+        });
+      }
+
+      if (media) {
+        uploadedMedia.push(media);
+      }
+    }
+
+    return uploadedMedia;
+  };
+
+  saveChatImageToGallery = async (imageUrl) => {
+    let saveResult;
+    try {
+      saveResult = await saveRemoteImageToUserGallery({
+        token: this.state.token,
+        url: imageUrl,
+        visibility: "public",
+      });
+    } catch (error) {
+      this.serverReply(error?.message || "Unable to save image to gallery.");
+      throw error;
+    }
+    const { payload, media } = saveResult;
+
+    this.setUserMediaInfo({
+      profilePicture: this.state.profilePicture,
+      imageGallery: Array.isArray(payload?.imageGallery) ? payload.imageGallery : [],
+    });
+    this.serverReply("Image saved to your gallery.");
+
+    return media;
+  };
+
+  sendToThemMessage = (messagePayload) => {
+    const normalizedPayload =
+      typeof messagePayload === "string"
+        ? {
+            text: String(messagePayload || ""),
+            images: [],
+          }
+        : {
+            text: String(messagePayload?.text || ""),
+            images: (Array.isArray(messagePayload?.images)
+              ? messagePayload.images
+              : []
+            )
+              .map((entry) => String(entry || "").trim())
+              .filter(Boolean),
+          };
+    const normalizedMessage = normalizedPayload.text;
+    const normalizedImages = normalizedPayload.images;
     const textarea = document.getElementById("Chat_textarea_input");
     if (textarea) {
       textarea.style.height = "42px";
@@ -1693,7 +1777,7 @@ class App extends React.Component {
       this.serverReply("Select a doctor from your friends list first");
       return Promise.resolve(false);
     }
-    if (normalizedMessage.trim() !== "") {
+    if (normalizedMessage.trim() !== "" || normalizedImages.length > 0) {
       const selectedFriendId = this.state.friendID_selected;
       const optimisticTimestamp = new Date().toISOString();
       let url =
@@ -1709,7 +1793,12 @@ class App extends React.Component {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: normalizedMessage,
+          body: {
+            text: normalizedMessage,
+            images: normalizedImages,
+            videos: [],
+            documents: [],
+          },
         }),
       };
       let req = new Request(url, options);
@@ -1717,7 +1806,8 @@ class App extends React.Component {
         isSendingMessage: true,
       });
       return fetch(req)
-        .then((result) => {
+        .then(async (result) => {
+          const payload = await result.json().catch(() => ({}));
           if (result.status === 201) {
             if (textarea) {
               textarea.value = "";
@@ -1731,19 +1821,21 @@ class App extends React.Component {
                   _id: selectedFriendId,
                   from: "me",
                   message: normalizedMessage,
+                  images: normalizedImages,
                   date: optimisticTimestamp,
+                  status: "sent",
                 },
               ],
             }));
             this.updateMyTypingPresence(selectedFriendId, false);
             return true;
           } else {
-            this.serverReply("Unable to send message");
+            this.serverReply(payload?.message || "Unable to send message");
             return false;
           }
         })
-        .catch(() => {
-          this.serverReply("Unable to send message");
+        .catch((error) => {
+          this.serverReply(error?.message || "Unable to send message");
           return false;
         })
         .finally(() => {
@@ -3399,6 +3491,8 @@ class App extends React.Component {
                   selectFriendChat={this.get_current_friend_chat_id}
                   closeActiveChat={this.closeActiveChat}
                   sendToThemMessage={this.sendToThemMessage}
+                  uploadChatImages={this.uploadChatImages}
+                  saveChatImageToGallery={this.saveChatImageToGallery}
                   updateMyTypingPresence={this.updateMyTypingPresence}
                   markMessagesRead={this.markMessagesRead}
                   serverReply={this.serverReply}
@@ -3429,6 +3523,8 @@ class App extends React.Component {
                   selectFriendChat={this.get_current_friend_chat_id}
                   closeActiveChat={this.closeActiveChat}
                   sendToThemMessage={this.sendToThemMessage}
+                  uploadChatImages={this.uploadChatImages}
+                  saveChatImageToGallery={this.saveChatImageToGallery}
                   updateMyTypingPresence={this.updateMyTypingPresence}
                   markMessagesRead={this.markMessagesRead}
                   serverReply={this.serverReply}

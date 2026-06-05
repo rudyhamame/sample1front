@@ -209,10 +209,28 @@ const renderMessageWithEmojiImages = (value) => {
   return renderedNodes;
 };
 
+const normalizeMessageImages = (value) =>
+  (Array.isArray(value) ? value : [])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+
+const areImageListsEqual = (left, right) => {
+  const normalizedLeft = normalizeMessageImages(left);
+  const normalizedRight = normalizeMessageImages(right);
+
+  if (normalizedLeft.length !== normalizedRight.length) {
+    return false;
+  }
+
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+};
+
 const FriendChat = ({
   state,
   content,
   sendToThemMessage,
+  uploadChatImages,
+  saveChatImageToGallery,
   updateMyTypingPresence,
   markMessagesRead,
   getRealtimeSocket,
@@ -256,7 +274,12 @@ const FriendChat = ({
   const emojiPickerWrapRef = React.useRef(null);
   const emojiPickerRef = React.useRef(null);
   const textareaRef = React.useRef(null);
+  const attachmentInputRef = React.useRef(null);
   const [localMessages, setLocalMessages] = React.useState([]);
+  const [selectedImages, setSelectedImages] = React.useState([]);
+  const [isUploadingAttachments, setIsUploadingAttachments] = React.useState(false);
+  const [savingImageUrls, setSavingImageUrls] = React.useState({});
+  const selectedImagesRef = React.useRef([]);
   const localAudioRef = React.useRef(null);
   const remoteAudioRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
@@ -328,6 +351,7 @@ const FriendChat = ({
           String(message?.id || message?._id || "").trim() ||
           `remote-${message?.date || index}`,
         text: repairMojibakeText(String(message?.message || "").trim()),
+        images: normalizeMessageImages(message?.images),
         sender: String(message?.from || "").trim() === "me" ? "me" : "friend",
         status: String(message?.status || "sent").trim().toLowerCase(),
         pending: false,
@@ -1218,30 +1242,122 @@ const FriendChat = ({
   const generateTempId = () =>
     `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  const handleSend = () => {
+  React.useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  React.useEffect(
+    () => () => {
+      selectedImagesRef.current.forEach((image) => {
+        if (image?.previewUrl) {
+          URL.revokeObjectURL(image.previewUrl);
+        }
+      });
+    },
+    [],
+  );
+
+  const handleAttachmentSelection = (event) => {
+    const nextFiles = Array.from(event.target?.files || []).filter((file) =>
+      String(file?.type || "").trim().toLowerCase().startsWith("image/"),
+    );
+    event.target.value = "";
+
+    if (nextFiles.length === 0) {
+      return;
+    }
+
+    setSelectedImages((currentImages) => [
+      ...currentImages,
+      ...nextFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        name: String(file?.name || "image").trim(),
+        previewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+  };
+
+  const handleRemoveSelectedImage = (imageId) => {
+    setSelectedImages((currentImages) => {
+      const targetImage = currentImages.find((image) => image.id === imageId);
+      if (targetImage?.previewUrl) {
+        URL.revokeObjectURL(targetImage.previewUrl);
+      }
+
+      return currentImages.filter((image) => image.id !== imageId);
+    });
+  };
+
+  const handleSend = async () => {
     const textarea = textareaRef.current;
     const message = textarea ? textarea.value : "";
-    if (!message.trim()) return;
+    const trimmedMessage = String(message || "").trim();
+    const queuedImages = Array.isArray(selectedImages) ? selectedImages : [];
+    if (!trimmedMessage && queuedImages.length === 0) return;
 
-    // Optimistically add message
     const tempId = generateTempId();
+    const optimisticImages = queuedImages.map((image) => image.previewUrl).filter(Boolean);
     setLocalMessages((prev) => [
       ...prev,
       {
         id: tempId,
-        text: message,
+        text: trimmedMessage,
+        images: optimisticImages,
         sender: "me",
         pending: true,
         timestamp: Date.now(),
       },
     ]);
 
-    if (sendToThemMessage) {
-      Promise.resolve(sendToThemMessage(message, tempId)).then((didSend) => {
+    setSelectedImages([]);
+    selectedImagesRef.current = [];
+
+    try {
+      let uploadedImages = [];
+
+      if (queuedImages.length > 0 && typeof uploadChatImages === "function") {
+        setIsUploadingAttachments(true);
+        const uploadedMedia = await uploadChatImages(
+          queuedImages.map((image) => image.file),
+        );
+        uploadedImages = (Array.isArray(uploadedMedia) ? uploadedMedia : [])
+          .map((media) => String(media?.url || "").trim())
+          .filter(Boolean);
+        setLocalMessages((prev) =>
+          prev.map((pendingMessage) =>
+            pendingMessage.id === tempId
+              ? {
+                  ...pendingMessage,
+                  images: uploadedImages,
+                }
+              : pendingMessage,
+          ),
+        );
+      }
+
+      if (sendToThemMessage) {
+        const didSend = await Promise.resolve(
+          sendToThemMessage({
+            text: trimmedMessage,
+            images: uploadedImages,
+          }),
+        );
         if (didSend === false) {
           setLocalMessages((prev) =>
             prev.filter((pendingMessage) => pendingMessage.id !== tempId),
           );
+        }
+      }
+    } catch (_error) {
+      setLocalMessages((prev) =>
+        prev.filter((pendingMessage) => pendingMessage.id !== tempId),
+      );
+    } finally {
+      setIsUploadingAttachments(false);
+      queuedImages.forEach((image) => {
+        if (image?.previewUrl) {
+          URL.revokeObjectURL(image.previewUrl);
         }
       });
     }
@@ -1265,7 +1381,9 @@ const FriendChat = ({
           !msg.pending ||
           !normalizedRemoteMessages.some(
             (remoteMessage) =>
-              remoteMessage.sender === "me" && remoteMessage.text === msg.text,
+              remoteMessage.sender === "me" &&
+              remoteMessage.text === msg.text &&
+              areImageListsEqual(remoteMessage.images, msg.images),
           ),
       ),
     );
@@ -1314,6 +1432,28 @@ const FriendChat = ({
 
   const handleTypingChange = (event) => {
     setTypingPresence(Boolean(event.target.value.trim()));
+  };
+
+  const handleSaveMessageImage = async (imageUrl) => {
+    const normalizedUrl = String(imageUrl || "").trim();
+    if (!normalizedUrl || typeof saveChatImageToGallery !== "function") {
+      return;
+    }
+
+    setSavingImageUrls((currentValue) => ({
+      ...currentValue,
+      [normalizedUrl]: true,
+    }));
+
+    try {
+      await saveChatImageToGallery(normalizedUrl);
+    } finally {
+      setSavingImageUrls((currentValue) => {
+        const nextValue = { ...currentValue };
+        delete nextValue[normalizedUrl];
+        return nextValue;
+      });
+    }
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -2527,11 +2667,56 @@ const FriendChat = ({
                             ? { opacity: 0.6, fontStyle: "italic" }
                             : undefined
                         }
-                      >
-                        <p>{renderMessageWithEmojiImages(msg.text)}</p>
-                        <span className="Chat_messageMeta">
-                          <span className="Chat_messageTimestamp">
-                            {formatChatTimestamp(msg.rawDate, msg.timestamp)}
+	                      >
+	                        {msg.text ? (
+	                          <p>{renderMessageWithEmojiImages(msg.text)}</p>
+	                        ) : null}
+	                        {Array.isArray(msg.images) && msg.images.length > 0 ? (
+	                          <div className="Chat_messageImages">
+	                            {msg.images.map((imageUrl, imageIndex) => {
+	                              const normalizedImageUrl = String(imageUrl || "").trim();
+	                              const isSavingImage = Boolean(
+	                                savingImageUrls[normalizedImageUrl],
+	                              );
+
+	                              return (
+	                                <div
+	                                  key={`${normalizedImageUrl}-${imageIndex}`}
+	                                  className="Chat_messageImageCard"
+	                                >
+	                                  <a
+	                                    href={normalizedImageUrl}
+	                                    target="_blank"
+	                                    rel="noreferrer"
+	                                    className="Chat_messageImageLink"
+	                                  >
+	                                    <img
+	                                      src={normalizedImageUrl}
+	                                      alt="Chat attachment"
+	                                      className="Chat_messageImage"
+	                                      loading="lazy"
+	                                    />
+	                                  </a>
+	                                  {msg.sender !== "me" && !msg.pending ? (
+	                                    <button
+	                                      type="button"
+	                                      className="Chat_messageImageSaveButton"
+	                                      onClick={() =>
+	                                        handleSaveMessageImage(normalizedImageUrl)
+	                                      }
+	                                      disabled={isSavingImage}
+	                                    >
+	                                      {isSavingImage ? "Saving..." : "Save"}
+	                                    </button>
+	                                  ) : null}
+	                                </div>
+	                              );
+	                            })}
+	                          </div>
+	                        ) : null}
+	                        <span className="Chat_messageMeta">
+	                          <span className="Chat_messageTimestamp">
+	                            {formatChatTimestamp(msg.rawDate, msg.timestamp)}
                           </span>
                           {msg.sender === "me" ? (
                             <span
@@ -2552,56 +2737,102 @@ const FriendChat = ({
                   ))
                 )}
               </ul>
-              <section id="Chat_form" className="fr">
-                <div id="Chat_emoji_button_mount">
-                  <div id="Chat_emoji_button_wrap">
-                    <button
-                      id="Chat_emoji_button"
-                      type="button"
-                      aria-label="Open emoji picker"
-                      title="Emoji"
-                      onMouseDown={keepTextareaFocus}
-                      onTouchStart={keepTextareaFocus}
-                      onClick={() => {
-                        setIsEmojiPickerOpen((currentValue) => !currentValue);
-                        const textarea = textareaRef.current;
-
-                        if (textarea) {
-                          textarea.focus();
-                        }
-                      }}
-                    >
-                      <i className="fas fa-smile" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  id="Chat_textarea_input"
-                  ref={textareaRef}
-                  placeholder={
-                    chatContent?.inputPlaceholder || "Write a message"
-                  }
-                  rows="1"
-                  onFocus={handleTextareaFocus}
-                  onBlur={handleTextareaBlur}
-                  onChange={handleTypingChange}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                ></textarea>
-                <button
-                  id="Chat_submit_button"
-                  type="button"
-                  onMouseDown={keepTextareaFocus}
-                  onTouchStart={keepTextareaFocus}
-                  onClick={handleSend}
-                >
-                  <i className="fc far fa-paper-plane"></i>
-                </button>
-              </section>
+	              <section id="Chat_form" className="fc">
+	                {selectedImages.length > 0 ? (
+	                  <div className="Chat_attachmentPreviewRow">
+	                    {selectedImages.map((image) => (
+	                      <div
+	                        key={image.id}
+	                        className="Chat_attachmentPreviewCard"
+	                      >
+	                        <img
+	                          src={image.previewUrl}
+	                          alt={image.name || "Selected attachment"}
+	                          className="Chat_attachmentPreviewImage"
+	                        />
+	                        <button
+	                          type="button"
+	                          className="Chat_attachmentPreviewRemove"
+	                          onClick={() => handleRemoveSelectedImage(image.id)}
+	                          aria-label="Remove selected image"
+	                        >
+	                          <i className="fas fa-times"></i>
+	                        </button>
+	                      </div>
+	                    ))}
+	                  </div>
+	                ) : null}
+	                <div className="Chat_formControls fr">
+	                  <div id="Chat_emoji_button_mount">
+	                    <div id="Chat_emoji_button_wrap">
+	                      <button
+	                        id="Chat_emoji_button"
+	                        type="button"
+	                        aria-label="Open emoji picker"
+	                        title="Emoji"
+	                        onMouseDown={keepTextareaFocus}
+	                        onTouchStart={keepTextareaFocus}
+	                        onClick={() => {
+	                          setIsEmojiPickerOpen((currentValue) => !currentValue);
+	                          const textarea = textareaRef.current;
+	
+	                          if (textarea) {
+	                            textarea.focus();
+	                          }
+	                        }}
+	                      >
+	                        <i className="fas fa-smile" aria-hidden="true"></i>
+	                      </button>
+	                    </div>
+	                  </div>
+	                  <button
+	                    id="Chat_attachment_button"
+	                    type="button"
+	                    aria-label="Attach images"
+	                    title="Attach images"
+	                    onMouseDown={keepTextareaFocus}
+	                    onTouchStart={keepTextareaFocus}
+	                    onClick={() => attachmentInputRef.current?.click()}
+	                  >
+	                    <i className="fas fa-image" aria-hidden="true"></i>
+	                  </button>
+	                  <input
+	                    ref={attachmentInputRef}
+	                    type="file"
+	                    accept="image/*"
+	                    multiple
+	                    hidden
+	                    onChange={handleAttachmentSelection}
+	                  />
+	                  <textarea
+	                    id="Chat_textarea_input"
+	                    ref={textareaRef}
+	                    placeholder={
+	                      chatContent?.inputPlaceholder || "Write a message"
+	                    }
+	                    rows="1"
+	                    onFocus={handleTextareaFocus}
+	                    onBlur={handleTextareaBlur}
+	                    onChange={handleTypingChange}
+	                    onKeyDown={(event) => {
+	                      if (event.key === "Enter" && !event.shiftKey) {
+	                        event.preventDefault();
+	                        handleSend();
+	                      }
+	                    }}
+	                  ></textarea>
+	                  <button
+	                    id="Chat_submit_button"
+	                    type="button"
+	                    onMouseDown={keepTextareaFocus}
+	                    onTouchStart={keepTextareaFocus}
+	                    onClick={handleSend}
+	                    disabled={isUploadingAttachments}
+	                  >
+	                    <i className="fc far fa-paper-plane"></i>
+	                  </button>
+	                </div>
+	              </section>
               {isEmojiPickerOpen ? (
                 <div id="Chat_emoji_mount" className="fc">
                   <div
