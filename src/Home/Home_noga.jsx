@@ -186,7 +186,7 @@ const formatProgramTermScheduleRowDisplay = (entry) => {
 };
 
 const HOME_DRAWING_ALLOWLIST_ZONES = [
-  { id: "canvas", label: "Canvas", selector: "#Home_Noga_main_wrapper" },
+  { id: "canvas", label: "Canvas", selector: ".Home_Noga_mainWrapperShell" },
   {
     id: "leftColumn",
     label: "Left column",
@@ -205,7 +205,7 @@ const HOME_DRAWING_ALLOWLIST_ZONES = [
   {
     id: "reports",
     label: "Reports",
-    selector: "#Home_Noga_preStart_reportsWrapper",
+    selector: ".Home_Noga_preStart_reports",
   },
 ];
 
@@ -238,7 +238,7 @@ const HOME_DRAWING_VISIBILITY_WRAPPERS = [
   {
     id: "reports",
     label: "Reports",
-    selector: "#Home_Noga_preStart_reportsWrapper",
+    selector: ".Home_Noga_preStart_reports",
   },
 ];
 
@@ -1727,6 +1727,7 @@ function HomeNoga(props) {
   const galleryUploadInputRef = React.useRef(null);
   const hasRecoveredPendingUploadsRef = React.useRef(false);
   const mainWrapperRef = React.useRef(null);
+  const homeNogaSplitDragRef = React.useRef(null);
   const drawingCanvasRef = React.useRef(null);
   const drawingCanvasHostRef = React.useRef(null);
   const appliedDrawingCanvasRef = React.useRef(null);
@@ -1748,6 +1749,12 @@ function HomeNoga(props) {
     startDistance: 0,
     startScale: 1,
   });
+  const HOME_NOGA_SPLIT_HANDLE_WIDTH = 12;
+  const HOME_NOGA_SPLIT_MIN_LEFT_WIDTH = 520;
+  const HOME_NOGA_SPLIT_MIN_RIGHT_WIDTH = 220;
+  const [homeNogaLeftColumnWidth, setHomeNogaLeftColumnWidth] = useState("");
+  const [isHomeNogaSplitDragging, setIsHomeNogaSplitDragging] =
+    useState(false);
   // (Fixed: removed misplaced JSX here)
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   // Gallery tab state: 'images' | 'patterns' | 'videos'
@@ -2013,13 +2020,8 @@ function HomeNoga(props) {
     useState(false);
   // --- Friends/Requests/Blocked/Chat logic from Home.jsx (full clone) ---
   const [activeFriendsMiniTab, setActiveFriendsMiniTab] = useState("friends");
-  const [isConnectionOpen, setIsConnectionOpen] = useState(false);
-  const [activeBlockedListTab, setActiveBlockedListTab] = useState(
-    DEFAULT_BLOCKED_LIST_USER_MODE,
-  );
-  const [activeBlockedListGroup, setActiveBlockedListGroup] = useState(
-    DEFAULT_BLOCKED_LIST_GROUP,
-  );
+  const [activeFriendsPanelTab, setActiveFriendsPanelTab] =
+    useState("friends");
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
   const [pageSearchQuery, setPageSearchQuery] = useState("");
   const [groupSearchQuery, setGroupSearchQuery] = useState("");
@@ -2167,7 +2169,7 @@ function HomeNoga(props) {
     const maskedSelectors = [
       "#Home_Noga_main_leftColumn_wrapper",
       "#Home_Noga_rightColumn_wrapper",
-      "#Home_Noga_preStart_reportsWrapper",
+      ".Home_Noga_preStart_reports",
       "#Home_Noga_userMenuCluster",
       "#Home_Noga_navWrap .Nav_actionButton",
       "#Home_Noga_navWrap #SubApps_icon_container",
@@ -4029,44 +4031,6 @@ function HomeNoga(props) {
     [blockedListTabs],
   );
 
-  const activeBlockedListGroupMeta = blockedListGroups.find(
-    (group) => group.id === activeBlockedListGroup,
-  ) ||
-    blockedListGroups[0] || {
-      id: DEFAULT_BLOCKED_LIST_GROUP,
-      label: BLOCKED_LIST_GROUP_META[DEFAULT_BLOCKED_LIST_GROUP].label,
-      iconClass: BLOCKED_LIST_GROUP_META[DEFAULT_BLOCKED_LIST_GROUP].iconClass,
-      tabs: [],
-      count: 0,
-    };
-
-  const activeBlockedListTabMeta = activeBlockedListGroupMeta.tabs.find(
-    (tab) => tab.id === activeBlockedListTab,
-  ) ||
-    activeBlockedListGroupMeta.tabs[0] ||
-    blockedListTabs.find((tab) => tab.id === activeBlockedListTab) ||
-    blockedListTabs[0] || {
-      id: DEFAULT_BLOCKED_LIST_USER_MODE,
-      entries: [],
-      count: 0,
-      ...getFriendUserModeMeta(DEFAULT_BLOCKED_LIST_USER_MODE),
-    };
-
-  React.useEffect(() => {
-    const nextGroupId = getBlockedListGroupIdForMode(
-      activeBlockedListTabMeta.id,
-    );
-    if (nextGroupId !== activeBlockedListGroup) {
-      setActiveBlockedListGroup(nextGroupId);
-    }
-  }, [activeBlockedListGroup, activeBlockedListTabMeta.id]);
-
-  React.useEffect(() => {
-    if (activeBlockedListTabMeta.id !== activeBlockedListTab) {
-      setActiveBlockedListTab(activeBlockedListTabMeta.id);
-    }
-  }, [activeBlockedListTab, activeBlockedListTabMeta.id]);
-
   const friendsMiniTabs = React.useMemo(
     () => [
       {
@@ -4106,9 +4070,264 @@ function HomeNoga(props) {
       ) || null,
     [openChatFriendId, socialFriends],
   );
-  const hasActiveFriendSearchQuery =
-    String(friendSearchQuery || "").trim() !== "";
-  const chatFriends = React.useMemo(() => socialFriends, [socialFriends]);
+  const chatFriends = React.useMemo(() => {
+    const getPresenceSortRank = (friend) => {
+      const mode = String(
+        resolveFriendPresenceState(friend)?.mode || "",
+      ).trim();
+
+      return mode === "offline" ? 1 : 0;
+    };
+
+    return [...socialFriends].sort((leftFriend, rightFriend) => {
+      const leftRank = getPresenceSortRank(leftFriend);
+      const rightRank = getPresenceSortRank(rightFriend);
+
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+
+      return String(leftFriend.displayName || "")
+        .localeCompare(String(rightFriend.displayName || ""), undefined, {
+          sensitivity: "base",
+      });
+    });
+  }, [socialFriends, resolveFriendPresenceState]);
+
+  const requestsPanelEntries = React.useMemo(
+    () =>
+      blockedListTabs
+        .filter(
+          (tab) => getBlockedListGroupIdForMode(tab.id) === "pending",
+        )
+        .flatMap((tab) => tab.entries),
+    [blockedListTabs],
+  );
+
+  const blocklistPanelEntries = React.useMemo(
+    () =>
+      blockedListTabs
+        .filter(
+          (tab) => getBlockedListGroupIdForMode(tab.id) === "blocked",
+        )
+        .flatMap((tab) => tab.entries),
+    [blockedListTabs],
+  );
+
+  const rightPanelTabs = React.useMemo(
+    () => [
+      {
+        id: "friends",
+        label: "Friends",
+        count: chatFriends.length,
+      },
+      {
+        id: "requests",
+        label: "Requests",
+        count: requestsPanelEntries.length,
+      },
+      {
+        id: "blocked",
+        label: "Blocklist",
+        count: blocklistPanelEntries.length,
+      },
+    ],
+    [
+      blocklistPanelEntries.length,
+      chatFriends.length,
+      requestsPanelEntries.length,
+    ],
+  );
+
+  const activeRightPanelTabIndex = Math.max(
+    0,
+    rightPanelTabs.findIndex((tab) => tab.id === activeFriendsPanelTab),
+  );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const syncHomeNogaLeftColumnWidth = () => {
+      const shellNode = mainWrapperRef.current;
+      if (!shellNode) {
+        return;
+      }
+
+      const shellRect = shellNode.getBoundingClientRect();
+      const availableWidth = Math.max(
+        0,
+        shellRect.width - HOME_NOGA_SPLIT_HANDLE_WIDTH,
+      );
+      const maxLeftWidth = Math.max(
+        HOME_NOGA_SPLIT_MIN_LEFT_WIDTH,
+        availableWidth - HOME_NOGA_SPLIT_MIN_RIGHT_WIDTH,
+      );
+      const fallbackLeftWidth = maxLeftWidth;
+
+      setHomeNogaLeftColumnWidth((currentValue) => {
+        const currentWidth = Number.parseFloat(String(currentValue || "").trim());
+        const nextWidth = Number.isFinite(currentWidth) && currentWidth > 0
+          ? currentWidth
+          : fallbackLeftWidth;
+
+        return `${Math.max(
+          HOME_NOGA_SPLIT_MIN_LEFT_WIDTH,
+          Math.min(maxLeftWidth, nextWidth),
+        )}px`;
+      });
+    };
+
+    syncHomeNogaLeftColumnWidth();
+    window.addEventListener("resize", syncHomeNogaLeftColumnWidth);
+
+    return () => {
+      window.removeEventListener("resize", syncHomeNogaLeftColumnWidth);
+    };
+  }, []);
+
+  const stopHomeNogaSplitDrag = React.useCallback(() => {
+    homeNogaSplitDragRef.current = null;
+    setIsHomeNogaSplitDragging(false);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.removeEventListener("pointermove", handleHomeNogaSplitPointerMove);
+    window.removeEventListener("pointerup", stopHomeNogaSplitDrag);
+    window.removeEventListener("pointercancel", stopHomeNogaSplitDrag);
+  }, []);
+
+  const handleHomeNogaSplitPointerMove = React.useCallback((event) => {
+    const dragState = homeNogaSplitDragRef.current;
+    const shellNode = mainWrapperRef.current;
+    if (!dragState || !shellNode) {
+      return;
+    }
+
+    const shellRect = shellNode.getBoundingClientRect();
+    const availableWidth = Math.max(
+      0,
+      shellRect.width - HOME_NOGA_SPLIT_HANDLE_WIDTH,
+    );
+    const maxLeftWidth = Math.max(
+      HOME_NOGA_SPLIT_MIN_LEFT_WIDTH,
+      availableWidth - HOME_NOGA_SPLIT_MIN_RIGHT_WIDTH,
+    );
+    const rawLeftWidth =
+      event.clientX -
+      shellRect.left -
+      HOME_NOGA_SPLIT_HANDLE_WIDTH / 2 -
+      Number(dragState.pointerOffset || 0);
+    const nextLeftWidth = Math.max(
+      HOME_NOGA_SPLIT_MIN_LEFT_WIDTH,
+      Math.min(maxLeftWidth, rawLeftWidth),
+    );
+
+    setHomeNogaLeftColumnWidth(`${Math.round(nextLeftWidth)}px`);
+  }, []);
+
+  const beginHomeNogaSplitDrag = React.useCallback((event) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    const shellNode = mainWrapperRef.current;
+    if (!shellNode) {
+      return;
+    }
+
+    const shellRect = shellNode.getBoundingClientRect();
+    const availableWidth = Math.max(
+      0,
+      shellRect.width - HOME_NOGA_SPLIT_HANDLE_WIDTH,
+    );
+    const maxLeftWidth = Math.max(
+      HOME_NOGA_SPLIT_MIN_LEFT_WIDTH,
+      availableWidth - HOME_NOGA_SPLIT_MIN_RIGHT_WIDTH,
+    );
+    const currentLeftWidth = Number.parseFloat(
+      String(homeNogaLeftColumnWidth || "").trim(),
+    );
+    const baseLeftWidth = Number.isFinite(currentLeftWidth) && currentLeftWidth > 0
+      ? currentLeftWidth
+      : maxLeftWidth;
+    const pointerOffset =
+      event.clientX -
+      (shellRect.left +
+        baseLeftWidth +
+        HOME_NOGA_SPLIT_HANDLE_WIDTH / 2);
+
+    homeNogaSplitDragRef.current = { pointerOffset };
+    setIsHomeNogaSplitDragging(true);
+
+    window.addEventListener("pointermove", handleHomeNogaSplitPointerMove);
+    window.addEventListener("pointerup", stopHomeNogaSplitDrag);
+    window.addEventListener("pointercancel", stopHomeNogaSplitDrag);
+
+    event.preventDefault();
+    event.stopPropagation();
+  }, [
+    handleHomeNogaSplitPointerMove,
+    homeNogaLeftColumnWidth,
+    stopHomeNogaSplitDrag,
+  ]);
+
+  React.useEffect(
+    () => () => {
+      stopHomeNogaSplitDrag();
+    },
+    [stopHomeNogaSplitDrag],
+  );
+
+  const activeFriendsPanelSearchPlaceholder = React.useMemo(() => {
+    if (activeFriendsPanelTab === "requests") {
+      return "Search non-friend users";
+    }
+
+    if (activeFriendsPanelTab === "blocked") {
+      return "Search blocked users";
+    }
+
+    return "Search friends";
+  }, [activeFriendsPanelTab]);
+
+  const activeFriendsPanelSearchResults = React.useMemo(() => {
+    const normalizedQuery = String(friendSearchQuery || "").trim();
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const modeMatchesActiveTab = (candidate) => {
+      const candidateMode = normalizeFriendUserMode(candidate?.userMode);
+
+      if (activeFriendsPanelTab === "requests") {
+        return candidateMode !== "friend";
+      }
+
+      if (activeFriendsPanelTab === "blocked") {
+        return candidateMode === "blocked";
+      }
+
+      return candidateMode === "friend";
+    };
+
+    return friendSearchResults.filter(modeMatchesActiveTab);
+  }, [activeFriendsPanelTab, friendSearchQuery, friendSearchResults]);
+
+  const activeFriendsPanelSearchEmptyMessage = React.useMemo(() => {
+    if (activeFriendsPanelTab === "requests") {
+      return "No non-friend users found.";
+    }
+
+    if (activeFriendsPanelTab === "blocked") {
+      return "No blocked users found.";
+    }
+
+    return "No friends found.";
+  }, [activeFriendsPanelTab]);
 
   const getFriendPresenceState = React.useCallback(
     (friend) => {
@@ -4738,40 +4957,6 @@ function HomeNoga(props) {
     ],
   );
 
-  const renderDirectoryTabs = React.useCallback(
-    ({ tabs, activeId, onChange }) =>
-      tabs?.length ? (
-        <div className="Home_Noga_socialDirectoryTabs">
-          {tabs.map((tab) => {
-            const hasRequestMarker = tab.id === "pending" && tab.count > 0;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`Home_Noga_socialDirectoryTab Home_Noga_aboutButton${
-                  activeId === tab.id ? " isActive" : ""
-                }${
-                  hasRequestMarker
-                    ? " Home_Noga_socialDirectoryTab--hasMarker"
-                    : ""
-                }`}
-                onClick={() => onChange(tab.id)}
-              >
-                {tab.label} ({tab.count})
-                {hasRequestMarker ? (
-                  <span
-                    className="Home_Noga_socialDirectoryTabMarker"
-                    aria-hidden="true"
-                  ></span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null,
-    [],
-  );
-
   const renderConnectionSearchPanel = React.useCallback(
     ({ value, onChange, placeholder, ariaLabel, controls = null }) => (
       <div className="Home_Noga_socialDirectoryHeader">
@@ -4799,50 +4984,14 @@ function HomeNoga(props) {
       renderConnectionSearchPanel({
         value: friendSearchQuery,
         onChange: setFriendSearchQuery,
-        placeholder: "Search friends",
-        ariaLabel: "Search friends",
+        placeholder: activeFriendsPanelSearchPlaceholder,
+        ariaLabel: activeFriendsPanelSearchPlaceholder,
         controls: null,
       }),
     [
+      activeFriendsPanelSearchPlaceholder,
       friendSearchQuery,
       renderConnectionSearchPanel,
-    ],
-  );
-
-  const renderFriendDirectoryTabGroup = React.useCallback(
-    () => (
-      <div className="Home_Noga_socialDirectoryTabGroup">
-        {renderDirectoryTabs({
-          tabs: blockedListGroups,
-          activeId: activeBlockedListGroup,
-          onChange: (nextGroupId) => {
-            if (hasActiveFriendSearchQuery) {
-              return;
-            }
-            setActiveBlockedListGroup(nextGroupId);
-          },
-        })}
-        {activeBlockedListGroupMeta.tabs.length > 1
-          ? renderDirectoryTabs({
-              tabs: activeBlockedListGroupMeta.tabs,
-              activeId: activeBlockedListTab,
-              onChange: (nextTabId) => {
-                if (hasActiveFriendSearchQuery) {
-                  return;
-                }
-                setActiveBlockedListTab(nextTabId);
-              },
-            })
-          : null}
-      </div>
-    ),
-    [
-      activeBlockedListGroup,
-      activeBlockedListGroupMeta.tabs,
-      activeBlockedListTab,
-      blockedListGroups,
-      hasActiveFriendSearchQuery,
-      renderDirectoryTabs,
     ],
   );
 
@@ -4908,7 +5057,9 @@ function HomeNoga(props) {
                 profileTheme: {
                   variant: "noga",
                   isDark: isHomeNogaDarkTheme,
-                  backPath: "/phenomed/home/noga",
+                  backPath:
+                    String(props?.homeBasePath || "").trim() ||
+                    "/phenomed/home",
                 },
               });
             }
@@ -8459,7 +8610,7 @@ function HomeNoga(props) {
   return (
     <>
       <article
-        id="Home_Noga_studysessions_article"
+        id="Home_Noga_article"
         className={[
           homeThemeClassName,
           isHomeNogaDarkTheme ? "Home_Noga_themeDark" : "",
@@ -8468,39 +8619,49 @@ function HomeNoga(props) {
           .filter(Boolean)
           .join(" ")}
       >
-        <section id="Home_Noga_visible_wrapper" className="fc slide-top">
-          <div id="Home_Noga_main_wrapper" className="fc" ref={mainWrapperRef}>
-            <div
-              ref={appliedDrawingCanvasHostRef}
-              className="Home_Noga_mainDrawingCanvasHost Home_Noga_mainDrawingCanvasHost--display"
-            >
-              <canvas
-                ref={appliedDrawingCanvasRef}
-                className="Home_Noga_mainDrawingCanvas"
-              />
-            </div>
-            <div
-              key={`home-drawing-canvas-${homeDrawingCanvasVersion}`}
-              ref={drawingCanvasHostRef}
-              className={`Home_Noga_mainDrawingCanvasHost${
-                isHomeDrawingModeEnabled
-                  ? " Home_Noga_mainDrawingCanvasHost--active"
-                  : ""
-              }`}
-            >
-              <canvas
-                ref={drawingCanvasRef}
-                className="Home_Noga_mainDrawingCanvas"
-                onPointerDown={beginHomeDrawingStroke}
-                onPointerMove={continueHomeDrawingStroke}
-                onPointerUp={endHomeDrawingStroke}
-                onPointerLeave={endHomeDrawingStroke}
-                onPointerCancel={endHomeDrawingStroke}
-              />
-            </div>
-            {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
-            <div id="Home_Noga_preStart_introWrap" className="fr">
-              {/* Removed Home_Noga_preStart_profileWrapper and its contents */}
+        <div className="Home_Noga_mainDrawingOverlay">
+          <div
+            ref={appliedDrawingCanvasHostRef}
+            className="Home_Noga_mainDrawingCanvasHost Home_Noga_mainDrawingCanvasHost--display"
+          >
+            <canvas
+              ref={appliedDrawingCanvasRef}
+              className="Home_Noga_mainDrawingCanvas"
+            />
+          </div>
+          <div
+            key={`home-drawing-canvas-${homeDrawingCanvasVersion}`}
+            ref={drawingCanvasHostRef}
+            className={`Home_Noga_mainDrawingCanvasHost${
+              isHomeDrawingModeEnabled
+                ? " Home_Noga_mainDrawingCanvasHost--active"
+                : ""
+            }`}
+          >
+            <canvas
+              ref={drawingCanvasRef}
+              className="Home_Noga_mainDrawingCanvas"
+              onPointerDown={beginHomeDrawingStroke}
+              onPointerMove={continueHomeDrawingStroke}
+              onPointerUp={endHomeDrawingStroke}
+              onPointerLeave={endHomeDrawingStroke}
+              onPointerCancel={endHomeDrawingStroke}
+            />
+          </div>
+          {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
+        </div>
+        <section
+          className="fc slide-top Home_Noga_mainWrapperShell"
+          ref={mainWrapperRef}
+          style={
+            homeNogaLeftColumnWidth
+              ? {
+                  "--home-left-column-width": homeNogaLeftColumnWidth,
+                }
+              : undefined
+          }
+      >
+            {/* Removed Home_Noga_preStart_profileWrapper and its contents */}
               <div
                 id="Home_Noga_main_leftColumn_wrapper"
                 className="Home_Noga_main_leftColumn_wrapper"
@@ -8776,221 +8937,6 @@ function HomeNoga(props) {
                   </div>
                 </div>
                 <div className="Home_Noga_friendsEventsWrapper">
-                  <div className="Home_Noga_friendsEvents">
-                    {isAboutOpen ? (
-                      <>
-                        <div className="Home_Noga_activeTab_title">
-                          <div className="Home_Noga_activeTab_titleTitleRow">
-                            <h3>Profile</h3>
-                          </div>
-                        </div>
-                        <div
-                          className={
-                            "Home_Noga_aboutPanel" +
-                            (isAboutProfileEditing
-                              ? " Home_Noga_aboutPanel--editing"
-                              : " Home_Noga_aboutPanel--regular")
-                          }
-                        >
-                          <div className="Home_Noga_aboutPanelActions">
-                            {isAboutProfileEditing ? (
-                              <button
-                                type="button"
-                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
-                                onClick={handleAboutProfileSave}
-                                disabled={isAboutProfileSubmitting}
-                              >
-                                {isAboutProfileSubmitting ? "save..." : "save"}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
-                                onClick={openProfileEditor}
-                              >
-                                edit
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
-                              onClick={() => {
-                                setIsAboutProfileEditing(false);
-                                setIsAboutOpen(false);
-                              }}
-                              aria-pressed={isAboutOpen}
-                              disabled={isAboutProfileSubmitting}
-                            >
-                              close
-                            </button>
-                          </div>
-                          {profileColumns.map((column) => (
-                            <section
-                              key={`about-${column.title}`}
-                              className="Home_Noga_profileInfoColumn"
-                            >
-                              <h4 className="Home_Noga_profileInfoColumnTitle">
-                                {column.title}
-                              </h4>
-                              <div className="Home_Noga_profileInfoColumnGrid">
-                                {column.rows.map(renderAboutProfileField)}
-                              </div>
-                            </section>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="Home_Noga_activeTab_title">
-                          <div className="Home_Noga_activeTab_titleTitleRow">
-                            <h3>
-                              {isConnectionOpen
-                                ? activeFriendsMiniTabMeta?.label ||
-                                  "Connections"
-                                : "Events"}
-                            </h3>
-                            <span className="Home_Noga_socialFriendsCount">
-                              {isConnectionOpen
-                                ? activeFriendsMiniTabMeta?.count || 0
-                                : 0}
-                            </span>
-                          </div>
-                          <div className="Home_Noga_activeTab_titleActions">
-                            <button
-                              type="button"
-                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                              onClick={() => setIsConnectionOpen(false)}
-                              aria-pressed={!isConnectionOpen}
-                            >
-                              Events
-                            </button>
-                            <button
-                              type="button"
-                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                              onClick={() => setIsConnectionOpen(true)}
-                              aria-pressed={isConnectionOpen}
-                            >
-                              Connections
-                            </button>
-                            <button
-                              type="button"
-                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                              onClick={() =>
-                                setIsAboutOpen((currentValue) => !currentValue)
-                              }
-                              aria-pressed={isAboutOpen}
-                            >
-                              Profile
-                            </button>
-                          </div>
-                        </div>
-                        {isConnectionOpen ? (
-                          <div className="Home_Noga_socialFriendsSearchAndBlocked">
-                            {activeFriendCard ? null : (
-                              <div className="Home_Noga_gallery_Header_wrapper">
-                                {!isReportsWrapperOpen ? (
-                                  <div
-                                    className="Home_Noga_socialFriendsMiniNav"
-                                    style={{
-                                      "--home-friends-tab-count": 3,
-                                      "--home-friends-tab-index": Math.max(
-                                        0,
-                                        Math.min(activeFriendsMiniTabIndex, 2),
-                                      ),
-                                    }}
-                                  >
-                                    <div className="Home_Noga_socialFriendsMiniNavRail">
-                                      <span
-                                        className="Home_Noga_socialFriendsMiniNavSelector"
-                                        aria-hidden="true"
-                                      ></span>
-                                      {friendsMiniTabs.map((tab) => (
-                                        <button
-                                          key={tab.id}
-                                          type="button"
-                                          className={`Home_Noga_socialFriendsMiniNavButton Home_Noga_aboutButton${
-                                            activeFriendsMiniTab === tab.id
-                                              ? " isActive"
-                                              : ""
-                                          }`}
-                                          onClick={() =>
-                                            handleSelectFriendsMiniTab(tab.id)
-                                          }
-                                          aria-label={tab.label}
-                                          title={tab.label}
-                                        >
-                                          <i className={tab.iconClass}></i>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : null}
-                                {activeFriendsMiniTab === "friends"
-                                  ? renderFriendSearchPanel()
-                                  : activeFriendsMiniTab === "pages"
-                                    ? renderPageSearchPanel()
-                                    : renderGroupSearchPanel()}
-                              </div>
-                            )}
-                            {activeFriendsMiniTab === "friends" ? (
-                              <>
-                                <div className="Home_Noga_socialDirectoryResultsWrapper">
-                                  {renderFriendDirectoryTabGroup()}
-                                  <ul className="Home_Noga_socialFriendsList Home_Noga_socialDirectoryResults">
-                                    {hasActiveFriendSearchQuery ? (
-                                      isFriendSearchLoading ? (
-                                        <li className="Home_Noga_socialFriendsEmptyState">
-                                          Searching users...
-                                        </li>
-                                      ) : friendSearchResults.length > 0 ? (
-                                        friendSearchResults.map(
-                                          renderSearchedUserListItem,
-                                        )
-                                      ) : (
-                                        <li className="Home_Noga_socialFriendsEmptyState">
-                                          {friendSearchFeedback ||
-                                            "No users found. Try another name or username."}
-                                        </li>
-                                      )
-                                    ) : activeBlockedListTabMeta.entries.length >
-                                      0 ? (
-                                      activeBlockedListTabMeta.entries.map(
-                                          renderBlockedUserListItem,
-                                        )
-                                      ) : (
-                                      <li className="Home_Noga_socialFriendsEmptyState">
-                                        {activeBlockedListTabMeta.emptyLabel}
-                                      </li>
-                                    )}
-                                  </ul>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="Home_Noga_socialDirectoryResultsWrapper">
-                                  <ul className="Home_Noga_socialFriendsList">
-                                    <li className="Home_Noga_socialFriendsEmptyState">
-                                      {activeFriendsMiniTab === "pages"
-                                        ? pageSearchQuery.trim()
-                                          ? "No pages matched your search."
-                                          : "No pages to show yet."
-                                        : groupSearchQuery.trim()
-                                          ? "No groups matched your search."
-                                          : "No groups to show yet."}
-                                    </li>
-                                  </ul>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="Home_Noga_friendsEventsEmpty">
-                            There is no events to show.
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
                   <div className="Home_Noga_friendsGallery">
                     <div className="Home_Noga_friendsGalleryHeader">
                       <div className="Home_Noga_friendsGalleryHeaderTitleRow">
@@ -9359,60 +9305,233 @@ function HomeNoga(props) {
                             : "No media uploaded yet."}
                       </div>
                     )}
-                      </div>
-                    </div>
                   </div>
-                </div>
-              </div>
-              <section
-                id="Home_Noga_rightColumn_wrapper"
-                className="Home_Noga_socialFriendsPanel"
-              >
-                {renderHomeDrawingVisibilityCanvas("rightColumn")}
-                <div
-                  id="Home_Noga_friendsCard"
-                  className={`Home_Noga_socialFriendsCard fc${activeFriendCard ? " Home_Noga_socialFriendsCard--chatMounted" : ""}`}
-                >
-                  {isReportsWrapperOpen ? null : (
-                    <>
-                      {activeFriendCard?.chatId ? (
-                        <div className="Home_Noga_chatPanelHost">
-                          <FriendChat
-                            state={activeFriendChatState}
-                            content={HOME_CHAT_CONTENT}
-                            sendToThemMessage={props.sendToThemMessage}
-                            updateMyTypingPresence={props.updateMyTypingPresence}
-                            markMessagesRead={props.markMessagesRead}
-                            requestGlobalCall={props.requestGlobalCall}
-                            globalCallSession={props.state?.global_call_session}
-                            closeActiveChat={() => {
-                              setInlineCallActionsTarget(null);
-                              setOpenChatFriendId(null);
-                              props.closeActiveChat?.();
-                            }}
-                            inlineCallActionsTarget={inlineCallActionsTarget}
-                          />
+                  <div className="Home_Noga_friendsEvents">
+                    {isAboutOpen ? (
+                      <>
+                        <div className="Home_Noga_activeTab_title">
+                          <div className="Home_Noga_activeTab_titleTitleRow">
+                            <h3>Profile</h3>
+                          </div>
                         </div>
-                      ) : (
-                        <ul className="Home_Noga_socialFriendsList">
-                          {chatFriends.length > 0 ? (
-                            chatFriends.map(renderFriendListItem)
+                        <div
+                          className={
+                            "Home_Noga_aboutPanel" +
+                            (isAboutProfileEditing
+                              ? " Home_Noga_aboutPanel--editing"
+                              : " Home_Noga_aboutPanel--regular")
+                          }
+                        >
+                          <div className="Home_Noga_aboutPanelActions">
+                            {isAboutProfileEditing ? (
+                              <button
+                                type="button"
+                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
+                                onClick={handleAboutProfileSave}
+                                disabled={isAboutProfileSubmitting}
+                              >
+                                {isAboutProfileSubmitting ? "save..." : "save"}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
+                                onClick={openProfileEditor}
+                              >
+                                edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="Home_Noga_socialDirectoryTab Home_Noga_aboutButton"
+                              onClick={() => {
+                                setIsAboutProfileEditing(false);
+                                setIsAboutOpen(false);
+                              }}
+                              aria-pressed={isAboutOpen}
+                              disabled={isAboutProfileSubmitting}
+                            >
+                              close
+                            </button>
+                          </div>
+                          {profileColumns.map((column) => (
+                            <section
+                              key={`about-${column.title}`}
+                              className="Home_Noga_profileInfoColumn"
+                            >
+                              <h4 className="Home_Noga_profileInfoColumnTitle">
+                                {column.title}
+                              </h4>
+                              <div className="Home_Noga_profileInfoColumnGrid">
+                                {column.rows.map(renderAboutProfileField)}
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="Home_Noga_activeTab_title">
+                          <div className="Home_Noga_activeTab_titleTitleRow">
+                            <h3>Events</h3>
+                            <span className="Home_Noga_socialFriendsCount">
+                              0
+                            </span>
+                          </div>
+                          <div className="Home_Noga_activeTab_titleActions">
+                            <button
+                              type="button"
+                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                              onClick={() =>
+                                setIsAboutOpen((currentValue) => !currentValue)
+                              }
+                              aria-pressed={isAboutOpen}
+                            >
+                              Profile
+                            </button>
+                          </div>
+                        </div>
+                        <div className="Home_Noga_friendsEventsEmpty">
+                          There are no events to show.
+                        </div>
+                      </>
+                    )}
+                  </div>
+	                </div>
+	              </div>
+	            </div>
+	              <section
+	                id="Home_Noga_rightColumn_wrapper"
+	                className="Home_Noga_socialFriendsPanel"
+	              >
+                {renderHomeDrawingVisibilityCanvas("rightColumn")}
+	                {isReportsWrapperOpen ? null : (
+	                  <>
+	                    {activeFriendCard?.chatId ? (
+	                      <FriendChat
+	                        state={activeFriendChatState}
+	                        content={HOME_CHAT_CONTENT}
+	                        sendToThemMessage={props.sendToThemMessage}
+	                        updateMyTypingPresence={props.updateMyTypingPresence}
+	                        markMessagesRead={props.markMessagesRead}
+	                        requestGlobalCall={props.requestGlobalCall}
+	                        globalCallSession={props.state?.global_call_session}
+	                        closeActiveChat={() => {
+	                          setInlineCallActionsTarget(null);
+	                          setOpenChatFriendId(null);
+	                          props.closeActiveChat?.();
+	                        }}
+	                        inlineCallActionsTarget={inlineCallActionsTarget}
+	                      />
+	                    ) : (
+                      <>
+                        <div className="Home_Noga_friendsPanelHeader">
+                          <div
+                            className="Home_Noga_friendsPanelTitleRow"
+                            style={{
+                              "--home-right-panel-tab-count":
+                                rightPanelTabs.length,
+                              "--home-right-panel-tab-index":
+                                activeRightPanelTabIndex,
+                            }}
+                          >
+                            <span
+                              className="Home_Noga_friendsPanelTitleRowSelector"
+                              aria-hidden="true"
+                            ></span>
+                            {rightPanelTabs.map((tab) => (
+                              <button
+                                key={tab.id}
+                                type="button"
+                                className={`Home_Noga_friendsPanelTitle Home_Noga_friendsPanelTitleButton${activeFriendsPanelTab === tab.id ? " isActive" : ""}`}
+                                onClick={() => {
+                                  setActiveFriendsPanelTab(tab.id);
+                                }}
+                                aria-pressed={activeFriendsPanelTab === tab.id}
+                                title={tab.label}
+                              >
+                                {tab.label}{" "}
+                                <span className="Home_Noga_friendsPanelCount">
+                                  ({tab.count})
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                          {renderFriendSearchPanel()}
+                        </div>
+                        {activeFriendsPanelTab === "friends" ? (
+                          friendSearchQuery.trim() ? (
+                            <ul className="Home_Noga_friendsList Home_Noga_socialDirectoryResults">
+                              {activeFriendsPanelSearchResults.length > 0 ? (
+                                activeFriendsPanelSearchResults.map(
+                                  renderSearchedUserListItem,
+                                )
+                              ) : (
+                                <li className="Home_Noga_socialFriendsEmptyState">
+                                  {activeFriendsPanelSearchEmptyMessage}
+                                </li>
+                              )}
+                            </ul>
                           ) : (
-                            <li className="Home_Noga_socialFriendsEmptyState">
-                              No friends right now.
-                            </li>
-                          )}
-                        </ul>
-                      )}
-                    </>
-                  )}
-                </div>
+                          <ul className="Home_Noga_friendsList">
+                            {chatFriends.length > 0 ? (
+                              chatFriends.map(renderFriendListItem)
+                            ) : (
+                              <li className="Home_Noga_socialFriendsEmptyState">
+                                No friends right now.
+                              </li>
+                            )}
+                          </ul>
+                          )
+                        ) : friendSearchQuery.trim() ? (
+                          <ul
+                            id="Home_Noga_requestsBlocklistPanel"
+                            className="Home_Noga_friendsList Home_Noga_socialDirectoryResults"
+                          >
+                            {activeFriendsPanelSearchResults.length > 0 ? (
+                              activeFriendsPanelSearchResults.map(
+                                renderSearchedUserListItem,
+                              )
+                            ) : (
+                              <li className="Home_Noga_socialFriendsEmptyState">
+                                {activeFriendsPanelSearchEmptyMessage}
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <ul
+                            id="Home_Noga_requestsBlocklistPanel"
+                            className="Home_Noga_friendsList Home_Noga_socialDirectoryResults"
+                          >
+                            {activeFriendsPanelTab === "requests" ? (
+                              requestsPanelEntries.length > 0 ? (
+                                requestsPanelEntries.map(
+                                  renderBlockedUserListItem,
+                                )
+                              ) : (
+                                <li className="Home_Noga_socialFriendsEmptyState">
+                                  No requests to show yet.
+                                </li>
+                              )
+                            ) : blocklistPanelEntries.length > 0 ? (
+                              blocklistPanelEntries.map(
+                                renderBlockedUserListItem,
+                              )
+                            ) : (
+                              <li className="Home_Noga_socialFriendsEmptyState">
+                                No blocked friends or users to show yet.
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
               </section>
-            </div>
             {/* /Home_Noga_preStart_leftPanel */}
-          <div
-            id="Home_Noga_preStart_reportsWrapper"
-            className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reportsWrapper--closed"}`}
+          <section
+            className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reports--closed"}`}
           >
             {renderHomeDrawingVisibilityCanvas("reports")}
             <div className="Home_Noga_settingsBackRow">
@@ -10354,7 +10473,7 @@ function HomeNoga(props) {
                 ) : null}
               </div>
             </div>
-          </div>
+          </section>
         </section>
         <ImageViewerModal
           isOpen={isImageViewerOpen}

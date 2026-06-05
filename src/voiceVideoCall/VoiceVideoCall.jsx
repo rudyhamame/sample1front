@@ -29,6 +29,7 @@ const DEFAULT_CALL_PANEL_LAYOUT = {
   width: 360,
   height: 430,
 };
+const CALL_PANEL_MARGIN = 24;
 const DEFAULT_VIDEO_OVERLAY_LAYOUT = {
   x: 18,
   y: 18,
@@ -94,6 +95,8 @@ function VoiceVideoCall({
   const remoteAudioRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
   const remoteVideoRef = React.useRef(null);
+  const callPanelRef = React.useRef(null);
+  const callPanelDragRef = React.useRef(null);
   const roomRef = React.useRef(null);
   const localStreamRef = React.useRef(null);
   const localPreviewStreamRef = React.useRef(null);
@@ -120,6 +123,20 @@ function VoiceVideoCall({
       ? window.localStorage.getItem(VOICE_CALL_MINIMIZED_STORAGE_KEY) === "true"
       : false,
   );
+  const [callPanelPosition, setCallPanelPosition] = React.useState(() => ({
+    x: DEFAULT_CALL_PANEL_LAYOUT.x,
+    y:
+      typeof window !== "undefined"
+        ? Math.max(
+            window.innerHeight -
+              24 -
+              DEFAULT_CALL_PANEL_LAYOUT.height -
+              DEFAULT_CALL_PANEL_LAYOUT.y,
+            CALL_PANEL_MARGIN,
+          )
+        : DEFAULT_CALL_PANEL_LAYOUT.y,
+  }));
+  const [isCallPanelFullscreen, setIsCallPanelFullscreen] = React.useState(false);
 
   const friends = appState?.friends;
   const currentUserId = String(appState?.my_id || "").trim();
@@ -194,6 +211,44 @@ function VoiceVideoCall({
   const restoreVoiceCallWindow = React.useCallback(() => {
     updateFooterMinimizedState(false);
   }, [updateFooterMinimizedState]);
+
+  const handleCallPanelDragStart = React.useCallback(
+    (event) => {
+      if (
+        isCallPanelFullscreen ||
+        event.target.closest(".Chat_callPanelActionButton")
+      ) {
+        return;
+      }
+
+      callPanelDragRef.current = {
+        pointerStartX: event.clientX,
+        pointerStartY: event.clientY,
+        originX: callPanelPosition.x,
+        originY: callPanelPosition.y,
+      };
+    },
+    [callPanelPosition.x, callPanelPosition.y, isCallPanelFullscreen],
+  );
+
+  const handleToggleCallPanelFullscreen = React.useCallback(async () => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const panelElement = callPanelRef.current;
+
+    try {
+      if (document.fullscreenElement === panelElement) {
+        await document.exitFullscreen?.();
+        return;
+      }
+
+      await panelElement?.requestFullscreen?.();
+    } catch {
+      setIsCallPanelFullscreen((currentValue) => !currentValue);
+    }
+  }, []);
 
   const syncMediaElements = React.useCallback(() => {
     const activeLocalStream = localStreamRef.current || localPreviewStreamRef.current;
@@ -302,18 +357,32 @@ function VoiceVideoCall({
     [appState?.token],
   );
 
-  const prepareLocalMedia = React.useCallback(async (nextCallMode) => {
-    if (localPreviewStreamRef.current) {
-      return localPreviewStreamRef.current;
-    }
+  const prepareLocalMedia = React.useCallback(
+    async (nextCallMode) => {
+      if (localPreviewStreamRef.current) {
+        const previewStream = localPreviewStreamRef.current;
+        previewStream.getAudioTracks().forEach((track) => {
+          track.enabled = !isAudioMuted;
+        });
+        previewStream.getVideoTracks().forEach((track) => {
+          track.enabled = nextCallMode === "video" && !isVideoMuted;
+        });
+        return previewStream;
+      }
 
-    const previewStream = await requestCallMedia(nextCallMode);
-    localPreviewStreamRef.current = previewStream;
-    setLocalStreamVersion((value) => value + 1);
-    setIsAudioMuted(false);
-    setIsVideoMuted(nextCallMode !== "video");
-    return previewStream;
-  }, []);
+      const previewStream = await requestCallMedia(nextCallMode);
+      previewStream.getAudioTracks().forEach((track) => {
+        track.enabled = !isAudioMuted;
+      });
+      previewStream.getVideoTracks().forEach((track) => {
+        track.enabled = nextCallMode === "video" && !isVideoMuted;
+      });
+      localPreviewStreamRef.current = previewStream;
+      setLocalStreamVersion((value) => value + 1);
+      return previewStream;
+    },
+    [isAudioMuted, isVideoMuted],
+  );
 
   const joinRoom = React.useCallback(
     async ({ roomName, partnerUserId, nextCallMode }) => {
@@ -399,9 +468,9 @@ function VoiceVideoCall({
         autoSubscribe: true,
       });
 
-      await room.localParticipant.setMicrophoneEnabled(true);
+      await room.localParticipant.setMicrophoneEnabled(!isAudioMuted);
       if (nextCallMode === "video") {
-        await room.localParticipant.setCameraEnabled(true);
+        await room.localParticipant.setCameraEnabled(!isVideoMuted);
       }
 
       syncParticipantTracks(room.localParticipant, localStreamRef);
@@ -426,7 +495,7 @@ function VoiceVideoCall({
         callMode: nextCallMode,
       });
     },
-    [fetchLiveKitConnection, teardownCall],
+    [fetchLiveKitConnection, isAudioMuted, isVideoMuted, teardownCall],
   );
 
   const handleStartCall = React.useCallback(
@@ -601,32 +670,115 @@ function VoiceVideoCall({
   );
 
   const handleToggleMute = React.useCallback(async () => {
-    const room = roomRef.current;
-
-    if (!room) {
-      return;
-    }
-
     const nextMuted = !isAudioMuted;
-    await room.localParticipant.setMicrophoneEnabled(!nextMuted);
+    localPreviewStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    localStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    const room = roomRef.current;
+    if (room) {
+      await room.localParticipant.setMicrophoneEnabled(!nextMuted);
+    }
     setIsAudioMuted(nextMuted);
   }, [isAudioMuted]);
 
   const handleToggleCamera = React.useCallback(async () => {
-    const room = roomRef.current;
-
-    if (!room || callMode !== "video") {
+    if (callMode !== "video") {
       return;
     }
 
     const nextMuted = !isVideoMuted;
-    await room.localParticipant.setCameraEnabled(!nextMuted);
+    localPreviewStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    const room = roomRef.current;
+    if (room) {
+      await room.localParticipant.setCameraEnabled(!nextMuted);
+    }
     setIsVideoMuted(nextMuted);
   }, [callMode, isVideoMuted]);
 
   React.useEffect(() => {
     syncMediaElements();
   }, [localStreamVersion, remoteStreamVersion, syncMediaElements]);
+
+  React.useEffect(() => {
+    if (
+      callState === "connected" ||
+      callState === "calling" ||
+      callState === "connecting"
+    ) {
+      syncMediaElements();
+    }
+  }, [callMode, callState, syncMediaElements]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handlePointerMove = (event) => {
+      const dragState = callPanelDragRef.current;
+
+      if (!dragState || !callPanelRef.current) {
+        return;
+      }
+
+      const panelRect = callPanelRef.current.getBoundingClientRect();
+      const footerHeight = 24;
+      const maxX = Math.max(
+        window.innerWidth - panelRect.width - CALL_PANEL_MARGIN,
+        CALL_PANEL_MARGIN,
+      );
+      const maxY = Math.max(
+        window.innerHeight - footerHeight - panelRect.height - CALL_PANEL_MARGIN,
+        CALL_PANEL_MARGIN,
+      );
+
+      const nextX = Math.min(
+        Math.max(
+          dragState.originX + (event.clientX - dragState.pointerStartX),
+          CALL_PANEL_MARGIN,
+        ),
+        maxX,
+      );
+      const nextY = Math.min(
+        Math.max(
+          dragState.originY + (event.clientY - dragState.pointerStartY),
+          CALL_PANEL_MARGIN,
+        ),
+        maxY,
+      );
+
+      setCallPanelPosition({
+        x: nextX,
+        y: nextY,
+      });
+    };
+
+    const handlePointerUp = () => {
+      callPanelDragRef.current = null;
+    };
+
+    const handleFullscreenChange = () => {
+      setIsCallPanelFullscreen(document.fullscreenElement === callPanelRef.current);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   React.useEffect(() => {
     return () => {
@@ -972,14 +1124,10 @@ function VoiceVideoCall({
 
   const portalTarget =
     typeof document !== "undefined"
-      ? (isFooterCallMinimized
-          ? document.getElementById("Home_voiceCallDock")
-          : null) ||
-        document.getElementById("Home_Noga_callDock") ||
+      ? document.getElementById("Home_Noga_callDock") ||
         document.getElementById("Home_callDock") ||
         document.getElementById("app_page")
       : null;
-  const isFooterDocked = portalTarget?.id === "Home_voiceCallDock";
   const isFooterNotificationDock =
     portalTarget?.id === "Home_voiceCallNotificationDock";
   const isDockedInLeftColumn =
@@ -993,10 +1141,8 @@ function VoiceVideoCall({
   const callPanelStyle = isDockedInLeftColumn
     ? undefined
     : {
-        left: `${DEFAULT_CALL_PANEL_LAYOUT.x}px`,
-        top: `${DEFAULT_CALL_PANEL_LAYOUT.y}px`,
-        width: `${DEFAULT_CALL_PANEL_LAYOUT.width}px`,
-        height: `${DEFAULT_CALL_PANEL_LAYOUT.height}px`,
+        left: `${callPanelPosition.x}px`,
+        top: `${callPanelPosition.y}px`,
       };
 
   const showCallControls =
@@ -1015,6 +1161,9 @@ function VoiceVideoCall({
     footerControlsPortalTarget && (incomingCall || callMode || callError),
   );
   const shouldRenderFooterMiniPanel = false;
+  const hasLocalMediaControls = Boolean(
+    localStreamRef.current || localPreviewStreamRef.current,
+  );
   const footerCallBar = shouldRenderFooterCallBar ? (
     <section
       id="Chat_footerCallBar"
@@ -1033,6 +1182,30 @@ function VoiceVideoCall({
               is calling.
             </span>
           </span>
+          <button
+            type="button"
+            className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
+            onClick={handleToggleMute}
+            title={isAudioMuted ? "Enable microphone before answering" : "Disable microphone before answering"}
+            aria-label={isAudioMuted ? "Enable microphone before answering" : "Disable microphone before answering"}
+          >
+            <i
+              className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+            ></i>
+          </button>
+          {incomingCall.callType === "video" ? (
+            <button
+              type="button"
+              className={`Chat_callControlButton${isVideoMuted ? " is-muted" : ""}`}
+              onClick={handleToggleCamera}
+              title={isVideoMuted ? "Enable camera before answering" : "Disable camera before answering"}
+              aria-label={isVideoMuted ? "Enable camera before answering" : "Disable camera before answering"}
+            >
+              <i
+                className={`fas ${isVideoMuted ? "fa-video-slash" : "fa-video"}`}
+              ></i>
+            </button>
+          ) : null}
           <button
             type="button"
             className="Chat_callControlButton Chat_callControlButton--accept"
@@ -1062,16 +1235,39 @@ function VoiceVideoCall({
           </span>
           <button
             type="button"
+            className="Chat_callControlButton"
+            onClick={restoreVoiceCallWindow}
+            title="Restore call window"
+            aria-label="Restore call window"
+          >
+            <i className="fas fa-window-restore"></i>
+          </button>
+          <button
+            type="button"
             className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
             onClick={handleToggleMute}
             title={isAudioMuted ? "Enable microphone" : "Disable microphone"}
             aria-label={isAudioMuted ? "Enable microphone" : "Disable microphone"}
-            disabled={!localStreamRef.current}
+            disabled={!hasLocalMediaControls}
           >
             <i
               className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
             ></i>
           </button>
+          {callMode === "video" ? (
+            <button
+              type="button"
+              className={`Chat_callControlButton${isVideoMuted ? " is-muted" : ""}`}
+              onClick={handleToggleCamera}
+              title={isVideoMuted ? "Enable camera" : "Disable camera"}
+              aria-label={isVideoMuted ? "Enable camera" : "Disable camera"}
+              disabled={!hasLocalMediaControls}
+            >
+              <i
+                className={`fas ${isVideoMuted ? "fa-video-slash" : "fa-video"}`}
+              ></i>
+            </button>
+          ) : null}
           <button
             type="button"
             className="Chat_callControlButton Chat_callControlButton--end"
@@ -1185,15 +1381,48 @@ function VoiceVideoCall({
             </button>
           </div>
         </section>
-      ) : shouldRenderCallPanel ? (
+      ) : shouldRenderCallPanel && !isFooterCallMinimized ? (
         <section
           id="Chat_callPanel"
-          className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}${isDockedInLeftColumn ? " Chat_callPanel--docked" : ""}`}
+          ref={callPanelRef}
+          className={`fc Chat_callPanel${callState === "connected" ? " is-connected" : ""}${isDockedInLeftColumn ? " Chat_callPanel--docked" : ""}${isCallPanelFullscreen ? " Chat_callPanel--fullscreenFallback" : ""}`}
           style={callPanelStyle}
         >
-          <div className="Chat_callStatusRow fr Chat_callPanelHeader">
-            <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
-            <span>{callPanelStatusLabel}</span>
+          <div
+            className="Chat_callStatusRow fr Chat_callPanelHeader"
+            onPointerDown={handleCallPanelDragStart}
+          >
+            <div className="Chat_callPanelHeaderMeta">
+              <span className="Chat_callPanelDragBadge" aria-hidden="true">
+                <i className="fas fa-grip-lines"></i>
+              </span>
+              <div className="Chat_callPanelHeaderCopy">
+                <strong>{callMode === "video" ? "Video call" : "Voice call"}</strong>
+                <span>{callPanelStatusLabel}</span>
+              </div>
+            </div>
+            <div className="Chat_callPanelActions">
+              <button
+                type="button"
+                className="Chat_callPanelActionButton"
+                onClick={minimizeVoiceCallWindow}
+                title="Minimize to footer"
+                aria-label="Minimize to footer"
+              >
+                <i className="fas fa-window-minimize"></i>
+              </button>
+              <button
+                type="button"
+                className="Chat_callPanelActionButton"
+                onClick={handleToggleCallPanelFullscreen}
+                title={isCallPanelFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                aria-label={isCallPanelFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                <i
+                  className={`fas ${isCallPanelFullscreen ? "fa-compress" : "fa-expand"}`}
+                ></i>
+              </button>
+            </div>
           </div>
           <div
             className={`Chat_mediaStage${callMode === "video" ? " Chat_mediaStage--floating" : " fr"}`}

@@ -4,6 +4,12 @@ import { apiUrl } from "../../config/api";
 import "./subapps.css";
 
 const START_WINDOWS = {
+  graphics: {
+    title: "Graphics",
+    icon: "fas fa-vector-square",
+    width: 320,
+    height: 240,
+  },
   appHealth: {
     title: "App health",
     icon: "fas fa-heartbeat",
@@ -20,6 +26,28 @@ const START_WINDOWS = {
 
 const START_MENU_LAYOUT_STORAGE_KEY = "SubApps.startMenuLayout";
 const START_MENU_LISTS = ["main", "settings"];
+const GRAPHICS_TARGET_OPTIONS = [
+  {
+    value: "app_page",
+    label: "App shell",
+  },
+  {
+    value: "Home_Noga_article",
+    label: "Home_noga",
+  },
+  {
+    value: "nogaPlanner_article",
+    label: "NogaPlanner",
+  },
+  {
+    value: "telegramControlPage",
+    label: "Telegram",
+  },
+  {
+    value: "Home_studysessions_article",
+    label: "Home",
+  },
+];
 
 const readStoredStartMenuLayout = () => {
   if (typeof window === "undefined") {
@@ -38,13 +66,17 @@ const readStoredStartMenuLayout = () => {
 const normalizeStartMenuLayout = (
   layout,
   appItemIds,
+  defaultMainWindowItemIds = [],
   defaultSettingsItemIds = [],
 ) => {
+  const safeDefaultMainWindowItems = Array.isArray(defaultMainWindowItemIds)
+    ? defaultMainWindowItemIds.filter((itemId) => typeof itemId === "string")
+    : [];
   const safeDefaultSettingsItems = Array.isArray(defaultSettingsItemIds)
     ? defaultSettingsItemIds.filter((itemId) => typeof itemId === "string")
     : [];
   const fallbackLayout = {
-    main: appItemIds,
+    main: [...appItemIds, ...safeDefaultMainWindowItems],
     settings: ["appHealth", "aiControl", ...safeDefaultSettingsItems],
   };
   const nextLayout = START_MENU_LISTS.reduce((lists, listId) => {
@@ -55,7 +87,12 @@ const normalizeStartMenuLayout = (
     };
   }, {});
 
-  const availableIds = new Set([...appItemIds, "appHealth", "aiControl"]);
+  const availableIds = new Set([
+    ...appItemIds,
+    ...safeDefaultMainWindowItems,
+    "appHealth",
+    "aiControl",
+  ]);
   const usedIds = new Set();
 
   START_MENU_LISTS.forEach((listId) => {
@@ -111,10 +148,22 @@ const SubApps = (props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [startWindows, setStartWindows] = useState({});
+  const [graphicsDraftTarget, setGraphicsDraftTarget] = useState(() =>
+    String(props.graphicsControl?.defaultTarget || GRAPHICS_TARGET_OPTIONS[0].value),
+  );
+  const [graphicsDraftScale, setGraphicsDraftScale] = useState(() => {
+    const defaultTarget = String(
+      props.graphicsControl?.defaultTarget || GRAPHICS_TARGET_OPTIONS[0].value,
+    );
+    const rawScale =
+      props.graphicsControl?.scaleSettingsByElement?.[defaultTarget];
+    return Number(rawScale) || 1;
+  });
   const [startMenuLayout, setStartMenuLayout] = useState(() =>
     normalizeStartMenuLayout(
       readStoredStartMenuLayout(),
       [],
+      ["graphics"],
       Array.isArray(props.startSettingsItemIds)
         ? props.startSettingsItemIds
         : [],
@@ -264,7 +313,15 @@ const SubApps = (props) => {
     ? props.startSettingsItemIds
     : [];
   const startSettingsLayoutKey = startSettingsItemIds.join("|");
-  const startMenuItems = apps.reduce(
+  const startMenuItems = {
+    graphics: {
+      type: "window",
+      icon: START_WINDOWS.graphics.icon,
+      label: START_WINDOWS.graphics.title,
+      windowId: "graphics",
+    },
+  };
+  const appAndActionMenuItems = apps.reduce(
     (items, app) => ({
       ...items,
       [`app:${app.id}`]: {
@@ -300,11 +357,23 @@ const SubApps = (props) => {
       },
     ),
   );
+  const mergedStartMenuItems = {
+    ...startMenuItems,
+    ...appAndActionMenuItems,
+  };
   const healthRows = Array.isArray(props.appHealth?.rows)
     ? props.appHealth.rows
     : [];
   const healthWindow = startWindows.appHealth || {};
   const aiWindow = startWindows.aiControl || {};
+  const graphicsWindow = startWindows.graphics || {};
+  const graphicsScale = Number(graphicsDraftScale) || 1;
+  const graphicsScaleEntries = Array.isArray(props.graphicsControl?.scaleEntries)
+    ? props.graphicsControl.scaleEntries.filter((entry) => {
+        const element = String(entry?.element || "").trim();
+        return Boolean(element);
+      })
+    : [];
   const aiStatuses =
     props.aiControl && typeof props.aiControl === "object"
       ? props.aiControl.statuses || {}
@@ -358,12 +427,36 @@ const SubApps = (props) => {
 
   useEffect(() => {
     setStartMenuLayout((currentLayout) =>
-      normalizeStartMenuLayout(currentLayout, [
-        ...appItemIds,
-        ...actionItemIds,
-      ], startSettingsItemIds),
+      normalizeStartMenuLayout(
+        currentLayout,
+        [...appItemIds, ...actionItemIds],
+        ["graphics"],
+        startSettingsItemIds,
+      ),
     );
   }, [actionLayoutKey, appLayoutKey, startSettingsLayoutKey]);
+
+  useEffect(() => {
+    const nextTarget = String(
+      props.graphicsControl?.defaultTarget ||
+        GRAPHICS_TARGET_OPTIONS[0].value,
+    );
+    setGraphicsDraftTarget(nextTarget);
+    const nextScale =
+      Number(props.graphicsControl?.scaleSettingsByElement?.[nextTarget]) || 1;
+    setGraphicsDraftScale(nextScale);
+  }, [
+    props.graphicsControl?.defaultTarget,
+    props.graphicsControl?.scaleSettingsKey,
+  ]);
+
+  useEffect(() => {
+    const nextScale =
+      Number(
+        props.graphicsControl?.scaleSettingsByElement?.[graphicsDraftTarget],
+      ) || 1;
+    setGraphicsDraftScale(nextScale);
+  }, [graphicsDraftTarget, props.graphicsControl?.scaleSettingsKey]);
 
   useEffect(() => {
     let shouldIgnore = false;
@@ -388,7 +481,7 @@ const SubApps = (props) => {
         const serverLayout = normalizeStartMenuLayout(data.startMenuLayout, [
           ...appItemIds,
           ...actionItemIds,
-        ], startSettingsItemIds);
+        ], ["graphics"], startSettingsItemIds);
         lastSavedStartMenuLayoutRef.current = JSON.stringify(serverLayout);
         setStartMenuLayout(serverLayout);
       })
@@ -505,10 +598,11 @@ const SubApps = (props) => {
         droppedItem.itemId,
       ];
 
-      const normalizedLayout = normalizeStartMenuLayout(nextLayout, [
-        ...appItemIds,
-        ...actionItemIds,
-      ]);
+      const normalizedLayout = normalizeStartMenuLayout(
+        nextLayout,
+        [...appItemIds, ...actionItemIds],
+        ["graphics"],
+      );
       saveStartMenuLayoutToBackend(normalizedLayout);
       return normalizedLayout;
     });
@@ -516,7 +610,7 @@ const SubApps = (props) => {
   }
 
   function renderStartMenuItem(itemId, listId) {
-    const item = startMenuItems[itemId];
+    const item = mergedStartMenuItems[itemId];
     if (!item) {
       return null;
     }
@@ -715,6 +809,157 @@ const SubApps = (props) => {
             Health information is not available yet.
           </p>
         )}
+      </section>
+      <section
+        className={`SubApps_startPanel SubApps_healthPanel SubApps_graphicsPanel fc${graphicsWindow.isOpen ? " is-open" : ""}`}
+        aria-label="Graphics control"
+        style={
+          graphicsWindow.position
+            ? {
+                left: `${graphicsWindow.position.x}px`,
+                top: `${graphicsWindow.position.y}px`,
+              }
+            : undefined
+        }
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div
+          className="SubApps_healthMiniBar fr"
+          onPointerDown={(event) => startWindowDrag(event, "graphics")}
+        >
+          <h4>Graphics</h4>
+          <div className="SubApps_healthWindowActions fr">
+            <button
+              type="button"
+              className="SubApps_healthWindowButton"
+              onClick={(event) => minimizeStartWindow(event, "graphics")}
+              aria-label="Minimize graphics"
+              title="Minimize"
+            >
+              <i className="fas fa-minus"></i>
+            </button>
+            <button
+              type="button"
+              className="SubApps_healthWindowButton"
+              onClick={(event) => closeStartWindow(event, "graphics")}
+              aria-label="Close graphics"
+              title="Close"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <div className="SubApps_graphicsBody fc">
+          <p className="SubApps_graphicsDescription">
+            Choose a target, then stage and apply its scale.
+          </p>
+          <label className="SubApps_graphicsTargetField fc">
+            <span className="SubApps_graphicsTargetLabel">Target</span>
+            <select
+              className="SubApps_graphicsTargetSelect"
+              value={graphicsDraftTarget}
+              onChange={(event) => {
+                const nextTarget = String(event.target.value || "").trim();
+                setGraphicsDraftTarget(nextTarget);
+              }}
+            >
+              {GRAPHICS_TARGET_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="SubApps_graphicsScaleControls fr">
+            <button
+              type="button"
+              className="SubApps_graphicsScaleButton"
+              onClick={(event) => {
+                event.stopPropagation();
+                setGraphicsDraftScale((currentScale) =>
+                  Number(currentScale) - 0.05,
+                );
+              }}
+              aria-label="Decrease app scale"
+              title="Scale down"
+            >
+              <i className="fas fa-minus"></i>
+            </button>
+            <span className="SubApps_graphicsScaleValue">
+              {Math.round(graphicsScale * 100)}%
+            </span>
+            <button
+              type="button"
+              className="SubApps_graphicsScaleButton"
+              onClick={(event) => {
+                event.stopPropagation();
+                setGraphicsDraftScale((currentScale) =>
+                  Number(currentScale) + 0.05,
+                );
+              }}
+              aria-label="Increase app scale"
+              title="Scale up"
+            >
+              <i className="fas fa-plus"></i>
+            </button>
+            <button
+              type="button"
+              className="SubApps_graphicsApplyButton"
+              onClick={(event) => {
+                event.stopPropagation();
+                props.graphicsControl?.onApply?.(
+                  graphicsDraftTarget,
+                  graphicsScale,
+                );
+              }}
+              aria-label="Apply app scale"
+              title="Apply"
+              disabled={
+                Math.abs(
+                  graphicsScale -
+                    (Number(
+                      props.graphicsControl?.scaleSettingsByElement?.[
+                        graphicsDraftTarget
+                      ],
+                    ) || 1),
+                ) < 0.001
+              }
+            >
+              Apply
+            </button>
+          </div>
+          <div className="SubApps_graphicsScaleListWrap fc">
+            <span className="SubApps_graphicsScaleListTitle">
+              Saved scale entries
+            </span>
+            {graphicsScaleEntries.length ? (
+              <ul className="SubApps_graphicsScaleList fc">
+                {graphicsScaleEntries.map((entry) => {
+                  const element = String(entry?.element || "").trim();
+                  const scaleValue = Number(entry?.scaleNum) || 1;
+
+                  return (
+                    <li
+                      key={`${element}:${scaleValue}`}
+                      className="SubApps_graphicsScaleListItem fr"
+                    >
+                      <span className="SubApps_graphicsScaleListElement">
+                        {element}
+                      </span>
+                      <span className="SubApps_graphicsScaleListValue">
+                        {Math.round(scaleValue * 100)}%
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="SubApps_graphicsScaleEmpty">
+                No saved scale entries yet.
+              </p>
+            )}
+          </div>
+        </div>
       </section>
       <section
         className={`SubApps_startPanel SubApps_healthPanel SubApps_aiPanel fc${aiWindow.isOpen ? " is-open" : ""}`}

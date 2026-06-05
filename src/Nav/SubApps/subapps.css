@@ -355,6 +355,11 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   display: flex;
 }
 
+.SubApps_graphicsPanel {
+  width: min(300px, 72vw);
+  max-height: min(360px, 70vh);
+}
+
 .SubApps_healthMiniBar {
   width: 100%;
   flex-direction: row;
@@ -496,6 +501,172 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 .SubApps_healthEmpty {
   margin: 0;
   color: rgba(21, 57, 64, 0.62);
+}
+
+.SubApps_graphicsBody {
+  gap: 14px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.SubApps_graphicsScaleListWrap {
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+.SubApps_graphicsScaleListTitle {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(21, 57, 64, 0.72);
+}
+
+.SubApps_graphicsScaleList {
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.SubApps_graphicsScaleListItem {
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(118, 151, 160, 0.12);
+  background: rgba(246, 250, 250, 0.78);
+}
+
+.SubApps_graphicsScaleListElement,
+.SubApps_graphicsScaleListValue,
+.SubApps_graphicsScaleEmpty {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
+.SubApps_graphicsScaleListElement {
+  color: rgba(21, 57, 64, 0.78);
+  word-break: break-word;
+}
+
+.SubApps_graphicsScaleListValue {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: rgba(21, 57, 64, 0.96);
+}
+
+.SubApps_graphicsScaleEmpty {
+  margin: 0;
+  color: rgba(21, 57, 64, 0.62);
+}
+
+.SubApps_graphicsTargetField {
+  gap: 6px;
+}
+
+.SubApps_graphicsTargetLabel {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(21, 57, 64, 0.72);
+}
+
+.SubApps_graphicsTargetSelect {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(118, 151, 160, 0.16);
+  background: rgba(246, 250, 250, 0.94);
+  color: rgba(21, 57, 64, 0.92);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+}
+
+.SubApps_graphicsDescription {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  line-height: 1.45;
+  color: rgba(21, 57, 64, 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.SubApps_graphicsScaleControls {
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.SubApps_graphicsScaleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(118, 151, 160, 0.16);
+  border-radius: 0;
+  background: rgba(246, 250, 250, 0.96);
+  color: rgba(21, 57, 64, 0.88);
+  cursor: pointer;
+}
+
+.SubApps_graphicsScaleButton:hover:not(:disabled) {
+  background: rgba(236, 246, 247, 0.99);
+  color: #0b6a64;
+}
+
+.SubApps_graphicsScaleButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.SubApps_graphicsScaleValue {
+  flex: 1 1 auto;
+  text-align: center;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(21, 57, 64, 0.94);
+  letter-spacing: 0.08em;
+}
+
+.SubApps_graphicsApplyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(118, 151, 160, 0.16);
+  border-radius: 0;
+  background: rgba(24, 119, 242, 0.94);
+  color: #fff;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.SubApps_graphicsApplyButton:hover:not(:disabled) {
+  background: rgba(11, 106, 100, 0.96);
+}
+
+.SubApps_graphicsApplyButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 #SubApps_empty_state {

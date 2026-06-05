@@ -9,9 +9,6 @@
   width: 100% !important;
   min-height: var(--server-answer-height);
   max-height: none;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -8px 18px rgba(6, 29, 31, 0.18);
   pointer-events: auto;
   overflow: visible;
   padding: 0 14px;
@@ -483,62 +480,66 @@ body.dark #server_answer_musicTrack {
 }
 
 #server_answer.server_answer--home-noga {
-  --subapps-surface-start: var(--main-article-color1, rgba(234, 147, 128, 0.95));
-  --subapps-surface-end: var(--main-article-color2, rgba(237, 159, 146, 0.92));
-  --subapps-border: rgba(173, 92, 77, 0.34);
-  --subapps-row-text: rgba(63, 30, 33, 0.94);
-  --subapps-row-hover-bg: rgba(255, 233, 225, 0.98);
-  --subapps-row-hover-text: rgba(118, 42, 31, 0.96);
-  --subapps-icon-bg: rgba(196, 82, 66, 0.96);
-  --subapps-icon-fg: rgba(255, 241, 234, 0.98);
+  --subapps-surface-start: rgba(255, 241, 238, 0.99);
+  --subapps-surface-end: rgba(243, 219, 218, 0.98);
+  --subapps-border: rgba(171, 92, 86, 0.28);
+  --subapps-row-text: rgba(86, 36, 41, 0.94);
+  --subapps-row-hover-bg: rgba(255, 247, 246, 0.98);
+  --subapps-row-hover-text: rgba(132, 54, 58, 0.98);
+  --subapps-icon-bg: rgba(214, 111, 106, 0.96);
+  --subapps-icon-fg: rgba(255, 246, 244, 0.98);
   background: linear-gradient(
     180deg,
-    var(--main-article-color1, rgba(234, 147, 128, 0.95)),
-    var(--main-article-color2, rgba(237, 159, 146, 0.92))
+    rgba(233, 191, 181, 0.99),
+    rgba(245, 177, 175, 0.98)
   );
-  border-top-color: rgba(173, 92, 77, 0.34);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -10px 24px rgba(120, 56, 45, 0.16);
+  border-top-color: rgba(173, 92, 86, 0.4);
+  color: rgba(86, 36, 41, 0.88);
 }
 
 body.dark #server_answer.server_answer--home-noga {
-  --subapps-surface-start: rgba(12, 40, 47, 0.96);
-  --subapps-surface-end: rgba(9, 30, 36, 0.94);
-  --subapps-border: rgba(96, 154, 166, 0.34);
-  --subapps-row-text: rgba(226, 242, 244, 0.9);
-  --subapps-row-hover-bg: rgba(24, 62, 71, 0.96);
-  --subapps-row-hover-text: rgba(194, 238, 244, 0.98);
-  --subapps-icon-bg: rgba(29, 106, 117, 0.94);
-  --subapps-icon-fg: rgba(233, 248, 250, 0.98);
+  --subapps-surface-start: rgba(44, 19, 24, 0.96);
+  --subapps-surface-end: rgba(26, 10, 14, 0.95);
+  --subapps-border: rgba(204, 129, 128, 0.34);
+  --subapps-row-text: rgba(252, 234, 236, 0.92);
+  --subapps-row-hover-bg: rgba(81, 29, 34, 0.96);
+  --subapps-row-hover-text: rgba(255, 239, 240, 0.98);
+  --subapps-icon-bg: rgba(209, 91, 95, 0.94);
+  --subapps-icon-fg: rgba(255, 246, 247, 0.98);
   background: linear-gradient(
     180deg,
-    rgba(12, 40, 47, 0.96),
-    rgba(9, 30, 36, 0.94)
+    rgba(33, 11, 16, 0.985),
+    rgba(19, 7, 11, 0.965)
   );
-  border-top-color: rgba(96, 154, 166, 0.34);
+  border-top-color: rgba(219, 128, 128, 0.42);
   box-shadow:
-    inset 0 1px 0 rgba(183, 227, 234, 0.16),
+    0 -16px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 214, 217, 0.16),
     inset 0 -10px 24px rgba(0, 0, 0, 0.34);
+  color: rgba(255, 237, 239, 0.9);
 }
 
 
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_message {
-  color: rgba(63, 30, 33, 0.94);
+  color: rgba(86, 36, 41, 0.94);
 }
 
 body:not(.dark)
   #server_answer.server_answer--home-noga
   #server_answer_message.server_answer_message--idle {
-  color: rgba(95, 52, 56, 0.76);
+  color: rgba(132, 54, 58, 0.76);
 }
 
-body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicLabel {
-  color: rgba(95, 52, 56, 0.78);
-}
-
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicPlayer,
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicLabel,
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicTrack {
-  color: rgba(63, 30, 33, 0.94);
+  color: rgba(86, 36, 41, 0.94);
+}
+
+body.dark #server_answer.server_answer--home-noga #server_answer_musicPlayer,
+body.dark #server_answer.server_answer--home-noga #server_answer_musicLabel,
+body.dark #server_answer.server_answer--home-noga #server_answer_musicTrack {
+  color: rgba(255, 237, 239, 0.9);
 }
 
 #server_answer.server_answer--home .server_answer_locale_button {

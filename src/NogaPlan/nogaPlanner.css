@@ -2468,7 +2468,7 @@
   background: #dd2d4a;
 }
 
-.nogaPlanner_homeIntervalsYearIndexCell {
+.nogaPlanner_homeIntervalsMiniTable thead .nogaPlanner_homeIntervalsYearIndexCell {
   text-align: center;
   vertical-align: middle;
   display: table-cell;
@@ -4791,8 +4791,12 @@
   background: rgba(255, 255, 255, 0.18);
   cursor: grab;
   user-select: none;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y pinch-zoom;
   scroll-snap-type: x mandatory;
+}
+
+#nogaPlanner_article {
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 #nogaPlanner_courses_actions {

@@ -9,7 +9,12 @@ import {
 } from "../../music/globalMusicPlayer";
 import "./Footer.css";
 
-const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
+const Footer = ({
+  appState,
+  onLogout,
+  onSetSelectedAiProvider,
+  onApplyGraphicsScale,
+}) => {
   const VOICE_CALL_MINIMIZED_STORAGE_KEY =
     "phenomed.voiceCall.windowMinimized";
   const [isDarkMode, setIsDarkMode] = React.useState(() =>
@@ -33,6 +38,9 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
   const currentPath =
     typeof window !== "undefined" ? window.location.pathname : "";
   const isHomeNogaFooterRoute =
+    currentPath === "/phenomed/home" ||
+    currentPath === "/phenomed/home/" ||
+    currentPath.startsWith("/phenomed/home/") ||
     currentPath === "/phenomed/home/noga" ||
     currentPath === "/phenomed/home/noga/" ||
     currentPath.startsWith("/phenomed/home/noga/");
@@ -116,6 +124,29 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
     selectedProvider: selectedAiProvider,
     statuses: appState.ai_connection_statuses || {},
     onSelectProvider: onSetSelectedAiProvider,
+  };
+  const graphicsScaleEntries = Array.isArray(appState.settings?.ui?.scale)
+    ? appState.settings.ui.scale
+    : [];
+  const graphicsScaleByElement = graphicsScaleEntries.reduce(
+    (accumulator, entry) => {
+        const element = String(entry?.element || "").trim();
+        if (!element) {
+          return accumulator;
+        }
+
+        accumulator[element] = Number(entry?.scaleNum) || 1;
+        return accumulator;
+      },
+      {},
+    );
+  const graphicsScaleSettingsKey = JSON.stringify(graphicsScaleByElement);
+  const graphicsControl = {
+    scaleSettingsByElement: graphicsScaleByElement,
+    scaleEntries: graphicsScaleEntries,
+    scaleSettingsKey: graphicsScaleSettingsKey,
+    onApply: onApplyGraphicsScale,
+    defaultTarget: "Home_Noga_article",
   };
 
 
@@ -275,7 +306,7 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
       .getElementById("Home_studysessions_article")
       ?.classList.toggle("Home_themeDark", nextIsDark);
     document
-      .getElementById("Home_Noga_studysessions_article")
+      .getElementById("Home_Noga_article")
       ?.classList.toggle("Home_Noga_themeDark", nextIsDark);
     setIsDarkMode(nextIsDark);
   };
@@ -345,6 +376,7 @@ const Footer = ({ appState, onLogout, onSetSelectedAiProvider }) => {
           authToken={appState.token}
           appHealth={{ rows: appHealthRows }}
           aiControl={aiControl}
+          graphicsControl={graphicsControl}
         />
         {isHomeNogaVideoMinimized ? (
           <div className="SubApps_minimizedWindows fr">

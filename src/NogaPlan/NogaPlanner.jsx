@@ -189,6 +189,8 @@ export default class NogaPlanner extends Component {
   plannerPendingInputHistory = {};
   plannerPredictionToolSyncTimeout = null;
   plannerPredictionToolActivityFieldId = "__activity__";
+  plannerViewportMetaElement = null;
+  plannerViewportMetaOriginalContent = "";
   beginPlannerPending = (label = "Working...") => {
     this.setState((previousState) => ({
       plannerPendingRequests:
@@ -7873,9 +7875,39 @@ export default class NogaPlanner extends Component {
 
     this.props.onPresenceModeChange(mode);
   };
+  enablePlannerBrowserZoom = () => {
+    if (this.plannerViewportMetaElement) {
+      return;
+    }
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      return;
+    }
+    this.plannerViewportMetaElement = viewportMeta;
+    this.plannerViewportMetaOriginalContent =
+      viewportMeta.getAttribute("content") || "";
+    viewportMeta.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes",
+    );
+  };
+  disablePlannerBrowserZoom = () => {
+    const viewportMeta = this.plannerViewportMetaElement;
+    if (!viewportMeta) {
+      return;
+    }
+    viewportMeta.setAttribute(
+      "content",
+      this.plannerViewportMetaOriginalContent ||
+        "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+    );
+    this.plannerViewportMetaElement = null;
+    this.plannerViewportMetaOriginalContent = "";
+  };
   componentDidMount() {
     this.isComponentMounted = true;
     this.notifyPresenceMode("studying");
+    this.enablePlannerBrowserZoom();
     this.assignMissingPlannerElementIds();
     this.prefillStudyPlanIntervalDraftYearsFromProfile();
     this.loadPlannerInputHistory();
@@ -8177,6 +8209,7 @@ export default class NogaPlanner extends Component {
   componentWillUnmount() {
     this.isComponentMounted = false;
     this.notifyPresenceMode("");
+    this.disablePlannerBrowserZoom();
     const plannerArticleElement = this.plannerArticleRef?.current;
     if (plannerArticleElement) {
       plannerArticleElement.removeEventListener(
@@ -10142,6 +10175,7 @@ export default class NogaPlanner extends Component {
               {this.state?.homeProgramSetEditorOpen ? (
                 <input
                   type="text"
+                  name="homeProgramId"
                   className="nogaPlanner_homeIntervalsInput"
                   placeholder="Program ID"
                   value={String(this.state?.homeProgramIdDraft || "")}
@@ -10210,6 +10244,7 @@ export default class NogaPlanner extends Component {
               </div>
               {languageEditorOpen ? (
                 <select
+                  name="homeLanguage"
                   className="nogaPlanner_homeIntervalsInput"
                   disabled={isHomeCardsLocked}
                   value={String(this.state?.homeLanguageDraft || "")}
@@ -10285,6 +10320,7 @@ export default class NogaPlanner extends Component {
               {programStartYearEditorOpen ? (
                 <input
                   type="number"
+                  name="homeProgramStartYear"
                   className="nogaPlanner_homeIntervalsInput"
                   placeholder="Program Start Year"
                   disabled={isHomeCardsLocked}
@@ -10355,6 +10391,7 @@ export default class NogaPlanner extends Component {
               {programTotalYearsEditorOpen ? (
                 <input
                   type="number"
+                  name="homeProgramTotalYears"
                   className="nogaPlanner_homeIntervalsInput"
                   placeholder="Program Total Years"
                   disabled={isHomeCardsLocked}
@@ -10424,6 +10461,7 @@ export default class NogaPlanner extends Component {
               </div>
               {programTermsPerYearEditorOpen ? (
                 <select
+                  name="homeProgramTermsPerYear"
                   className="nogaPlanner_homeIntervalsInput"
                   disabled={isHomeCardsLocked}
                   value={String(this.state?.homeProgramTermsPerYearDraft || "")}
@@ -10510,6 +10548,7 @@ export default class NogaPlanner extends Component {
               {intervalPassingThresholdEditorOpen ? (
                 <div className="nogaPlanner_homeIntervalsAddRow">
                   <select
+                    name="homeIntervalPassingThresholdMode"
                     className="nogaPlanner_homeIntervalsInput"
                     disabled={isHomeCardsLocked}
                     value={String(
@@ -10531,6 +10570,7 @@ export default class NogaPlanner extends Component {
                     <option value="Lecture">Lecture</option>
                   </select>
                   <select
+                    name="homeIntervalPassingThresholdUnit"
                     className="nogaPlanner_homeIntervalsInput"
                     disabled={isHomeCardsLocked}
                     value={String(
@@ -10552,6 +10592,7 @@ export default class NogaPlanner extends Component {
                   </select>
                   <input
                     type="number"
+                    name="homeIntervalPassingThresholdNumber"
                     className="nogaPlanner_homeIntervalsInput"
                     placeholder="Threshold"
                     disabled={isHomeCardsLocked}
@@ -10629,6 +10670,7 @@ export default class NogaPlanner extends Component {
               {universityEditorOpen ? (
                 <input
                   type="text"
+                  name="homeUniversity"
                   className="nogaPlanner_homeIntervalsInput"
                   placeholder="Program university"
                   disabled={isHomeCardsLocked}
@@ -10697,6 +10739,7 @@ export default class NogaPlanner extends Component {
               {facultyEditorOpen ? (
                 <input
                   type="text"
+                  name="homeFaculty"
                   className="nogaPlanner_homeIntervalsInput"
                   placeholder="Program faculty"
                   disabled={isHomeCardsLocked}
@@ -10817,7 +10860,8 @@ export default class NogaPlanner extends Component {
                     Unusual sub-Intervals
                   </span>
                   <div className="nogaPlanner_homeIntervalsAddRow">
-                    <select
+                  <select
+                      name="homeManualIntervalId"
                       className="nogaPlanner_homeIntervalsInput"
                       disabled={isHomeCardsLocked}
                       value={String(
@@ -10843,6 +10887,7 @@ export default class NogaPlanner extends Component {
                     </select>
                     <input
                       type="number"
+                      name="homeManualIntervalYear"
                       className="nogaPlanner_homeIntervalsInput"
                       placeholder="YEAR"
                       disabled={isHomeCardsLocked}
@@ -10858,6 +10903,7 @@ export default class NogaPlanner extends Component {
                       }
                     />
                     <select
+                      name="homeManualIntervalTerm"
                       className="nogaPlanner_homeIntervalsInput"
                       disabled={isHomeCardsLocked}
                       value={String(
@@ -10986,7 +11032,6 @@ export default class NogaPlanner extends Component {
                         >
                           {intervalYearGroupMeta ? (
                             <td
-                              className="nogaPlanner_homeIntervalsYearIndexCell"
                               rowSpan={intervalYearGroupMeta.rowSpan}
                             >
                               <span className="nogaPlanner_homeIntervalsYearIndexCellInner">
@@ -11004,6 +11049,7 @@ export default class NogaPlanner extends Component {
                             <td rowSpan={intervalYearGroupMeta.rowSpan}>
                               {this.state?.homeIntervalToolbarOpen ? (
                                 <select
+                                  name="homeIntervalStatus"
                                   className="nogaPlanner_homeIntervalsInput"
                                   value={String(
                                     intervalEntry?.intervalStatus || "TBD",
@@ -11160,6 +11206,7 @@ export default class NogaPlanner extends Component {
                 <div className="nogaPlanner_homeIntervalsAddRow">
                   <input
                     type="text"
+                    name="homeCourseId"
                     className="nogaPlanner_homeIntervalsInput"
                     placeholder="Course ID"
                     disabled={isHomeCardsLocked}
@@ -11172,6 +11219,7 @@ export default class NogaPlanner extends Component {
                   />
                   <input
                     type="text"
+                    name="homeCourseCode"
                     className="nogaPlanner_homeIntervalsInput"
                     placeholder="Course Code"
                     disabled={isHomeCardsLocked}
@@ -11184,6 +11232,7 @@ export default class NogaPlanner extends Component {
                   />
                   <select
                     id="nogaPlanner_auto_select_154"
+                    name="homeCourseComponent"
                     className="nogaPlanner_homeIntervalsInput"
                     disabled={isHomeCardsLocked}
                     value=""
@@ -11252,6 +11301,7 @@ export default class NogaPlanner extends Component {
                     </div>
                   ) : null}
                   <select
+                    name="homeCourseIntervalId"
                     className="nogaPlanner_homeIntervalsInput"
                     disabled={isHomeCardsLocked}
                     value={String(this.state?.homeCourseIntervalIdDraft || "")}
@@ -11499,15 +11549,16 @@ export default class NogaPlanner extends Component {
         className="nogaPlanner_studyPlanTopControls"
       >
         <div className="nogaPlanner_studyPlanAttendanceMiniBar">
-          <label className="nogaPlanner_studyPlanTopField">
-            <span className="nogaPlanner_studyPlanTopFieldEyebrow">
-              Start date
-            </span>
-            <div className="nogaPlanner_savedCoursesDetailsInputs">
-              <select
-                className="nogaPlanner_savedCoursesDetailsInput"
-                value={String(
-                  this.state?.studyPlanIntervalDraft?.startDateDay || "",
+              <label className="nogaPlanner_studyPlanTopField">
+                <span className="nogaPlanner_studyPlanTopFieldEyebrow">
+                  Start date
+                </span>
+                <div className="nogaPlanner_savedCoursesDetailsInputs">
+                  <select
+                    name="studyPlanStartDateDay"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(
+                      this.state?.studyPlanIntervalDraft?.startDateDay || "",
                 )}
                 onChange={(event) =>
                   this.setStudyPlanIntervalDraft({
@@ -11529,6 +11580,7 @@ export default class NogaPlanner extends Component {
                 })}
               </select>
               <select
+                name="studyPlanStartDateMonth"
                 className="nogaPlanner_savedCoursesDetailsInput"
                 value={String(
                   this.state?.studyPlanIntervalDraft?.startDateMonth || "",
@@ -11554,6 +11606,7 @@ export default class NogaPlanner extends Component {
               </select>
               <input
                 type="number"
+                name="studyPlanStartDateYear"
                 min="1000"
                 max="9999"
                 placeholder="YEAR"
@@ -11563,15 +11616,16 @@ export default class NogaPlanner extends Component {
               />
             </div>
           </label>
-          <label className="nogaPlanner_studyPlanTopField">
-            <span className="nogaPlanner_studyPlanTopFieldEyebrow">
-              End date
-            </span>
-            <div className="nogaPlanner_savedCoursesDetailsInputs">
-              <select
-                className="nogaPlanner_savedCoursesDetailsInput"
-                value={String(
-                  this.state?.studyPlanIntervalDraft?.endDateDay || "",
+              <label className="nogaPlanner_studyPlanTopField">
+                <span className="nogaPlanner_studyPlanTopFieldEyebrow">
+                  End date
+                </span>
+                <div className="nogaPlanner_savedCoursesDetailsInputs">
+                  <select
+                    name="studyPlanEndDateDay"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(
+                      this.state?.studyPlanIntervalDraft?.endDateDay || "",
                 )}
                 onChange={(event) =>
                   this.setStudyPlanIntervalDraft({
@@ -11592,10 +11646,11 @@ export default class NogaPlanner extends Component {
                   );
                 })}
               </select>
-              <select
-                className="nogaPlanner_savedCoursesDetailsInput"
-                value={String(
-                  this.state?.studyPlanIntervalDraft?.endDateMonth || "",
+                  <select
+                    name="studyPlanEndDateMonth"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={String(
+                      this.state?.studyPlanIntervalDraft?.endDateMonth || "",
                 )}
                 onChange={(event) =>
                   this.setStudyPlanIntervalDraft({
@@ -11618,6 +11673,7 @@ export default class NogaPlanner extends Component {
               </select>
               <input
                 type="number"
+                name="studyPlanEndDateYear"
                 min="1000"
                 max="9999"
                 placeholder="YEAR"
@@ -11653,6 +11709,7 @@ export default class NogaPlanner extends Component {
             </span>
             <select
               id="nogaPlanner_studyPlanAttendanceComponentSelect"
+              name="studyPlanAttendanceComponent"
               className="nogaPlanner_savedCoursesDetailsInput"
               value={String(
                 this.state?.studyPlanAttendanceComponentKey || "all",

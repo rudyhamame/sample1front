@@ -26,13 +26,8 @@ const getNormalizedUsername = (authState) => {
     .toLowerCase();
 };
 
-const NOGA_HOME_USERNAMES = new Set(["naghamtrkmani", "rudyhamame"]);
-
-const isNogaUser = (authState) =>
-  NOGA_HOME_USERNAMES.has(getNormalizedUsername(authState));
-
 const getHomeRouteForUser = (authState) => {
-  return isNogaUser(authState) ? "/phenomed/home/noga" : "/phenomed/home";
+  return "/phenomed/home";
 };
 
 const AppRouter = () => {
@@ -41,8 +36,6 @@ const AppRouter = () => {
     authState?.isLoggedIn === true || authState?.isConnected === true;
   const profileIsAllowed = authState?.profileCompleted !== false;
   const canAccessAuthenticatedRoutes = isAuthenticated && profileIsAllowed;
-  const isAuthenticatedNogaUser =
-    canAccessAuthenticatedRoutes && isNogaUser(authState);
   const authenticatedHomeRoute = getHomeRouteForUser(authState);
 
   const handleLogin = useCallback((nextAuthState) => {
@@ -67,30 +60,14 @@ const AppRouter = () => {
           </Route>
           <Route exact path="/phenomed/home">
             {canAccessAuthenticatedRoutes ? (
-              isAuthenticatedNogaUser ? (
-                <Redirect to="/phenomed/home/noga" />
-              ) : (
-                <App
-                  key="app-home"
-                  path="/phenomed/home"
-                  onLogout={handleLogout}
-                />
-              )
+              <App key="app-home" path="/phenomed/home" onLogout={handleLogout} />
             ) : (
               <Redirect to="/" />
             )}
           </Route>
           <Route exact path="/phenomed/home/noga">
             {canAccessAuthenticatedRoutes ? (
-              isAuthenticatedNogaUser ? (
-                <App
-                  key="app-home-noga"
-                  path="/phenomed/home/noga"
-                  onLogout={handleLogout}
-                />
-              ) : (
-                <Redirect to="/phenomed/home" />
-              )
+              <Redirect to="/phenomed/home" />
             ) : (
               <Redirect to="/" />
             )}

@@ -5,7 +5,6 @@ import React from "react";
 import "./App.css";
 import "../Nav/nav.css";
 import { Route } from "react-router-dom";
-import Home from "../Home/Home";
 import HomeNoga from "../Home/Home_noga";
 import {
   getPlannerMusicSnapshot,
@@ -29,6 +28,72 @@ import { getFriendChatPresenceKey } from "../utils/friendPresence";
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
+const APP_SCALE_STORAGE_KEY = "phenomed.appScale";
+const DEFAULT_APP_SCALE = 0.8;
+const APP_SCALE_STEP = 0.05;
+
+const clampAppScale = (value) => {
+  const nextScale = Number(value);
+  if (!Number.isFinite(nextScale) || nextScale <= 0) {
+    return DEFAULT_APP_SCALE;
+  }
+
+  return Math.round(nextScale * 100) / 100;
+};
+
+const normalizeScaleEntries = (value) =>
+  (Array.isArray(value) ? value : [])
+    .map((entry) => {
+      const rawElement = String(entry?.element || "").trim();
+      const element =
+        rawElement === "Home_Noga_studysessions_article"
+          ? "Home_Noga_article"
+          : rawElement;
+      const scaleNum = Number(entry?.scaleNum);
+
+      if (!element) {
+        return null;
+      }
+
+      return {
+        element,
+        scaleNum: clampAppScale(scaleNum),
+      };
+    })
+    .filter(Boolean);
+
+const getSettingsUi = (value) => {
+  const settings = value && typeof value === "object" ? value : {};
+  const ui = settings.ui && typeof settings.ui === "object" ? settings.ui : {};
+
+  return {
+    ...ui,
+    scale: normalizeScaleEntries(ui.scale ?? settings.scale),
+  };
+};
+
+const normalizeAppSettings = (value) => {
+  const settings = value && typeof value === "object" ? value : {};
+
+  return {
+    ...settings,
+    ui: getSettingsUi(settings),
+  };
+};
+
+const getScaleValueForElement = (scaleEntries, elementId) => {
+  const normalizedElementId = String(elementId || "").trim();
+  if (!normalizedElementId) {
+    return null;
+  }
+
+  const scaleEntry = normalizeScaleEntries(scaleEntries).find(
+    (entry) => String(entry?.element || "").trim() === normalizedElementId,
+  );
+
+  return scaleEntry ? clampAppScale(scaleEntry.scaleNum) : null;
+};
+
 const LazyStudyPlanner = React.lazy(
   () => import("./SubApps/StudyPlannner/StudyPlanner"),
 );
@@ -42,6 +107,18 @@ const LazyTelegramControlPage = React.lazy(
 );
 const LazyJamendoPlayer = React.lazy(() => import("../JamendoPlayer.jsx"));
 const LazyProfile = React.lazy(() => import("../Profile/Profile.jsx"));
+const RESERVED_PROFILE_ROUTE_SEGMENTS = new Set([
+  "home",
+  "study",
+  "ecg",
+  "schoolplanner",
+  "nogaplan",
+  "pdf-reader",
+  "telegram-control",
+  "jamendo-player",
+  "deezer-player",
+  "soundcloud-player",
+]);
 const LazyStudy = React.lazy(
   () => import("./SubApps/StudyPlannner/components/Study/Study"),
 );
@@ -105,6 +182,15 @@ class App extends React.Component {
           : true,
       dob: storedSession.dob || null,
       token: storedSession.token || "",
+      settings: normalizeAppSettings(storedSession.settings),
+      appScale:
+        typeof window !== "undefined"
+          ? getScaleValueForElement(
+              normalizeAppSettings(storedSession.settings).ui.scale,
+              "app_page",
+            ) ??
+            clampAppScale(window.localStorage.getItem(APP_SCALE_STORAGE_KEY))
+          : DEFAULT_APP_SCALE,
       isLoggedIn: Boolean(
         storedSession.isLoggedIn ?? storedSession.isConnected ?? true,
       ),
@@ -270,6 +356,7 @@ class App extends React.Component {
     );
     window.addEventListener("pagehide", this.handlePageHide);
     window.addEventListener("beforeunload", this.handleBeforeUnload);
+    this.applyScaleSettingsToDom(this.state.settings?.ui?.scale);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -296,6 +383,10 @@ class App extends React.Component {
     ) {
       this.syncPresenceStatus({
       });
+    }
+
+    if (prevState.settings !== this.state.settings) {
+      this.applyScaleSettingsToDom(this.state.settings?.ui?.scale);
     }
   }
   componentWillUnmount() {
@@ -2229,6 +2320,10 @@ class App extends React.Component {
           (currentAppliedCount > 0 || currentTextCount > 0)
             ? currentHomeDrawing
             : fetchedHomeDrawing;
+        const nextSettings = normalizeAppSettings(normalizedPayload.settings);
+        const nextAppScale =
+          getScaleValueForElement(nextSettings.ui.scale, "app_page") ??
+          this.state.appScale;
         this.safeSetState({
           username:
             normalizedPayload?.identity?.atSignup?.username ||
@@ -2254,6 +2349,8 @@ class App extends React.Component {
           profilePictureViewport: nextProfilePictureViewport,
           homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
+          settings: nextSettings,
+          appScale: nextAppScale,
         });
         this.persistStoredSession({
           username:
@@ -2272,6 +2369,8 @@ class App extends React.Component {
           profilePictureViewport: nextProfilePictureViewport,
           homeDrawing: nextHomeDrawing,
           imageGallery: nextImageGallery,
+          settings: nextSettings,
+          appScale: nextAppScale,
           friends: nextFriends,
           friend_requests: normalizedPayload.friendRequests,
           sent_friend_requests: normalizedPayload.sentFriendRequests,
@@ -2319,6 +2418,85 @@ class App extends React.Component {
     } catch (error) {
       // Ignore storage write errors.
     }
+  };
+
+  getScaleSettingMap = (scaleEntries = []) =>
+    (Array.isArray(scaleEntries) ? scaleEntries : []).reduce(
+      (accumulator, entry) => {
+        const element = String(entry?.element || "").trim();
+        if (!element) {
+          return accumulator;
+        }
+
+        accumulator[element] = clampAppScale(entry?.scaleNum);
+        return accumulator;
+      },
+      {},
+    );
+
+  applyScaleSettingsToDom = (scaleEntries = []) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const scaleMap = this.getScaleSettingMap(scaleEntries);
+    const hasExpandedScale = Object.values(scaleMap).some(
+      (scaleNum) => Number(scaleNum) > 1,
+    );
+    const rootElement = document.getElementById("root");
+    if (rootElement) {
+      rootElement.style.overflow = hasExpandedScale ? "auto" : "";
+    }
+
+    Object.entries(scaleMap).forEach(([elementId, scaleNum]) => {
+      if (!elementId || elementId === "app_page") {
+        if (elementId === "app_page") {
+          const appPageElement = document.getElementById("app_page");
+          if (appPageElement) {
+            appPageElement.style.overflow =
+              Number(scaleNum) > 1 ? "visible" : "";
+          }
+        }
+        return;
+      }
+
+      const element = document.getElementById(elementId);
+      if (!element) {
+        return;
+      }
+
+      if (Number(scaleNum) === 1) {
+        element.style.removeProperty("width");
+        element.style.removeProperty("min-height");
+        element.style.removeProperty("transform");
+        element.style.removeProperty("transform-origin");
+        element.style.removeProperty("overflow");
+        return;
+      }
+
+      element.style.width = `calc(100% / ${scaleNum})`;
+      element.style.minHeight = `calc(100dvh / ${scaleNum})`;
+      element.style.transform = `scale(${scaleNum})`;
+      element.style.transformOrigin = "top left";
+      element.style.overflow = "visible";
+    });
+  };
+
+  getCurrentScaleForElement = (elementId = "") => {
+    const normalizedElementId = String(elementId || "").trim();
+    if (!normalizedElementId) {
+      return 1;
+    }
+
+    const scaleEntries = Array.isArray(this.state.settings?.ui?.scale)
+      ? this.state.settings.ui.scale
+      : [];
+    const scaleEntry = scaleEntries.find(
+      (entry) =>
+        String(entry?.element || "").trim() === normalizedElementId,
+    );
+
+    return scaleEntry ? clampAppScale(scaleEntry.scaleNum) : 1;
   };
 
   setUserAcademicInfo = (nextInfo = {}) => {
@@ -3075,6 +3253,101 @@ class App extends React.Component {
     }
   };
 
+  setAppScale = (nextScale) => {
+    const resolvedScale = clampAppScale(nextScale);
+    if (resolvedScale === this.state.appScale) {
+      return;
+    }
+
+    this.safeSetState({
+      appScale: resolvedScale,
+    });
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(APP_SCALE_STORAGE_KEY, String(resolvedScale));
+    }
+  };
+
+  setGraphicsScaleSetting = (elementId, scaleNum) => {
+    const normalizedElementId = String(elementId || "").trim();
+    if (!normalizedElementId) {
+      return;
+    }
+
+    const resolvedScale = clampAppScale(scaleNum);
+    let nextSettings = null;
+
+    this.safeSetState((currentState) => {
+      const currentSettings = normalizeAppSettings(currentState.settings);
+      const currentScaleEntries = Array.isArray(currentSettings.ui?.scale)
+        ? currentSettings.ui.scale
+        : [];
+      const nextScaleEntries = currentScaleEntries.filter(
+        (entry) =>
+          String(entry?.element || "").trim() !== normalizedElementId,
+      );
+
+      nextScaleEntries.push({
+        element: normalizedElementId,
+        scaleNum: resolvedScale,
+      });
+
+      nextSettings = {
+        ...currentSettings,
+        ui: {
+          ...getSettingsUi(currentSettings),
+          scale: nextScaleEntries,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      const nextState = {
+        settings: nextSettings,
+      };
+
+      if (normalizedElementId === "app_page") {
+        nextState.appScale = resolvedScale;
+      }
+
+      return nextState;
+    }, () => {
+      if (!nextSettings) {
+        return;
+      }
+
+      this.persistStoredSession({
+        settings: nextSettings,
+        appScale:
+          normalizedElementId === "app_page"
+            ? resolvedScale
+            : this.state.appScale,
+      });
+
+      this.applyScaleSettingsToDom(nextSettings.ui.scale);
+
+      if (!this.state.token) {
+        return;
+      }
+
+      fetch(apiUrl("/api/user/profile"), {
+        method: "PUT",
+        mode: "cors",
+        headers: {
+          Authorization: `Bearer ${this.state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          program: String(this.state.program || "").trim(),
+          university: String(this.state.university || "").trim(),
+          studyYear: String(this.state.studyYear || "").trim(),
+          term: String(this.state.term || "").trim(),
+          aiProvider: String(this.state.aiProvider || "openai").trim(),
+          settings: nextSettings,
+        }),
+      }).catch(() => undefined);
+    });
+  };
+
   //.....Reander Login HTML..........
   render() {
     const isNogaPlanRoute =
@@ -3087,6 +3360,15 @@ class App extends React.Component {
     const showServerAnswerFooter = !this.state.hide_app_footer;
     const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
     const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
+    const footerProps = {
+      appState: this.state,
+      onSetSelectedAiProvider: this.setSelectedAiProvider,
+      onLogout: this.logOut,
+      onApplyGraphicsScale: this.setGraphicsScaleSetting,
+    };
+    const appViewportStyle = {
+      "--app-scale": this.state.appScale,
+    };
     const routeFallback = (
       <section
         id="App_routeLoading"
@@ -3100,11 +3382,12 @@ class App extends React.Component {
 
     return (
       <React.Fragment>
-        <React.Suspense fallback={routeFallback}>
+        <div id="App_viewportScale" style={appViewportStyle}>
+          <React.Suspense fallback={routeFallback}>
           <Route exact path="/phenomed/home">
             <article id="app_page" className={appPageClassName}>
               <main id="Main_article" className="fr">
-                <Home
+                <HomeNoga
                   state={this.state}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
@@ -3123,14 +3406,11 @@ class App extends React.Component {
                   setAppFooterHidden={this.setAppFooterHidden}
                   setUserAcademicInfo={this.setUserAcademicInfo}
                   setUserMediaInfo={this.setUserMediaInfo}
+                  homeBasePath="/phenomed/home"
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3156,14 +3436,11 @@ class App extends React.Component {
                   setAppFooterHidden={this.setAppFooterHidden}
                   setUserAcademicInfo={this.setUserAcademicInfo}
                   setUserMediaInfo={this.setUserMediaInfo}
+                  homeBasePath="/phenomed/home"
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3180,11 +3457,7 @@ class App extends React.Component {
                 />{" "}
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3204,11 +3477,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3228,11 +3497,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3251,11 +3516,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3273,11 +3534,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3292,11 +3549,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3310,11 +3563,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3330,11 +3579,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3347,11 +3592,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3364,11 +3605,7 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
@@ -3381,29 +3618,32 @@ class App extends React.Component {
                 />
               </main>
               {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
+                <Footer {...footerProps} />
               ) : null}
             </article>
           </Route>
-          <Route exact path={["/profile/:username", "/phenomed/:username"]}>
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyProfile viewerState={this.state} logOut={this.logOut} />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer
-                  appState={this.state}
-                  onSetSelectedAiProvider={this.setSelectedAiProvider}
-                  onLogout={this.logOut}
-                />
-              ) : null}
-            </article>
-          </Route>
+          <Route
+            exact
+            path={["/profile/:username", "/phenomed/:username"]}
+            render={({ match }) => {
+              const username = String(match?.params?.username || "").trim().toLowerCase();
+              if (RESERVED_PROFILE_ROUTE_SEGMENTS.has(username)) {
+                return null;
+              }
+              return (
+                <article id="app_page" className={appPageClassName}>
+                  <main id="Main_article" className="fr">
+                    <LazyProfile viewerState={this.state} logOut={this.logOut} />
+                  </main>
+                  {showServerAnswerFooter ? (
+                    <Footer {...footerProps} />
+                  ) : null}
+                </article>
+              );
+            }}
+          />
           </React.Suspense>
+        </div>
         {this.state.app_is_loading && (
           <div
             style={{

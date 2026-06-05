@@ -26,7 +26,7 @@ const Dim = () => {
 
   const toggleHomeTheme = (isDark) => {
     const article = document.getElementById("Home_studysessions_article");
-    const nogaArticle = document.getElementById("Home_Noga_studysessions_article");
+    const nogaArticle = document.getElementById("Home_Noga_article");
     if (nogaArticle) {
       nogaArticle.classList.toggle("Home_Noga_themeDark", isDark);
     }

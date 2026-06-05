@@ -72,7 +72,6 @@ const formatChatTimestamp = (rawValue, fallbackTimestamp) => {
   return dateValue.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   });
 };
 
@@ -2188,7 +2187,7 @@ const FriendChat = ({
     const phenomedIntro = document.querySelector(".PhenomedSocial_intro");
     const friendsListArticle = document.getElementById("FriendsList_article");
     const addFriendArticle = document.getElementById("AddFriend_article");
-    const friendChatArticle = document.getElementById("FriendChat_article");
+    const friendChatArticle = document.getElementById("Chat_article");
 
     if (friendsListArticle) {
       friendsListArticle.style.display = "flex";
@@ -2211,9 +2210,7 @@ const FriendChat = ({
   const shouldRenderCallPanel =
     !usesGlobalCallPanel && callMode === "video" && callState === "connected";
   return (
-    <section id="FriendChat_article" className="fc">
-      <div id="FriendChat_content_container" className="fc">
-        <section id="Chat_article" className="fc">
+    <section id="Chat_article" className="fc">
           {hideTitleContainer ? null : (
             <section id="Chat_title_container" className="fr">
               <button
@@ -2641,8 +2638,6 @@ const FriendChat = ({
               ) : null}
             </React.Fragment>
           ) : null}
-        </section>
-      </div>
     </section>
   );
 };

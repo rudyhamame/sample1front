@@ -501,6 +501,7 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
   position: static;
   left: auto;
   top: auto;
+  bottom: auto;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -537,15 +538,29 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 }
 
 .Chat_callPanel {
+  position: fixed;
+  left: 24px;
+  top: 24px;
+  z-index: 45;
   display: flex;
   flex-direction: column;
-  align-self: stretch;
-  width: 100%;
-  max-width: 100%;
+  align-self: flex-start;
+  width: fit-content;
+  height: fit-content;
+  max-width: min(100%, calc(100vw - 48px));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   touch-action: none;
+}
+
+.Chat_callPanel--fullscreenFallback {
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
 }
 
 #Home_rightColumn_wrapper .Chat_callPanelResizeHandle,
@@ -788,8 +803,14 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 #Home_rightColumn_wrapper .Chat_mediaTile,
 #Home_Noga_rightColumn_wrapper .Chat_mediaTile {
   position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
   overflow: hidden;
-  min-height: 96px;
+  min-height: 0;
   border-radius: 16px;
   border: 1px solid rgba(124, 157, 165, 0.16);
   background: linear-gradient(180deg, rgba(220, 238, 232, 0.96), rgba(198, 225, 218, 0.96));
@@ -798,9 +819,11 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 
 #Home_rightColumn_wrapper .Chat_mediaTile--floatingRemote,
 #Home_Noga_rightColumn_wrapper .Chat_mediaTile--floatingRemote {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
+  width: fit-content;
+  height: fit-content;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 20px;
   border: none;
   box-shadow: none;
@@ -811,8 +834,11 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
   position: relative;
   right: auto;
   bottom: auto;
-  width: 100%;
-  min-height: 72px;
+  width: fit-content;
+  height: fit-content;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   margin-top: 10px;
   border-width: 2px;
   border-color: rgba(255, 255, 255, 0.72);
@@ -825,15 +851,29 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 #Home_rightColumn_wrapper .Chat_audioPlaceholder,
 #Home_Noga_rightColumn_wrapper .Chat_mediaTile video,
 #Home_Noga_rightColumn_wrapper .Chat_audioPlaceholder {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 #Home_rightColumn_wrapper .Chat_mediaTile video,
 #Home_Noga_rightColumn_wrapper .Chat_mediaTile video {
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   background: rgba(11, 28, 32, 0.84);
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile--floatingRemote > video,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile--floatingRemote > video {
+  min-width: clamp(320px, 42vw, 640px);
+  min-height: clamp(180px, 28vw, 360px);
+}
+
+#Home_rightColumn_wrapper .Chat_mediaTile--floatingLocal > video,
+#Home_Noga_rightColumn_wrapper .Chat_mediaTile--floatingLocal > video {
+  min-width: 96px;
+  min-height: 72px;
 }
 
 #Home_rightColumn_wrapper .Chat_audioPlaceholder,
@@ -865,6 +905,63 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 
 .Chat_callPanelHeader:active {
   cursor: grabbing;
+}
+
+.Chat_callPanelHeaderMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.Chat_callPanelDragBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 105, 99, 0.12);
+  background: rgba(255, 255, 255, 0.46);
+  color: rgba(18, 82, 89, 0.78);
+  flex: 0 0 auto;
+}
+
+.Chat_callPanelHeaderCopy {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.Chat_callPanelActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.Chat_callPanelActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 105, 99, 0.14);
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(18, 82, 89, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.Chat_callPanelActionButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.Chat_callPanelActionButton i {
+  pointer-events: none;
 }
 
 .Chat_callPanelResizeHandle {
@@ -1124,8 +1221,14 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 
 .Chat_mediaTile {
   position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
   overflow: hidden;
-  min-height: 96px;
+  min-height: 0;
   border-radius: 16px;
   border: 1px solid rgba(124, 157, 165, 0.16);
   background: linear-gradient(180deg, rgba(220, 238, 232, 0.96), rgba(198, 225, 218, 0.96));
@@ -1133,9 +1236,11 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 }
 
 .Chat_mediaTile--floatingRemote {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
+  width: fit-content;
+  height: fit-content;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 20px;
   border: none;
   box-shadow: none;
@@ -1145,8 +1250,11 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
   position: relative;
   right: auto;
   bottom: auto;
-  width: 100%;
-  min-height: 72px;
+  width: fit-content;
+  height: fit-content;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   margin-top: 10px;
   border-width: 2px;
   border-color: rgba(255, 255, 255, 0.72);
@@ -1157,14 +1265,26 @@ body.dark .Chat_footerCallBar .Chat_callControlButton--end:hover:not(:disabled) 
 
 .Chat_mediaTile video,
 .Chat_audioPlaceholder {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .Chat_mediaTile video {
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   background: rgba(11, 28, 32, 0.84);
+}
+
+.Chat_mediaTile--floatingRemote > video {
+  min-width: clamp(320px, 42vw, 640px);
+  min-height: clamp(180px, 28vw, 360px);
+}
+
+.Chat_mediaTile--floatingLocal > video {
+  min-width: 96px;
+  min-height: 72px;
 }
 
 .Chat_audioPlaceholder {

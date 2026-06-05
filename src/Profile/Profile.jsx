@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import "../Home/home.css";
+import "../Home/home-noga.css";
 import "./Profile.css";
 import { apiUrl } from "../config/api";
 
@@ -92,7 +92,7 @@ const Profile = ({ viewerState, logOut }) => {
       backPath:
         String(resolvedTheme?.backPath || "").trim() ||
         (String(resolvedTheme?.variant || "").trim().toLowerCase() === "noga"
-          ? "/phenomed/home/noga"
+          ? "/phenomed/home"
           : "/phenomed/home"),
     };
   }, [location]);
