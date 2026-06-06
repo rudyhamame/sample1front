@@ -418,6 +418,7 @@ const FriendChat = ({
   const moreActionsMenuRef = React.useRef(null);
   const textareaRef = React.useRef(null);
   const attachmentInputRef = React.useRef(null);
+  const isSendInFlightRef = React.useRef(false);
   const [localMessages, setLocalMessages] = React.useState([]);
   const [selectedImages, setSelectedImages] = React.useState([]);
   const [recordedVoiceNote, setRecordedVoiceNote] = React.useState(null);
@@ -1567,6 +1568,10 @@ const FriendChat = ({
   }, [handleClearRecordedVoiceNote, isRecordingVoiceNote]);
 
   const handleSend = async () => {
+    if (isSendInFlightRef.current) {
+      return;
+    }
+
     const textarea = textareaRef.current;
     const message = textarea ? textarea.value : "";
     const trimmedMessage = String(message || "").trim();
@@ -1587,6 +1592,7 @@ const FriendChat = ({
         return;
       }
 
+      isSendInFlightRef.current = true;
       setIsMessageMutationPending(true);
       try {
         const didEdit = await Promise.resolve(
@@ -1603,12 +1609,14 @@ const FriendChat = ({
         }
       } finally {
         setIsMessageMutationPending(false);
+        isSendInFlightRef.current = false;
       }
       return;
     }
 
     if (!trimmedMessage && queuedImages.length === 0 && !queuedVoiceNote) return;
 
+    isSendInFlightRef.current = true;
     const tempId = generateTempId();
     const optimisticImages = queuedImages.map((image) => image.previewUrl).filter(Boolean);
     setLocalMessages((prev) => [
@@ -1712,6 +1720,7 @@ const FriendChat = ({
     } finally {
       setIsUploadingAttachments(false);
       setShouldSendSecretAttachments(false);
+      isSendInFlightRef.current = false;
     }
 
     setIsEmojiPickerOpen(false);
