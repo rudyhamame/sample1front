@@ -139,6 +139,8 @@ const repairMojibakeText = (value) => {
 
 const EMOJI_IMAGE_BASE_URL =
   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
+const ARABIC_TEXT_PATTERN =
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 const isEmojiGrapheme = (value) => /\p{Extended_Pictographic}/u.test(value);
 
@@ -190,13 +192,19 @@ const renderMessageWithEmojiImages = (value) => {
     }
 
     renderedNodes.push(
-      <img
-        key={`emoji-${index}-${codepoint}`}
-        className="Chat_messageEmojiImage"
-        src={`${EMOJI_IMAGE_BASE_URL}/${codepoint}.svg`}
-        alt={grapheme}
-        draggable={false}
-      />,
+      <span
+        key={`emoji-wrap-${index}-${codepoint}`}
+        className="Chat_messageEmojiInline"
+        dir="auto"
+      >
+        <img
+          key={`emoji-${index}-${codepoint}`}
+          className="Chat_messageEmojiImage"
+          src={`${EMOJI_IMAGE_BASE_URL}/${codepoint}.svg`}
+          alt={grapheme}
+          draggable={false}
+        />
+      </span>,
     );
   });
 
@@ -3418,85 +3426,96 @@ const FriendChat = ({
                         "Open a conversation to view messages here."}
                     </li>
                   ) : (
-                    allMessages.map((msg, index) => (
-                      <div
-                        key={`${msg.id || msg.timestamp}-${msg.rawDate || ""}-${msg.sender}-${index}`}
-                        className={
-                          msg.sender === "me"
-                            ? "sentMessagesDIV fc"
-                            : "receivedMessagesDIV fc"
-                        }
-                      >
-                        <li
+                    allMessages.map((msg, index) => {
+                      const msgText = String(msg?.text || "");
+                      const msgDirection = ARABIC_TEXT_PATTERN.test(msgText)
+                        ? "rtl"
+                        : "ltr";
+                      const messageItemClassName = [
+                        msg.sender === "me" ? "sentMessagesLI" : "receivedMessagesLI",
+                        `Chat_message--${msgDirection}`,
+                      ].join(" ");
+
+                      return (
+                        <div
+                          key={`${msg.id || msg.timestamp}-${msg.rawDate || ""}-${msg.sender}-${index}`}
                           className={
                             msg.sender === "me"
-                              ? "sentMessagesLI"
-                              : "receivedMessagesLI"
-                          }
-                          data-message-id={msg.id || ""}
-                          onPointerDown={() => beginMessageLongPress(msg)}
-                          onPointerUp={clearPendingMessageLongPress}
-                          onPointerLeave={clearPendingMessageLongPress}
-                          onPointerCancel={clearPendingMessageLongPress}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            setSelectedMessageActionId(String(msg.id || "").trim());
-                          }}
-                          style={
-                            msg.pending
-                              ? { opacity: 0.6, fontStyle: "italic" }
-                              : undefined
+                              ? "sentMessagesDIV fc"
+                              : "receivedMessagesDIV fc"
                           }
                         >
-                          {msg.deleted ? (
-                            <p className="Chat_deletedMessageText">Message deleted</p>
-                          ) : msg.text ? (
-                            <p>{renderMessageWithEmojiImages(msg.text)}</p>
-                          ) : null}
-                          {!msg.deleted && Array.isArray(msg.images) && msg.images.length > 0 ? (
-                            <div className="Chat_messageImages">
-                              {msg.images.map((imageUrl, imageIndex) =>
-                                renderChatImageCard(imageUrl, {
-                                  key: `${imageUrl}-${imageIndex}`,
-                                  sender: msg.sender,
-                                  pending: msg.pending,
-                                }),
-                              )}
-                            </div>
-                          ) : null}
-                          <span className="Chat_messageMeta">
-                            <span className="Chat_messageTimestamp">
-                              {formatChatTimestamp(msg.rawDate, msg.timestamp)}
-                            </span>
-                            {msg.edited && !msg.deleted ? (
-                              <span className="Chat_messageEditedFlag">Edited</span>
-                            ) : null}
+                          <li
+                            className={messageItemClassName}
+                            data-message-id={msg.id || ""}
+                            onPointerDown={() => beginMessageLongPress(msg)}
+                            onPointerUp={clearPendingMessageLongPress}
+                            onPointerLeave={clearPendingMessageLongPress}
+                            onPointerCancel={clearPendingMessageLongPress}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              setSelectedMessageActionId(String(msg.id || "").trim());
+                            }}
+                            style={
+                              msg.pending
+                                ? { opacity: 0.6, fontStyle: "italic" }
+                                : undefined
+                            }
+                          >
                             {msg.deleted ? (
-                              <span className="Chat_messageEditedFlag">Deleted</span>
+                              <p className="Chat_deletedMessageText">Message deleted</p>
+                            ) : msg.text ? (
+                              <p dir={msgDirection}>
+                                {renderMessageWithEmojiImages(msg.text)}
+                              </p>
                             ) : null}
-                            {msg.sender === "me" ? (
-                              <span
-                                className={`Chat_messageStatus ${
-                                  msg.pending
-                                    ? "Chat_messageStatus--sent"
-                                    : msg.status === "read"
-                                      ? "Chat_messageStatus--read"
-                                      : msg.status === "delivered"
-                                        ? "Chat_messageStatus--received"
-                                        : "Chat_messageStatus--sent"
-                                }`}
-                              >
-                                {msg.pending
-                                  ? "..."
-                                  : msg.status === "read" || msg.status === "delivered"
-                                    ? "✓✓"
-                                    : "✓"}
+                            {!msg.deleted &&
+                            Array.isArray(msg.images) &&
+                            msg.images.length > 0 ? (
+                              <div className="Chat_messageImages">
+                                {msg.images.map((imageUrl, imageIndex) =>
+                                  renderChatImageCard(imageUrl, {
+                                    key: `${imageUrl}-${imageIndex}`,
+                                    sender: msg.sender,
+                                    pending: msg.pending,
+                                  }),
+                                )}
+                              </div>
+                            ) : null}
+                            <span className="Chat_messageMeta">
+                              <span className="Chat_messageTimestamp">
+                                {formatChatTimestamp(msg.rawDate, msg.timestamp)}
                               </span>
-                            ) : null}
-                          </span>
-                        </li>
-                      </div>
-                    ))
+                              {msg.edited && !msg.deleted ? (
+                                <span className="Chat_messageEditedFlag">Edited</span>
+                              ) : null}
+                              {msg.deleted ? (
+                                <span className="Chat_messageEditedFlag">Deleted</span>
+                              ) : null}
+                              {msg.sender === "me" ? (
+                                <span
+                                  className={`Chat_messageStatus ${
+                                    msg.pending
+                                      ? "Chat_messageStatus--sent"
+                                      : msg.status === "read"
+                                        ? "Chat_messageStatus--read"
+                                        : msg.status === "delivered"
+                                          ? "Chat_messageStatus--received"
+                                          : "Chat_messageStatus--sent"
+                                  }`}
+                                >
+                                  {msg.pending
+                                    ? "..."
+                                    : msg.status === "read" || msg.status === "delivered"
+                                      ? "✓✓"
+                                      : "✓"}
+                                </span>
+                              ) : null}
+                            </span>
+                          </li>
+                        </div>
+                      );
+                    })
                   )}
                 </ul>
               )}
