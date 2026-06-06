@@ -871,7 +871,7 @@ class App extends React.Component {
     });
   };
 
-  updateMyTypingPresence = (friendId, isTyping) => {
+  updateMyTypingPresence = (friendId, isTyping, options = {}) => {
     if (!this.realtimeSocket || !this.state.my_id || !friendId) {
       return;
     }
@@ -880,6 +880,7 @@ class App extends React.Component {
       userId: this.state.my_id,
       friendId,
       isTyping,
+      hasText: Boolean(options?.hasText),
     });
   };
 
@@ -957,12 +958,21 @@ class App extends React.Component {
     this.friendLocalStatusClearTimersById.set(normalizedFriendId, timerId);
   };
 
-  applyFriendLocalStatusFromBackend = (friendId, value, updatedAt = new Date()) => {
+  applyFriendLocalStatusFromBackend = (
+    friendId,
+    value,
+    updatedAt = new Date(),
+    options = {},
+  ) => {
     const normalizedFriendId = String(friendId || "").trim();
     const normalizedValue = String(value || "").trim().toLowerCase();
     const nextValue = ["in my chat", "typing"].includes(normalizedValue)
       ? normalizedValue
       : null;
+    const nextHasTextInTextarea =
+      options && Object.prototype.hasOwnProperty.call(options, "hasTextInTextarea")
+        ? Boolean(options.hasTextInTextarea)
+        : undefined;
 
     if (!normalizedFriendId) {
       return;
@@ -974,6 +984,11 @@ class App extends React.Component {
         [normalizedFriendId]: {
           value: nextValue,
           updatedAt,
+          hasTextInTextarea:
+            nextHasTextInTextarea !== undefined
+              ? nextHasTextInTextarea
+              : prevState.friendLocalStatusById?.[normalizedFriendId]?.hasTextInTextarea ||
+                false,
           lastChatAt:
             nextValue === "in my chat"
               ? updatedAt
@@ -1007,6 +1022,10 @@ class App extends React.Component {
                 ...currentLocalStatus,
                 value: nextValue,
                 updatedAt,
+                hasTextInTextarea:
+                  nextHasTextInTextarea !== undefined
+                    ? nextHasTextInTextarea
+                    : currentLocalStatus?.hasTextInTextarea || false,
                 lastChatAt:
                   nextValue === "in my chat"
                     ? updatedAt
@@ -1041,7 +1060,7 @@ class App extends React.Component {
     );
   };
 
-  handleFriendTypingPresence = ({ userId, isTyping }) => {
+  handleFriendTypingPresence = ({ userId, isTyping, hasText }) => {
     const normalizedFriendId = String(userId || "").trim();
 
     if (!normalizedFriendId) {
@@ -1058,6 +1077,7 @@ class App extends React.Component {
         normalizedFriendId,
         "typing",
         new Date(),
+        { hasTextInTextarea: Boolean(hasText) },
       );
       return;
     }
@@ -1067,6 +1087,7 @@ class App extends React.Component {
         normalizedFriendId,
         "in my chat",
         new Date(),
+        { hasTextInTextarea: Boolean(hasText) },
       );
       return;
     }

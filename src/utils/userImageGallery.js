@@ -2,6 +2,7 @@ import { apiUrl } from "../config/api";
 import compressImageUpload, { canCompressImageUpload } from "./compressImageUpload";
 
 const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const DEFAULT_UPLOAD_TIMEOUT_MS = 45000;
 
 export const deriveCloudinaryPublicIdFromUrl = (value) => {
   const rawUrl = String(value || "").trim();
@@ -365,10 +366,33 @@ export const uploadAudioFileAsChatAttachment = async ({
   cloudinaryBody.append("folder", signaturePayload.folder);
   cloudinaryBody.append("public_id", signaturePayload.publicId);
 
-  const uploadResponse = await fetch(signaturePayload.uploadUrl, {
-    method: "POST",
-    body: cloudinaryBody,
-  });
+  const uploadAbortController =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const uploadTimeoutId = uploadAbortController
+    ? window.setTimeout(() => {
+        uploadAbortController.abort();
+      }, DEFAULT_UPLOAD_TIMEOUT_MS)
+    : null;
+
+  let uploadResponse;
+  try {
+    uploadResponse = await fetch(signaturePayload.uploadUrl, {
+      method: "POST",
+      body: cloudinaryBody,
+      signal: uploadAbortController?.signal,
+    });
+  } catch (error) {
+    if (uploadTimeoutId !== null) {
+      window.clearTimeout(uploadTimeoutId);
+    }
+    if (error?.name === "AbortError") {
+      throw new Error("Voice note upload timed out.");
+    }
+    throw error;
+  }
+  if (uploadTimeoutId !== null) {
+    window.clearTimeout(uploadTimeoutId);
+  }
   const uploadPayload = await uploadResponse.json().catch(() => ({}));
 
   if (!uploadResponse.ok) {

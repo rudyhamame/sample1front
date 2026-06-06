@@ -364,6 +364,7 @@ const FriendChat = ({
   state,
   content,
   sendToThemMessage,
+  serverReply,
   uploadChatImages,
   uploadChatAudio,
   saveChatImageToGallery,
@@ -1623,10 +1624,6 @@ const FriendChat = ({
       },
     ]);
 
-    setSelectedImages([]);
-    selectedImagesRef.current = [];
-    setRecordedVoiceNote(null);
-
     try {
       let uploadedImages = [];
       let uploadedAudio = "";
@@ -1698,23 +1695,23 @@ const FriendChat = ({
           setLocalMessages((prev) =>
             prev.filter((pendingMessage) => pendingMessage.id !== tempId),
           );
+        } else {
+          setSelectedImages([]);
+          selectedImagesRef.current = [];
+          handleClearRecordedVoiceNote();
+          setLocalMessages((prev) =>
+            prev.filter((pendingMessage) => pendingMessage.id !== tempId),
+          );
         }
       }
-    } catch (_error) {
+    } catch (error) {
+      serverReply?.(error?.message || "Unable to send voice note.");
       setLocalMessages((prev) =>
         prev.filter((pendingMessage) => pendingMessage.id !== tempId),
       );
     } finally {
       setIsUploadingAttachments(false);
       setShouldSendSecretAttachments(false);
-      queuedImages.forEach((image) => {
-        if (image?.previewUrl) {
-          URL.revokeObjectURL(image.previewUrl);
-        }
-      });
-      if (queuedVoiceNote?.previewUrl) {
-        URL.revokeObjectURL(queuedVoiceNote.previewUrl);
-      }
     }
 
     setIsEmojiPickerOpen(false);
@@ -1854,12 +1851,16 @@ const FriendChat = ({
   }, [selectedMessageActionId]);
 
   const setTypingPresence = React.useCallback(
-    (nextIsTyping, { immediate = false } = {}) => {
+    (nextIsTyping, { immediate = false, hasText } = {}) => {
       if (!state?.activeChatFriendId || !updateMyTypingPresence) {
         return;
       }
 
       const normalizedValue = Boolean(nextIsTyping);
+      const normalizedHasText =
+        typeof hasText === "boolean"
+          ? hasText
+          : Boolean(textareaRef.current?.value.trim());
 
       if (typingDebounceTimeoutRef.current) {
         window.clearTimeout(typingDebounceTimeoutRef.current);
@@ -1872,7 +1873,9 @@ const FriendChat = ({
 
       const emitTypingPresence = () => {
         lastTypingStateRef.current = normalizedValue;
-        updateMyTypingPresence(state.activeChatFriendId, normalizedValue);
+        updateMyTypingPresence(state.activeChatFriendId, normalizedValue, {
+          hasText: normalizedHasText,
+        });
       };
 
       if (immediate) {
@@ -1889,7 +1892,10 @@ const FriendChat = ({
   );
 
   const handleTypingChange = (event) => {
-    setTypingPresence(Boolean(event.target.value.trim()));
+    const nextHasText = Boolean(event.target.value.trim());
+    setTypingPresence(nextHasText, {
+      hasText: nextHasText,
+    });
   };
 
   const resetMessageEditingState = React.useCallback(() => {
@@ -2539,15 +2545,30 @@ const FriendChat = ({
     )
       .trim()
       .toLowerCase();
+    const hasTextInTextarea = Boolean(
+      liveLocalStatus?.hasTextInTextarea ??
+        activeFriendPresenceFriend?.localStatus?.hasTextInTextarea,
+    );
 
     if (!localValue) {
       return null;
     }
 
-    return {
-      iconClass: localValue === "typing" ? "fa-keyboard" : "fa-comments",
-      label: localValue === "typing" ? "Typing" : "In my chat",
-    };
+    if (localValue === "typing") {
+      return {
+        text: "Busy, but he's here and typing.",
+      };
+    }
+
+    if (localValue === "in my chat") {
+      return {
+        text: hasTextInTextarea
+          ? "Busy, but he's here and thinking."
+          : "Busy, but he's here and listening to me.",
+      };
+    }
+
+    return null;
   }, [activeFriendId, activeFriendPresenceFriend, state?.friendLocalStatusById]);
 
   const inlineChatHeader =
@@ -2584,10 +2605,7 @@ const FriendChat = ({
               </h1>
               {activeFriendLocalPresence ? (
                 <p id="Chat_inlineHeaderLocalStatus">
-                  <span className="Chat_titleSourceBadge Chat_titleSourceBadge--local">
-                    <i className={`fas ${activeFriendLocalPresence.iconClass}`}></i>
-                    <span>{activeFriendLocalPresence.label}</span>
-                  </span>
+                  {activeFriendLocalPresence.text}
                 </p>
               ) : null}
             </div>
@@ -3172,24 +3190,11 @@ const FriendChat = ({
                     </h1>
                     {activeFriendLocalPresence ? (
                       <p id="Chat_title_localStatus">
-                        <span className="Chat_titleSourceBadge Chat_titleSourceBadge--local">
-                          <i className={`fas ${activeFriendLocalPresence.iconClass}`}></i>
-                          <span>{activeFriendLocalPresence.label}</span>
-                        </span>
+                        {activeFriendLocalPresence.text}
                       </p>
                     ) : null}
                   </div>
                 </div>
-                {hasActiveChat && (
-                  <p id="Chat_title_status">
-                    <span
-                      className={`Chat_titleSourceBadge Chat_titleSourceBadge--${activeFriendGlobalPresence.mode}`}
-                    >
-                      <i className={`fas ${activeFriendGlobalPresence.iconClass}`}></i>
-                      <span>{activeFriendGlobalPresence.label}</span>
-                    </span>
-                  </p>
-                )}
               </div>
               {hasActiveChat ? (
                 <div id="Chat_callActions" className="fr">
@@ -3612,15 +3617,43 @@ const FriendChat = ({
                             }
                           >
                             <span className="Chat_messageTimestamp">
-                              {formatChatTimestamp(msg.rawDate, msg.timestamp)}
+                              <span className="Chat_messageTimestampText">
+                                {formatChatTimestamp(msg.rawDate, msg.timestamp)}
+                              </span>
+                              {msg.sender === "me" ? (
+                                <span
+                                  className={`Chat_messageStatus ${
+                                    msg.pending
+                                      ? "Chat_messageStatus--sent"
+                                      : msg.status === "read"
+                                        ? "Chat_messageStatus--read"
+                                        : msg.status === "delivered"
+                                          ? "Chat_messageStatus--received"
+                                          : "Chat_messageStatus--sent"
+                                  }`}
+                                >
+                                  {msg.pending ? "..." : ""}
+                                  {!msg.pending &&
+                                  (msg.status === "sent" ||
+                                    msg.status === "delivered") ? (
+                                    <i className="fi fi-br-envelope" aria-hidden="true"></i>
+                                  ) : null}
+                                  {msg.status === "read" && !msg.pending ? (
+                                    <i
+                                      className="fi fi-br-envelope-open"
+                                      aria-hidden="true"
+                                    ></i>
+                                  ) : null}
+                                </span>
+                              ) : null}
                             </span>
                             {msg.deleted ? (
                               <p className="Chat_deletedMessageText">Message deleted</p>
                             ) : msg.text ? (
                               <p dir={msgDirection}>
-                                {renderMessageWithEmojiImages(msg.text)}
-                            </p>
-                          ) : null}
+                                <span>{renderMessageWithEmojiImages(msg.text)}</span>
+                              </p>
+                            ) : null}
                           {!msg.deleted && msg.audio ? (
                             <div className="Chat_voiceNoteCard">
                               <button
@@ -3652,38 +3685,6 @@ const FriendChat = ({
                                 )}
                               </div>
                             ) : null}
-                            <span className="Chat_messageMeta">
-                              {msg.edited && !msg.deleted ? (
-                                <span className="Chat_messageEditedFlag">Edited</span>
-                              ) : null}
-                              {msg.deleted ? (
-                                <span className="Chat_messageEditedFlag">Deleted</span>
-                              ) : null}
-                              {msg.sender === "me" ? (
-                                <span
-                                  className={`Chat_messageStatus ${
-                                    msg.pending
-                                      ? "Chat_messageStatus--sent"
-                                      : msg.status === "read"
-                                        ? "Chat_messageStatus--read"
-                                        : msg.status === "delivered"
-                                          ? "Chat_messageStatus--received"
-                                          : "Chat_messageStatus--sent"
-                                  }`}
-                              >
-                                {msg.pending
-                                  ? "..."
-                                    : msg.status === "read"
-                                      ? ""
-                                      : msg.status === "delivered"
-                                        ? "✓✓"
-                                      : "✓"}
-                                {msg.status === "read" && !msg.pending ? (
-                                  <i className="fi fi-br-envelope-open" aria-hidden="true"></i>
-                                ) : null}
-                              </span>
-                            ) : null}
-                            </span>
                           </li>
                         </div>
                       );

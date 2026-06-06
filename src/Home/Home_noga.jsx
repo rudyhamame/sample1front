@@ -4670,18 +4670,19 @@ function HomeNoga(props) {
       )
         .trim()
         .toLowerCase();
+      const hasTextInTextarea = Boolean(
+        liveLocalStatus?.hasTextInTextarea ?? friend?.localStatus?.hasTextInTextarea,
+      );
       const localPresenceState =
         chatPanelLocalStatusValue === "typing"
           ? {
-              iconClass: "fa-keyboard",
-              label: "Typing",
-              source: "local",
+              text: "Busy, but he's here and typing.",
             }
           : chatPanelLocalStatusValue === "in my chat"
             ? {
-                iconClass: "fa-comments",
-                label: "In my chat",
-                source: "local",
+                text: hasTextInTextarea
+                  ? "Busy, but he's here and thinking."
+                  : "Busy, but he's here and listening to me.",
               }
             : null;
       const incomingCall =
@@ -4744,16 +4745,18 @@ function HomeNoga(props) {
                 </span>
                 <span className="Home_Noga_socialFriendStatusLine">
                   <span
-                    className={`Home_Noga_socialFriendStatusText${globalPresenceState?.mode ? ` Home_Noga_socialFriendStatusText--${globalPresenceState.mode}` : ""}`}
+                    className={`Home_Noga_socialFriendStatusText${
+                      isFriendChatOpen && localPresenceState
+                        ? " Home_Noga_socialFriendStatusText--busy"
+                        : globalPresenceState?.mode
+                          ? ` Home_Noga_socialFriendStatusText--${globalPresenceState.mode}`
+                          : ""
+                    }`}
                   >
-                    {globalPresenceState?.label || "Offline"}
+                    {isFriendChatOpen && localPresenceState
+                      ? localPresenceState.text
+                      : globalPresenceState?.label || "Offline"}
                   </span>
-                  {localPresenceState ? (
-                    <span className="Home_Noga_socialFriendSourceBadge Home_Noga_socialFriendSourceBadge--local">
-                      <i className={`fas ${localPresenceState.iconClass}`}></i>
-                      <span>{localPresenceState.label}</span>
-                    </span>
-                  ) : null}
                 </span>
               </div>
             </div>
@@ -9656,6 +9659,7 @@ function HomeNoga(props) {
 		                        state={activeFriendChatState}
 		                        content={HOME_CHAT_CONTENT}
 		                        sendToThemMessage={props.sendToThemMessage}
+                            serverReply={props.serverReply}
 		                        uploadChatImages={props.uploadChatImages}
                             uploadChatAudio={props.uploadChatAudio}
 		                        saveChatImageToGallery={props.saveChatImageToGallery}

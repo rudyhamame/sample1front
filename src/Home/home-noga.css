@@ -4518,6 +4518,14 @@ display: inline-flex;
   white-space: nowrap;
 }
 
+.Home_Noga_socialFriendStatusDivider {
+display: inline-flex;
+  align-items: center;
+  color: rgba(30, 82, 90, 0.42);
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
 .Home_Noga_socialFriendStatusText--chatting {
 color: #2f7ff6;
 }
@@ -4815,8 +4823,7 @@ display: inline-flex;
   color: rgba(30, 82, 90, 0.64);
   font-size: 0.58rem;
   font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  line-height: 1.4;
   min-width: 0;
 }
 
@@ -4842,45 +4849,7 @@ display: inline-flex;
   color: rgba(30, 82, 90, 0.64);
   font-size: 0.58rem;
   font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-#Home_Noga_rightColumn_wrapper #Chat_title_status {
-display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0;
-  color: rgba(30, 82, 90, 0.64);
-  font-size: 0.58rem;
-  font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-#Home_Noga_rightColumn_wrapper .Chat_titleSourceBadge {
-display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding:5px;
-  border-radius: 999px;
-  font-size: 0.5rem;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: 1px solid currentColor;
-  white-space: nowrap;
-}
-
-#Home_Noga_rightColumn_wrapper .Chat_titleSourceBadge--local {
-color: #2f7ff6 !important;
-  background: rgba(231, 241, 255, 0.96);
-}
-
-#Home_Noga_rightColumn_wrapper .Chat_titleSourceBadge--global {
-color: #1b8b82 !important;
-  background: rgba(230, 246, 244, 0.92);
+  line-height: 1.4;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_inlineHeader {
@@ -5104,26 +5073,7 @@ width: 100%;
 justify-content: flex-start;
 }
 
-#Home_Noga_rightColumn_wrapper .sentMessagesLI {
-width: fit-content;
-  max-width: 78%;
-  min-width: 0;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  list-style: none;
-  border-radius: 16px;
-  overflow: hidden;
-align-self: flex-end;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.96),
-    rgba(239, 247, 247, 0.94)
-  );
-  padding: 10px;
-  gap: 2px;
-}
-
+#Home_Noga_rightColumn_wrapper .sentMessagesLI,
 #Home_Noga_rightColumn_wrapper .receivedMessagesLI {
 width: fit-content;
   max-width: 78%;
@@ -5134,17 +5084,32 @@ width: fit-content;
   list-style: none;
   border-radius: 16px;
   overflow: hidden;
+  gap: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 8px 18px rgba(87, 118, 127, 0.1);
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI {
+align-self: flex-end;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(239, 247, 247, 0.94)
+  );
+}
+
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI {
   align-self: flex-start;
   background: linear-gradient(
     180deg,
-    rgba(233, 127, 132, 0.96),
-    rgba(207, 91, 101, 0.94)
+    rgba(246, 251, 251, 0.96),
+    rgba(230, 241, 242, 0.94)
   );
-    padding: 10px;
-    gap: 2px;
 }
 
-#Home_Noga_rightColumn_wrapper .sentMessagesLI p {
+#Home_Noga_rightColumn_wrapper .sentMessagesLI p,
+#Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
 margin: 0;
   line-height: 1.55;
   font-size: 0.875rem;
@@ -5162,27 +5127,17 @@ margin: 0;
     "Segoe UI Emoji",
     "Noto Color Emoji",
     sans-serif;
-color: #1a535c;
+  padding: 0 10px;
+  text-align: center;
+  align-self: center;
+}
+
+#Home_Noga_rightColumn_wrapper .sentMessagesLI p {
+  color: #1a535c;
 }
 
 #Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
-  margin: 0;
-  font-size: 0.875rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-family:
-    "Inter",
-    "Segoe UI",
-    "Arial",
-    "Tajawal",
-    "Cairo",
-    "Noto Naskh Arabic",
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Noto Color Emoji",
-    sans-serif;
-  color: rgba(255, 248, 248, 0.98);
+  color: #214f57;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_message--rtl {
@@ -5192,6 +5147,7 @@ text-align: right;
 #Home_Noga_rightColumn_wrapper .Chat_message--rtl p {
 font-family: "Noto Naskh Arabic", "Tajawal", "Cairo", sans-serif;
   line-height: 1.7;
+  text-align: center;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_message--ltr {
@@ -5343,26 +5299,6 @@ display: inline-flex;
   cursor: pointer;
 }
 
-#Home_Noga_rightColumn_wrapper .Chat_messageMeta {
-display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-width: 0;
-  justify-content: flex-end;
-}
-
-#Home_Noga_rightColumn_wrapper .Chat_messageEditedFlag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.48rem;
-  line-height: 1.2;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-family: "IBM Plex Mono", monospace;
-  opacity: 0.72;
-}
-
 #Home_Noga_rightColumn_wrapper .Chat_deletedMessageText {
   margin: 0;
   padding: 10px 12px 5px;
@@ -5373,15 +5309,24 @@ display: inline-flex;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_messageTimestamp {
-display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 0;
-  margin-bottom: 4px;
-  padding: 0;
+  padding: 5px 10px 2px 10px;
   font-size: 0.5rem;
   line-height: 1.3;
   letter-spacing: 0.04em;
   opacity: 0.82;
   font-family: "IBM Plex Mono", monospace;
+  border-bottom: 1px solid rgba(124, 157, 165, 0.20);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageTimestampText {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .sentMessagesLI .Chat_messageTimestamp {
@@ -5389,7 +5334,7 @@ color: rgba(30, 82, 90, 0.62);
 }
 
 #Home_Noga_rightColumn_wrapper .receivedMessagesLI .Chat_messageTimestamp {
-color: rgba(255, 240, 240, 0.78);
+color: rgba(34, 78, 86, 0.62);
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_messageStatus {
@@ -5409,7 +5354,7 @@ color: rgba(92, 112, 118, 0.72);
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_messageStatus--received {
-color: rgba(92, 112, 118, 0.72);
+color: #1fb96b;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_messageStatus--read {
@@ -5418,6 +5363,8 @@ color: #1fb96b;
   letter-spacing: 0;
 }
 
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--sent .fi,
+#Home_Noga_rightColumn_wrapper .Chat_messageStatus--received .fi,
 #Home_Noga_rightColumn_wrapper .Chat_messageStatus--read .fi {
 display: inline-flex;
   align-items: center;
@@ -5797,6 +5744,17 @@ border-color: rgba(110, 168, 180, 0.14);
 
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
+  .sentMessagesLI,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .receivedMessagesLI {
+box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.22);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
   .sentMessagesLI {
 background: linear-gradient(
     180deg,
@@ -5804,9 +5762,6 @@ background: linear-gradient(
     rgba(12, 33, 39, 0.96)
   );
   border-color: rgba(110, 168, 180, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 10px 18px rgba(0, 0, 0, 0.22);
 }
 
 #Home_Noga_article.Home_Noga_themeDark
@@ -5814,8 +5769,8 @@ background: linear-gradient(
   .receivedMessagesLI {
 background: linear-gradient(
     180deg,
-    rgba(14, 36, 44, 0.96),
-    rgba(10, 28, 35, 0.94)
+    rgba(18, 45, 53, 0.96),
+    rgba(13, 35, 42, 0.94)
   );
 }
 
@@ -5961,32 +5916,6 @@ display: inline-flex;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-}
-
-.Home_Noga_socialFriendSourceBadge {
-display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 4px;
-  padding: 5px;
-  border-radius: 999px;
-  font-size: 0.45rem;
-  line-height: 1;
-  font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: 1px solid currentColor;
-  opacity: 0.9;
-}
-
-.Home_Noga_socialFriendSourceBadge--local {
-color: #2f7ff6 !important;
-  background: rgba(231, 241, 255, 0.96);
-}
-
-.Home_Noga_socialFriendSourceBadge--global {
-color: #1b8b82 !important;
-  background: rgba(230, 246, 244, 0.92);
 }
 
 .Home_Noga_socialFriendStatus--connected {
