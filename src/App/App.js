@@ -98,6 +98,45 @@ const getScaleValueForElement = (scaleEntries, elementId) => {
   return scaleEntry ? clampAppScale(scaleEntry.scaleNum) : null;
 };
 
+const appendMediaVersionParam = (url, version) => {
+  const normalizedUrl = String(url || "").trim();
+  const normalizedVersion = String(version || "").trim();
+
+  if (!normalizedUrl || !normalizedVersion) {
+    return normalizedUrl;
+  }
+
+  try {
+    const nextUrl = new URL(normalizedUrl);
+    nextUrl.searchParams.set("vprof", normalizedVersion);
+    return nextUrl.toString();
+  } catch {
+    const joiner = normalizedUrl.includes("?") ? "&" : "?";
+    return `${normalizedUrl}${joiner}vprof=${encodeURIComponent(normalizedVersion)}`;
+  }
+};
+
+const resolveProfilePictureStateUrl = (requestedProfilePicture, fallbackUrl = "") => {
+  if (
+    requestedProfilePicture &&
+    typeof requestedProfilePicture === "object" &&
+    !Array.isArray(requestedProfilePicture)
+  ) {
+    const nextUrl = String(
+      requestedProfilePicture.url || requestedProfilePicture.secure_url || "",
+    ).trim();
+    const nextVersion =
+      String(requestedProfilePicture.contentHash || "").trim() ||
+      String(requestedProfilePicture.assetId || requestedProfilePicture.asset_id || "").trim() ||
+      String(requestedProfilePicture.updatedAt || "").trim() ||
+      String(requestedProfilePicture.publicId || requestedProfilePicture.public_id || "").trim();
+
+    return appendMediaVersionParam(nextUrl, nextVersion) || nextUrl;
+  }
+
+  return String(requestedProfilePicture || fallbackUrl || "").trim();
+};
+
 const LazyStudyPlanner = React.lazy(
   () => import("./SubApps/StudyPlannner/StudyPlanner"),
 );
@@ -218,6 +257,11 @@ class App extends React.Component {
         ? storedSession.rejected_users
         : [],
       chat: [],
+      chatLastReadAtByFriendId:
+        storedSession.chatLastReadAtByFriendId &&
+        typeof storedSession.chatLastReadAtByFriendId === "object"
+          ? storedSession.chatLastReadAtByFriendId
+          : {},
       posts: Array.isArray(storedSession.posts) ? storedSession.posts : [],
       lectures: Array.isArray(storedSession.lectures)
         ? storedSession.lectures
@@ -1030,13 +1074,73 @@ class App extends React.Component {
   };
 
   markMessagesRead = (friendId) => {
-    if (!this.realtimeSocket || !this.state.my_id || !friendId) {
+    const normalizedFriendId = String(friendId || "").trim();
+
+    if (!normalizedFriendId) {
+      return;
+    }
+
+    const currentChat = Array.isArray(this.state.chat) ? this.state.chat : [];
+    const unreadIncomingMessages = currentChat.filter((message) => {
+      const messageFriendId = String(message?._id || "").trim();
+      const messageSender = String(message?.from || "").trim().toLowerCase();
+      const messageStatus = String(message?.status || "").trim().toLowerCase();
+
+      return (
+        messageFriendId === normalizedFriendId &&
+        messageSender !== "me" &&
+        !message?.deleted &&
+        messageStatus !== "read"
+      );
+    });
+
+    const hasUnreadIncomingMessages = unreadIncomingMessages.length > 0;
+    const latestReadAtIso = new Date(
+      unreadIncomingMessages.reduce((latestTimestamp, message) => {
+        const messageTimestamp = new Date(message?.date || 0).getTime();
+        return Number.isFinite(messageTimestamp) && messageTimestamp > latestTimestamp
+          ? messageTimestamp
+          : latestTimestamp;
+      }, Date.now()),
+    ).toISOString();
+
+    this.safeSetState((prevState) => ({
+      chat: (Array.isArray(prevState.chat) ? prevState.chat : []).map((message) => {
+        const messageFriendId = String(message?._id || "").trim();
+        const messageSender = String(message?.from || "").trim().toLowerCase();
+        const messageStatus = String(message?.status || "").trim().toLowerCase();
+
+        if (
+          messageFriendId !== normalizedFriendId ||
+          messageSender === "me" ||
+          message?.deleted ||
+          messageStatus === "read"
+        ) {
+          return message;
+        }
+
+        return {
+          ...message,
+          status: "read",
+        };
+      }),
+      chatLastReadAtByFriendId: {
+        ...(prevState.chatLastReadAtByFriendId || {}),
+        [normalizedFriendId]: latestReadAtIso,
+      },
+    }), () => {
+      this.persistStoredSession({
+        chatLastReadAtByFriendId: this.state.chatLastReadAtByFriendId,
+      });
+    });
+
+    if (!this.realtimeSocket || !this.state.my_id || !hasUnreadIncomingMessages) {
       return;
     }
 
     this.realtimeSocket.emit("user:message-read", {
       userId: this.state.my_id,
-      friendId,
+      friendId: normalizedFriendId,
     });
   };
 
@@ -1969,7 +2073,9 @@ class App extends React.Component {
                   message: normalizedMessage,
                   images: normalizedImages,
                   date: optimisticTimestamp,
-                  status: "sent",
+                  status: String(payload?.chatMessage?.status || "sent")
+                    .trim()
+                    .toLowerCase(),
                   edited: false,
                   deleted: false,
                 },
@@ -2985,12 +3091,10 @@ class App extends React.Component {
 
   setUserMediaInfo = (nextMedia = {}) => {
     const requestedProfilePicture = nextMedia?.profilePicture;
-    const nextProfilePicture =
-      typeof requestedProfilePicture === "object" && requestedProfilePicture
-        ? String(
-            requestedProfilePicture.url || requestedProfilePicture.secure_url || "",
-          ).trim()
-        : String(requestedProfilePicture || this.state.profilePicture || "").trim();
+    const nextProfilePicture = resolveProfilePictureStateUrl(
+      requestedProfilePicture,
+      this.state.profilePicture,
+    );
     const nextImageGallery = Array.isArray(nextMedia?.imageGallery)
       ? nextMedia.imageGallery
       : [];

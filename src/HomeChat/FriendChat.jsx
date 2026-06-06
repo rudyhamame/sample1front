@@ -3481,10 +3481,16 @@ const FriendChat = ({
                                     ? "Chat_messageStatus--sent"
                                     : msg.status === "read"
                                       ? "Chat_messageStatus--read"
-                                      : "Chat_messageStatus--received"
+                                      : msg.status === "delivered"
+                                        ? "Chat_messageStatus--received"
+                                        : "Chat_messageStatus--sent"
                                 }`}
                               >
-                                {msg.pending ? "..." : "✓"}
+                                {msg.pending
+                                  ? "..."
+                                  : msg.status === "read" || msg.status === "delivered"
+                                    ? "✓✓"
+                                    : "✓"}
                               </span>
                             ) : null}
                           </span>

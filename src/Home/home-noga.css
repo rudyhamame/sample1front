@@ -4188,10 +4188,12 @@ overflow: auto;
 }
 
 .Home_Noga_socialRequestActions {
-width: auto;
+  display: flex;
+  flex-direction: row;
+  width: auto;
   flex: 0 0 auto;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 5px;
 }
 
 .Home_Noga_socialDirectoryHeader {

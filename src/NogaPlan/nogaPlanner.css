@@ -2333,8 +2333,9 @@
   background: rgba(255, 255, 255, 0.82);
   overflow: visible;
   padding: 12px;
-  border-radius: 10px;
+  border: 1px solid rgba(132, 27, 45, 0.18);
 }
+
 
 .nogaPlanner_homePanelCard--intervals {
   width: 100%;

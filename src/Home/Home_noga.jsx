@@ -18,6 +18,7 @@ import FriendChat from "../HomeChat/FriendChat";
 import {
   getFriendPresenceState as resolveFriendPresenceState,
   getFriendPresenceStateForChatPanel as resolveFriendPresenceStateForChatPanel,
+  getFriendChatPresenceKey,
 } from "../utils/friendPresence";
 import { refreshSharedPlannerMusicLibrary } from "../music/globalMusicPlayer";
 import io from "socket.io-client";
@@ -1733,6 +1734,9 @@ function HomeNoga(props) {
   const isDrawingPointerActiveRef = React.useRef(false);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
+  const newMessageAudioRef = React.useRef(null);
+  const previousUnreadChatCountsRef = React.useRef({});
+  const hasHydratedUnreadCountsRef = React.useRef(false);
   const controlPanelCardRef = React.useRef(null);
   const academicInfoFormRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
@@ -3632,20 +3636,92 @@ function HomeNoga(props) {
 
   const unreadChatCountsByFriendId = React.useMemo(() => {
     const chatEntries = Array.isArray(props.state?.chat) ? props.state.chat : [];
+    const chatLastReadAtByFriendId =
+      props.state?.chatLastReadAtByFriendId &&
+      typeof props.state.chatLastReadAtByFriendId === "object"
+        ? props.state.chatLastReadAtByFriendId
+        : {};
 
     return chatEntries.reduce((accumulator, message) => {
       const friendId = String(message?._id || "").trim();
       const messageSender = String(message?.from || "").trim().toLowerCase();
       const messageStatus = String(message?.status || "").trim().toLowerCase();
+      const messageTimestamp = new Date(message?.date || 0).getTime();
+      const lastReadAtTimestamp = new Date(
+        chatLastReadAtByFriendId[friendId] || 0,
+      ).getTime();
 
-      if (!friendId || messageSender === "me" || messageStatus === "read") {
+      if (
+        !friendId ||
+        messageSender === "me" ||
+        message?.deleted ||
+        messageStatus === "read" ||
+        (Number.isFinite(messageTimestamp) &&
+          Number.isFinite(lastReadAtTimestamp) &&
+          messageTimestamp <= lastReadAtTimestamp)
+      ) {
         return accumulator;
       }
 
       accumulator[friendId] = Number(accumulator[friendId] || 0) + 1;
       return accumulator;
     }, {});
-  }, [props.state?.chat]);
+  }, [props.state?.chat, props.state?.chatLastReadAtByFriendId]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    if (!newMessageAudioRef.current) {
+      newMessageAudioRef.current = new Audio("/sounds/newmessage.mp3");
+      newMessageAudioRef.current.preload = "auto";
+    }
+
+    return () => {
+      if (newMessageAudioRef.current) {
+        newMessageAudioRef.current.pause();
+        newMessageAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const currentCounts = unreadChatCountsByFriendId || {};
+    const previousCounts = previousUnreadChatCountsRef.current || {};
+    const normalizedActiveChatFriendId = String(
+      props.state?.activeChatFriendId || "",
+    ).trim();
+
+    if (!hasHydratedUnreadCountsRef.current) {
+      previousUnreadChatCountsRef.current = currentCounts;
+      hasHydratedUnreadCountsRef.current = true;
+      return;
+    }
+
+    const hasNewUnreadMessage = Object.keys(currentCounts).some((friendId) => {
+      const currentValue = Number(currentCounts[friendId] || 0);
+      const previousValue = Number(previousCounts[friendId] || 0);
+
+      return (
+        currentValue > previousValue &&
+        String(friendId || "").trim() !== normalizedActiveChatFriendId
+      );
+    });
+
+    previousUnreadChatCountsRef.current = currentCounts;
+
+    if (!hasNewUnreadMessage || !newMessageAudioRef.current) {
+      return;
+    }
+
+    try {
+      newMessageAudioRef.current.currentTime = 0;
+      newMessageAudioRef.current.play().catch(() => null);
+    } catch {
+      // Ignore playback failures.
+    }
+  }, [props.state?.activeChatFriendId, unreadChatCountsByFriendId]);
 
   const friendRequestNotifications = React.useMemo(() => {
     const rawRequests = Array.isArray(props.state?.friend_requests)
@@ -3790,12 +3866,75 @@ function HomeNoga(props) {
     [props.state?.sent_friend_requests],
   );
 
+  const sentFriendRequestUsernames = React.useMemo(
+    () =>
+      new Set(
+        (Array.isArray(props.state?.sent_friend_requests)
+          ? props.state.sent_friend_requests
+          : []
+        )
+          .filter((request) => {
+            const normalizedStatus = String(request?.status || "")
+              .trim()
+              .toLowerCase();
+            return normalizedStatus === "pending";
+          })
+          .map((request) =>
+            String(
+              request?.username ||
+                request?.toUser?.username ||
+                request?.info?.username ||
+                "",
+            )
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    [props.state?.sent_friend_requests],
+  );
+
   const deriveSearchUserMode = React.useCallback(
     (candidate) => {
       const candidateId = String(candidate?.id || "").trim();
       const candidateUsername = String(candidate?.username || "")
         .trim()
         .toLowerCase();
+      const rawFriends = Array.isArray(props.state?.friends)
+        ? props.state.friends
+        : [];
+      const matchedRelationshipEntry = rawFriends.find((entry) => {
+        const info =
+          entry?.info ||
+          entry?.user?.info ||
+          entry?.user ||
+          entry?.id?.info ||
+          entry ||
+          {};
+        const relationshipId = String(
+          entry?._id || entry?.id || info?._id || info?.id || "",
+        ).trim();
+        const relationshipUsername = String(
+          info?.username || entry?.username || "",
+        )
+          .trim()
+          .toLowerCase();
+
+        return (
+          (candidateId && relationshipId === candidateId) ||
+          (candidateUsername && relationshipUsername === candidateUsername)
+        );
+      });
+      const matchedRelationshipMode = normalizeFriendUserMode(
+        matchedRelationshipEntry?.userMode ||
+          matchedRelationshipEntry?.mode ||
+          matchedRelationshipEntry?.relationship?.userMode ||
+          "",
+      );
+
+      if (matchedRelationshipMode && matchedRelationshipMode !== "stranger") {
+        return matchedRelationshipMode;
+      }
 
       if (
         candidateId &&
@@ -3813,7 +3952,10 @@ function HomeNoga(props) {
         return "requestReceived";
       }
 
-      if (candidateId && sentFriendRequestIds.has(candidateId)) {
+      if (
+        (candidateId && sentFriendRequestIds.has(candidateId)) ||
+        (candidateUsername && sentFriendRequestUsernames.has(candidateUsername))
+      ) {
         return "requestsent";
       }
 
@@ -3824,7 +3966,9 @@ function HomeNoga(props) {
       existingFriendUsernames,
       incomingFriendRequestIds,
       incomingFriendRequestIdsByUsername,
+      props.state?.friends,
       sentFriendRequestIds,
+      sentFriendRequestUsernames,
     ],
   );
 
@@ -4909,9 +5053,9 @@ function HomeNoga(props) {
       const isSending = sendingFriendRequestUsername === candidate.username;
       const candidateUserModeMeta = getSearchCandidateUserModeMeta(candidate);
       const candidateId = String(candidate?.id || "").trim();
-      const candidateMode = String(candidate?.userMode || "stranger")
-        .trim()
-        .toLowerCase();
+      const candidateMode = normalizeFriendUserMode(
+        deriveSearchUserMode(candidate),
+      );
       const canSendRequest = candidateMode === "stranger";
       const canAcceptRequest = candidateMode === "requestreceived";
       const canCancelRequest = candidateMode === "requestsent";
@@ -4955,7 +5099,10 @@ function HomeNoga(props) {
                 </span>
               </div>
             </div>
-            {candidateUserModeMeta ? (
+            {candidateUserModeMeta &&
+            !isSending &&
+            !canAcceptRequest &&
+            !canCancelRequest ? (
               <div className="Home_Noga_socialFriendPresence">
                 <span
                   className="Home_Noga_socialFriendChatIcon"
@@ -5038,6 +5185,7 @@ function HomeNoga(props) {
       );
     },
     [
+      deriveSearchUserMode,
       getSearchCandidateUserModeMeta,
       handleAcceptSearchCandidate,
       handleRemoveSearchCandidate,
@@ -5196,7 +5344,7 @@ function HomeNoga(props) {
                 </span>
               </div>
             </div>
-            {friendPresenceState ? (
+            {friendPresenceState && !canAcceptRequest && !isSentRequest ? (
               <div className="Home_Noga_socialFriendPresence">
                 <span
                   className={`Home_Noga_socialFriendUnreadBadge${unreadChatCount > 0 ? "" : " Home_Noga_socialFriendUnreadBadge--empty"}`}

@@ -12430,28 +12430,6 @@ export default class NogaPlanner extends Component {
             </div>
           </div>
           <div className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right">
-            <div className="nogaPlanner_homePanelModesHeader">
-              <strong>Modes of Program</strong>
-              <div className="nogaPlanner_homePanelModeTabs">
-                {homePanelModeTabs.map((tabEntry) => (
-                  <button
-                    key={`nogaPlanner_homePanelModeTab_${tabEntry.key}`}
-                    type="button"
-                    className={
-                      "nogaPlanner_homePanelModeTab" +
-                      (activeHomePanelModeTab === tabEntry.key
-                        ? " is-active"
-                        : "")
-                    }
-                    onClick={() =>
-                      this.setState({ homePanelModeTab: tabEntry.key })
-                    }
-                  >
-                    {tabEntry.label}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div
               className={
                 "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervals" +
