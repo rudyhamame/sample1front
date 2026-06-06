@@ -28,6 +28,7 @@ import { getFriendChatPresenceKey } from "../utils/friendPresence";
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
 import {
   saveRemoteImageToUserGallery,
+  uploadAudioFileAsChatAttachment,
   uploadImageFileAsChatAttachment,
 } from "../utils/userImageGallery";
 
@@ -1823,6 +1824,23 @@ class App extends React.Component {
     return uploadedMedia;
   };
 
+  uploadChatAudio = async (file) => {
+    if (!file) {
+      return null;
+    }
+
+    try {
+      return await uploadAudioFileAsChatAttachment({
+        token: this.state.token,
+        file,
+        onStatus: (message) => this.serverReply(message),
+      });
+    } catch (error) {
+      this.serverReply(error?.message || "Unable to upload voice note.");
+      throw error;
+    }
+  };
+
   saveChatImageToGallery = async (imageSource, options = {}) => {
     const normalizedImageSource =
       imageSource && typeof imageSource === "object"
@@ -1987,6 +2005,7 @@ class App extends React.Component {
                 return {
                   ...message,
                   message: "",
+                  audio: "",
                   images: [],
                   deleted: true,
                   edited: false,
@@ -2005,10 +2024,12 @@ class App extends React.Component {
       typeof messagePayload === "string"
         ? {
             text: String(messagePayload || ""),
+            audio: "",
             images: [],
           }
         : {
             text: String(messagePayload?.text || ""),
+            audio: String(messagePayload?.audio || "").trim(),
             images: (Array.isArray(messagePayload?.images)
               ? messagePayload.images
               : []
@@ -2017,6 +2038,7 @@ class App extends React.Component {
               .filter(Boolean),
           };
     const normalizedMessage = normalizedPayload.text;
+    const normalizedAudio = normalizedPayload.audio;
     const normalizedImages = normalizedPayload.images;
     const textarea = document.getElementById("Chat_textarea_input");
     if (textarea) {
@@ -2026,7 +2048,11 @@ class App extends React.Component {
       this.serverReply("Select a doctor from your friends list first");
       return Promise.resolve(false);
     }
-    if (normalizedMessage.trim() !== "" || normalizedImages.length > 0) {
+    if (
+      normalizedMessage.trim() !== "" ||
+      normalizedAudio ||
+      normalizedImages.length > 0
+    ) {
       const selectedFriendId = this.state.friendID_selected;
       const optimisticTimestamp = new Date().toISOString();
       let url =
@@ -2044,6 +2070,7 @@ class App extends React.Component {
         body: JSON.stringify({
           body: {
             text: normalizedMessage,
+            audio: normalizedAudio,
             images: normalizedImages,
             videos: [],
             documents: [],
@@ -2071,6 +2098,7 @@ class App extends React.Component {
                   _id: selectedFriendId,
                   from: "me",
                   message: normalizedMessage,
+                  audio: normalizedAudio,
                   images: normalizedImages,
                   date: optimisticTimestamp,
                   status: String(payload?.chatMessage?.status || "sent")
@@ -3784,6 +3812,7 @@ class App extends React.Component {
                   closeActiveChat={this.closeActiveChat}
                   sendToThemMessage={this.sendToThemMessage}
                   uploadChatImages={this.uploadChatImages}
+                  uploadChatAudio={this.uploadChatAudio}
                   saveChatImageToGallery={this.saveChatImageToGallery}
                   editChatMessage={this.editChatMessage}
                   deleteChatMessage={this.deleteChatMessage}
@@ -3818,6 +3847,7 @@ class App extends React.Component {
                   closeActiveChat={this.closeActiveChat}
                   sendToThemMessage={this.sendToThemMessage}
                   uploadChatImages={this.uploadChatImages}
+                  uploadChatAudio={this.uploadChatAudio}
                   saveChatImageToGallery={this.saveChatImageToGallery}
                   editChatMessage={this.editChatMessage}
                   deleteChatMessage={this.deleteChatMessage}

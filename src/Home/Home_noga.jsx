@@ -9657,6 +9657,7 @@ function HomeNoga(props) {
 		                        content={HOME_CHAT_CONTENT}
 		                        sendToThemMessage={props.sendToThemMessage}
 		                        uploadChatImages={props.uploadChatImages}
+                            uploadChatAudio={props.uploadChatAudio}
 		                        saveChatImageToGallery={props.saveChatImageToGallery}
 		                        updateMyTypingPresence={props.updateMyTypingPresence}
 		                        markMessagesRead={props.markMessagesRead}

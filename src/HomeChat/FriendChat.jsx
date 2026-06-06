@@ -72,6 +72,7 @@ const formatChatTimestamp = (rawValue, fallbackTimestamp) => {
   return dateValue.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   });
 };
 
@@ -222,6 +223,8 @@ const normalizeMessageImages = (value) =>
     .map((entry) => String(entry || "").trim())
     .filter(Boolean);
 
+const normalizeMessageAudio = (value) => String(value || "").trim();
+
 const SECRET_CHAT_IMAGE_PREFIX = "secret-image:v1:";
 const CHAT_IMAGE_ENTRY_PREFIX = "chat-image:v2:";
 
@@ -362,6 +365,7 @@ const FriendChat = ({
   content,
   sendToThemMessage,
   uploadChatImages,
+  uploadChatAudio,
   saveChatImageToGallery,
   editChatMessage,
   deleteChatMessage,
@@ -415,6 +419,8 @@ const FriendChat = ({
   const attachmentInputRef = React.useRef(null);
   const [localMessages, setLocalMessages] = React.useState([]);
   const [selectedImages, setSelectedImages] = React.useState([]);
+  const [recordedVoiceNote, setRecordedVoiceNote] = React.useState(null);
+  const [isRecordingVoiceNote, setIsRecordingVoiceNote] = React.useState(false);
   const [shouldSendSecretAttachments, setShouldSendSecretAttachments] =
     React.useState(false);
   const [isUploadingAttachments, setIsUploadingAttachments] = React.useState(false);
@@ -431,6 +437,9 @@ const FriendChat = ({
   const [isSecretImagePasswordSubmitting, setIsSecretImagePasswordSubmitting] =
     React.useState(false);
   const selectedImagesRef = React.useRef([]);
+  const mediaRecorderRef = React.useRef(null);
+  const mediaRecorderStreamRef = React.useRef(null);
+  const mediaRecorderChunksRef = React.useRef([]);
   const messageLongPressTimeoutRef = React.useRef(null);
   const localAudioRef = React.useRef(null);
   const remoteAudioRef = React.useRef(null);
@@ -503,6 +512,7 @@ const FriendChat = ({
           String(message?.id || message?._id || "").trim() ||
           `remote-${message?.date || index}`,
         text: repairMojibakeText(String(message?.message || "").trim()),
+        audio: normalizeMessageAudio(message?.audio),
         images: normalizeMessageImages(message?.images),
         sender: String(message?.from || "").trim() === "me" ? "me" : "friend",
         status: String(message?.status || "sent").trim().toLowerCase(),
@@ -1411,8 +1421,18 @@ const FriendChat = ({
           URL.revokeObjectURL(image.previewUrl);
         }
       });
+      if (recordedVoiceNote?.previewUrl) {
+        URL.revokeObjectURL(recordedVoiceNote.previewUrl);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (mediaRecorderStreamRef.current) {
+        mediaRecorderStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaRecorderStreamRef.current = null;
+      }
     },
-    [],
+    [recordedVoiceNote],
   );
 
   const handleAttachmentSelection = (event) => {
@@ -1452,11 +1472,105 @@ const FriendChat = ({
     });
   };
 
+  const handleClearRecordedVoiceNote = React.useCallback(() => {
+    setRecordedVoiceNote((currentValue) => {
+      if (currentValue?.previewUrl) {
+        URL.revokeObjectURL(currentValue.previewUrl);
+      }
+      return null;
+    });
+  }, []);
+
+  const handleToggleVoiceRecording = React.useCallback(async () => {
+    if (
+      typeof window === "undefined" ||
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function" ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      return;
+    }
+
+    if (isRecordingVoiceNote && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "";
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderChunksRef.current = [];
+      mediaRecorderStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data && event.data.size > 0) {
+          mediaRecorderChunksRef.current.push(event.data);
+        }
+      });
+
+      recorder.addEventListener("stop", () => {
+        const chunks = mediaRecorderChunksRef.current || [];
+        const nextMimeType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunks, {
+          type: nextMimeType,
+        });
+        mediaRecorderChunksRef.current = [];
+        setIsRecordingVoiceNote(false);
+
+        if (mediaRecorderStreamRef.current) {
+          mediaRecorderStreamRef.current.getTracks().forEach((track) => track.stop());
+          mediaRecorderStreamRef.current = null;
+        }
+
+        if (blob.size > 0) {
+          const extension = nextMimeType.includes("mpeg")
+            ? "mp3"
+            : nextMimeType.includes("ogg")
+              ? "ogg"
+              : "webm";
+          const previewUrl = URL.createObjectURL(blob);
+          setRecordedVoiceNote((currentValue) => {
+            if (currentValue?.previewUrl) {
+              URL.revokeObjectURL(currentValue.previewUrl);
+            }
+            return {
+              blob,
+              mimeType: nextMimeType,
+              previewUrl,
+              fileName: `voice-note-${Date.now()}.${extension}`,
+            };
+          });
+        }
+
+        mediaRecorderRef.current = null;
+      });
+
+      recorder.start();
+      setIsRecordingVoiceNote(true);
+      handleClearRecordedVoiceNote();
+    } catch (_error) {
+      setIsRecordingVoiceNote(false);
+    }
+  }, [handleClearRecordedVoiceNote, isRecordingVoiceNote]);
+
   const handleSend = async () => {
     const textarea = textareaRef.current;
     const message = textarea ? textarea.value : "";
     const trimmedMessage = String(message || "").trim();
     const queuedImages = Array.isArray(selectedImages) ? selectedImages : [];
+    const queuedVoiceNote = recordedVoiceNote;
 
     if (editingMessageId) {
       if (!messageBeingEdited || typeof editChatMessage !== "function") {
@@ -1465,6 +1579,7 @@ const FriendChat = ({
 
       const canSubmitBlankEdit =
         trimmedMessage.length > 0 ||
+        Boolean(messageBeingEdited.audio) ||
         (Array.isArray(messageBeingEdited.images) && messageBeingEdited.images.length > 0);
 
       if (!canSubmitBlankEdit) {
@@ -1491,7 +1606,7 @@ const FriendChat = ({
       return;
     }
 
-    if (!trimmedMessage && queuedImages.length === 0) return;
+    if (!trimmedMessage && queuedImages.length === 0 && !queuedVoiceNote) return;
 
     const tempId = generateTempId();
     const optimisticImages = queuedImages.map((image) => image.previewUrl).filter(Boolean);
@@ -1500,6 +1615,7 @@ const FriendChat = ({
       {
         id: tempId,
         text: trimmedMessage,
+        audio: queuedVoiceNote?.previewUrl || "",
         images: optimisticImages,
         sender: "me",
         pending: true,
@@ -1509,9 +1625,11 @@ const FriendChat = ({
 
     setSelectedImages([]);
     selectedImagesRef.current = [];
+    setRecordedVoiceNote(null);
 
     try {
       let uploadedImages = [];
+      let uploadedAudio = "";
 
       if (queuedImages.length > 0 && typeof uploadChatImages === "function") {
         setIsUploadingAttachments(true);
@@ -1549,10 +1667,30 @@ const FriendChat = ({
         );
       }
 
+      if (queuedVoiceNote?.blob && typeof uploadChatAudio === "function") {
+        setIsUploadingAttachments(true);
+        const voiceFile = new File([queuedVoiceNote.blob], queuedVoiceNote.fileName, {
+          type: queuedVoiceNote.mimeType || "audio/webm",
+        });
+        const uploadedMedia = await uploadChatAudio(voiceFile);
+        uploadedAudio = String(uploadedMedia?.url || "").trim();
+        setLocalMessages((prev) =>
+          prev.map((pendingMessage) =>
+            pendingMessage.id === tempId
+              ? {
+                  ...pendingMessage,
+                  audio: uploadedAudio,
+                }
+              : pendingMessage,
+          ),
+        );
+      }
+
       if (sendToThemMessage) {
         const didSend = await Promise.resolve(
           sendToThemMessage({
             text: trimmedMessage,
+            audio: uploadedAudio,
             images: uploadedImages,
           }),
         );
@@ -1574,6 +1712,9 @@ const FriendChat = ({
           URL.revokeObjectURL(image.previewUrl);
         }
       });
+      if (queuedVoiceNote?.previewUrl) {
+        URL.revokeObjectURL(queuedVoiceNote.previewUrl);
+      }
     }
 
     setIsEmojiPickerOpen(false);
@@ -1597,6 +1738,8 @@ const FriendChat = ({
             (remoteMessage) =>
               remoteMessage.sender === "me" &&
               remoteMessage.text === msg.text &&
+              normalizeMessageAudio(remoteMessage.audio) ===
+                normalizeMessageAudio(msg.audio) &&
               areImageListsEqual(remoteMessage.images, msg.images),
           ),
       ),
@@ -1654,6 +1797,12 @@ const FriendChat = ({
     setSecretImagePasswordFeedback("");
     setSecretImageUnlockingKey("");
     setShouldSendSecretAttachments(false);
+    setRecordedVoiceNote((currentValue) => {
+      if (currentValue?.previewUrl) {
+        URL.revokeObjectURL(currentValue.previewUrl);
+      }
+      return null;
+    });
   }, [activeFriendId]);
 
   React.useEffect(() => {
@@ -3462,14 +3611,35 @@ const FriendChat = ({
                                 : undefined
                             }
                           >
+                            <span className="Chat_messageTimestamp">
+                              {formatChatTimestamp(msg.rawDate, msg.timestamp)}
+                            </span>
                             {msg.deleted ? (
                               <p className="Chat_deletedMessageText">Message deleted</p>
                             ) : msg.text ? (
                               <p dir={msgDirection}>
                                 {renderMessageWithEmojiImages(msg.text)}
-                              </p>
-                            ) : null}
-                            {!msg.deleted &&
+                            </p>
+                          ) : null}
+                          {!msg.deleted && msg.audio ? (
+                            <div className="Chat_voiceNoteCard">
+                              <button
+                                type="button"
+                                className="Chat_voiceNoteBadge"
+                                disabled
+                                aria-hidden="true"
+                              >
+                                <i className="fas fa-microphone"></i>
+                              </button>
+                              <audio
+                                className="Chat_voiceNotePlayer"
+                                controls
+                                preload="metadata"
+                                src={msg.audio}
+                              />
+                            </div>
+                          ) : null}
+                          {!msg.deleted &&
                             Array.isArray(msg.images) &&
                             msg.images.length > 0 ? (
                               <div className="Chat_messageImages">
@@ -3483,9 +3653,6 @@ const FriendChat = ({
                               </div>
                             ) : null}
                             <span className="Chat_messageMeta">
-                              <span className="Chat_messageTimestamp">
-                                {formatChatTimestamp(msg.rawDate, msg.timestamp)}
-                              </span>
                               {msg.edited && !msg.deleted ? (
                                 <span className="Chat_messageEditedFlag">Edited</span>
                               ) : null}
@@ -3503,14 +3670,19 @@ const FriendChat = ({
                                           ? "Chat_messageStatus--received"
                                           : "Chat_messageStatus--sent"
                                   }`}
-                                >
-                                  {msg.pending
-                                    ? "..."
-                                    : msg.status === "read" || msg.status === "delivered"
-                                      ? "✓✓"
+                              >
+                                {msg.pending
+                                  ? "..."
+                                    : msg.status === "read"
+                                      ? ""
+                                      : msg.status === "delivered"
+                                        ? "✓✓"
                                       : "✓"}
-                                </span>
-                              ) : null}
+                                {msg.status === "read" && !msg.pending ? (
+                                  <i className="fi fi-br-envelope-open" aria-hidden="true"></i>
+                                ) : null}
+                              </span>
+                            ) : null}
                             </span>
                           </li>
                         </div>
@@ -3534,7 +3706,7 @@ const FriendChat = ({
                             </button>
                           </div>
                         ) : null}
-		                {selectedImages.length > 0 ? (
+		                {selectedImages.length > 0 || recordedVoiceNote ? (
 	                  <div className="Chat_attachmentPreviewRow">
 	                    {selectedImages.map((image) => (
 	                      <div
@@ -3556,10 +3728,33 @@ const FriendChat = ({
 	                        </button>
 	                      </div>
 	                    ))}
+                      {recordedVoiceNote ? (
+                        <div className="Chat_voiceNoteDraftCard">
+                          <button
+                            type="button"
+                            className="Chat_attachmentPreviewRemove"
+                            onClick={handleClearRecordedVoiceNote}
+                            aria-label="Remove recorded voice note"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                          <div className="Chat_voiceNoteDraftMeta">
+                            <i className="fas fa-microphone"></i>
+                            <span>Voice note</span>
+                          </div>
+                          <audio
+                            className="Chat_voiceNotePlayer"
+                            controls
+                            preload="metadata"
+                            src={recordedVoiceNote.previewUrl}
+                          />
+                        </div>
+                      ) : null}
                       <label className="Chat_attachmentSecretToggle">
                         <input
                           type="checkbox"
                           checked={shouldSendSecretAttachments}
+                          disabled={Boolean(recordedVoiceNote)}
                           onChange={(event) =>
                             setShouldSendSecretAttachments(event.target.checked)
                           }
@@ -3592,6 +3787,22 @@ const FriendChat = ({
 	                    </div>
 	                  </div>
 	                  <button
+	                    id="Chat_voiceNote_button"
+	                    type="button"
+	                    aria-label={isRecordingVoiceNote ? "Stop voice note recording" : "Record voice note"}
+	                    title={isRecordingVoiceNote ? "Stop recording" : "Record voice note"}
+	                    onMouseDown={keepTextareaFocus}
+	                    onTouchStart={keepTextareaFocus}
+	                    onClick={handleToggleVoiceRecording}
+	                    disabled={isUploadingAttachments || isMessageMutationPending}
+	                  >
+	                    <i
+                        className={`fas ${
+                          isRecordingVoiceNote ? "fa-stop" : "fa-microphone"
+                        }`}
+                      ></i>
+	                  </button>
+	                  <button
 	                    id="Chat_attachment_button"
 	                    type="button"
 	                    aria-label="Attach images"
@@ -3599,6 +3810,7 @@ const FriendChat = ({
 	                    onMouseDown={keepTextareaFocus}
 	                    onTouchStart={keepTextareaFocus}
 	                    onClick={() => attachmentInputRef.current?.click()}
+                      disabled={isRecordingVoiceNote}
 	                  >
 	                    <i className="fas fa-image" aria-hidden="true"></i>
 	                  </button>

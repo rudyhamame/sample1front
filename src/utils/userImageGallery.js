@@ -317,6 +317,88 @@ export const uploadImageFileAsChatAttachment = async ({
   };
 };
 
+export const uploadAudioFileAsChatAttachment = async ({
+  token,
+  file,
+  onStatus = null,
+}) => {
+  if (!token) {
+    throw new Error("A valid login token is required.");
+  }
+
+  if (!file) {
+    throw new Error("An audio file is required.");
+  }
+
+  const mimeType = String(file?.type || "").trim().toLowerCase();
+  if (!mimeType.startsWith("audio/")) {
+    throw new Error("Only audio attachments are supported for voice notes.");
+  }
+
+  const signatureResponse = await fetch(apiUrl("/api/user/image-gallery/signature"), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      publicId: buildUniqueChatAttachmentPublicId({
+        ...file,
+        name: file?.name || "chat-voice-note.webm",
+      }),
+      resourceType: "video",
+    }),
+  });
+  const signaturePayload = await signatureResponse.json().catch(() => ({}));
+
+  if (!signatureResponse.ok) {
+    throw new Error(signaturePayload?.message || "Unable to prepare voice note upload.");
+  }
+
+  onStatus?.("Uploading voice note...");
+
+  const cloudinaryBody = new FormData();
+  cloudinaryBody.append("file", file);
+  cloudinaryBody.append("api_key", signaturePayload.apiKey);
+  cloudinaryBody.append("timestamp", String(signaturePayload.timestamp));
+  cloudinaryBody.append("signature", signaturePayload.signature);
+  cloudinaryBody.append("folder", signaturePayload.folder);
+  cloudinaryBody.append("public_id", signaturePayload.publicId);
+
+  const uploadResponse = await fetch(signaturePayload.uploadUrl, {
+    method: "POST",
+    body: cloudinaryBody,
+  });
+  const uploadPayload = await uploadResponse.json().catch(() => ({}));
+
+  if (!uploadResponse.ok) {
+    throw new Error(
+      uploadPayload?.error?.message || "Voice note upload failed.",
+    );
+  }
+
+  const uploadedUrl = String(uploadPayload.secure_url || uploadPayload.url || "").trim();
+  if (!uploadedUrl) {
+    throw new Error("Voice note upload did not return a usable URL.");
+  }
+
+  return {
+    url: uploadedUrl,
+    publicId: String(uploadPayload.public_id || "").trim(),
+    assetId: String(uploadPayload.asset_id || "").trim(),
+    contentHash: String(uploadPayload.etag || "").trim(),
+    folder: String(uploadPayload.folder || "").trim(),
+    resourceType: uploadPayload.resource_type || "video",
+    mimeType,
+    width: uploadPayload.width,
+    height: uploadPayload.height,
+    format: uploadPayload.format,
+    bytes: uploadPayload.bytes,
+    duration: uploadPayload.duration,
+    createdAt: new Date().toISOString(),
+  };
+};
+
 export const saveRemoteImageToUserGallery = async ({
   token,
   url,
