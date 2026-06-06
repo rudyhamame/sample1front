@@ -4,6 +4,18 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const backendProxyTarget = "http://localhost:4000";
 
+const isExpectedSocketProxyClose = (error) => {
+  const errorCode = String(error?.code || "").trim();
+  const errorMessage = String(error?.message || "").trim();
+
+  return (
+    errorCode === "ECONNRESET" ||
+    errorCode === "EPIPE" ||
+    /socket has been ended/i.test(errorMessage) ||
+    /write after end/i.test(errorMessage)
+  );
+};
+
 const sharedProxyConfig = {
   "/api": {
     target: backendProxyTarget,
@@ -13,6 +25,29 @@ const sharedProxyConfig = {
     target: backendProxyTarget,
     changeOrigin: true,
     ws: true,
+    configure(proxy) {
+      proxy.on("error", (error, req, res) => {
+        if (isExpectedSocketProxyClose(error)) {
+          if (
+            res &&
+            typeof res.writeHead === "function" &&
+            !res.headersSent
+          ) {
+            res.writeHead(502);
+          }
+
+          if (res && typeof res.end === "function" && !res.writableEnded) {
+            res.end();
+          }
+          return;
+        }
+
+        console.error(
+          `[vite] socket proxy error: ${error?.message || error}`,
+          req?.url || "",
+        );
+      });
+    },
   },
 };
 
@@ -20,6 +55,21 @@ export default defineConfig({
   plugins: [react(), basicSsl()],
   server: {
     host: "0.0.0.0",
+    watch: {
+      ignored: [
+        "**/.git/**",
+        "**/.vite/**",
+        "**/.agents/**",
+        "**/.codex/**",
+        "**/.zencoder/**",
+        "**/.zenflow/**",
+        "**/.vscode/**",
+        "**/build/**",
+        "**/node_modules/**",
+      ],
+      interval: 250,
+      usePolling: true,
+    },
     proxy: sharedProxyConfig,
   },
   preview: {

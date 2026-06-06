@@ -1461,14 +1461,7 @@ const NogaPlannerTelegramPanel = ({
   );
 
   if (mode === "language-only") {
-    return (
-      <section
-        id="nogaPlanner_tracesLanguageMount"
-        className="nogaPlanner_tracesLanguageMount"
-      >
-        {renderLanguageSource()}
-      </section>
-    );
+    return renderLanguageSource();
   }
 
   return (

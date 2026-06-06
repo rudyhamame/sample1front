@@ -214,6 +214,130 @@ const normalizeMessageImages = (value) =>
     .map((entry) => String(entry || "").trim())
     .filter(Boolean);
 
+const SECRET_CHAT_IMAGE_PREFIX = "secret-image:v1:";
+const CHAT_IMAGE_ENTRY_PREFIX = "chat-image:v2:";
+
+const encodeChatImageEntry = (value) => {
+  const normalizedUrl = String(value?.url || value || "").trim();
+  if (!normalizedUrl) {
+    return "";
+  }
+
+  try {
+    return `${CHAT_IMAGE_ENTRY_PREFIX}${window.btoa(
+      unescape(
+        encodeURIComponent(
+          JSON.stringify({
+            url: normalizedUrl,
+            isSecret: Boolean(value?.isSecret),
+            publicId: String(value?.publicId || "").trim(),
+            assetId: String(value?.assetId || "").trim(),
+            contentHash: String(value?.contentHash || "").trim(),
+            mimeType: String(value?.mimeType || "").trim(),
+            resourceType: String(value?.resourceType || "image").trim() || "image",
+            format: String(value?.format || "").trim(),
+          }),
+        ),
+      ),
+    )}`;
+  } catch {
+    return normalizedUrl;
+  }
+};
+
+const parseChatImageEntry = (value) => {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return {
+      rawValue: "",
+      url: "",
+      isSecret: false,
+      publicId: "",
+      assetId: "",
+      contentHash: "",
+      mimeType: "",
+      resourceType: "image",
+      format: "",
+    };
+  }
+
+  if (normalizedValue.startsWith(CHAT_IMAGE_ENTRY_PREFIX)) {
+    try {
+      const encodedPayload = normalizedValue.slice(CHAT_IMAGE_ENTRY_PREFIX.length);
+      const decodedPayload = decodeURIComponent(escape(window.atob(encodedPayload)));
+      const parsedPayload = JSON.parse(decodedPayload);
+
+      return {
+        rawValue: normalizedValue,
+        url: String(parsedPayload?.url || "").trim(),
+        isSecret: Boolean(parsedPayload?.isSecret),
+        publicId: String(parsedPayload?.publicId || "").trim(),
+        assetId: String(parsedPayload?.assetId || "").trim(),
+        contentHash: String(parsedPayload?.contentHash || "").trim(),
+        mimeType: String(parsedPayload?.mimeType || "").trim(),
+        resourceType: String(parsedPayload?.resourceType || "image").trim() || "image",
+        format: String(parsedPayload?.format || "").trim(),
+      };
+    } catch {
+      return {
+        rawValue: normalizedValue,
+        url: "",
+        isSecret: false,
+        publicId: "",
+        assetId: "",
+        contentHash: "",
+        mimeType: "",
+        resourceType: "image",
+        format: "",
+      };
+    }
+  }
+
+  if (!normalizedValue.startsWith(SECRET_CHAT_IMAGE_PREFIX)) {
+    return {
+      rawValue: normalizedValue,
+      url: normalizedValue,
+      isSecret: false,
+      publicId: "",
+      assetId: "",
+      contentHash: "",
+      mimeType: "",
+      resourceType: "image",
+      format: "",
+    };
+  }
+
+  try {
+    const encodedPayload = normalizedValue.slice(SECRET_CHAT_IMAGE_PREFIX.length);
+    const decodedPayload = decodeURIComponent(escape(window.atob(encodedPayload)));
+    const parsedPayload = JSON.parse(decodedPayload);
+
+    return {
+      rawValue: normalizedValue,
+      url: String(parsedPayload?.url || "").trim(),
+      isSecret: true,
+      publicId: "",
+      assetId: "",
+      contentHash: "",
+      mimeType: "",
+      resourceType: "image",
+      format: "",
+    };
+  } catch {
+    return {
+      rawValue: normalizedValue,
+      url: "",
+      isSecret: true,
+      publicId: "",
+      assetId: "",
+      contentHash: "",
+      mimeType: "",
+      resourceType: "image",
+      format: "",
+    };
+  }
+};
+
 const areImageListsEqual = (left, right) => {
   const normalizedLeft = normalizeMessageImages(left);
   const normalizedRight = normalizeMessageImages(right);
@@ -231,6 +355,8 @@ const FriendChat = ({
   sendToThemMessage,
   uploadChatImages,
   saveChatImageToGallery,
+  editChatMessage,
+  deleteChatMessage,
   updateMyTypingPresence,
   markMessagesRead,
   getRealtimeSocket,
@@ -271,15 +397,33 @@ const FriendChat = ({
     [activeFriendRecord, state?.activeChatFriendAvatarUrl],
   );
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = React.useState(false);
+  const [isMoreActionsOpen, setIsMoreActionsOpen] = React.useState(false);
+  const [selectedMessageActionId, setSelectedMessageActionId] = React.useState("");
+  const [activeContentView, setActiveContentView] = React.useState("messages");
   const emojiPickerWrapRef = React.useRef(null);
   const emojiPickerRef = React.useRef(null);
+  const moreActionsMenuRef = React.useRef(null);
   const textareaRef = React.useRef(null);
   const attachmentInputRef = React.useRef(null);
   const [localMessages, setLocalMessages] = React.useState([]);
   const [selectedImages, setSelectedImages] = React.useState([]);
+  const [shouldSendSecretAttachments, setShouldSendSecretAttachments] =
+    React.useState(false);
   const [isUploadingAttachments, setIsUploadingAttachments] = React.useState(false);
+  const [isMessageMutationPending, setIsMessageMutationPending] = React.useState(false);
+  const [editingMessageId, setEditingMessageId] = React.useState("");
   const [savingImageUrls, setSavingImageUrls] = React.useState({});
+  const [unlockedSecretImageMap, setUnlockedSecretImageMap] = React.useState({});
+  const [secretImagePasswordInput, setSecretImagePasswordInput] =
+    React.useState("");
+  const [secretImagePasswordFeedback, setSecretImagePasswordFeedback] =
+    React.useState("");
+  const [secretImageUnlockingKey, setSecretImageUnlockingKey] =
+    React.useState("");
+  const [isSecretImagePasswordSubmitting, setIsSecretImagePasswordSubmitting] =
+    React.useState(false);
   const selectedImagesRef = React.useRef([]);
+  const messageLongPressTimeoutRef = React.useRef(null);
   const localAudioRef = React.useRef(null);
   const remoteAudioRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
@@ -354,6 +498,8 @@ const FriendChat = ({
         images: normalizeMessageImages(message?.images),
         sender: String(message?.from || "").trim() === "me" ? "me" : "friend",
         status: String(message?.status || "sent").trim().toLowerCase(),
+        edited: Boolean(message?.edited),
+        deleted: Boolean(message?.deleted),
         pending: false,
         timestamp:
           Number(new Date(message?.date).getTime()) || Date.now() + index,
@@ -1248,6 +1394,10 @@ const FriendChat = ({
 
   React.useEffect(
     () => () => {
+      if (messageLongPressTimeoutRef.current) {
+        window.clearTimeout(messageLongPressTimeoutRef.current);
+        messageLongPressTimeoutRef.current = null;
+      }
       selectedImagesRef.current.forEach((image) => {
         if (image?.previewUrl) {
           URL.revokeObjectURL(image.previewUrl);
@@ -1285,7 +1435,12 @@ const FriendChat = ({
         URL.revokeObjectURL(targetImage.previewUrl);
       }
 
-      return currentImages.filter((image) => image.id !== imageId);
+      const nextImages = currentImages.filter((image) => image.id !== imageId);
+      if (nextImages.length === 0) {
+        setShouldSendSecretAttachments(false);
+      }
+
+      return nextImages;
     });
   };
 
@@ -1294,6 +1449,40 @@ const FriendChat = ({
     const message = textarea ? textarea.value : "";
     const trimmedMessage = String(message || "").trim();
     const queuedImages = Array.isArray(selectedImages) ? selectedImages : [];
+
+    if (editingMessageId) {
+      if (!messageBeingEdited || typeof editChatMessage !== "function") {
+        return;
+      }
+
+      const canSubmitBlankEdit =
+        trimmedMessage.length > 0 ||
+        (Array.isArray(messageBeingEdited.images) && messageBeingEdited.images.length > 0);
+
+      if (!canSubmitBlankEdit) {
+        return;
+      }
+
+      setIsMessageMutationPending(true);
+      try {
+        const didEdit = await Promise.resolve(
+          editChatMessage(activeFriendId, editingMessageId, trimmedMessage),
+        );
+        if (didEdit !== false) {
+          if (textarea) {
+            textarea.value = "";
+            textarea.style.height = "42px";
+            textarea.focus();
+          }
+          resetMessageEditingState();
+          setTypingPresence(false, { immediate: true });
+        }
+      } finally {
+        setIsMessageMutationPending(false);
+      }
+      return;
+    }
+
     if (!trimmedMessage && queuedImages.length === 0) return;
 
     const tempId = generateTempId();
@@ -1322,8 +1511,24 @@ const FriendChat = ({
           queuedImages.map((image) => image.file),
         );
         uploadedImages = (Array.isArray(uploadedMedia) ? uploadedMedia : [])
-          .map((media) => String(media?.url || "").trim())
+          .map((media) =>
+            encodeChatImageEntry({
+              ...media,
+              isSecret: shouldSendSecretAttachments,
+            }),
+          )
           .filter(Boolean);
+        if (shouldSendSecretAttachments) {
+          setUnlockedSecretImageMap((currentValue) =>
+            uploadedImages.reduce(
+              (nextValue, imageEntry) => ({
+                ...nextValue,
+                [imageEntry]: true,
+              }),
+              { ...currentValue },
+            ),
+          );
+        }
         setLocalMessages((prev) =>
           prev.map((pendingMessage) =>
             pendingMessage.id === tempId
@@ -1355,6 +1560,7 @@ const FriendChat = ({
       );
     } finally {
       setIsUploadingAttachments(false);
+      setShouldSendSecretAttachments(false);
       queuedImages.forEach((image) => {
         if (image?.previewUrl) {
           URL.revokeObjectURL(image.previewUrl);
@@ -1394,6 +1600,101 @@ const FriendChat = ({
     ...normalizedRemoteMessages,
     ...localMessages.filter((msg) => msg.pending),
   ];
+  const chatMediaItems = React.useMemo(
+    () =>
+      allMessages.flatMap((message, messageIndex) =>
+        normalizeMessageImages(message?.images).map((imageEntry, imageIndex) => {
+          const parsedImageEntry = parseChatImageEntry(imageEntry);
+
+          return {
+            id: `${message.id || message.timestamp || messageIndex}-${imageIndex}-${imageEntry}`,
+            imageEntry,
+            imageUrl: parsedImageEntry.url,
+            isSecret: parsedImageEntry.isSecret,
+            sender: message.sender,
+            pending: Boolean(message.pending),
+            timestamp: message.timestamp,
+            rawDate: message.rawDate,
+          };
+        }),
+      ),
+    [allMessages],
+  );
+  const messageBeingEdited = React.useMemo(
+    () =>
+      allMessages.find(
+        (message) => String(message?.id || "").trim() === String(editingMessageId || "").trim(),
+      ) || null,
+    [allMessages, editingMessageId],
+  );
+  const selectedMessageAction = React.useMemo(
+    () =>
+      allMessages.find(
+        (message) =>
+          String(message?.id || "").trim() === String(selectedMessageActionId || "").trim(),
+      ) || null,
+    [allMessages, selectedMessageActionId],
+  );
+
+  React.useEffect(() => {
+    setIsMoreActionsOpen(false);
+    setActiveContentView("messages");
+    setSelectedMessageActionId("");
+    setEditingMessageId("");
+    setUnlockedSecretImageMap({});
+    setSecretImagePasswordInput("");
+    setSecretImagePasswordFeedback("");
+    setSecretImageUnlockingKey("");
+    setShouldSendSecretAttachments(false);
+  }, [activeFriendId]);
+
+  React.useEffect(() => {
+    if (!isMoreActionsOpen) {
+      return undefined;
+    }
+
+    const handlePointerDownOutsideMenu = (event) => {
+      if (moreActionsMenuRef.current?.contains(event.target)) {
+        return;
+      }
+
+      setIsMoreActionsOpen(false);
+    };
+
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape") {
+        setIsMoreActionsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDownOutsideMenu);
+    document.addEventListener("touchstart", handlePointerDownOutsideMenu);
+    document.addEventListener("keydown", handleEscapeKey);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDownOutsideMenu);
+      document.removeEventListener("touchstart", handlePointerDownOutsideMenu);
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [isMoreActionsOpen]);
+
+  React.useEffect(() => {
+    if (!selectedMessageActionId) {
+      return undefined;
+    }
+
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape") {
+        setSelectedMessageActionId("");
+      }
+    };
+
+    document.addEventListener("keydown", handleEscapeKey);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [selectedMessageActionId]);
 
   const setTypingPresence = React.useCallback(
     (nextIsTyping, { immediate = false } = {}) => {
@@ -1434,8 +1735,195 @@ const FriendChat = ({
     setTypingPresence(Boolean(event.target.value.trim()));
   };
 
-  const handleSaveMessageImage = async (imageUrl) => {
-    const normalizedUrl = String(imageUrl || "").trim();
+  const resetMessageEditingState = React.useCallback(() => {
+    setEditingMessageId("");
+    setSelectedMessageActionId("");
+  }, []);
+
+  const handleStartMessageEdit = (message) => {
+    if (!message || message.pending || message.sender !== "me" || message.deleted) {
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    selectedImagesRef.current.forEach((image) => {
+      if (image?.previewUrl) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
+    });
+    selectedImagesRef.current = [];
+    setSelectedImages([]);
+    setShouldSendSecretAttachments(false);
+    setEditingMessageId(String(message.id || "").trim());
+    setSelectedMessageActionId("");
+
+    if (textarea) {
+      textarea.value = String(message.text || "");
+      textarea.focus();
+      textarea.selectionStart = textarea.value.length;
+      textarea.selectionEnd = textarea.value.length;
+    }
+
+    setTypingPresence(Boolean(String(message.text || "").trim()), { immediate: true });
+  };
+
+  const handleCancelMessageEdit = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.value = "";
+      textarea.style.height = "42px";
+    }
+    resetMessageEditingState();
+    setTypingPresence(false, { immediate: true });
+  };
+
+  const handleDeleteExistingMessage = async (message) => {
+    const messageId = String(message?.id || "").trim();
+    if (
+      !messageId ||
+      message?.pending ||
+      message?.sender !== "me" ||
+      message?.deleted ||
+      !activeFriendId ||
+      typeof deleteChatMessage !== "function"
+    ) {
+      return;
+    }
+
+    setIsMessageMutationPending(true);
+    setSelectedMessageActionId("");
+    try {
+      await deleteChatMessage(activeFriendId, messageId, "everyone");
+      if (editingMessageId === messageId) {
+        handleCancelMessageEdit();
+      }
+    } finally {
+      setIsMessageMutationPending(false);
+    }
+  };
+
+  const handleDeleteMessageForMe = async (message) => {
+    const messageId = String(message?.id || "").trim();
+    if (
+      !messageId ||
+      message?.pending ||
+      !activeFriendId ||
+      typeof deleteChatMessage !== "function"
+    ) {
+      return;
+    }
+
+    setIsMessageMutationPending(true);
+    setSelectedMessageActionId("");
+    try {
+      await deleteChatMessage(activeFriendId, messageId, "me");
+      if (editingMessageId === messageId) {
+        handleCancelMessageEdit();
+      }
+    } finally {
+      setIsMessageMutationPending(false);
+    }
+  };
+
+  const handleCopyMessageText = async (message) => {
+    const text = String(message?.text || "").trim();
+    if (!text) {
+      return;
+    }
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      // Ignore clipboard failures quietly.
+    } finally {
+      setSelectedMessageActionId("");
+    }
+  };
+
+  const clearPendingMessageLongPress = React.useCallback(() => {
+    if (messageLongPressTimeoutRef.current) {
+      window.clearTimeout(messageLongPressTimeoutRef.current);
+      messageLongPressTimeoutRef.current = null;
+    }
+  }, []);
+
+  const beginMessageLongPress = React.useCallback(
+    (message) => {
+      if (!message || message.pending) {
+        return;
+      }
+
+      clearPendingMessageLongPress();
+      messageLongPressTimeoutRef.current = window.setTimeout(() => {
+        setSelectedMessageActionId(String(message.id || "").trim());
+        messageLongPressTimeoutRef.current = null;
+      }, 420);
+    },
+    [clearPendingMessageLongPress],
+  );
+
+  const handleUnlockSecretImage = async (imageEntry) => {
+    const normalizedImageEntry = String(imageEntry || "").trim();
+    if (
+      !normalizedImageEntry ||
+      !state?.token ||
+      isSecretImagePasswordSubmitting
+    ) {
+      return;
+    }
+
+    const password = String(secretImagePasswordInput || "");
+    if (!password.trim()) {
+      setSecretImageUnlockingKey(normalizedImageEntry);
+      setSecretImagePasswordFeedback("Please enter your password.");
+      return;
+    }
+
+    setIsSecretImagePasswordSubmitting(true);
+    setSecretImageUnlockingKey(normalizedImageEntry);
+    setSecretImagePasswordFeedback("");
+
+    try {
+      const response = await fetch(apiUrl("/api/user/verify-password"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${state.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to verify password.");
+      }
+
+      setUnlockedSecretImageMap((currentValue) => ({
+        ...currentValue,
+        [normalizedImageEntry]: true,
+      }));
+      setSecretImagePasswordInput("");
+      setSecretImagePasswordFeedback("");
+      setSecretImageUnlockingKey("");
+    } catch (error) {
+      setSecretImagePasswordFeedback(
+        error?.message || "Unable to verify password.",
+      );
+    } finally {
+      setIsSecretImagePasswordSubmitting(false);
+    }
+  };
+
+  const handleSaveMessageImage = async (imageEntry, options = {}) => {
+    const parsedImageEntry =
+      imageEntry && typeof imageEntry === "object"
+        ? imageEntry
+        : parseChatImageEntry(imageEntry);
+    const normalizedUrl = String(parsedImageEntry?.url || "").trim();
     if (!normalizedUrl || typeof saveChatImageToGallery !== "function") {
       return;
     }
@@ -1446,7 +1934,18 @@ const FriendChat = ({
     }));
 
     try {
-      await saveChatImageToGallery(normalizedUrl);
+      await saveChatImageToGallery(
+        {
+          url: normalizedUrl,
+          publicId: parsedImageEntry?.publicId,
+          assetId: parsedImageEntry?.assetId,
+          contentHash: parsedImageEntry?.contentHash,
+          mimeType: parsedImageEntry?.mimeType,
+          resourceType: parsedImageEntry?.resourceType,
+          format: parsedImageEntry?.format,
+        },
+        options,
+      );
     } finally {
       setSavingImageUrls((currentValue) => {
         const nextValue = { ...currentValue };
@@ -1454,6 +1953,140 @@ const FriendChat = ({
         return nextValue;
       });
     }
+  };
+
+  const renderChatImageCard = (imageUrl, options = {}) => {
+    const parsedImageEntry = parseChatImageEntry(imageUrl);
+    const normalizedImageEntry = parsedImageEntry.rawValue;
+    const normalizedImageUrl = parsedImageEntry.url;
+    const isSecretImage = parsedImageEntry.isSecret;
+    const isSecretUnlocked =
+      !isSecretImage || Boolean(unlockedSecretImageMap[normalizedImageEntry]);
+
+    if (!normalizedImageEntry) {
+      return null;
+    }
+
+    const sender = options.sender === "me" ? "me" : "friend";
+    const pending = Boolean(options.pending);
+    const isSavingImage = Boolean(
+      savingImageUrls[normalizedImageUrl || normalizedImageEntry],
+    );
+    const isUnlockingCurrentImage =
+      secretImageUnlockingKey === normalizedImageEntry &&
+      isSecretImagePasswordSubmitting;
+
+    if (isSecretImage && !isSecretUnlocked) {
+      return (
+        <div
+          key={options.key || normalizedImageEntry}
+          className={`Chat_messageImageCard Chat_messageImageCard--secret${
+            options.panelVariant ? ` ${options.panelVariant}` : ""
+          }`}
+        >
+          <div className="Chat_secretImagePrompt fc">
+            <div className="Chat_secretImagePromptBadge fr">
+              <i className="fas fa-user-secret" aria-hidden="true"></i>
+              <span>Secret</span>
+            </div>
+            <p className="Chat_secretImagePromptText">
+              Enter your password to view this attachment.
+            </p>
+            <input
+              type="password"
+              className="Chat_secretImagePromptInput"
+              value={
+                secretImageUnlockingKey === normalizedImageEntry
+                  ? secretImagePasswordInput
+                  : ""
+              }
+              onChange={(event) => {
+                setSecretImageUnlockingKey(normalizedImageEntry);
+                setSecretImagePasswordInput(event.target.value);
+                if (secretImagePasswordFeedback) {
+                  setSecretImagePasswordFeedback("");
+                }
+              }}
+              placeholder="Account password"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="Chat_secretImagePromptButton"
+              onClick={() => handleUnlockSecretImage(normalizedImageEntry)}
+              disabled={isUnlockingCurrentImage}
+            >
+              {isUnlockingCurrentImage ? "Checking..." : "Unlock"}
+            </button>
+            {secretImageUnlockingKey === normalizedImageEntry &&
+            secretImagePasswordFeedback ? (
+              <p className="Chat_secretImagePromptFeedback">
+                {secretImagePasswordFeedback}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={options.key || normalizedImageEntry}
+        className={`Chat_messageImageCard${
+          isSecretImage ? " Chat_messageImageCard--unlockedSecret" : ""
+        }${
+          options.panelVariant ? ` ${options.panelVariant}` : ""
+        }`}
+      >
+        <a
+          href={normalizedImageUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="Chat_messageImageLink"
+        >
+          <img
+            src={normalizedImageUrl}
+            alt="Chat attachment"
+            className="Chat_messageImage"
+            loading="eager"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={(event) => {
+              event.currentTarget
+                ?.closest(".Chat_messageImageCard")
+                ?.classList.add("Chat_messageImageCard--failed");
+            }}
+            onLoad={(event) => {
+              event.currentTarget
+                ?.closest(".Chat_messageImageCard")
+                ?.classList.remove("Chat_messageImageCard--failed");
+            }}
+          />
+        </a>
+        <a
+          href={normalizedImageUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="Chat_messageImageFallback"
+        >
+          Open image
+        </a>
+        {sender !== "me" && !pending ? (
+          <button
+            type="button"
+            className="Chat_messageImageSaveButton"
+            onClick={() =>
+              handleSaveMessageImage(parsedImageEntry, {
+                visibility: isSecretImage ? "hidden" : "public",
+              })
+            }
+            disabled={isSavingImage}
+          >
+            {isSavingImage ? "Saving..." : "Save"}
+          </button>
+        ) : null}
+      </div>
+    );
   };
 
   const handleEmojiSelect = (emoji) => {
@@ -2352,6 +2985,7 @@ const FriendChat = ({
   return (
     <section id="Chat_article" className="fc">
           {hideTitleContainer ? null : (
+            <>
             <section id="Chat_title_container" className="fr">
               <button
                 id="Chat_backToListBtn"
@@ -2432,9 +3066,93 @@ const FriendChat = ({
                   >
                     <i className="fas fa-video"></i>
                   </button>
+                  <button
+                    id="Chat_moreActionsButton"
+                    type="button"
+                    className="Chat_backToListBtn Chat_moreActionsButton"
+                    title="More chat actions"
+                    aria-label="More chat actions"
+                    aria-expanded={isMoreActionsOpen}
+                    aria-haspopup="menu"
+                    onClick={() =>
+                      setIsMoreActionsOpen((currentValue) => !currentValue)
+                    }
+                  >
+                    <i className="fi fi-br-menu-dots-vertical" aria-hidden="true"></i>
+                  </button>
+                  {isMoreActionsOpen ? (
+                    <div
+                      ref={moreActionsMenuRef}
+                      className="Chat_moreActionsMenu fc"
+                      role="menu"
+                    >
+                      <button
+                        type="button"
+                        className="Chat_moreActionsMenuButton"
+                        role="menuitem"
+                        onClick={() => {
+                          setActiveContentView("media");
+                          setIsMoreActionsOpen(false);
+                        }}
+                      >
+                        <i className="fas fa-images" aria-hidden="true"></i>
+                        <span>Media</span>
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </section>
+            {selectedMessageAction ? (
+              <div id="Chat_messageActionBar" className="fr">
+                <button
+                  type="button"
+                  className="Chat_messageActionBarButton Chat_messageActionBarButton--danger"
+                  onClick={() => handleDeleteMessageForMe(selectedMessageAction)}
+                  disabled={isMessageMutationPending}
+                >
+                  Delete for me
+                </button>
+                {selectedMessageAction.sender === "me" && !selectedMessageAction.deleted ? (
+                  <button
+                    type="button"
+                    className="Chat_messageActionBarButton Chat_messageActionBarButton--danger"
+                    onClick={() => handleDeleteExistingMessage(selectedMessageAction)}
+                    disabled={isMessageMutationPending}
+                  >
+                    Delete for everyone
+                  </button>
+                ) : null}
+                {selectedMessageAction.sender === "me" && !selectedMessageAction.deleted ? (
+                  <button
+                    type="button"
+                    className="Chat_messageActionBarButton"
+                    onClick={() => handleStartMessageEdit(selectedMessageAction)}
+                    disabled={isMessageMutationPending}
+                  >
+                    Edit
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="Chat_messageActionBarButton"
+                  onClick={() => handleCopyMessageText(selectedMessageAction)}
+                  disabled={!String(selectedMessageAction?.text || "").trim()}
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  className="Chat_messageActionBarClose"
+                  onClick={() => setSelectedMessageActionId("")}
+                  aria-label="Close message controls"
+                  title="Close"
+                >
+                  <i className="fas fa-times" aria-hidden="true"></i>
+                </button>
+              </div>
+            ) : null}
+            </>
           )}
           {isChatting ? (
             <React.Fragment>
@@ -2640,105 +3358,158 @@ const FriendChat = ({
                   {callError}
                 </div>
               ) : null}
-              <ul id="Chat_messages" data-react-managed="true">
-                {allMessages.length === 0 ? (
-                  <li id="FriendChat_empty_state">
-                    {chatContent?.empty ||
-                      "Open a conversation to view messages here."}
-                  </li>
-                ) : (
-                  allMessages.map((msg, index) => (
-                    <div
-                      key={`${msg.id || msg.timestamp}-${msg.rawDate || ""}-${msg.sender}-${index}`}
-                      className={
-                        msg.sender === "me"
-                          ? "sentMessagesDIV fc"
-                          : "receivedMessagesDIV fc"
-                      }
+              {activeContentView === "media" ? (
+                <div id="Chat_mediaPanel" data-react-managed="true">
+                  <div className="Chat_mediaPanelHeader fr">
+                    <div className="Chat_mediaPanelCopy fc">
+                      <strong>Shared media</strong>
+                      <span>
+                        {chatMediaItems.length > 0
+                          ? `${chatMediaItems.length} item${chatMediaItems.length === 1 ? "" : "s"}`
+                          : "No shared media yet"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="Chat_mediaPanelBackButton"
+                      onClick={() => setActiveContentView("messages")}
                     >
-                      <li
+                      <i className="fas fa-comments" aria-hidden="true"></i>
+                      <span>Messages</span>
+                    </button>
+                  </div>
+                  {chatMediaItems.length === 0 ? (
+                    <div id="FriendChat_mediaEmpty_state">
+                      No media has been shared in this chat yet.
+                    </div>
+                  ) : (
+                    <div className="Chat_mediaPanelGrid">
+                      {chatMediaItems.map((mediaItem, mediaIndex) => (
+                        <div key={mediaItem.id} className="Chat_mediaPanelCard fc">
+                          {renderChatImageCard(mediaItem.imageEntry, {
+                            key: `${mediaItem.id}-${mediaIndex}`,
+                            sender: mediaItem.sender,
+                            pending: mediaItem.pending,
+                            panelVariant: "Chat_messageImageCard--panel",
+                          })}
+                          <div className="Chat_mediaPanelMeta fc">
+                            <strong>
+                              {mediaItem.sender === "me"
+                                ? "You"
+                                : state?.activeChatFriendName || "Friend"}
+                            </strong>
+                            <span>
+                              {formatChatTimestamp(
+                                mediaItem.rawDate,
+                                mediaItem.timestamp,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <ul id="Chat_messages" data-react-managed="true">
+                  {allMessages.length === 0 ? (
+                    <li id="FriendChat_empty_state">
+                      {chatContent?.empty ||
+                        "Open a conversation to view messages here."}
+                    </li>
+                  ) : (
+                    allMessages.map((msg, index) => (
+                      <div
+                        key={`${msg.id || msg.timestamp}-${msg.rawDate || ""}-${msg.sender}-${index}`}
                         className={
                           msg.sender === "me"
-                            ? "sentMessagesLI"
-                            : "receivedMessagesLI"
+                            ? "sentMessagesDIV fc"
+                            : "receivedMessagesDIV fc"
                         }
-                        style={
-                          msg.pending
-                            ? { opacity: 0.6, fontStyle: "italic" }
-                            : undefined
-                        }
-	                      >
-	                        {msg.text ? (
-	                          <p>{renderMessageWithEmojiImages(msg.text)}</p>
-	                        ) : null}
-	                        {Array.isArray(msg.images) && msg.images.length > 0 ? (
-	                          <div className="Chat_messageImages">
-	                            {msg.images.map((imageUrl, imageIndex) => {
-	                              const normalizedImageUrl = String(imageUrl || "").trim();
-	                              const isSavingImage = Boolean(
-	                                savingImageUrls[normalizedImageUrl],
-	                              );
-
-	                              return (
-	                                <div
-	                                  key={`${normalizedImageUrl}-${imageIndex}`}
-	                                  className="Chat_messageImageCard"
-	                                >
-	                                  <a
-	                                    href={normalizedImageUrl}
-	                                    target="_blank"
-	                                    rel="noreferrer"
-	                                    className="Chat_messageImageLink"
-	                                  >
-	                                    <img
-	                                      src={normalizedImageUrl}
-	                                      alt="Chat attachment"
-	                                      className="Chat_messageImage"
-	                                      loading="lazy"
-	                                    />
-	                                  </a>
-	                                  {msg.sender !== "me" && !msg.pending ? (
-	                                    <button
-	                                      type="button"
-	                                      className="Chat_messageImageSaveButton"
-	                                      onClick={() =>
-	                                        handleSaveMessageImage(normalizedImageUrl)
-	                                      }
-	                                      disabled={isSavingImage}
-	                                    >
-	                                      {isSavingImage ? "Saving..." : "Save"}
-	                                    </button>
-	                                  ) : null}
-	                                </div>
-	                              );
-	                            })}
-	                          </div>
-	                        ) : null}
-	                        <span className="Chat_messageMeta">
-	                          <span className="Chat_messageTimestamp">
-	                            {formatChatTimestamp(msg.rawDate, msg.timestamp)}
-                          </span>
-                          {msg.sender === "me" ? (
-                            <span
-                              className={`Chat_messageStatus ${
-                                msg.pending
-                                  ? "Chat_messageStatus--sent"
-                                  : msg.status === "read"
-                                    ? "Chat_messageStatus--read"
-                                    : "Chat_messageStatus--received"
-                              }`}
-                            >
-                              {msg.pending ? "..." : "✓"}
-                            </span>
+                      >
+                        <li
+                          className={
+                            msg.sender === "me"
+                              ? "sentMessagesLI"
+                              : "receivedMessagesLI"
+                          }
+                          data-message-id={msg.id || ""}
+                          onPointerDown={() => beginMessageLongPress(msg)}
+                          onPointerUp={clearPendingMessageLongPress}
+                          onPointerLeave={clearPendingMessageLongPress}
+                          onPointerCancel={clearPendingMessageLongPress}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            setSelectedMessageActionId(String(msg.id || "").trim());
+                          }}
+                          style={
+                            msg.pending
+                              ? { opacity: 0.6, fontStyle: "italic" }
+                              : undefined
+                          }
+                        >
+                          {msg.deleted ? (
+                            <p className="Chat_deletedMessageText">Message deleted</p>
+                          ) : msg.text ? (
+                            <p>{renderMessageWithEmojiImages(msg.text)}</p>
                           ) : null}
-                        </span>
-                      </li>
-                    </div>
-                  ))
-                )}
-              </ul>
-	              <section id="Chat_form" className="fc">
-	                {selectedImages.length > 0 ? (
+                          {!msg.deleted && Array.isArray(msg.images) && msg.images.length > 0 ? (
+                            <div className="Chat_messageImages">
+                              {msg.images.map((imageUrl, imageIndex) =>
+                                renderChatImageCard(imageUrl, {
+                                  key: `${imageUrl}-${imageIndex}`,
+                                  sender: msg.sender,
+                                  pending: msg.pending,
+                                }),
+                              )}
+                            </div>
+                          ) : null}
+                          <span className="Chat_messageMeta">
+                            <span className="Chat_messageTimestamp">
+                              {formatChatTimestamp(msg.rawDate, msg.timestamp)}
+                            </span>
+                            {msg.edited && !msg.deleted ? (
+                              <span className="Chat_messageEditedFlag">Edited</span>
+                            ) : null}
+                            {msg.deleted ? (
+                              <span className="Chat_messageEditedFlag">Deleted</span>
+                            ) : null}
+                            {msg.sender === "me" ? (
+                              <span
+                                className={`Chat_messageStatus ${
+                                  msg.pending
+                                    ? "Chat_messageStatus--sent"
+                                    : msg.status === "read"
+                                      ? "Chat_messageStatus--read"
+                                      : "Chat_messageStatus--received"
+                                }`}
+                              >
+                                {msg.pending ? "..." : "✓"}
+                              </span>
+                            ) : null}
+                          </span>
+                        </li>
+                      </div>
+                    ))
+                  )}
+                </ul>
+              )}
+		              <section id="Chat_form" className="fc">
+                        {editingMessageId ? (
+                          <div className="Chat_editingBanner fr">
+                            <span className="Chat_editingBannerCopy">
+                              Editing message
+                            </span>
+                            <button
+                              type="button"
+                              className="Chat_editingBannerCancel"
+                              onClick={handleCancelMessageEdit}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : null}
+		                {selectedImages.length > 0 ? (
 	                  <div className="Chat_attachmentPreviewRow">
 	                    {selectedImages.map((image) => (
 	                      <div
@@ -2760,6 +3531,16 @@ const FriendChat = ({
 	                        </button>
 	                      </div>
 	                    ))}
+                      <label className="Chat_attachmentSecretToggle">
+                        <input
+                          type="checkbox"
+                          checked={shouldSendSecretAttachments}
+                          onChange={(event) =>
+                            setShouldSendSecretAttachments(event.target.checked)
+                          }
+                        />
+                        <span>Secret</span>
+                      </label>
 	                  </div>
 	                ) : null}
 	                <div className="Chat_formControls fr">
@@ -2821,16 +3602,18 @@ const FriendChat = ({
 	                      }
 	                    }}
 	                  ></textarea>
-	                  <button
-	                    id="Chat_submit_button"
+		                  <button
+		                    id="Chat_submit_button"
 	                    type="button"
 	                    onMouseDown={keepTextareaFocus}
 	                    onTouchStart={keepTextareaFocus}
 	                    onClick={handleSend}
-	                    disabled={isUploadingAttachments}
-	                  >
-	                    <i className="fc far fa-paper-plane"></i>
-	                  </button>
+		                    disabled={isUploadingAttachments || isMessageMutationPending}
+		                  >
+		                    <i
+                              className={`fc ${editingMessageId ? "fas fa-check" : "far fa-paper-plane"}`}
+                            ></i>
+		                  </button>
 	                </div>
 	              </section>
               {isEmojiPickerOpen ? (

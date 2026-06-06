@@ -15,7 +15,7 @@ export const connectRealtime = ({
   }
 
   const socket = io(API_BASE_URL, {
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionAttempts: 4,
     reconnectionDelay: 2500,

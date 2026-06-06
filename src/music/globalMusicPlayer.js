@@ -5,14 +5,33 @@ const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 const JAMENDO_TRACK_LOOKUP_ENDPOINT = "/api/jamendo/tracks";
 const JAMENDO_TRACK_STREAM_ENDPOINT = "/api/jamendo/stream";
 const MUSIC_PLAYLIST_SETTINGS_ENDPOINT = "/api/user/settings/music-playlist";
+const PLANNER_MUSIC_VOLUME_STORAGE_KEY = "phenomed.plannerMusic.volume";
 const buildBackendUrl = (path = "") => apiUrl(String(path || "").trim());
+
+const clampVolume = (value) => {
+  const volume = Number(value);
+  if (!Number.isFinite(volume)) {
+    return 0.42;
+  }
+  return Math.min(1, Math.max(0, volume));
+};
+
+const readStoredVolume = () => {
+  if (typeof window === "undefined") {
+    return 0.42;
+  }
+
+  return clampVolume(
+    window.localStorage.getItem(PLANNER_MUSIC_VOLUME_STORAGE_KEY) ?? 0.42,
+  );
+};
 
 let sharedSnapshot = {
   isReady: false,
   isPlaying: false,
   trackTitle: "Planner Music",
   trackArtist: "Jamendo Playlist",
-  volume: 0.42,
+  volume: readStoredVolume(),
   audioSignal: {
     energy: 0,
     bass: 0,
@@ -694,6 +713,25 @@ export const toggleSharedPlannerMusic = async () => {
   musicAudio.pause();
   syncTrackSnapshot();
   return true;
+};
+
+export const setSharedPlannerMusicVolume = (nextVolume) => {
+  const normalizedVolume = clampVolume(nextVolume);
+  const musicAudio = ensureAudioElement();
+
+  if (musicAudio) {
+    musicAudio.volume = normalizedVolume;
+  }
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(
+      PLANNER_MUSIC_VOLUME_STORAGE_KEY,
+      String(normalizedVolume),
+    );
+  }
+
+  emitSnapshot({ volume: normalizedVolume });
+  return normalizedVolume;
 };
 
 export const playNextSharedPlannerMusicTrack = async (autoplay = true) => {

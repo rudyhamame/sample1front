@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useHistory } from "react-router-dom";
 import { apiUrl } from "../../config/api";
 import "./subapps.css";
@@ -393,9 +394,15 @@ const SubApps = (props) => {
     ([windowId, windowState]) =>
       START_WINDOWS[windowId] && windowState?.isMinimized,
   );
+  const hasOpenStartWindow = Object.entries(startWindows).some(
+    ([windowId, windowState]) => START_WINDOWS[windowId] && windowState?.isOpen,
+  );
 
   const placementClass =
     props.placement === "footer" ? " SubApps_article--footer" : "";
+  const openWindowClass = hasOpenStartWindow
+    ? " SubApps_article--has-open-window"
+    : "";
   const authToken = String(props.authToken || props.token || "").trim();
   const appLayoutKey = appItemIds.join("|");
   const actionLayoutKey = actionItemIds.join("|");
@@ -677,12 +684,14 @@ const SubApps = (props) => {
 
   const mainStartItems = startMenuLayout.main || [];
   const settingsStartItems = startMenuLayout.settings || [];
+  const renderWindowPanels = (panels) =>
+    typeof document !== "undefined" ? createPortal(panels, document.body) : panels;
 
   return (
     <section
       id="SubApps_article"
       ref={articleRef}
-      className={`SubApps_article${placementClass}`}
+      className={`SubApps_article${placementClass}${openWindowClass}`}
     >
       <div id="SubApps_icon_container">
         <i
@@ -752,291 +761,297 @@ const SubApps = (props) => {
           ))}
         </div>
       ) : null}
-      <section
-        className={`SubApps_startPanel SubApps_healthPanel fc${healthWindow.isOpen ? " is-open" : ""}`}
-        aria-label="App health information"
-        style={
-          healthWindow.position
-            ? {
-                left: `${healthWindow.position.x}px`,
-                top: `${healthWindow.position.y}px`,
-              }
-            : undefined
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div
-          className="SubApps_healthMiniBar fr"
-          onPointerDown={(event) => startWindowDrag(event, "appHealth")}
-        >
-          <h4>App health</h4>
-          <div className="SubApps_healthWindowActions fr">
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => minimizeStartWindow(event, "appHealth")}
-              aria-label="Minimize app health"
-              title="Minimize"
+      {renderWindowPanels(
+        <>
+          <section
+            className={`SubApps_startPanel SubApps_healthPanel fc${healthWindow.isOpen ? " is-open" : ""}`}
+            aria-label="App health information"
+            style={
+              healthWindow.position
+                ? {
+                    left: `${healthWindow.position.x}px`,
+                    top: `${healthWindow.position.y}px`,
+                  }
+                : undefined
+            }
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              className="SubApps_healthMiniBar fr"
+              onPointerDown={(event) => startWindowDrag(event, "appHealth")}
             >
-              <i className="fas fa-minus"></i>
-            </button>
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => closeStartWindow(event, "appHealth")}
-              aria-label="Close app health"
-              title="Close"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        </div>
-        {healthRows.length ? (
-          <ul className="SubApps_healthList fc">
-            {healthRows.map((row) => (
-              <li key={row.id} className="SubApps_healthRow fr">
-                <span className="SubApps_healthLabel">{row.label}</span>
-                <span
-                  className={`SubApps_healthStatus SubApps_healthStatus--${row.status}`}
-                >
-                  {row.value}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="SubApps_healthEmpty">
-            Health information is not available yet.
-          </p>
-        )}
-      </section>
-      <section
-        className={`SubApps_startPanel SubApps_healthPanel SubApps_graphicsPanel fc${graphicsWindow.isOpen ? " is-open" : ""}`}
-        aria-label="Graphics control"
-        style={
-          graphicsWindow.position
-            ? {
-                left: `${graphicsWindow.position.x}px`,
-                top: `${graphicsWindow.position.y}px`,
-              }
-            : undefined
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div
-          className="SubApps_healthMiniBar fr"
-          onPointerDown={(event) => startWindowDrag(event, "graphics")}
-        >
-          <h4>Graphics</h4>
-          <div className="SubApps_healthWindowActions fr">
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => minimizeStartWindow(event, "graphics")}
-              aria-label="Minimize graphics"
-              title="Minimize"
-            >
-              <i className="fas fa-minus"></i>
-            </button>
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => closeStartWindow(event, "graphics")}
-              aria-label="Close graphics"
-              title="Close"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        </div>
-        <div className="SubApps_graphicsBody fc">
-          <p className="SubApps_graphicsDescription">
-            Choose a target, then stage and apply its scale.
-          </p>
-          <label className="SubApps_graphicsTargetField fc">
-            <span className="SubApps_graphicsTargetLabel">Target</span>
-            <select
-              className="SubApps_graphicsTargetSelect"
-              value={graphicsDraftTarget}
-              onChange={(event) => {
-                const nextTarget = String(event.target.value || "").trim();
-                setGraphicsDraftTarget(nextTarget);
-              }}
-            >
-              {GRAPHICS_TARGET_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="SubApps_graphicsScaleControls fr">
-            <button
-              type="button"
-              className="SubApps_graphicsScaleButton"
-              onClick={(event) => {
-                event.stopPropagation();
-                setGraphicsDraftScale((currentScale) =>
-                  Number(currentScale) - 0.05,
-                );
-              }}
-              aria-label="Decrease app scale"
-              title="Scale down"
-            >
-              <i className="fas fa-minus"></i>
-            </button>
-            <span className="SubApps_graphicsScaleValue">
-              {Math.round(graphicsScale * 100)}%
-            </span>
-            <button
-              type="button"
-              className="SubApps_graphicsScaleButton"
-              onClick={(event) => {
-                event.stopPropagation();
-                setGraphicsDraftScale((currentScale) =>
-                  Number(currentScale) + 0.05,
-                );
-              }}
-              aria-label="Increase app scale"
-              title="Scale up"
-            >
-              <i className="fas fa-plus"></i>
-            </button>
-            <button
-              type="button"
-              className="SubApps_graphicsApplyButton"
-              onClick={(event) => {
-                event.stopPropagation();
-                props.graphicsControl?.onApply?.(
-                  graphicsDraftTarget,
-                  graphicsScale,
-                );
-              }}
-              aria-label="Apply app scale"
-              title="Apply"
-              disabled={
-                Math.abs(
-                  graphicsScale -
-                    (Number(
-                      props.graphicsControl?.scaleSettingsByElement?.[
-                        graphicsDraftTarget
-                      ],
-                    ) || 1),
-                ) < 0.001
-              }
-            >
-              Apply
-            </button>
-          </div>
-          <div className="SubApps_graphicsScaleListWrap fc">
-            <span className="SubApps_graphicsScaleListTitle">
-              Saved scale entries
-            </span>
-            {graphicsScaleEntries.length ? (
-              <ul className="SubApps_graphicsScaleList fc">
-                {graphicsScaleEntries.map((entry) => {
-                  const element = String(entry?.element || "").trim();
-                  const scaleValue = Number(entry?.scaleNum) || 1;
-
-                  return (
-                    <li
-                      key={`${element}:${scaleValue}`}
-                      className="SubApps_graphicsScaleListItem fr"
-                    >
-                      <span className="SubApps_graphicsScaleListElement">
-                        {element}
-                      </span>
-                      <span className="SubApps_graphicsScaleListValue">
-                        {Math.round(scaleValue * 100)}%
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="SubApps_graphicsScaleEmpty">
-                No saved scale entries yet.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-      <section
-        className={`SubApps_startPanel SubApps_healthPanel SubApps_aiPanel fc${aiWindow.isOpen ? " is-open" : ""}`}
-        aria-label="AI provider control"
-        style={
-          aiWindow.position
-            ? {
-                left: `${aiWindow.position.x}px`,
-                top: `${aiWindow.position.y}px`,
-              }
-            : undefined
-        }
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div
-          className="SubApps_healthMiniBar fr"
-          onPointerDown={(event) => startWindowDrag(event, "aiControl")}
-        >
-          <h4>AI</h4>
-          <div className="SubApps_healthWindowActions fr">
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => minimizeStartWindow(event, "aiControl")}
-              aria-label="Minimize AI control"
-              title="Minimize"
-            >
-              <i className="fas fa-minus"></i>
-            </button>
-            <button
-              type="button"
-              className="SubApps_healthWindowButton"
-              onClick={(event) => closeStartWindow(event, "aiControl")}
-              aria-label="Close AI control"
-              title="Close"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        </div>
-        <ul className="SubApps_healthList fc">
-          {aiProviders.map((provider) => {
-            const normalizedProvider = String(provider || "")
-              .trim()
-              .toLowerCase();
-            const status = String(aiStatuses?.[normalizedProvider] || "offline")
-              .trim()
-              .toLowerCase();
-            const isSelected = normalizedProvider === selectedAiProvider;
-
-            return (
-              <li key={normalizedProvider} className="SubApps_healthRow fr">
+              <h4>App health</h4>
+              <div className="SubApps_healthWindowActions fr">
                 <button
                   type="button"
-                  className={`SubApps_aiProviderButton fr${isSelected ? " is-selected" : ""}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    props.aiControl?.onSelectProvider?.(normalizedProvider);
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => minimizeStartWindow(event, "appHealth")}
+                  aria-label="Minimize app health"
+                  title="Minimize"
+                >
+                  <i className="fas fa-minus"></i>
+                </button>
+                <button
+                  type="button"
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => closeStartWindow(event, "appHealth")}
+                  aria-label="Close app health"
+                  title="Close"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            {healthRows.length ? (
+              <ul className="SubApps_healthList fc">
+                {healthRows.map((row) => (
+                  <li key={row.id} className="SubApps_healthRow fr">
+                    <span className="SubApps_healthLabel">{row.label}</span>
+                    <span
+                      className={`SubApps_healthStatus SubApps_healthStatus--${row.status}`}
+                    >
+                      {row.value}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="SubApps_healthEmpty">
+                Health information is not available yet.
+              </p>
+            )}
+          </section>
+          <section
+            className={`SubApps_startPanel SubApps_healthPanel SubApps_graphicsPanel fc${graphicsWindow.isOpen ? " is-open" : ""}`}
+            aria-label="Graphics control"
+            style={
+              graphicsWindow.position
+                ? {
+                    left: `${graphicsWindow.position.x}px`,
+                    top: `${graphicsWindow.position.y}px`,
+                  }
+                : undefined
+            }
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              className="SubApps_healthMiniBar fr"
+              onPointerDown={(event) => startWindowDrag(event, "graphics")}
+            >
+              <h4>Graphics</h4>
+              <div className="SubApps_healthWindowActions fr">
+                <button
+                  type="button"
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => minimizeStartWindow(event, "graphics")}
+                  aria-label="Minimize graphics"
+                  title="Minimize"
+                >
+                  <i className="fas fa-minus"></i>
+                </button>
+                <button
+                  type="button"
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => closeStartWindow(event, "graphics")}
+                  aria-label="Close graphics"
+                  title="Close"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div className="SubApps_graphicsBody fc">
+              <p className="SubApps_graphicsDescription">
+                Choose a target, then stage and apply its scale.
+              </p>
+              <label className="SubApps_graphicsTargetField fc">
+                <span className="SubApps_graphicsTargetLabel">Target</span>
+                <select
+                  className="SubApps_graphicsTargetSelect"
+                  value={graphicsDraftTarget}
+                  onChange={(event) => {
+                    const nextTarget = String(event.target.value || "").trim();
+                    setGraphicsDraftTarget(nextTarget);
                   }}
                 >
-                  <span className="SubApps_healthLabel">
-                    {normalizedProvider.charAt(0).toUpperCase() +
-                      normalizedProvider.slice(1)}
-                  </span>
-                  <span
-                    className={`SubApps_healthStatus SubApps_healthStatus--${status}`}
-                  >
-                    {isSelected
-                      ? `${status.toUpperCase()} / SELECTED`
-                      : status.toUpperCase()}
-                  </span>
+                  {GRAPHICS_TARGET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="SubApps_graphicsScaleControls fr">
+                <button
+                  type="button"
+                  className="SubApps_graphicsScaleButton"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setGraphicsDraftScale((currentScale) =>
+                      Number(currentScale) - 0.05,
+                    );
+                  }}
+                  aria-label="Decrease app scale"
+                  title="Scale down"
+                >
+                  <i className="fas fa-minus"></i>
                 </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                <span className="SubApps_graphicsScaleValue">
+                  {Math.round(graphicsScale * 100)}%
+                </span>
+                <button
+                  type="button"
+                  className="SubApps_graphicsScaleButton"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setGraphicsDraftScale((currentScale) =>
+                      Number(currentScale) + 0.05,
+                    );
+                  }}
+                  aria-label="Increase app scale"
+                  title="Scale up"
+                >
+                  <i className="fas fa-plus"></i>
+                </button>
+                <button
+                  type="button"
+                  className="SubApps_graphicsApplyButton"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.graphicsControl?.onApply?.(
+                      graphicsDraftTarget,
+                      graphicsScale,
+                    );
+                  }}
+                  aria-label="Apply app scale"
+                  title="Apply"
+                  disabled={
+                    Math.abs(
+                      graphicsScale -
+                        (Number(
+                          props.graphicsControl?.scaleSettingsByElement?.[
+                            graphicsDraftTarget
+                          ],
+                        ) || 1),
+                    ) < 0.001
+                  }
+                >
+                  Apply
+                </button>
+              </div>
+              <div className="SubApps_graphicsScaleListWrap fc">
+                <span className="SubApps_graphicsScaleListTitle">
+                  Saved scale entries
+                </span>
+                {graphicsScaleEntries.length ? (
+                  <ul className="SubApps_graphicsScaleList fc">
+                    {graphicsScaleEntries.map((entry) => {
+                      const element = String(entry?.element || "").trim();
+                      const scaleValue = Number(entry?.scaleNum) || 1;
+
+                      return (
+                        <li
+                          key={`${element}:${scaleValue}`}
+                          className="SubApps_graphicsScaleListItem fr"
+                        >
+                          <span className="SubApps_graphicsScaleListElement">
+                            {element}
+                          </span>
+                          <span className="SubApps_graphicsScaleListValue">
+                            {Math.round(scaleValue * 100)}%
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="SubApps_graphicsScaleEmpty">
+                    No saved scale entries yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+          <section
+            className={`SubApps_startPanel SubApps_healthPanel SubApps_aiPanel fc${aiWindow.isOpen ? " is-open" : ""}`}
+            aria-label="AI provider control"
+            style={
+              aiWindow.position
+                ? {
+                    left: `${aiWindow.position.x}px`,
+                    top: `${aiWindow.position.y}px`,
+                  }
+                : undefined
+            }
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              className="SubApps_healthMiniBar fr"
+              onPointerDown={(event) => startWindowDrag(event, "aiControl")}
+            >
+              <h4>AI</h4>
+              <div className="SubApps_healthWindowActions fr">
+                <button
+                  type="button"
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => minimizeStartWindow(event, "aiControl")}
+                  aria-label="Minimize AI control"
+                  title="Minimize"
+                >
+                  <i className="fas fa-minus"></i>
+                </button>
+                <button
+                  type="button"
+                  className="SubApps_healthWindowButton"
+                  onClick={(event) => closeStartWindow(event, "aiControl")}
+                  aria-label="Close AI control"
+                  title="Close"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <ul className="SubApps_healthList fc">
+              {aiProviders.map((provider) => {
+                const normalizedProvider = String(provider || "")
+                  .trim()
+                  .toLowerCase();
+                const status = String(
+                  aiStatuses?.[normalizedProvider] || "offline",
+                )
+                  .trim()
+                  .toLowerCase();
+                const isSelected = normalizedProvider === selectedAiProvider;
+
+                return (
+                  <li key={normalizedProvider} className="SubApps_healthRow fr">
+                    <button
+                      type="button"
+                      className={`SubApps_aiProviderButton fr${isSelected ? " is-selected" : ""}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        props.aiControl?.onSelectProvider?.(normalizedProvider);
+                      }}
+                    >
+                      <span className="SubApps_healthLabel">
+                        {normalizedProvider.charAt(0).toUpperCase() +
+                          normalizedProvider.slice(1)}
+                      </span>
+                      <span
+                        className={`SubApps_healthStatus SubApps_healthStatus--${status}`}
+                      >
+                        {isSelected
+                          ? `${status.toUpperCase()} / SELECTED`
+                          : status.toUpperCase()}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </>,
+      )}
     </section>
   );
 };

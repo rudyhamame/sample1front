@@ -424,6 +424,58 @@ body.dark #server_answer_musicLabel {
   color: rgba(255, 247, 251, 0.96);
 }
 
+#server_answer_musicVolume {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 6.8rem;
+  height: 1.45rem;
+  padding: 0 0.38rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 233, 242, 0.22);
+  background: rgba(52, 13, 31, 0.16);
+  color: rgba(255, 247, 251, 0.9);
+  cursor: pointer;
+}
+
+#server_answer_musicVolume i {
+  flex: 0 0 0.82rem;
+  width: 0.82rem;
+  font-size: 0.66rem;
+  text-align: center;
+  line-height: 1;
+}
+
+#server_answer_musicVolumeInput {
+  flex: 0 0 3.9rem;
+  width: 3.9rem;
+  min-width: 3.9rem;
+  height: 0.8rem;
+  margin: 0;
+  accent-color: rgba(255, 196, 220, 0.95);
+  cursor: pointer;
+}
+
+#server_answer_musicVolumeInput:disabled {
+  cursor: default;
+}
+
+#server_answer_musicVolumeValue {
+  flex: 0 0 1.7rem;
+  width: 1.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: right;
+  color: rgba(255, 247, 251, 0.78);
+}
+
+#server_answer_musicPlayer.server_answer_musicPlayer--idle #server_answer_musicVolume {
+  pointer-events: none;
+}
+
 #Home_voiceCallDock {
   display: none;
   align-items: center;
@@ -455,6 +507,23 @@ body.dark #server_answer_musicLabel {
 #app_page.app_page--home-dark #server_answer_musicTrack,
 body.dark #server_answer_musicTrack {
   color: rgba(239, 249, 250, 0.96);
+}
+
+#app_page.app_page--home-dark #server_answer_musicVolume,
+body.dark #server_answer_musicVolume {
+  border-color: rgba(110, 168, 180, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(239, 249, 250, 0.88);
+}
+
+#app_page.app_page--home-dark #server_answer_musicVolumeInput,
+body.dark #server_answer_musicVolumeInput {
+  accent-color: rgba(137, 217, 230, 0.92);
+}
+
+#app_page.app_page--home-dark #server_answer_musicVolumeValue,
+body.dark #server_answer_musicVolumeValue {
+  color: rgba(239, 249, 250, 0.7);
 }
 
 /* Home-specific footer styling */
@@ -599,6 +668,20 @@ body:not(.dark) #server_answer.server_answer--home #server_answer_musicTrack {
   color: rgba(24, 49, 58, 0.88);
 }
 
+body:not(.dark) #server_answer.server_answer--home #server_answer_musicVolume {
+  border-color: rgba(176, 188, 198, 0.18);
+  background: rgba(255, 255, 255, 0.68);
+  color: rgba(52, 81, 96, 0.82);
+}
+
+body:not(.dark) #server_answer.server_answer--home #server_answer_musicVolumeInput {
+  accent-color: rgba(84, 126, 145, 0.82);
+}
+
+body:not(.dark) #server_answer.server_answer--home #server_answer_musicVolumeValue {
+  color: rgba(52, 81, 96, 0.66);
+}
+
 #server_answer.server_answer--telegram {
   position: static;
   z-index: auto;
@@ -693,4 +776,18 @@ body:not(.dark) #server_answer.server_answer--home #server_answer_musicTrack {
 #server_answer.server_answer--music #server_answer_musicPlayer {
   border-color: rgba(45, 118, 129, 0.18);
   background: rgba(255, 255, 255, 0.72);
+}
+
+#server_answer.server_answer--music #server_answer_musicVolume {
+  border-color: rgba(45, 118, 129, 0.18);
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(17, 63, 72, 0.86);
+}
+
+#server_answer.server_answer--music #server_answer_musicVolumeInput {
+  accent-color: rgba(28, 131, 146, 0.86);
+}
+
+#server_answer.server_answer--music #server_answer_musicVolumeValue {
+  color: rgba(17, 63, 72, 0.68);
 }

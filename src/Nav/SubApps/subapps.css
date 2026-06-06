@@ -292,6 +292,13 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 
 .SubApps_startPanel {
   position: fixed;
+  z-index: 100000;
+}
+
+#app_page:has(#SubApps_article.SubApps_article--has-open-window),
+#App_viewportScale:has(#SubApps_article.SubApps_article--has-open-window),
+#root:has(#SubApps_article.SubApps_article--has-open-window) {
+  overflow: visible;
 }
 
 .SubApps_aiProviderButton {
@@ -348,7 +355,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 28px 56px rgba(90, 121, 130, 0.2);
   overflow-y: auto;
-  z-index: 10040;
+  z-index: 100000;
 }
 
 .SubApps_healthPanel.is-open {

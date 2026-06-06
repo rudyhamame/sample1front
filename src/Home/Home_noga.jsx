@@ -79,11 +79,6 @@ const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
     resourceType: "image",
     label: "image",
   },
-  patterns: {
-    accept: "image/*",
-    resourceType: "pattern",
-    label: "pattern",
-  },
   videos: {
     accept: "video/*",
     resourceType: "video",
@@ -1757,7 +1752,7 @@ function HomeNoga(props) {
     useState(false);
   // (Fixed: removed misplaced JSX here)
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
-  // Gallery tab state: 'images' | 'patterns' | 'videos'
+  // Gallery tab state: 'images' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
   const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
     useState("public");
@@ -3523,14 +3518,6 @@ function HomeNoga(props) {
           );
         }
 
-        if (galleryTab === "patterns") {
-          return (
-            String(image?.resourceType || image?.resource_type || "")
-              .trim()
-              .toLowerCase() === "pattern"
-          );
-        }
-
         return isVideoGalleryItem(image);
       }),
     [galleryImageVisibilityTab, galleryTab, imageGallery],
@@ -3643,8 +3630,22 @@ function HomeNoga(props) {
       .filter((friend) => friend.chatId);
   }, [props.state?.friends]);
 
-  // TODO: Refactor unreadChatCountsByFriendId to use chat state or friends[].userMode if needed
-  const unreadChatCountsByFriendId = React.useMemo(() => ({}), []);
+  const unreadChatCountsByFriendId = React.useMemo(() => {
+    const chatEntries = Array.isArray(props.state?.chat) ? props.state.chat : [];
+
+    return chatEntries.reduce((accumulator, message) => {
+      const friendId = String(message?._id || "").trim();
+      const messageSender = String(message?.from || "").trim().toLowerCase();
+      const messageStatus = String(message?.status || "").trim().toLowerCase();
+
+      if (!friendId || messageSender === "me" || messageStatus === "read") {
+        return accumulator;
+      }
+
+      accumulator[friendId] = Number(accumulator[friendId] || 0) + 1;
+      return accumulator;
+    }, {});
+  }, [props.state?.chat]);
 
   const friendRequestNotifications = React.useMemo(() => {
     const rawRequests = Array.isArray(props.state?.friend_requests)
@@ -3813,7 +3814,7 @@ function HomeNoga(props) {
       }
 
       if (candidateId && sentFriendRequestIds.has(candidateId)) {
-        return "requestSent";
+        return "requestsent";
       }
 
       return "stranger";
@@ -4802,7 +4803,7 @@ function HomeNoga(props) {
               String(entry?.username || "")
                 .trim()
                 .toLowerCase() === username
-                ? { ...entry, userMode: "requestSent" }
+                ? { ...entry, userMode: "requestsent" }
                 : entry,
             ),
           );
@@ -4913,6 +4914,7 @@ function HomeNoga(props) {
         .toLowerCase();
       const canSendRequest = candidateMode === "stranger";
       const canAcceptRequest = candidateMode === "requestreceived";
+      const canCancelRequest = candidateMode === "requestsent";
       const canUnfriend = candidateMode === "friend";
       const canUnblock = candidateMode === "blocked";
       return (
@@ -4992,6 +4994,18 @@ function HomeNoga(props) {
                   title="Accept friend request"
                 >
                   <i className="fas fa-user-check"></i>
+                </button>
+              ) : null}
+              {canCancelRequest ? (
+                <button
+                  type="button"
+                  className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                  onClick={() => props.cancelSentFriendRequest?.(candidateId)}
+                  disabled={!candidateId}
+                  aria-label="Cancel friend request"
+                  title="Cancel friend request"
+                >
+                  <i className="fas fa-times"></i>
                 </button>
               ) : null}
               {canUnfriend ? (
@@ -5123,6 +5137,12 @@ function HomeNoga(props) {
             label: presenceState.label,
           }
         : null;
+      const normalizedUserChatId = String(
+        user?.chatId || getFriendChatPresenceKey(user),
+      ).trim();
+      const unreadChatCount = normalizedUserChatId
+        ? unreadChatCountsByFriendId[normalizedUserChatId] || 0
+        : 0;
 
       return (
         <li
@@ -5179,45 +5199,57 @@ function HomeNoga(props) {
             {friendPresenceState ? (
               <div className="Home_Noga_socialFriendPresence">
                 <span
-                  className={`Home_Noga_socialFriendStatus ${friendPresenceState.modifierClass}`}
+                  className={`Home_Noga_socialFriendUnreadBadge${unreadChatCount > 0 ? "" : " Home_Noga_socialFriendUnreadBadge--empty"}`}
                 >
-                  <i className={`fas ${friendPresenceState.iconClass}`}></i>
-                  <span>{friendPresenceState.label}</span>
-                  {friendPresenceState.source ? (
-                    <span className={`Home_Noga_socialFriendSourceBadge Home_Noga_socialFriendSourceBadge--${friendPresenceState.source}`}>
-                      {friendPresenceState.source}
-                    </span>
-                  ) : null}
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
                 </span>
               </div>
             ) : null}
             {canAcceptRequest || isSentRequest ? (
               <div className="Home_Noga_socialRequestActions">
                 {canAcceptRequest ? (
-                  <button
-                    type="button"
-                    className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      userId && props.acceptFriend?.(`accept_icon${userId}`);
-                    }}
-                    disabled={!userId}
-                    aria-label="Accept friend request"
-                    title="Accept friend request"
-                  >
-                    <i className="fas fa-user-check"></i>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--accept"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        userId && props.acceptFriend?.(`accept_icon${userId}`);
+                      }}
+                      disabled={!userId}
+                      aria-label="Accept friend request"
+                      title="Accept friend request"
+                    >
+                      <i className="fas fa-user-check"></i>
+                    </button>
+                    <button
+                      type="button"
+                      className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        userId && props.dismissFriendRequest?.(userId);
+                      }}
+                      disabled={!userId}
+                      aria-label="Dismiss friend request"
+                      title="Dismiss friend request"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </>
                 ) : null}
                 {isSentRequest ? (
                   <button
                     type="button"
-                    className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--pending"
-                    disabled
-                    onClick={(event) => event.stopPropagation()}
-                    aria-label="Friend request pending"
-                    title="Friend request pending"
+                    className="Home_Noga_socialRequestButton Home_Noga_socialRequestButton--dismiss"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      userId && props.cancelSentFriendRequest?.(userId);
+                    }}
+                    disabled={!userId}
+                    aria-label="Cancel friend request"
+                    title="Cancel friend request"
                   >
-                    <i className="fas fa-hourglass-half"></i>
+                    <i className="fas fa-times"></i>
                   </button>
                 ) : null}
               </div>
@@ -5226,7 +5258,7 @@ function HomeNoga(props) {
         </li>
       );
     },
-    [history, props],
+    [history, props, unreadChatCountsByFriendId],
   );
 
   const openGalleryUploadPicker = () => {
@@ -9065,17 +9097,6 @@ function HomeNoga(props) {
                           </button>
                           <button
                             type="button"
-                            className={`Home_Noga_galleryTabButton${galleryTab === "patterns" ? " isActive" : ""}`}
-                            onClick={() => setGalleryTab("patterns")}
-                            aria-label="Patterns"
-                            title="Patterns"
-                            aria-pressed={galleryTab === "patterns"}
-                          >
-                            <i className="fas fa-shapes" aria-hidden="true"></i>
-                            <span>Patterns</span>
-                          </button>
-                          <button
-                            type="button"
                             className={`Home_Noga_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
                             onClick={() => setGalleryTab("videos")}
                             aria-label="Videos"
@@ -9375,11 +9396,9 @@ function HomeNoga(props) {
                       </div>
                     ) : (
                       <div className="Home_Noga_galleryEmptyState">
-                        {galleryTab === "patterns"
-                          ? "No saved patterns yet."
-                          : galleryTab === "images"
-                            ? "No images found for this visibility."
-                            : "No media uploaded yet."}
+                        {galleryTab === "images"
+                          ? "No images found for this visibility."
+                          : "No media uploaded yet."}
                       </div>
                     )}
                   </div>

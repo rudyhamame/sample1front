@@ -4,6 +4,7 @@ import { getHomeSubApps } from "../../utils/homeSubApps";
 import {
   getPlannerMusicSnapshot,
   playPreviousSharedPlannerMusicTrack,
+  setSharedPlannerMusicVolume,
   toggleSharedPlannerMusic,
   playNextSharedPlannerMusicTrack,
 } from "../../music/globalMusicPlayer";
@@ -75,6 +76,9 @@ const Footer = ({
     .filter(Boolean)
     .join(" ");
   const plannerMusic = appState.planner_music || getPlannerMusicSnapshot();
+  const plannerMusicVolume = Math.round(
+    Math.min(1, Math.max(0, Number(plannerMusic.volume) || 0)) * 100,
+  );
   const footerSubApps = getHomeSubApps(appState.username);
   const selectedAiProvider = String(appState.aiProvider || "openai")
     .trim()
@@ -532,6 +536,33 @@ const Footer = ({
               {plannerMusic.trackArtist ? ` / ${plannerMusic.trackArtist}` : ""}
             </span>
           </div>
+          <label
+            id="server_answer_musicVolume"
+            title={`Volume ${plannerMusicVolume}%`}
+          >
+            <i
+              className={
+                plannerMusicVolume === 0 ? "fas fa-volume-mute" : "fas fa-volume-up"
+              }
+              aria-hidden="true"
+            ></i>
+            <input
+              id="server_answer_musicVolumeInput"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={plannerMusicVolume}
+              onChange={(event) =>
+                setSharedPlannerMusicVolume(Number(event.target.value) / 100)
+              }
+              aria-label="Planner music volume"
+              disabled={!plannerMusic.isReady}
+            />
+            <span id="server_answer_musicVolumeValue">
+              {plannerMusicVolume}%
+            </span>
+          </label>
         </div>
       </div>
     </footer>

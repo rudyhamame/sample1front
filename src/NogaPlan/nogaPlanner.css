@@ -130,7 +130,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 0px;
   margin-top: var(--nogaPlanner-workspace-title-height, 58px);
 }
 
@@ -2331,10 +2330,10 @@
   gap: 6px;
   min-width: 0;
   min-height: fit-content;
-  padding: 10px;
-  border: 1px solid rgba(132, 27, 45, 0.18);
   background: rgba(255, 255, 255, 0.82);
   overflow: visible;
+  padding: 12px;
+  border-radius: 10px;
 }
 
 .nogaPlanner_homePanelCard--intervals {
@@ -2350,6 +2349,7 @@
   flex-direction: column;
   min-height: 0;
   gap: 10px;
+  padding-top: 2px;
 }
 
 .nogaPlanner_homePanelCardTitleRow {
@@ -2357,6 +2357,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(132, 27, 45, 0.08);
 }
 
 .nogaPlanner_homePanelCard > strong {
@@ -2368,6 +2370,38 @@
 .nogaPlanner_homePanelCard > span {
   font-size: 0.78rem;
   color: #3f2b22;
+  word-break: break-word;
+}
+
+.nogaPlanner_homePanelCardList {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #3f2b22;
+  font-size: 0.78rem;
+}
+
+.nogaPlanner_homePanelCardList li + li {
+  margin-top: 0.28rem;
+}
+
+.nogaPlanner_homePanelCardStoredBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.nogaPlanner_homePanelCardStoredLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #9a4963;
+}
+
+.nogaPlanner_homePanelCardEmptyValue {
+  font-size: 0.78rem;
+  color: #6f5d56;
   word-break: break-word;
 }
 
@@ -2439,6 +2473,10 @@
   .nogaPlanner_homePanelColumn--right {
     width: 100%;
     flex-basis: auto;
+  }
+
+  .nogaPlanner_homePanelCard {
+    padding: 10px;
   }
 }
 
@@ -2646,21 +2684,12 @@
   background: #ffeef1;
 }
 
-.nogaPlanner_homeCourseComponentsDraftList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.nogaPlanner_homeCoursesMiniTable {
+  min-width: 1080px;
 }
 
-.nogaPlanner_homeCourseComponentsDraftItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid rgba(132, 27, 45, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+.nogaPlanner_homeCoursesMiniTable td[rowspan] {
+  vertical-align: middle;
 }
 
 .nogaPlanner_homeIntervalComponentsCell {
@@ -2733,7 +2762,7 @@
 }
 
 .nogaPlanner_homeComponentsListTag,
-.nogaPlanner_homeComponentsDraftItemLabel {
+.nogaPlanner_homeArrayDraftItemLabel {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2755,14 +2784,41 @@
   font-style: italic;
 }
 
-.nogaPlanner_homeComponentsDraftList {
+.nogaPlanner_homeComponentsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #3f2b22;
+}
+
+.nogaPlanner_homeComponentsTable th,
+.nogaPlanner_homeComponentsTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(132, 27, 45, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.nogaPlanner_homeComponentsTable th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #8a2741;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.nogaPlanner_homeComponentsTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.nogaPlanner_homeArrayDraftList {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 }
 
-.nogaPlanner_homeComponentsDraftItem {
+.nogaPlanner_homeArrayDraftItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2774,7 +2830,7 @@
   background: rgba(255, 255, 255, 0.7);
 }
 
-.nogaPlanner_homeComponentsDraftItemLabel {
+.nogaPlanner_homeArrayDraftItemLabel {
   flex: 1 1 auto;
   min-width: 0;
   justify-content: flex-start;
@@ -2782,7 +2838,7 @@
   text-overflow: ellipsis;
 }
 
-.nogaPlanner_homeComponentsDraftRemoveBtn {
+.nogaPlanner_homeArrayDraftRemoveBtn {
   flex: 0 0 auto;
   align-self: center;
   margin: 0;
@@ -2797,7 +2853,7 @@
   cursor: pointer;
 }
 
-.nogaPlanner_homeComponentsDraftRemoveBtn:hover {
+.nogaPlanner_homeArrayDraftRemoveBtn:hover {
   background: rgba(255, 231, 237, 0.98);
   border-color: rgba(181, 70, 90, 0.38);
 }
@@ -2812,6 +2868,16 @@
   min-height: 0;
   width: 100%;
   background: linear-gradient(180deg, #fff8f6 0%, #f6ebe7 100%);
+}
+
+.nogaPlanner_homePanelCard.nogaPlanner_coursesTabMount {
+  gap: 10px;
+  padding: 12px;
+  border-radius: 0;
+}
+
+.nogaPlanner_homePanelCard--modeContent.nogaPlanner_homePanelCard {
+  width: 100%;
 }
 
 .nogaPlanner_tracesLanguageMount {

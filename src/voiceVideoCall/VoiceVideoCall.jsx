@@ -1235,15 +1235,6 @@ function VoiceVideoCall({
           </span>
           <button
             type="button"
-            className="Chat_callControlButton"
-            onClick={restoreVoiceCallWindow}
-            title="Restore call window"
-            aria-label="Restore call window"
-          >
-            <i className="fas fa-window-restore"></i>
-          </button>
-          <button
-            type="button"
             className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
             onClick={handleToggleMute}
             title={isAudioMuted ? "Enable microphone" : "Disable microphone"}
@@ -1361,15 +1352,6 @@ function VoiceVideoCall({
                 ></i>
               </button>
             ) : null}
-            <button
-              type="button"
-              className="Chat_callControlButton"
-              onClick={restoreVoiceCallWindow}
-              title="Restore call window"
-              aria-label="Restore call window"
-            >
-              <i className="fas fa-window-restore"></i>
-            </button>
             <button
               type="button"
               className="Chat_callControlButton Chat_callControlButton--end"

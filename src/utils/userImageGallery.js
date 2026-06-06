@@ -49,6 +49,13 @@ const sanitizeFileNameStem = (value, fallback = "image") =>
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "") || fallback;
 
+const buildUniqueChatAttachmentPublicId = (file) => {
+  const baseName = sanitizeFileNameStem(file?.name, "chat-image");
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  return sanitizeFileNameStem(`${baseName}-${suffix}`, `chat-image-${suffix}`);
+};
+
 const findSavedMediaInPayload = (payload = {}, publicId = "") => {
   const normalizedPublicId = String(publicId || "").trim();
   const gallery = Array.isArray(payload?.imageGallery) ? payload.imageGallery : [];
@@ -164,7 +171,7 @@ export const uploadImageFileToUserGallery = async ({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      publicId: sanitizeFileNameStem(fileToUpload?.name, `chat-image-${Date.now()}`),
+      publicId: buildUniqueChatAttachmentPublicId(fileToUpload),
       resourceType: "image",
     }),
   });
@@ -213,11 +220,113 @@ export const uploadImageFileToUserGallery = async ({
   });
 };
 
+export const uploadImageFileAsChatAttachment = async ({
+  token,
+  file,
+  onStatus = null,
+  maxBytes = DEFAULT_MAX_IMAGE_BYTES,
+}) => {
+  if (!token) {
+    throw new Error("A valid login token is required.");
+  }
+
+  if (!file) {
+    throw new Error("An image file is required.");
+  }
+
+  const mimeType = String(file?.type || "").trim().toLowerCase();
+  if (!mimeType.startsWith("image/")) {
+    throw new Error("Only image attachments are supported right now.");
+  }
+
+  let fileToUpload = file;
+  let currentMimeType = mimeType;
+
+  if (canCompressImageUpload(fileToUpload) && Number(fileToUpload.size || 0) >= maxBytes) {
+    onStatus?.(
+      `Large image detected (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB), compressing before upload...`,
+    );
+    const compressedImage = await compressImageUpload(fileToUpload, {
+      maxBytes,
+    });
+    if (compressedImage !== fileToUpload) {
+      fileToUpload = compressedImage;
+      currentMimeType = String(compressedImage?.type || currentMimeType).trim();
+      onStatus?.(
+        `Compressed image size: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB.`,
+      );
+    }
+  }
+
+  const signatureResponse = await fetch(apiUrl("/api/user/image-gallery/signature"), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      publicId: buildUniqueChatAttachmentPublicId(fileToUpload),
+      resourceType: "image",
+    }),
+  });
+  const signaturePayload = await signatureResponse.json().catch(() => ({}));
+
+  if (!signatureResponse.ok) {
+    throw new Error(signaturePayload?.message || "Unable to prepare image upload.");
+  }
+
+  const cloudinaryBody = new FormData();
+  cloudinaryBody.append("file", fileToUpload);
+  cloudinaryBody.append("api_key", signaturePayload.apiKey);
+  cloudinaryBody.append("timestamp", String(signaturePayload.timestamp));
+  cloudinaryBody.append("signature", signaturePayload.signature);
+  cloudinaryBody.append("folder", signaturePayload.folder);
+  cloudinaryBody.append("public_id", signaturePayload.publicId);
+
+  const uploadResponse = await fetch(signaturePayload.uploadUrl, {
+    method: "POST",
+    body: cloudinaryBody,
+  });
+  const uploadPayload = await uploadResponse.json().catch(() => ({}));
+
+  if (!uploadResponse.ok) {
+    throw new Error(
+      uploadPayload?.error?.message || "Image upload failed.",
+    );
+  }
+
+  const uploadedUrl = String(uploadPayload.secure_url || uploadPayload.url || "").trim();
+  if (!uploadedUrl) {
+    throw new Error("Image upload did not return a usable image URL.");
+  }
+
+  return {
+    url: uploadedUrl,
+    publicId: String(uploadPayload.public_id || "").trim(),
+    assetId: String(uploadPayload.asset_id || "").trim(),
+    contentHash: String(uploadPayload.etag || "").trim(),
+    folder: String(uploadPayload.folder || "").trim(),
+    resourceType: uploadPayload.resource_type || "image",
+    mimeType: currentMimeType,
+    width: uploadPayload.width,
+    height: uploadPayload.height,
+    format: uploadPayload.format,
+    bytes: uploadPayload.bytes,
+    duration: uploadPayload.duration,
+    createdAt: new Date().toISOString(),
+  };
+};
+
 export const saveRemoteImageToUserGallery = async ({
   token,
   url,
+  publicId = "",
+  assetId = "",
+  contentHash = "",
   visibility = "public",
   mimeType = "image/jpeg",
+  resourceType = "image",
+  format = "",
 }) => {
   const normalizedUrl = String(url || "").trim();
   if (!token) {
@@ -227,14 +336,18 @@ export const saveRemoteImageToUserGallery = async ({
     throw new Error("A valid image URL is required.");
   }
 
-  const derivedPublicId = deriveCloudinaryPublicIdFromUrl(normalizedUrl);
+  const normalizedPublicId =
+    String(publicId || "").trim() || deriveCloudinaryPublicIdFromUrl(normalizedUrl);
 
   return saveImageRecordToGallery({
     token,
     url: normalizedUrl,
-    publicId: derivedPublicId,
+    publicId: normalizedPublicId,
+    assetId: String(assetId || "").trim(),
+    contentHash: String(contentHash || "").trim(),
     mimeType,
-    resourceType: "image",
+    resourceType: String(resourceType || "image").trim() || "image",
+    format: String(format || "").trim(),
     visibility,
     createdAt: new Date().toISOString(),
   });

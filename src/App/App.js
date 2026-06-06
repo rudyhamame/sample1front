@@ -28,7 +28,7 @@ import { getFriendChatPresenceKey } from "../utils/friendPresence";
 import { normalizeUserUpdatePayload } from "../utils/backendUser";
 import {
   saveRemoteImageToUserGallery,
-  uploadImageFileToUserGallery,
+  uploadImageFileAsChatAttachment,
 } from "../utils/userImageGallery";
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
@@ -1699,42 +1699,51 @@ class App extends React.Component {
     const uploadedMedia = [];
 
     for (const file of validFiles) {
-      let uploadResult;
+      let uploadedMediaItem;
       try {
-        uploadResult = await uploadImageFileToUserGallery({
+        uploadedMediaItem = await uploadImageFileAsChatAttachment({
           token: this.state.token,
           file,
-          visibility: "public",
           onStatus: (message) => this.serverReply(message),
         });
       } catch (error) {
         this.serverReply(error?.message || "Unable to upload chat image.");
         throw error;
       }
-      const { payload, media } = uploadResult;
 
-      if (payload) {
-        this.setUserMediaInfo({
-          profilePicture: this.state.profilePicture,
-          imageGallery: Array.isArray(payload?.imageGallery) ? payload.imageGallery : [],
-        });
-      }
-
-      if (media) {
-        uploadedMedia.push(media);
+      if (uploadedMediaItem?.url) {
+        uploadedMedia.push(uploadedMediaItem);
       }
     }
 
     return uploadedMedia;
   };
 
-  saveChatImageToGallery = async (imageUrl) => {
+  saveChatImageToGallery = async (imageSource, options = {}) => {
+    const normalizedImageSource =
+      imageSource && typeof imageSource === "object"
+        ? imageSource
+        : {
+            url: imageSource,
+          };
+    const visibility = String(options?.visibility || "public")
+      .trim()
+      .toLowerCase();
     let saveResult;
     try {
       saveResult = await saveRemoteImageToUserGallery({
         token: this.state.token,
-        url: imageUrl,
-        visibility: "public",
+        url: normalizedImageSource?.url,
+        publicId: normalizedImageSource?.publicId,
+        assetId: normalizedImageSource?.assetId,
+        contentHash: normalizedImageSource?.contentHash,
+        mimeType: normalizedImageSource?.mimeType || "image/jpeg",
+        resourceType: normalizedImageSource?.resourceType || "image",
+        format: normalizedImageSource?.format,
+        visibility:
+          visibility === "hidden" || visibility === "me"
+            ? visibility
+            : "public",
       });
     } catch (error) {
       this.serverReply(error?.message || "Unable to save image to gallery.");
@@ -1746,9 +1755,145 @@ class App extends React.Component {
       profilePicture: this.state.profilePicture,
       imageGallery: Array.isArray(payload?.imageGallery) ? payload.imageGallery : [],
     });
-    this.serverReply("Image saved to your gallery.");
+    this.serverReply(
+      visibility === "hidden"
+        ? "Image saved to your hidden gallery."
+        : "Image saved to your gallery.",
+    );
 
     return media;
+  };
+
+  editChatMessage = async (friendId, messageId, text) => {
+    const normalizedFriendId = String(friendId || "").trim();
+    const normalizedMessageId = String(messageId || "").trim();
+    const normalizedText = String(text || "").trim();
+
+    if (!normalizedFriendId || !normalizedMessageId) {
+      this.serverReply("Unable to find that message.");
+      return false;
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/chat/message/") +
+          normalizedFriendId +
+          "/" +
+          this.state.my_id +
+          "/" +
+          normalizedMessageId,
+        {
+          method: "PATCH",
+          mode: "cors",
+          headers: {
+            Authorization: "Bearer " + this.state.token,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            body: {
+              text: normalizedText,
+            },
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        this.serverReply(payload?.message || "Unable to edit message.");
+        return false;
+      }
+
+      this.safeSetState((prevState) => ({
+        chat: (Array.isArray(prevState.chat) ? prevState.chat : []).map((message) => {
+          if (
+            String(message?._id || "").trim() !== normalizedFriendId ||
+            String(message?.id || "").trim() !== normalizedMessageId
+          ) {
+            return message;
+          }
+
+          return {
+            ...message,
+            message: normalizedText,
+            edited: true,
+            deleted: false,
+          };
+        }),
+      }));
+      return true;
+    } catch (error) {
+      this.serverReply(error?.message || "Unable to edit message.");
+      return false;
+    }
+  };
+
+  deleteChatMessage = async (friendId, messageId, scope = "everyone") => {
+    const normalizedFriendId = String(friendId || "").trim();
+    const normalizedMessageId = String(messageId || "").trim();
+    const normalizedScope =
+      String(scope || "everyone").trim().toLowerCase() === "me" ? "me" : "everyone";
+
+    if (!normalizedFriendId || !normalizedMessageId) {
+      this.serverReply("Unable to find that message.");
+      return false;
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/chat/message/") +
+          normalizedFriendId +
+          "/" +
+          this.state.my_id +
+          "/" +
+          normalizedMessageId +
+          `?scope=${normalizedScope}`,
+        {
+          method: "DELETE",
+          mode: "cors",
+          headers: {
+            Authorization: "Bearer " + this.state.token,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        this.serverReply(payload?.message || "Unable to delete message.");
+        return false;
+      }
+
+      this.safeSetState((prevState) => ({
+        chat:
+          normalizedScope === "me"
+            ? (Array.isArray(prevState.chat) ? prevState.chat : []).filter(
+                (message) =>
+                  !(
+                    String(message?._id || "").trim() === normalizedFriendId &&
+                    String(message?.id || "").trim() === normalizedMessageId
+                  ),
+              )
+            : (Array.isArray(prevState.chat) ? prevState.chat : []).map((message) => {
+                if (
+                  String(message?._id || "").trim() !== normalizedFriendId ||
+                  String(message?.id || "").trim() !== normalizedMessageId
+                ) {
+                  return message;
+                }
+
+                return {
+                  ...message,
+                  message: "",
+                  images: [],
+                  deleted: true,
+                  edited: false,
+                };
+              }),
+      }));
+      return true;
+    } catch (error) {
+      this.serverReply(error?.message || "Unable to delete message.");
+      return false;
+    }
   };
 
   sendToThemMessage = (messagePayload) => {
@@ -1818,12 +1963,15 @@ class App extends React.Component {
               chat: [
                 ...(Array.isArray(prevState.chat) ? prevState.chat : []),
                 {
+                  id: String(payload?.chatMessage?.id || "").trim(),
                   _id: selectedFriendId,
                   from: "me",
                   message: normalizedMessage,
                   images: normalizedImages,
                   date: optimisticTimestamp,
                   status: "sent",
+                  edited: false,
+                  deleted: false,
                 },
               ],
             }));
@@ -1932,6 +2080,28 @@ class App extends React.Component {
     )
       .then((response) => {
         if (response.ok) {
+          this.safeSetState((prevState) => ({
+            friends: (
+              Array.isArray(prevState.friends) ? prevState.friends : []
+            ).filter((friend) => {
+              const friendId = String(
+                friend?._id || friend?.id || friend?.userID || "",
+              ).trim();
+              const friendMode = String(
+                friend?.userMode ||
+                  friend?.mode ||
+                  friend?.relationship?.userMode ||
+                  "",
+              )
+                .trim()
+                .toLowerCase();
+
+              return !(
+                friendId === requestId &&
+                friendMode === "requestreceived"
+              );
+            }),
+          }));
           this.markFriendRequestReadLocally(requestId);
           this.updateUserInfo();
           this.serverReply("Friend request rejected.");
@@ -1973,6 +2143,26 @@ class App extends React.Component {
       .then((response) => {
         if (response.ok) {
           this.safeSetState((prevState) => ({
+            friends: (
+              Array.isArray(prevState.friends) ? prevState.friends : []
+            ).filter((friend) => {
+              const friendId = String(
+                friend?._id || friend?.id || friend?.userID || "",
+              ).trim();
+              const friendMode = String(
+                friend?.userMode ||
+                  friend?.mode ||
+                  friend?.relationship?.userMode ||
+                  "",
+              )
+                .trim()
+                .toLowerCase();
+
+              return !(
+                friendId === normalizedReceiverId &&
+                friendMode === "requestsent"
+              );
+            }),
             sent_friend_requests: (
               Array.isArray(prevState.sent_friend_requests)
                 ? prevState.sent_friend_requests
@@ -2532,23 +2722,17 @@ class App extends React.Component {
     }
 
     const scaleMap = this.getScaleSettingMap(scaleEntries);
-    const hasExpandedScale = Object.values(scaleMap).some(
-      (scaleNum) => Number(scaleNum) > 1,
+    const hasExpandedNonPageScale = Object.entries(scaleMap).some(
+      ([elementId, scaleNum]) =>
+        elementId !== "app_page" && Number(scaleNum) > 1,
     );
     const rootElement = document.getElementById("root");
     if (rootElement) {
-      rootElement.style.overflow = hasExpandedScale ? "auto" : "";
+      rootElement.style.overflow = hasExpandedNonPageScale ? "auto" : "";
     }
 
     Object.entries(scaleMap).forEach(([elementId, scaleNum]) => {
       if (!elementId || elementId === "app_page") {
-        if (elementId === "app_page") {
-          const appPageElement = document.getElementById("app_page");
-          if (appPageElement) {
-            appPageElement.style.overflow =
-              Number(scaleNum) > 1 ? "visible" : "";
-          }
-        }
         return;
       }
 
@@ -2559,7 +2743,9 @@ class App extends React.Component {
 
       if (Number(scaleNum) === 1) {
         element.style.removeProperty("width");
+        element.style.removeProperty("height");
         element.style.removeProperty("min-height");
+        element.style.removeProperty("max-height");
         element.style.removeProperty("transform");
         element.style.removeProperty("transform-origin");
         element.style.removeProperty("overflow");
@@ -2567,10 +2753,12 @@ class App extends React.Component {
       }
 
       element.style.width = `calc(100% / ${scaleNum})`;
-      element.style.minHeight = `calc(100dvh / ${scaleNum})`;
+      element.style.height = `calc(100% / ${scaleNum})`;
+      element.style.minHeight = "0";
+      element.style.maxHeight = `calc(100% / ${scaleNum})`;
       element.style.transform = `scale(${scaleNum})`;
       element.style.transformOrigin = "top left";
-      element.style.overflow = "visible";
+      element.style.overflow = "hidden";
     });
   };
 
@@ -3493,6 +3681,8 @@ class App extends React.Component {
                   sendToThemMessage={this.sendToThemMessage}
                   uploadChatImages={this.uploadChatImages}
                   saveChatImageToGallery={this.saveChatImageToGallery}
+                  editChatMessage={this.editChatMessage}
+                  deleteChatMessage={this.deleteChatMessage}
                   updateMyTypingPresence={this.updateMyTypingPresence}
                   markMessagesRead={this.markMessagesRead}
                   serverReply={this.serverReply}
@@ -3525,6 +3715,8 @@ class App extends React.Component {
                   sendToThemMessage={this.sendToThemMessage}
                   uploadChatImages={this.uploadChatImages}
                   saveChatImageToGallery={this.saveChatImageToGallery}
+                  editChatMessage={this.editChatMessage}
+                  deleteChatMessage={this.deleteChatMessage}
                   updateMyTypingPresence={this.updateMyTypingPresence}
                   markMessagesRead={this.markMessagesRead}
                   serverReply={this.serverReply}

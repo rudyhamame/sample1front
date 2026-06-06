@@ -1,3 +1,5 @@
+@import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css");
+
 * {
   padding: 0;
   margin: 0;
@@ -94,6 +96,7 @@ body {
   min-height: 100dvh;
   background-color: var(--brightestWhite);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #App_viewportScale {
@@ -101,7 +104,9 @@ body {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  min-height: 100dvh;
+  min-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   --app-scale: 0.8;
 }
 
@@ -116,7 +121,9 @@ body {
   flex-grow: 1;
   overflow: hidden;
   width: calc(100% / var(--app-scale, 0.8));
-  min-height: calc(100dvh / var(--app-scale, 0.8));
+  height: calc(100% / var(--app-scale, 0.8));
+  min-height: calc(100% / var(--app-scale, 0.8));
+  max-height: calc(100% / var(--app-scale, 0.8));
   transform: scale(var(--app-scale, 0.8));
   transform-origin: top left;
 }
@@ -135,12 +142,19 @@ body {
     --main-article-color1: rgba(234, 147, 128, 0.95);
     --main-article-color2: rgba(237, 159, 146, 0.92);
     --main-article-color3: rgba(235, 148, 129, 0.95);
-  flex: 1 1 auto;
-  height: 100%;
+  flex: 1 1 0;
+  height: auto;
+  max-height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+#Main_article > * {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
 }
 
 #app_page.app_page--has-background-pattern #Main_article {
