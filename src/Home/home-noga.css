@@ -5136,10 +5136,10 @@ width: fit-content;
   overflow: hidden;
   align-self: flex-start;
   background: linear-gradient(
-      180deg,
-      rgba(205, 107, 106, 0.2) 0%,
-      rgba(205, 107, 106, 0.32) 100%
-    );
+    180deg,
+    rgba(233, 127, 132, 0.96),
+    rgba(207, 91, 101, 0.94)
+  );
     padding: 10px;
     gap: 2px;
 }
