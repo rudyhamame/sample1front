@@ -138,9 +138,6 @@ const resolveProfilePictureStateUrl = (requestedProfilePicture, fallbackUrl = ""
   return String(requestedProfilePicture || fallbackUrl || "").trim();
 };
 
-const LazyStudyPlanner = React.lazy(
-  () => import("./SubApps/StudyPlannner/StudyPlanner"),
-);
 const LazyNogaPlan = React.lazy(() => import("../NogaPlan/NogaPlanner.jsx"));
 const LazyPhenomedECG = React.lazy(
   () => import("./SubApps/PhenomedECG/PhenomedECG"),
@@ -153,7 +150,6 @@ const LazyJamendoPlayer = React.lazy(() => import("../JamendoPlayer.jsx"));
 const LazyProfile = React.lazy(() => import("../Profile/Profile.jsx"));
 const RESERVED_PROFILE_ROUTE_SEGMENTS = new Set([
   "home",
-  "study",
   "ecg",
   "schoolplanner",
   "nogaplan",
@@ -163,9 +159,6 @@ const RESERVED_PROFILE_ROUTE_SEGMENTS = new Set([
   "deezer-player",
   "soundcloud-player",
 ]);
-const LazyStudy = React.lazy(
-  () => import("./SubApps/StudyPlannner/components/Study/Study"),
-);
 //...........component..................
 class App extends React.Component {
   //..........states...........
@@ -3887,23 +3880,6 @@ class App extends React.Component {
               ) : null}
             </article>
           </Route>
-          <Route path="/study">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyStudy
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  serverReply={this.serverReply}
-                />{" "}
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
           <Route exact path="/phenomed/schoolplanner/nogaplan">
             <article id="app_page" className={appPageClassName}>
               <main id="Main_article" className="fr">
@@ -3947,9 +3923,10 @@ class App extends React.Component {
           <Route exact path="/phenomed/schoolplanner/ar">
             <article id="app_page" className={appPageClassName}>
               <main id="Main_article" className="fr">
-                <LazyStudyPlanner
+                <LazyNogaPlan
                   locale="ar"
                   state={this.state}
+                  onPresenceModeChange={this.handleSubAppPresenceChange}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   type={this.type}
@@ -3966,8 +3943,10 @@ class App extends React.Component {
           <Route exact path="/phenomed/schoolplanner">
             <article id="app_page" className={appPageClassName}>
               <main id="Main_article" className="fr">
-                <LazyStudyPlanner
+                <LazyNogaPlan
+                  locale="ar"
                   state={this.state}
+                  onPresenceModeChange={this.handleSubAppPresenceChange}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   type={this.type}

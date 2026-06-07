@@ -86,13 +86,6 @@ const AppRouter = () => {
               <Redirect to="/" />
             )}
           </Route>
-          <Route path="/study">
-            {canAccessAuthenticatedRoutes ? (
-              <App key="app-study" path="/study" onLogout={handleLogout} />
-            ) : (
-              <Redirect to="/" />
-            )}
-          </Route>
           <Route path="/phenomed/nogaplan">
             {canAccessAuthenticatedRoutes ? (
               <App

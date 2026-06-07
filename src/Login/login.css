@@ -271,10 +271,12 @@
 }
 
 #Login_brandContentWrap {
-  width: min(100%, 420px);
+  width: min(100%, 460px);
   min-height: var(--login-aligned-block-min-height, 0px);
   justify-content: flex-start;
   align-items: center;
+  padding-inline: clamp(16px, 2.4cqi, 28px);
+  box-sizing: border-box;
 }
 
 /* Mode Navigation */
@@ -318,33 +320,37 @@
 /* Brand */
 #Login_brandWordmark {
   font-family: "Arial Black", "Archivo Black", sans-serif;
-  font-size: min(19cqi, 9rem);
+  font-size: clamp(3rem, 15.5cqi, 8rem);
   font-weight: 900;
   display: block;
   letter-spacing: 0.04em;
   text-align: center;
-  line-height: 0.92;
+  line-height: 1;
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: clip;
   width: 100%;
   max-width: 100%;
   margin: 0;
+  padding-inline: 0.08em;
+  box-sizing: border-box;
   color: #01796f;
   position: relative;
 }
 
 .Login_brandWordmarkFlex {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.18em;
+  justify-content: center;
+  gap: clamp(0.12em, 0.75cqi, 0.18em);
   min-width: 0;
   max-width: 100%;
-  overflow: visible;
+  width: 100%;
+  overflow: hidden;
 }
 
 #Login_brandWordmark .Login_brandMark {
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
 #Login_brandWordmark .Login_brandDivider {
@@ -358,8 +364,27 @@
 }
 
 #Login_brandWordmark .Login_brandName {
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
 }
+
+@container (max-width: 360px) {
+  #Login_brandWordmark {
+    font-size: clamp(2.75rem, 13.5cqi, 6.5rem);
+  }
+
+  .Login_brandWordmarkFlex {
+    gap: 0.16em;
+  }
+
+  #Login_brandWordmark .Login_brandDivider {
+    transform: translateY(-0.01em) scaleY(0.74);
+  }
+
+  #Login_brandWordmark .Login_brandName {
+    letter-spacing: 0.03em;
+  }
+}
+
 #Login_brandProduct {
   font-family: "Exo", sans-serif;
   font-size: min(7.4cqi, 3.5rem);
@@ -812,6 +837,30 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   overflow-wrap: break-word;
+}
+
+#Login_authDemoNote {
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(1, 121, 111, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(244, 250, 249, 0.98),
+    rgba(235, 245, 243, 0.94)
+  );
+  color: rgba(1, 84, 78, 0.9);
+  font-size: 0.7rem;
+  line-height: 1.55;
+  box-sizing: border-box;
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  text-align: left;
+}
+
+#Login_authDemoNote strong {
+  font-weight: 700;
 }
 
 /* Footer */

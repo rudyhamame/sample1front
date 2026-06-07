@@ -1,15 +1,5 @@
 export const getHomeSubApps = (username = "") => {
-  const normalizedUsername = String(username || "").trim().toLowerCase();
-  const nogaPlanPermittedUsers = new Set(["naghamtrkmani", "rudyhamame"]);
-  const isNogaPlanOwner = nogaPlanPermittedUsers.has(normalizedUsername);
-
   return [
-    {
-      id: "study",
-      label: "Phenomed Student",
-      icon: "fas fa-stopwatch",
-      path: "/study",
-    },
     {
       id: "ecg",
       label: "PhenoMed ECG",
@@ -36,11 +26,9 @@ export const getHomeSubApps = (username = "") => {
     },
     {
       id: "school",
-      label: isNogaPlanOwner ? "Noga Plan" : "School Planner",
+      label: "Study Planner",
       icon: "fas fa-layer-group",
-      path: isNogaPlanOwner
-        ? "/phenomed/schoolplanner/nogaplan"
-        : "/phenomed/schoolplanner",
+      path: "/phenomed/nogaplan",
     },
     {
       id: "social",

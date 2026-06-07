@@ -2467,8 +2467,6 @@ border-color: rgba(110, 168, 180, 0.18);
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  height: min(100%, 820px);
-  max-height: 820px;
   align-self: stretch;
   position: relative;
   flex-wrap: nowrap;
@@ -5108,6 +5106,7 @@ align-self: flex-end;
   );
 }
 
+
 #Home_Noga_rightColumn_wrapper .sentMessagesLI p,
 #Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
 margin: 0;
@@ -5516,30 +5515,60 @@ display: flex;
   gap: 10px;
 }
 
+#Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard {
+  padding: 0 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  width: min(100%, 260px);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_voiceNotePlayerShell {
+display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 220px;
+  max-width: 260px;
+}
+
 #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftMeta {
   color: rgba(24, 79, 88, 0.94);
   font-size: 0.62rem;
   font-weight: 700;
 }
 
-#Home_Noga_rightColumn_wrapper .Chat_voiceNoteBadge {
-display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(20, 105, 99, 0.14);
-  color: rgba(20, 105, 99, 0.92);
-  padding: 0;
+#Home_Noga_rightColumn_wrapper .Chat_voiceNoteAudio {
+display: none;
 }
 
-#Home_Noga_rightColumn_wrapper .Chat_voiceNotePlayer {
-flex: 1 1 auto;
+#Home_Noga_rightColumn_wrapper .Chat_voiceNotePlaybackButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent ;
+  padding: 0;
+  cursor: pointer;
+  color: rgba(207, 91, 101, 0.94);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_voiceNoteSeek {
+width: 100%;
   min-width: 0;
-  max-width: 100%;
-  height: 36px;
+  margin: 0;
+  accent-color: rgba(207, 91, 101, 0.94);
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_voiceNoteTime {
+display: inline-flex;
+  align-items: center;
+  color: rgba(24, 79, 88, 0.74);
+  font-size: 0.54rem;
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input {

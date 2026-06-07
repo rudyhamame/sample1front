@@ -118,6 +118,14 @@ const formatCallElapsed = (elapsedMs) => {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
+const formatVoiceNoteTime = (secondsValue) => {
+  const totalSeconds = Math.max(0, Math.floor(Number(secondsValue) || 0));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 const repairMojibakeText = (value) => {
   const text = String(value ?? "");
   if (!text) {
@@ -358,6 +366,107 @@ const areImageListsEqual = (left, right) => {
   }
 
   return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+};
+
+const ChatVoiceNotePlayer = ({ src = "" }) => {
+  const audioRef = React.useRef(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const [duration, setDuration] = React.useState(0);
+  const [currentTime, setCurrentTime] = React.useState(0);
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return undefined;
+    }
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+    };
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime || 0);
+    };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(audio.duration || 0);
+    };
+
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [src]);
+
+  const handleTogglePlayback = () => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    if (audio.paused) {
+      audio.play().catch(() => null);
+      return;
+    }
+
+    audio.pause();
+  };
+
+  const handleSeek = (event) => {
+    const audio = audioRef.current;
+    const nextValue = Number(event.target.value || 0);
+
+    setCurrentTime(nextValue);
+
+    if (audio) {
+      audio.currentTime = nextValue;
+    }
+  };
+
+  const displayedTime =
+    !isPlaying && currentTime <= 0
+      ? duration
+      : currentTime;
+
+  return (
+    <div className="Chat_voiceNotePlayerShell">
+      <audio ref={audioRef} preload="metadata" src={src} className="Chat_voiceNoteAudio" />
+      <button
+        type="button"
+        className="Chat_voiceNotePlaybackButton"
+        onClick={handleTogglePlayback}
+        aria-label={isPlaying ? "Pause voice note" : "Play voice note"}
+        title={isPlaying ? "Pause" : "Play"}
+      >
+        <i className={`fas ${isPlaying ? "fa-pause" : "fa-play"}`} aria-hidden="true"></i>
+      </button>
+      <input
+        type="range"
+        className="Chat_voiceNoteSeek"
+        min="0"
+        max={Math.max(duration, 0)}
+        step="0.1"
+        value={Math.min(currentTime, duration || currentTime)}
+        onChange={handleSeek}
+        aria-label="Voice note progress"
+      />
+      <span className="Chat_voiceNoteTime">
+        {formatVoiceNoteTime(displayedTime)}
+      </span>
+    </div>
+  );
 };
 
 const FriendChat = ({
@@ -3665,20 +3774,7 @@ const FriendChat = ({
                             ) : null}
                           {!msg.deleted && msg.audio ? (
                             <div className="Chat_voiceNoteCard">
-                              <button
-                                type="button"
-                                className="Chat_voiceNoteBadge"
-                                disabled
-                                aria-hidden="true"
-                              >
-                                <i className="fas fa-microphone"></i>
-                              </button>
-                              <audio
-                                className="Chat_voiceNotePlayer"
-                                controls
-                                preload="metadata"
-                                src={msg.audio}
-                              />
+                              <ChatVoiceNotePlayer src={msg.audio} />
                             </div>
                           ) : null}
                           {!msg.deleted &&

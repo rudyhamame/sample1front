@@ -2691,6 +2691,17 @@ const Login = ({ onLogin, onForceLogout }) => {
                   </button>
                 </nav>
               )}
+              <p id="Login_authDemoNote">
+                If you’d like to try the app right away, you can sign in with
+                the demo account below:
+                <br />
+                <strong>Username:</strong> test
+                <br />
+                <strong>Password:</strong> test
+                <br />
+                You’re also welcome to create your own account anytime and
+                enjoy the full experience with your own saved data.
+              </p>
               {feedbackMessage && authMode !== "complete-profile" && (
                 <h4 id="Login_authFeedback">{feedbackMessage}</h4>
               )}

@@ -1122,7 +1122,7 @@ export default class SchoolPlanner extends Component {
       clearTimeout(this.telegramSyncStatusTimeout);
       this.telegramSyncStatusTimeout = null;
     }
-    this.stopPlannerMusicReactivePalette();
+    this.stopPlannerMusicReactivePalette?.();
     if (this.musicSourceNode) {
       this.musicSourceNode.disconnect();
       this.musicSourceNode = null;
