@@ -770,9 +770,12 @@ class App extends React.Component {
     this.realtimeSocket = connectRealtime({
       userId: this.state.my_id,
       onUserRefresh: (payload = {}) => {
+        const normalizedReason = String(payload?.reason || "")
+          .trim()
+          .toLowerCase();
+
         if (
-          String(payload?.reason || "").trim().toLowerCase() ===
-            "connection:changed" &&
+          normalizedReason === "connection:changed" &&
           String(payload?.targetUserId || "").trim() ===
             String(this.state.my_id || "").trim() &&
           payload?.friendId &&
@@ -785,7 +788,21 @@ class App extends React.Component {
           );
         }
 
+        if (
+          normalizedReason === "chat:message" ||
+          normalizedReason === "chat:message-updated" ||
+          normalizedReason === "chat:read"
+        ) {
+          return;
+        }
+
         this.updateUserInfo({ force: true });
+      },
+      onChatMessage: (payload) => {
+        this.handleRealtimeChatMessage(payload || {});
+      },
+      onChatMessageUpdated: (payload) => {
+        this.handleRealtimeChatMessageUpdated(payload || {});
       },
       onChatPresence: (payload) => {
         this.handleFriendChatPresence(payload || {});
@@ -1186,6 +1203,143 @@ class App extends React.Component {
           };
         },
       ),
+    }));
+  };
+
+  normalizeRealtimeChatMessage = (chatMessage = {}, fallbackFriendId = "") => {
+    if (!chatMessage || typeof chatMessage !== "object") {
+      return null;
+    }
+
+    const normalizedFriendId =
+      String(chatMessage?._id || fallbackFriendId || "").trim();
+    const normalizedMessageId = String(chatMessage?.id || "").trim();
+
+    if (!normalizedFriendId || !normalizedMessageId) {
+      return null;
+    }
+
+    return {
+      id: normalizedMessageId,
+      _id: normalizedFriendId,
+      from:
+        String(chatMessage?.from || "").trim().toLowerCase() === "them"
+          ? "them"
+          : "me",
+      message: String(chatMessage?.message || "").trim(),
+      audio: String(chatMessage?.audio || "").trim(),
+      images: Array.isArray(chatMessage?.images) ? chatMessage.images : [],
+      videos: Array.isArray(chatMessage?.videos) ? chatMessage.videos : [],
+      documents: Array.isArray(chatMessage?.documents)
+        ? chatMessage.documents
+        : [],
+      date: chatMessage?.date || new Date().toISOString(),
+      status:
+        String(chatMessage?.status || "sent").trim().toLowerCase() || "sent",
+      edited: Boolean(chatMessage?.edited),
+      deleted: Boolean(chatMessage?.deleted),
+    };
+  };
+
+  mergeChatMessageIntoState = (currentChat = [], nextMessage = null) => {
+    if (!nextMessage) {
+      return Array.isArray(currentChat) ? currentChat : [];
+    }
+
+    const existingChat = Array.isArray(currentChat) ? currentChat : [];
+    const existingIndex = existingChat.findIndex(
+      (message) =>
+        String(message?.id || "").trim() === String(nextMessage.id || "").trim() &&
+        String(message?._id || "").trim() === String(nextMessage._id || "").trim(),
+    );
+
+    if (existingIndex === -1) {
+      return [...existingChat, nextMessage].sort(
+        (left, right) =>
+          new Date(left?.date || 0).getTime() - new Date(right?.date || 0).getTime(),
+      );
+    }
+
+    return existingChat.map((message, index) =>
+      index === existingIndex
+        ? {
+            ...message,
+            ...nextMessage,
+          }
+        : message,
+    );
+  };
+
+  handleRealtimeChatMessage = ({ friendId, chatMessage } = {}) => {
+    const normalizedMessage = this.normalizeRealtimeChatMessage(
+      chatMessage,
+      friendId,
+    );
+
+    if (!normalizedMessage) {
+      return;
+    }
+
+    this.safeSetState(
+      (prevState) => ({
+        chat: this.mergeChatMessageIntoState(prevState.chat, normalizedMessage),
+      }),
+      () => {
+        if (
+          normalizedMessage.from === "them" &&
+          this.state.isChatting &&
+          String(this.state.activeChatFriendId || "").trim() ===
+            String(normalizedMessage._id || "").trim()
+        ) {
+          this.markMessagesRead(normalizedMessage._id);
+        }
+      },
+    );
+  };
+
+  handleRealtimeChatMessageUpdated = ({
+    friendId,
+    messageId,
+    scope,
+    chatMessage,
+  } = {}) => {
+    const normalizedFriendId = String(friendId || chatMessage?._id || "").trim();
+    const normalizedMessageId = String(
+      messageId || chatMessage?.id || "",
+    ).trim();
+
+    if (!normalizedFriendId || !normalizedMessageId) {
+      return;
+    }
+
+    if (String(scope || "").trim().toLowerCase() === "me") {
+      this.safeSetState((prevState) => ({
+        chat: (Array.isArray(prevState.chat) ? prevState.chat : []).filter(
+          (message) =>
+            !(
+              String(message?._id || "").trim() === normalizedFriendId &&
+              String(message?.id || "").trim() === normalizedMessageId
+            ),
+        ),
+      }));
+      return;
+    }
+
+    const normalizedMessage = this.normalizeRealtimeChatMessage(
+      {
+        ...(chatMessage && typeof chatMessage === "object" ? chatMessage : {}),
+        id: normalizedMessageId,
+        _id: normalizedFriendId,
+      },
+      normalizedFriendId,
+    );
+
+    if (!normalizedMessage) {
+      return;
+    }
+
+    this.safeSetState((prevState) => ({
+      chat: this.mergeChatMessageIntoState(prevState.chat, normalizedMessage),
     }));
   };
 

@@ -2100,6 +2100,8 @@ function HomeNoga(props) {
 
   const isReportSectionOpen = (sectionKey) =>
     Boolean(openReportSections?.[sectionKey]);
+  const shouldLoadVisitLog =
+    isVisitLogOwner && isReportSectionOpen("visitLog") && Boolean(props.state?.token);
 
   const toggleReportSection = (sectionKey) => {
     setOpenReportSections((currentSections) => ({
@@ -6383,7 +6385,7 @@ function HomeNoga(props) {
   }, [visitLogEntries.length, visitLogIndex]);
 
   React.useEffect(() => {
-    if (!isVisitLogOwner || !props.state?.token) {
+    if (!shouldLoadVisitLog) {
       setVisitLogEntries([]);
       setVisitLogError("");
       setIsVisitLogLoading(false);
@@ -6438,7 +6440,7 @@ function HomeNoga(props) {
     return () => {
       isMounted = false;
     };
-  }, [isVisitLogOwner, props.state?.token, props.state?.visitLogRefreshToken]);
+  }, [shouldLoadVisitLog, props.state?.token, props.state?.visitLogRefreshToken]);
 
   React.useEffect(() => {
     if (!isVisitLogOwner) {

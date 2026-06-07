@@ -54,6 +54,34 @@ const formatAppLastUpdatedLabel = (value) =>
 const loginAppLastUpdatedFallbackLabel = formatAppLastUpdatedLabel(
   "2026-03-22T12:00:00+03:00",
 );
+const LOGIN_APP_LAST_UPDATED_CACHE_KEY = "login_app_last_updated_payload";
+const LOGIN_HOMETOWN_CITIES_CACHE_KEY = "login_hometown_cities_payload";
+const LOGIN_CLINICAL_REALITY_CACHE_KEY = "login_clinical_reality_payload";
+
+const readSessionJson = (key, fallback) => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(key);
+    return rawValue ? JSON.parse(rawValue) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeSessionJson = (key, value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage write failures.
+  }
+};
 
 const countryPhoneCodes = {
   Egypt: "+20",
@@ -577,8 +605,18 @@ const Login = ({ onLogin, onForceLogout }) => {
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
+    const cachedPayload = readSessionJson(LOGIN_APP_LAST_UPDATED_CACHE_KEY, null);
 
-    fetch(apiUrl("/api/user/app-last-updated"))
+    if (cachedPayload?.committedAt) {
+      setLoginAppLastUpdatedLabel(
+        formatAppLastUpdatedLabel(cachedPayload.committedAt),
+      );
+    }
+
+    fetch(apiUrl("/api/user/app-last-updated"), {
+      signal: controller.signal,
+    })
       .then((response) => response.json().catch(() => ({})))
       .then((payload) => {
         if (!isMounted) {
@@ -586,6 +624,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         }
 
         if (payload?.committedAt) {
+          writeSessionJson(LOGIN_APP_LAST_UPDATED_CACHE_KEY, payload);
           setLoginAppLastUpdatedLabel(
             formatAppLastUpdatedLabel(payload.committedAt),
           );
@@ -595,6 +634,7 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, []);
 
@@ -720,7 +760,20 @@ const Login = ({ onLogin, onForceLogout }) => {
   useEffect(() => {
     // Legacy backend source (kept as a supplemental fallback list).
     let ignoreUniversityOptions = false;
-    fetch(apiUrl("/api/user/hometown-cities"))
+    const controller = new AbortController();
+    const cachedPayload = readSessionJson(LOGIN_HOMETOWN_CITIES_CACHE_KEY, null);
+
+    if (
+      cachedPayload?.cities &&
+      Array.isArray(cachedPayload.cities) &&
+      cachedPayload.cities.length > 0
+    ) {
+      setUniversityOptions(cachedPayload.cities);
+    }
+
+    fetch(apiUrl("/api/user/hometown-cities"), {
+      signal: controller.signal,
+    })
       .then((response) => response.json().catch(() => ({ cities: [] })))
       .then((payload) => {
         if (
@@ -728,6 +781,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           payload.cities &&
           Array.isArray(payload.cities)
         ) {
+          writeSessionJson(LOGIN_HOMETOWN_CITIES_CACHE_KEY, payload);
           setUniversityOptions(payload.cities);
         }
       })
@@ -740,6 +794,7 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     return () => {
       ignoreUniversityOptions = true;
+      controller.abort();
     };
   }, []);
 
@@ -799,6 +854,15 @@ const Login = ({ onLogin, onForceLogout }) => {
   useEffect(() => {
     let ignoreHydration = false;
     const storedAuthState = getStoredAuthState();
+    const controller = new AbortController();
+    const cachedPayload = readSessionJson(LOGIN_CLINICAL_REALITY_CACHE_KEY, null);
+
+    if (!storedAuthState?.token && cachedPayload?.html) {
+      const cachedHtml = sanitizeClinicalRealityHtml(cachedPayload.html);
+      clinicalRealityBaselineRef.current = cachedHtml;
+      setClinicalRealityHtml(cachedHtml);
+      setHasPendingAdminSave(false);
+    }
 
     const requestUrl = storedAuthState?.token
       ? apiUrl("/api/user/clinical-reality")
@@ -811,9 +875,11 @@ const Login = ({ onLogin, onForceLogout }) => {
           headers: {
             Authorization: `Bearer ${storedAuthState.token}`,
           },
+          signal: controller.signal,
         }
       : {
           method: "GET",
+          signal: controller.signal,
         };
 
     fetch(requestUrl, requestOptions)
@@ -833,6 +899,11 @@ const Login = ({ onLogin, onForceLogout }) => {
 
         if (dbHtml.trim()) {
           const sanitizedDbHtml = sanitizeClinicalRealityHtml(dbHtml);
+          if (!storedAuthState?.token) {
+            writeSessionJson(LOGIN_CLINICAL_REALITY_CACHE_KEY, {
+              html: sanitizedDbHtml,
+            });
+          }
           clinicalRealityBaselineRef.current = sanitizedDbHtml;
           setClinicalRealityHtml(sanitizedDbHtml);
           setHasPendingAdminSave(false);
@@ -852,6 +923,7 @@ const Login = ({ onLogin, onForceLogout }) => {
 
     return () => {
       ignoreHydration = true;
+      controller.abort();
     };
   }, []);
 
