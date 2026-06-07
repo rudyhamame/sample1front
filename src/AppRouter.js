@@ -39,6 +39,7 @@ const AppRouter = () => {
   const authenticatedHomeRoute = getHomeRouteForUser(authState);
   const canAccessTelegramControl =
     getNormalizedUsername(authState) === "rudyhamame";
+  const canAccessVisitLog = getNormalizedUsername(authState) === "rudyhamame";
 
   const handleLogin = useCallback((nextAuthState) => {
     setAuthState(nextAuthState);
@@ -144,6 +145,17 @@ const AppRouter = () => {
               <App
                 key="app-telegram-control"
                 path="/phenomed/telegram-control"
+                onLogout={handleLogout}
+              />
+            ) : (
+              <Redirect to={canAccessAuthenticatedRoutes ? authenticatedHomeRoute : "/"} />
+            )}
+          </Route>
+          <Route exact path="/phenomed/visit-log">
+            {canAccessAuthenticatedRoutes && canAccessVisitLog ? (
+              <App
+                key="app-visit-log"
+                path="/phenomed/visit-log"
                 onLogout={handleLogout}
               />
             ) : (

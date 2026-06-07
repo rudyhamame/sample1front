@@ -21,6 +21,12 @@ export const getHomeSubApps = (username = "") => {
             icon: "fab fa-telegram-plane",
             path: "/phenomed/telegram-control",
           },
+          {
+            id: "visit-log",
+            label: "Visit-Log",
+            icon: "fas fa-shoe-prints",
+            path: "/phenomed/visit-log",
+          },
         ]
       : []),
     {

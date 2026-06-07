@@ -147,6 +147,7 @@ const LazyPdfReaderPage = React.lazy(() => import("../PdfReaderPage.jsx"));
 const LazyTelegramControlPage = React.lazy(
   () => import("../TelegramControlPage.jsx"),
 );
+const LazyVisitLogPage = React.lazy(() => import("../VisitLogPage.jsx"));
 const LazyJamendoPlayer = React.lazy(() => import("../JamendoPlayer.jsx"));
 const LazyProfile = React.lazy(() => import("../Profile/Profile.jsx"));
 const RESERVED_PROFILE_ROUTE_SEGMENTS = new Set([
@@ -156,6 +157,7 @@ const RESERVED_PROFILE_ROUTE_SEGMENTS = new Set([
   "nogaplan",
   "pdf-reader",
   "telegram-control",
+  "visit-log",
   "jamendo-player",
   "deezer-player",
   "soundcloud-player",
@@ -4156,6 +4158,24 @@ class App extends React.Component {
                     memory={this.memory}
                     logOut={this.logOut}
                     acceptFriend={this.acceptFriend}
+                    serverReply={this.serverReply}
+                  />
+                </main>
+                {showServerAnswerFooter ? (
+                  <Footer {...footerProps} />
+                ) : null}
+              </article>
+            ) : (
+              <Redirect to="/phenomed/home" />
+            )}
+          </Route>
+          <Route exact path="/phenomed/visit-log">
+            {String(this.state?.username || "").trim().toLowerCase() ===
+            "rudyhamame" ? (
+              <article id="app_page" className={appPageClassName}>
+                <main id="Main_article" className="fr">
+                  <LazyVisitLogPage
+                    state={this.state}
                     serverReply={this.serverReply}
                   />
                 </main>

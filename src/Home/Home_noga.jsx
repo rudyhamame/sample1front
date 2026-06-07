@@ -2097,6 +2097,9 @@ function HomeNoga(props) {
       return { scale: 1, offsetX: 0, offsetY: 0 };
     }
   });
+  const isVisitLogOwner =
+    String(props.state?.username || "").trim().toLowerCase() ===
+    "rudyhamame";
 
   const isReportSectionOpen = (sectionKey) =>
     Boolean(openReportSections?.[sectionKey]);
@@ -3461,9 +3464,6 @@ function HomeNoga(props) {
         : nextLoginLogEntries,
     );
   }, [props.state?.login_record]);
-
-  const isVisitLogOwner =
-    String(props.state?.username || "").toLowerCase() === "rudyhamame";
 
   const loginRecords = Array.isArray(loginLogEntries)
     ? [...loginLogEntries]
