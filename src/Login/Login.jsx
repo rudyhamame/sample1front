@@ -7,6 +7,7 @@ import {
   readStoredSession,
   writeStoredSession,
 } from "../utils/sessionCleanup";
+import { stopSharedPlannerMusic } from "../music/globalMusicPlayer";
 import { normalizeUserPayload } from "../utils/normalizeUser";
 
 const clinicalRealityParagraphs = [
@@ -654,6 +655,7 @@ const Login = ({ onLogin, onForceLogout }) => {
     }
 
     logoutStoredSession().finally(() => {
+      stopSharedPlannerMusic({ resetPlaylist: true, resetSnapshot: true });
       fetch(apiUrl("/api/user/visit-log"), {
         method: "POST",
         headers: {

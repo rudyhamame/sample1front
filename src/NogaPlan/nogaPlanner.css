@@ -1,4 +1,6 @@
 
+@import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css");
+
 #nogaPlanner_article {
   position: relative;
   display: flex;
@@ -1283,6 +1285,17 @@
     inset 0 -1px 2px rgba(255, 255, 255, 0.72);
 }
 
+.nogaPlanner_tracesLoadMoreRow {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+.nogaPlanner_tracesStatus--summary {
+  margin-top: 12px;
+  text-align: center;
+}
+
 .nogaPlanner_tracesTable {
   width: 100%;
   border-collapse: collapse;
@@ -2250,10 +2263,8 @@
 .nogaPlanner_homePanelGrid {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
   gap: 12px;
   width: 100%;
-  align-content: flex-start;
 }
 
 .nogaPlanner_homePanelColumn {
@@ -2261,7 +2272,7 @@
 }
 
 .nogaPlanner_homePanelColumn--left {
-  order: 2;
+  order: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
@@ -2271,11 +2282,10 @@
 }
 
 .nogaPlanner_homePanelColumn--right {
-  order: 1;
+  order: 2;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1 1 48%;
   min-height: 0;
 }
 
@@ -2485,6 +2495,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 11px;
+  border: 1px solid rgba(132, 27, 45, 0.12);
 }
 
 .nogaPlanner_homeIntervalsMiniTable th,
@@ -2620,6 +2631,30 @@
   margin-bottom: 10px;
 }
 
+.nogaPlanner_homeIntervalsCurrentCard {
+  width: 100%;
+}
+
+.nogaPlanner_homeIntervalsCurrentCardBody {
+  gap: 6px;
+}
+
+.nogaPlanner_homeIntervalsCurrentCardRow {
+  width: 100%;
+}
+
+.nogaPlanner_homeIntervalsCurrentCardRow .nogaPlanner_homeIntervalsInput {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.nogaPlanner_homeIntervalsCurrentCardHint {
+  font-size: 10px;
+  line-height: 1.3;
+  color: #8a5965;
+}
+
 .nogaPlanner_homeIntervalsDangerRow {
   display: flex;
   justify-content: flex-end;
@@ -2745,6 +2780,39 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+
+.nogaPlanner_homeIntervalStatusCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nogaPlanner_homeIntervalsDeleteIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(181, 70, 90, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 244, 247, 0.96);
+  color: #8a2741;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.nogaPlanner_homeIntervalsDeleteIconBtn:hover {
+  background: rgba(255, 231, 237, 0.98);
+  border-color: rgba(181, 70, 90, 0.38);
+}
+
+.nogaPlanner_homeIntervalsDeleteIconBtn i {
+  font-size: 9px;
+  line-height: 1;
 }
 
 .nogaPlanner_homeIntervalsEditor {

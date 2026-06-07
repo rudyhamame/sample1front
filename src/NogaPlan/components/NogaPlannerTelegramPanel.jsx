@@ -27,6 +27,8 @@ const TELEGRAM_DOCUMENT_TYPE_TABS = [
   { key: "other", label: "Other" },
 ];
 
+const TELEGRAM_STORED_MESSAGES_PAGE_SIZE = 40;
+
 const formatFileSize = (size = 0) => {
   const nextSize = Number(size || 0);
   if (!Number.isFinite(nextSize) || nextSize <= 0) {
@@ -238,6 +240,10 @@ const NogaPlannerTelegramPanel = ({
   const [selectedGroupReference, setSelectedGroupReference] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [messages, setMessages] = useState([]);
+  const [messagesOffset, setMessagesOffset] = useState(0);
+  const [messagesHasMore, setMessagesHasMore] = useState(false);
+  const [messagesFilteredTotalCount, setMessagesFilteredTotalCount] = useState(0);
+  const [messagesRawCount, setMessagesRawCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [downloadingMessageId, setDownloadingMessageId] = useState("");
@@ -459,7 +465,10 @@ const NogaPlannerTelegramPanel = ({
     }
   };
 
-  const searchStoredMessages = async (groupReferenceOverride = "") => {
+  const searchStoredMessages = async ({
+    groupReferenceOverride = "",
+    reset = true,
+  } = {}) => {
     const groupReference = String(
       groupReferenceOverride || selectedGroupReference || "",
     ).trim();
@@ -476,8 +485,9 @@ const NogaPlannerTelegramPanel = ({
     setError("");
     try {
       const searchParams = new URLSearchParams();
-      searchParams.set("limit", "120");
-      searchParams.set("offset", "0");
+      const nextOffset = reset ? 0 : Math.max(0, Number(messagesOffset || 0));
+      searchParams.set("limit", String(TELEGRAM_STORED_MESSAGES_PAGE_SIZE));
+      searchParams.set("offset", String(nextOffset));
       searchParams.set("group", groupReference);
       if (String(searchQuery || "").trim()) {
         searchParams.set("q", String(searchQuery).trim());
@@ -494,9 +504,22 @@ const NogaPlannerTelegramPanel = ({
       if (!response.ok) {
         throw new Error(payload?.message || "Unable to load Telegram messages.");
       }
-      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+      const nextMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+      setMessages((currentValue) =>
+        reset ? nextMessages : [...currentValue, ...nextMessages],
+      );
+      setMessagesOffset(Number(payload?.nextOffset || 0));
+      setMessagesHasMore(Boolean(payload?.hasMore));
+      setMessagesFilteredTotalCount(
+        Number(payload?.filteredTotalCount || nextMessages.length || 0),
+      );
+      setMessagesRawCount(Number(payload?.rawCount || 0));
     } catch (nextError) {
       setMessages([]);
+      setMessagesOffset(0);
+      setMessagesHasMore(false);
+      setMessagesFilteredTotalCount(0);
+      setMessagesRawCount(0);
       setError(nextError?.message || "Unable to load Telegram messages.");
     } finally {
       setIsLoading(false);
@@ -1030,9 +1053,16 @@ const NogaPlannerTelegramPanel = ({
     }
     if (!String(selectedGroupReference || "").trim()) {
       setMessages([]);
+      setMessagesOffset(0);
+      setMessagesHasMore(false);
+      setMessagesFilteredTotalCount(0);
+      setMessagesRawCount(0);
       return;
     }
-    searchStoredMessages(selectedGroupReference);
+    searchStoredMessages({
+      groupReferenceOverride: selectedGroupReference,
+      reset: true,
+    });
   }, [materialSourceTab, selectedGroupReference, traceMainTab]);
   useEffect(() => {
     if (
@@ -1105,7 +1135,7 @@ const NogaPlannerTelegramPanel = ({
             id="nogaPlanner_tracesTelegramSearchBtn"
             type="button"
             className="nogaPlanner_tracesActionBtn"
-            onClick={() => searchStoredMessages()}
+            onClick={() => searchStoredMessages({ reset: true })}
             disabled={isLoading}
           >
             Search
@@ -1232,6 +1262,27 @@ const NogaPlannerTelegramPanel = ({
               </tbody>
             </table>
           )}
+          {!isLoading &&
+          !error &&
+          filteredTelegramDocumentMessages.length > 0 &&
+          messagesHasMore ? (
+            <div className="nogaPlanner_tracesLoadMoreRow">
+              <button
+                type="button"
+                className="nogaPlanner_tracesActionBtn"
+                onClick={() => searchStoredMessages({ reset: false })}
+              >
+                Load more
+              </button>
+            </div>
+          ) : null}
+          {!isLoading &&
+          !error &&
+          (messagesFilteredTotalCount > 0 || messagesRawCount > 0) ? (
+            <p className="nogaPlanner_tracesStatus nogaPlanner_tracesStatus--summary">
+              {`Showing ${filteredTelegramDocumentMessages.length} of ${messagesFilteredTotalCount || filteredTelegramDocumentMessages.length} matching documents from ${messagesRawCount || messagesFilteredTotalCount || filteredTelegramDocumentMessages.length} stored messages.`}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

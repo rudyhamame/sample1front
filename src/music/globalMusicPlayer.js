@@ -681,6 +681,46 @@ export const getPlannerMusicSnapshot = () => ({
   ...sharedSnapshot,
 });
 
+export const stopSharedPlannerMusic = ({
+  resetPlaylist = false,
+  resetSnapshot = true,
+} = {}) => {
+  const musicAudio = ensureAudioElement();
+
+  stopReactiveSignalLoop();
+
+  if (musicAudio) {
+    musicAudio.pause();
+    musicAudio.removeAttribute("src");
+    musicAudio.load();
+  }
+
+  if (resetPlaylist) {
+    playlist = [];
+    playlistIndex = 0;
+    playlistPromise = null;
+  }
+
+  if (resetSnapshot) {
+    emitSnapshot({
+      isReady: false,
+      isPlaying: false,
+      trackTitle: "Planner Music",
+      trackArtist: "Jamendo Playlist",
+      audioSignal: {
+        ...EMPTY_AUDIO_SIGNAL,
+        updatedAt: Date.now(),
+      },
+    });
+  } else {
+    emitSnapshot({
+      isPlaying: false,
+    });
+  }
+
+  return true;
+};
+
 export const toggleSharedPlannerMusic = async () => {
   const musicAudio = ensureAudioElement();
   if (!musicAudio) {

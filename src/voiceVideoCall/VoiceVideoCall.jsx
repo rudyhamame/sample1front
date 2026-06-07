@@ -1125,14 +1125,12 @@ function VoiceVideoCall({
   const portalTarget =
     typeof document !== "undefined"
       ? document.getElementById("Home_Noga_callDock") ||
-        document.getElementById("Home_callDock") ||
-        document.getElementById("app_page")
+        document.getElementById("Home_voiceCallDock") ||
+        document.body
       : null;
-  const isFooterNotificationDock =
-    portalTarget?.id === "Home_voiceCallNotificationDock";
   const isDockedInLeftColumn =
     portalTarget?.id === "Home_Noga_callDock" ||
-    portalTarget?.id === "Home_callDock";
+    portalTarget?.id === "Home_voiceCallDock";
 
   if (!portalTarget || (!callMode && !incomingCall && !callError)) {
     return null;

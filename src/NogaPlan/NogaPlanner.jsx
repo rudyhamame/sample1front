@@ -995,6 +995,9 @@ export default class NogaPlanner extends Component {
       homeCurrentIntervalKey: selectedEntryIsCurrent
         ? ""
         : normalizedIntervalKey,
+      homeCurrentIntervalDraft: selectedEntryIsCurrent
+        ? ""
+        : normalizedIntervalKey,
     });
   };
   triggerHomeIntervalRetaking = async (intervalId = "") => {
@@ -8166,6 +8169,7 @@ export default class NogaPlanner extends Component {
       homeManualIntervalTermDraft: "",
       homeManualIntervalsDraftList: [],
       homeDeletedIntervalIds: [],
+      homeCurrentIntervalDraft: "",
       plannerRoot:
         initialPlannerRoot && typeof initialPlannerRoot === "object"
           ? initialPlannerRoot
@@ -11038,6 +11042,17 @@ export default class NogaPlanner extends Component {
       JSON.stringify(registeredProgramFailingRulesForCompare);
     const canSubmitIntervalPassingThreshold =
       isIntervalPassingThresholdReady && isIntervalPassingThresholdDirty;
+    const intervalPassingThresholdUnitOptions = [
+      { value: "Interval", label: "Interval" },
+      { value: "subInterval", label: "subInterval" },
+      { value: "Course", label: "Course" },
+      { value: "Component", label: "Component" },
+      { value: "Lecture", label: "Lecture" },
+      { value: "Grade (%)", label: "Grade (%)" },
+      { value: "Grade (number)", label: "Grade (number)" },
+      { value: "Grade (letter)", label: "Grade (letter)" },
+      { value: "Amount", label: "Amount" },
+    ];
     const visibleProgramFailingRules = intervalPassingThresholdEditorOpen
       ? draftProgramFailingRules.length > 0
         ? draftProgramFailingRules
@@ -11198,6 +11213,65 @@ export default class NogaPlanner extends Component {
         );
     })();
     const homeIntervalsDisplayRows = [...homeIntervalsPreview].reverse();
+    const currentHomeIntervalRow = homeIntervalsDisplayRows.find((intervalEntry) => {
+      const intervalStatusValue = String(
+        intervalEntry?.intervalStatus || "",
+      )
+        .trim()
+        .toLowerCase();
+      return (
+        intervalStatusValue === "current" ||
+        (currentIntervalKey
+          ? currentIntervalKey === intervalEntry.key
+          : intervalEntry.year === currentInterval &&
+            intervalEntry.term === currentTerm)
+      );
+    });
+    const homeCurrentIntervalDraftValue = String(
+      this.state?.homeCurrentIntervalDraft || "",
+    ).trim();
+    const homeCurrentIntervalOptions = homeIntervalsDisplayRows
+      .map((intervalEntry) => {
+        const optionValue = String(
+          intervalEntry?.key ||
+            intervalEntry?.subIntervalId ||
+            intervalEntry?.intervalId ||
+            "",
+        ).trim();
+        if (!optionValue) {
+          return null;
+        }
+        const intervalDisplay = this.parseIntervalIdYearTerm(
+          intervalEntry?.subIntervalId ||
+            intervalEntry?.subintervalId ||
+            intervalEntry?.key,
+        );
+        const optionLabel = `${intervalDisplay.year || intervalEntry?.year || "-"} ${
+          intervalDisplay.term || intervalEntry?.term || "-"
+        }`.trim();
+        return {
+          value: optionValue,
+          label: optionLabel,
+          isCurrent:
+            String(intervalEntry?.intervalStatus || "")
+              .trim()
+              .toLowerCase() === "current" ||
+            (currentIntervalKey
+              ? currentIntervalKey === intervalEntry.key
+              : intervalEntry.year === currentInterval &&
+                intervalEntry.term === currentTerm),
+        };
+      })
+      .filter(Boolean);
+    const homeCurrentIntervalSelectValue = homeCurrentIntervalOptions.some(
+      (option) => option.value === homeCurrentIntervalDraftValue,
+    )
+      ? homeCurrentIntervalDraftValue
+      : String(currentHomeIntervalRow?.key || "").trim();
+    const homeCurrentIntervalSelectedOption =
+      homeCurrentIntervalOptions.find(
+        (option) => option.value === homeCurrentIntervalSelectValue,
+      ) || null;
     const intervalYearGroupRows = (() => {
       const groupedRows = [];
       let rowIndex = 0;
@@ -11903,10 +11977,14 @@ export default class NogaPlanner extends Component {
                     }
                   >
                     <option value="">Unit</option>
-                    <option value="Grade (%)">Grade (%)</option>
-                    <option value="Grade (number)">Grade (number)</option>
-                    <option value="Grade (letter)">Grade (letter)</option>
-                    <option value="Amount">Amount</option>
+                    {intervalPassingThresholdUnitOptions.map((unitOption) => (
+                      <option
+                        key={`homeIntervalPassingThresholdUnitOption_${unitOption.value}`}
+                        value={unitOption.value}
+                      >
+                        {unitOption.label}
+                      </option>
+                    ))}
                   </select>
                   <input
                     type="number"
@@ -12428,6 +12506,76 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            <div
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homeIntervalsCurrentCard" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div className="nogaPlanner_homePanelCardTitleRow">
+                <strong>Current sub interval</strong>
+              </div>
+              <div className="nogaPlanner_homePanelCardBody nogaPlanner_homeIntervalsCurrentCardBody">
+                <div className="nogaPlanner_homeIntervalsAddRow nogaPlanner_homeIntervalsCurrentCardRow">
+                  <select
+                    name="homeCurrentIntervalKey"
+                    className="nogaPlanner_homeIntervalsInput"
+                    disabled={isHomeCardsLocked}
+                    value={homeCurrentIntervalSelectValue}
+                    onChange={(event) =>
+                      this.setState({
+                        homeCurrentIntervalDraft: String(
+                          event.target.value || "",
+                        ).trim(),
+                      })
+                    }
+                  >
+                    <option value="">Select a sub interval</option>
+                    {homeCurrentIntervalOptions.map((intervalOption) => (
+                      <option
+                        key={`nogaPlanner_homeCurrentIntervalOption_${intervalOption.value}`}
+                        value={intervalOption.value}
+                      >
+                        {intervalOption.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn"
+                    disabled={isHomeCardsLocked || !homeCurrentIntervalSelectValue}
+                    onClick={() =>
+                      this.setHomeCurrentInterval(
+                        homeCurrentIntervalSelectValue,
+                      )
+                    }
+                  >
+                    {homeCurrentIntervalSelectedOption?.isCurrent
+                      ? "Unset Current"
+                      : "Set Current"}
+                  </button>
+                </div>
+                {homeCurrentIntervalSelectedOption ? (
+                  <span className="nogaPlanner_homeIntervalsCurrentCardHint">
+                    Selected: {homeCurrentIntervalSelectedOption.label}
+                    {homeCurrentIntervalSelectedOption.isCurrent
+                      ? " (Current)"
+                      : ""}
+                  </span>
+                ) : (
+                  <span className="nogaPlanner_homeIntervalsCurrentCardHint">
+                    Choose a sub interval from the table list.
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <div className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right">
             <div
@@ -12510,7 +12658,7 @@ export default class NogaPlanner extends Component {
                     Unusual sub-Intervals
                   </span>
                   <div className="nogaPlanner_homeIntervalsAddRow">
-                  <select
+                    <select
                       name="homeManualIntervalId"
                       className="nogaPlanner_homeIntervalsInput"
                       disabled={isHomeCardsLocked}
@@ -12615,39 +12763,26 @@ export default class NogaPlanner extends Component {
                   type="button"
                   className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
                   disabled={homeIntervalsPreview.length === 0}
-                  onClick={() =>
-                    this.deleteAllHomeIntervals(
-                      homeIntervalsPreview.map(
-                        (entry) => entry?.key || entry?.intervalId,
-                      ),
-                    )
-                  }
+                  onClick={() => this.deleteAllHomeIntervals()}
                 >
-                  Delete All
+                  Reset
                 </button>
               </div>
               <table className="nogaPlanner_homeIntervalsMiniTable">
                 <thead>
                   <tr>
-                    <th
-                      className="nogaPlanner_homeIntervalsYearIndexCell"
-                      rowSpan={2}
-                    >
+                    <th className="nogaPlanner_homeIntervalsYearIndexCell">
                       Intervals
                     </th>
-                    <th colSpan={2}>subIntervals</th>
-                    <th rowSpan={2}>Status</th>
-                    <th rowSpan={2}>Actions</th>
-                  </tr>
-                  <tr>
                     <th>YEAR</th>
                     <th>TERM</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {homeIntervalsDisplayRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5}>No intervals yet.</td>
+                      <td colSpan={4}>No intervals yet.</td>
                     </tr>
                   ) : (
                     homeIntervalsDisplayRows.map((intervalEntry, rowIndex) => {
@@ -12695,9 +12830,9 @@ export default class NogaPlanner extends Component {
                           <td>
                             {intervalDisplay.term || intervalEntry.term || "-"}
                           </td>
-                          {intervalYearGroupMeta ? (
-                            <td rowSpan={intervalYearGroupMeta.rowSpan}>
-                              {intervalEntry.intervalStatus || "TBD"}
+                          <td>
+                            <div className="nogaPlanner_homeIntervalStatusCell">
+                              <span>{intervalEntry.intervalStatus || "TBD"}</span>
                               {String(intervalEntry?.intervalStatus || "")
                                 .trim()
                                 .toLowerCase() === "failed" ? (
@@ -12714,37 +12849,23 @@ export default class NogaPlanner extends Component {
                                   Retaking?
                                 </button>
                               ) : null}
-                            </td>
-                          ) : null}
-                          <td>
-                            <div className="nogaPlanner_homeIntervalRowActions">
-                              <button
-                                type="button"
-                                className="nogaPlanner_homePanelCardSetBtn"
-                                disabled={isHomeCardsLocked}
-                                onClick={() =>
-                                  this.setHomeCurrentInterval(
-                                    intervalEntry?.key ||
-                                      intervalEntry?.subIntervalId ||
-                                      intervalEntry?.intervalId,
-                                  )
-                                }
-                              >
-                                {isCurrent ? "Current" : "Set Current"}
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                                onClick={() =>
-                                  this.deleteHomeIntervalEntry(
-                                    intervalEntry?.key ||
-                                      intervalEntry?.subIntervalId ||
-                                      intervalEntry?.intervalId,
-                                  )
-                                }
-                              >
-                                Delete
-                              </button>
+                              {intervalEntry?.regular === false ? (
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                  aria-label="Delete unusual sub interval"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.deleteHomeIntervalEntry(
+                                      intervalEntry?.key ||
+                                        intervalEntry?.subIntervalId ||
+                                        intervalEntry?.intervalId,
+                                    )
+                                  }
+                                >
+                                  <i className="fi fi-br-cross" aria-hidden="true" />
+                                </button>
+                              ) : null}
                             </div>
                           </td>
                         </tr>

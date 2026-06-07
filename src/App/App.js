@@ -4,12 +4,13 @@ import React from "react";
 //........import CSS...........
 import "./App.css";
 import "../Nav/nav.css";
-import { Route } from "react-router-dom";
+import { Redirect, Route } from "react-router-dom";
 import HomeNoga from "../Home/Home_noga";
 import {
   getPlannerMusicSnapshot,
   playNextSharedPlannerMusicTrack,
   playPreviousSharedPlannerMusicTrack,
+  stopSharedPlannerMusic,
   toggleSharedPlannerMusic,
   warmSharedPlannerMusic,
 } from "../music/globalMusicPlayer";
@@ -3410,6 +3411,8 @@ class App extends React.Component {
   /////////////////////////Log out//////////////////////
   logOut = () => {
     const finishLogout = () => {
+      stopSharedPlannerMusic({ resetPlaylist: true, resetSnapshot: true });
+
       this.syncPresenceStatus({
         statusValue: "offline",
         force: true,
@@ -3990,20 +3993,25 @@ class App extends React.Component {
             </article>
           </Route>
           <Route exact path="/phenomed/telegram-control">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyTelegramControlPage
-                  state={this.state}
-                  memory={this.memory}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {String(this.state?.username || "").trim().toLowerCase() ===
+            "rudyhamame" ? (
+              <article id="app_page" className={appPageClassName}>
+                <main id="Main_article" className="fr">
+                  <LazyTelegramControlPage
+                    state={this.state}
+                    memory={this.memory}
+                    logOut={this.logOut}
+                    acceptFriend={this.acceptFriend}
+                    serverReply={this.serverReply}
+                  />
+                </main>
+                {showServerAnswerFooter ? (
+                  <Footer {...footerProps} />
+                ) : null}
+              </article>
+            ) : (
+              <Redirect to="/phenomed/home" />
+            )}
           </Route>
           <Route exact path="/phenomed/jamendo-player">
             <article id="app_page" className={appPageClassName}>
@@ -4065,6 +4073,17 @@ class App extends React.Component {
             }}
           />
           </React.Suspense>
+        </div>
+        <div id="App_globalVoiceCallDockLayer">
+          <div
+            id="Home_voiceCallNotificationDock"
+            className="Home_voiceCallNotificationDock"
+          />
+          <div
+            id="Home_voiceCallDock"
+            className="Home_voiceCallDock"
+            aria-hidden="true"
+          />
         </div>
         {this.state.app_is_loading && (
           <div

@@ -1,4 +1,5 @@
 export const getHomeSubApps = (username = "") => {
+  const normalizedUsername = String(username || "").trim().toLowerCase();
   return [
     {
       id: "ecg",
@@ -12,12 +13,16 @@ export const getHomeSubApps = (username = "") => {
       icon: "fas fa-file-pdf",
       path: "/phenomed/pdf-reader",
     },
-    {
-      id: "telegram-control",
-      label: "Telegram Control",
-      icon: "fab fa-telegram-plane",
-      path: "/phenomed/telegram-control",
-    },
+    ...(normalizedUsername === "rudyhamame"
+      ? [
+          {
+            id: "telegram-control",
+            label: "Telegram Control",
+            icon: "fab fa-telegram-plane",
+            path: "/phenomed/telegram-control",
+          },
+        ]
+      : []),
     {
       id: "jamendo-player",
       label: "Jamendo Player",

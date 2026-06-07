@@ -465,15 +465,6 @@ const Footer = ({
       </div>
       <div id="server_answer_rightCluster">
         <div
-          id="Home_voiceCallNotificationDock"
-          className="Home_voiceCallNotificationDock"
-        />
-        <div
-          id="Home_voiceCallDock"
-          className={`Home_voiceCallDock${isVoiceCallMinimized ? " Home_voiceCallDock--visible" : ""}`}
-          aria-hidden={!isVoiceCallMinimized}
-        />
-        <div
           id="server_answer_musicPlayer"
           className={
             !plannerMusic.isReady ? "server_answer_musicPlayer--idle" : ""

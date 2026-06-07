@@ -20,6 +20,8 @@ const DEPENDENCY_OPTIONS = [
   { key: "important_messages", label: "Pins" },
 ];
 
+const TELEGRAM_CONTROL_OWNER_USERNAME = "rudyhamame";
+
 const TELEGRAM_MESSAGES_FETCH_LIMIT = 20;
 const TELEGRAM_MESSAGE_TYPE_TABS = [
   { key: "all", labelEn: "All", labelAr: "" },
@@ -831,6 +833,12 @@ const buildObjectKeyTree = (
 };
 
 const TelegramControlPage = ({ state, memory, serverReply }) => {
+  const normalizedUsername = String(state?.username || "")
+    .trim()
+    .toLowerCase();
+  if (normalizedUsername !== TELEGRAM_CONTROL_OWNER_USERNAME) {
+    return null;
+  }
   const [groupInput, setGroupInput] = React.useState("");
   const [groupReference, setGroupReference] = React.useState("");
   const [migrationGroupTitle, setMigrationGroupTitle] =
@@ -5071,7 +5079,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                           onClick={handleSaveTelegramConfig}
                           disabled={isSaving || !token || !groupInput || isMigrationGroupsLoading}
                         >
-                          {isSaving ? "Storing..." : "Store group"}
+                          {isSaving ? "Migrating..." : "Migrate this group"}
                         </button>
                       </div>
                       </div>
@@ -5158,6 +5166,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                                   group?.id ||
                                   `stored-group-row-${groupIndex + 1}`,
                               );
+                              const groupLabel = formatTelegramGroupOptionLabel(
+                                group,
+                              );
                               const isMenuOpen =
                                 activeScopeTableGroupReference ===
                                 groupReference;
@@ -5228,7 +5239,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
                                           </button>
                                         </div>
                                       ) : null}
-                                      {formatTelegramGroupOptionLabel(group)}
+                                      {groupLabel === "Telegram Migration"
+                                        ? ""
+                                        : groupLabel}
                                       {isRowSyncRunning ? (
                                         <span className="telegramControlPage_status">
                                           {" "}
