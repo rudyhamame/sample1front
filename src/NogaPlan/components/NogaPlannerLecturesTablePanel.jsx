@@ -8,6 +8,7 @@ const NogaPlannerLecturesTablePanel = ({
   const {
     getCellAlignmentStyle,
     formatPlannerTextList,
+    formatCourseLocationDisplay,
     buildCourseLectureMatchLabel,
     NOGAPLANNER_TEXT,
   } = runtime;
@@ -155,6 +156,533 @@ const NogaPlannerLecturesTablePanel = ({
     lectureVolumeTotal - lectureVolumeDone,
     0,
   );
+  if (renderMode === "lecture-tab") {
+    const plannerRoot = planner.getResolvedPlannerRoot();
+    const plannerIntervals = Array.isArray(plannerRoot?.programIntervals)
+      ? plannerRoot.programIntervals
+      : [];
+    const programInstructors = Array.isArray(plannerRoot?.programInstructors)
+      ? plannerRoot.programInstructors.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [];
+    const programEditors = Array.isArray(plannerRoot?.programEditors)
+      ? plannerRoot.programEditors.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [];
+    const programLocations = Array.isArray(plannerRoot?.programLocations)
+      ? plannerRoot.programLocations
+      : [];
+    const buildContextValue = (intervalId, subIntervalId, courseName, courseCode, componentId) =>
+      `${intervalId}|${subIntervalId}|${courseName}|${courseCode}|${componentId}`;
+    const normalizeLecturePagesFinished = (value = []) =>
+      Array.from(
+        new Set(
+          (Array.isArray(value) ? value : [])
+            .map((entry) => Number.parseInt(String(entry || "").trim(), 10))
+            .filter((entry) => Number.isFinite(entry) && entry > 0),
+        ),
+      ).sort((left, right) => left - right);
+    const buildLectureRowKey = (contextValue, lectureEntry, lectureIndex) => {
+      const lectureId = String(lectureEntry?._id || "").trim();
+      if (lectureId) {
+        return lectureId;
+      }
+      return `${String(contextValue || "").trim()}_${lectureIndex}_${String(lectureEntry?.lectureName || "").trim()}`;
+    };
+    const contextOptions = [];
+    const lectureRows = [];
+    plannerIntervals.forEach((intervalEntry) => {
+      const intervalId = String(intervalEntry?.intervalId || "").trim();
+      const subIntervals = Array.isArray(intervalEntry?.intervalsubIntervals)
+        ? intervalEntry.intervalsubIntervals
+        : [];
+      subIntervals.forEach((subIntervalEntry) => {
+        const subIntervalId = String(subIntervalEntry?.subIntervalId || "").trim();
+        const intervalCourses = Array.isArray(subIntervalEntry?.subIntervalCourses)
+          ? subIntervalEntry.subIntervalCourses
+          : [];
+        intervalCourses.forEach((courseEntry) => {
+          const courseName = String(courseEntry?.courseName || "").trim();
+          const courseCode = String(courseEntry?.courseCode || "").trim();
+          const courseComponents = Array.isArray(courseEntry?.courseComponents)
+            ? courseEntry.courseComponents
+            : [];
+          courseComponents.forEach((componentEntry) => {
+            const componentId = String(componentEntry?.componentId || "").trim();
+            if (!courseName || !courseCode || !subIntervalId || !componentId) {
+              return;
+            }
+            const contextValue = buildContextValue(
+              intervalId,
+              subIntervalId,
+              courseName,
+              courseCode,
+              componentId,
+            );
+            contextOptions.push({
+              value: contextValue,
+              label: `${courseName} (${courseCode}): ${componentId} | ${subIntervalId}`,
+              intervalId,
+              subIntervalId,
+              courseName,
+              courseCode,
+              componentId,
+            });
+            (Array.isArray(componentEntry?.componentLectures)
+              ? componentEntry.componentLectures
+              : []
+            ).forEach((lectureEntry, lectureIndex) => {
+              const lectureId = String(lectureEntry?._id || "").trim();
+              const lectureKey = buildLectureRowKey(
+                contextValue,
+                lectureEntry,
+                lectureIndex,
+              );
+              const lecturePagesFinished = normalizeLecturePagesFinished(
+                lectureEntry?.lecture_pagesFinished,
+              );
+              const lectureVolumeTotal = Math.max(
+                0,
+                Number(lectureEntry?.lectureVolume?.total || 0) || 0,
+              );
+              const lectureVolumeDone = Math.min(
+                lecturePagesFinished.length,
+                lectureVolumeTotal,
+              );
+              const lectureVolumeRemaining = Math.max(
+                lectureVolumeTotal - lectureVolumeDone,
+                0,
+              );
+              lectureRows.push({
+                key: lectureKey,
+                lectureId,
+                contextValue,
+                contextLabel: `${courseName} (${courseCode}): ${componentId} | ${subIntervalId}`,
+                lectureName: String(lectureEntry?.lectureName || "").trim(),
+                lectureInstructors: Array.isArray(lectureEntry?.lectureInstructors)
+                  ? lectureEntry.lectureInstructors
+                  : [],
+                lectureEditors: Array.isArray(lectureEntry?.lectureEditors)
+                  ? lectureEntry.lectureEditors
+                  : [],
+                lectureVolume: {
+                  ...(lectureEntry?.lectureVolume || {}),
+                  unit: String(lectureEntry?.lectureVolume?.unit || "page"),
+                  total: String(lectureVolumeTotal || ""),
+                  done: String(lectureVolumeDone),
+                  remaining: String(lectureVolumeRemaining),
+                },
+                lecturePagesFinished,
+                lectureLocation: lectureEntry?.lectureLocation || {},
+              });
+            });
+          });
+        });
+      });
+    });
+    const [lectureDraft, setLectureDraft] = React.useState({
+      lectureMetadataId: "",
+      lectureName: "",
+      lectureInstructor: "",
+      lectureEditor: "",
+      lectureVolumeTotal: "",
+      lecturePagesFinished: [],
+      lectureLocationKey: "",
+    });
+    const [editingLectureKey, setEditingLectureKey] = React.useState("");
+    const [selectedLectureKey, setSelectedLectureKey] = React.useState("");
+    const resolveLocationKey = (location = {}) =>
+      `${String(location?.building || "").trim()}|${String(location?.room || "").trim()}`;
+    const locationOptions = programLocations
+      .map((entry) => ({
+        key: resolveLocationKey(entry),
+        value: resolveLocationKey(entry),
+        label: formatCourseLocationDisplay(entry || {}),
+        location: entry,
+      }))
+      .filter((entry) => entry.value && entry.label);
+    const lectureDraftPagesFinished = normalizeLecturePagesFinished(
+      lectureDraft?.lecturePagesFinished,
+    );
+    const lectureDraftTotalValue = Math.max(
+      0,
+      Number(lectureDraft.lectureVolumeTotal || 0) || 0,
+    );
+    const lectureDraftPagesFinishedWithinTotal = lectureDraftPagesFinished.filter(
+      (pageNumber) => pageNumber <= lectureDraftTotalValue,
+    );
+    const lectureDraftDone = lectureDraftPagesFinishedWithinTotal.length;
+    const lectureDraftRemaining = Math.max(
+      0,
+      lectureDraftTotalValue - lectureDraftDone,
+    );
+    const canSubmitLecture = Boolean(
+      lectureDraft.lectureMetadataId &&
+        lectureDraft.lectureName &&
+        lectureDraft.lectureVolumeTotal !== "",
+    );
+    const getDraftPayload = () => ({
+      lectureName: String(lectureDraft.lectureName || "").trim(),
+      lectureInstructors: [String(lectureDraft.lectureInstructor || "").trim()].filter(Boolean),
+      lectureEditors: [String(lectureDraft.lectureEditor || "").trim()].filter(Boolean),
+      lectureGivenDate: null,
+      lectureEditedDate: new Date(),
+      lectureLocation:
+        locationOptions.find((entry) => entry.value === lectureDraft.lectureLocationKey)
+          ?.location || null,
+      lecture_pagesFinished: lectureDraftPagesFinishedWithinTotal,
+      lectureVolume: {
+        unit: "page",
+        total: String(lectureDraft.lectureVolumeTotal || ""),
+        done: String(lectureDraftDone),
+        remaining: String(lectureDraftRemaining || ""),
+      },
+      lectureContent: [],
+    });
+    const updateAllLectures = async (transform) => {
+      const nextIntervals = plannerIntervals.flatMap((intervalEntry) => {
+        const intervalId = String(intervalEntry?.intervalId || "").trim();
+        const intervalNum = Number.isFinite(Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10))
+          ? Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10)
+          : null;
+        const intervalStatus = String(intervalEntry?.intervalStatus || "Normal").trim() || "Normal";
+        const subIntervals = Array.isArray(intervalEntry?.intervalsubIntervals)
+          ? intervalEntry.intervalsubIntervals
+          : [];
+        return subIntervals.map((subIntervalEntry) => {
+          const subIntervalId = String(subIntervalEntry?.subIntervalId || "").trim();
+          const nextSubIntervalCourses = (Array.isArray(subIntervalEntry?.subIntervalCourses)
+            ? subIntervalEntry.subIntervalCourses
+            : []
+          ).map((courseEntry) => ({
+            ...courseEntry,
+            courseComponents: (Array.isArray(courseEntry?.courseComponents)
+              ? courseEntry.courseComponents
+              : []
+            ).map((componentEntry) => ({
+              ...componentEntry,
+              componentLectures: transform(
+                Array.isArray(componentEntry?.componentLectures)
+                  ? componentEntry.componentLectures
+                  : [],
+                buildContextValue(
+                  intervalId,
+                  subIntervalId,
+                  String(courseEntry?.courseName || "").trim(),
+                  String(courseEntry?.courseCode || "").trim(),
+                  String(componentEntry?.componentId || "").trim(),
+                ),
+              ),
+            })),
+          }));
+          return {
+            intervalId,
+            intervalNum,
+            intervalStatus,
+            subIntervalId,
+            subIntervalCourses: nextSubIntervalCourses,
+          };
+        });
+      });
+      const nextPlannerRoot = await planner.persistStudyPlannerIntervals(nextIntervals);
+      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+        planner.setState({ plannerRoot: nextPlannerRoot });
+      }
+      return nextPlannerRoot;
+    };
+    const clearLectureDraft = () => {
+      setLectureDraft({
+        lectureMetadataId: "",
+        lectureName: "",
+        lectureInstructor: "",
+        lectureEditor: "",
+        lectureVolumeTotal: "",
+        lecturePagesFinished: [],
+        lectureLocationKey: "",
+      });
+      setEditingLectureKey("");
+    };
+    const beginEditLecture = (rowEntry = {}) => {
+      setLectureDraft({
+        lectureMetadataId: String(rowEntry?.contextValue || "").trim(),
+        lectureName: String(rowEntry?.lectureName || "").trim(),
+        lectureInstructor: String(
+          Array.isArray(rowEntry?.lectureInstructors)
+            ? rowEntry.lectureInstructors[0] || ""
+            : "",
+        ).trim(),
+        lectureEditor: String(
+          Array.isArray(rowEntry?.lectureEditors)
+            ? rowEntry.lectureEditors[0] || ""
+            : "",
+        ).trim(),
+        lectureVolumeTotal: String(rowEntry?.lectureVolume?.total || ""),
+        lecturePagesFinished: normalizeLecturePagesFinished(
+          rowEntry?.lecturePagesFinished,
+        ),
+        lectureLocationKey: resolveLocationKey(rowEntry?.lectureLocation || {}),
+      });
+      setEditingLectureKey(String(rowEntry?.lectureId || rowEntry?.key || "").trim());
+    };
+    const selectedLectureRow =
+      lectureRows.find((rowEntry) => String(rowEntry?.key || "") === selectedLectureKey) ||
+      null;
+    const selectedLectureTotal = Math.max(
+      0,
+      Number(selectedLectureRow?.lectureVolume?.total || 0) || 0,
+    );
+    const selectedLecturePagesFinished = normalizeLecturePagesFinished(
+      selectedLectureRow?.lecturePagesFinished,
+    ).filter((pageNumber) => pageNumber <= selectedLectureTotal);
+    const selectedLectureDone = selectedLecturePagesFinished.length;
+    const selectedLectureRemaining = Math.max(
+      selectedLectureTotal - selectedLectureDone,
+      0,
+    );
+    const toggleSelectedLecturePageFinished = async (pageNumber) => {
+      if (!selectedLectureKey || !selectedLectureRow || selectedLectureTotal <= 0) {
+        return;
+      }
+
+      try {
+        await updateAllLectures((lectures, contextValue) =>
+          lectures.map((lectureEntry, lectureIndex) => {
+            const lectureKey = buildLectureRowKey(
+              contextValue,
+              lectureEntry,
+              lectureIndex,
+            );
+            if (lectureKey !== selectedLectureKey) {
+              return lectureEntry;
+            }
+
+            const lecturePages = normalizeLecturePagesFinished(
+              lectureEntry?.lecture_pagesFinished,
+            ).filter((entry) => entry <= selectedLectureTotal);
+            const nextLecturePages = lecturePages.includes(pageNumber)
+              ? lecturePages.filter((entry) => entry !== pageNumber)
+              : [...lecturePages, pageNumber].sort((left, right) => left - right);
+            const lectureTotal = Math.max(
+              0,
+              Number(lectureEntry?.lectureVolume?.total || 0) || 0,
+            );
+
+            return {
+              ...lectureEntry,
+              lecture_pagesFinished: nextLecturePages,
+              lectureVolume: {
+                ...(lectureEntry?.lectureVolume || {}),
+                unit: String(lectureEntry?.lectureVolume?.unit || "page"),
+                total: String(lectureTotal || ""),
+                done: String(nextLecturePages.length),
+                remaining: String(
+                  Math.max(lectureTotal - nextLecturePages.length, 0),
+                ),
+              },
+            };
+          }),
+        );
+      } catch (error) {
+        planner.props?.serverReply?.(
+          String(error?.message || "Failed to update lecture pages."),
+        );
+      }
+    };
+    return (
+      <div
+        className={`nogaPlanner_lecturesPanelLayout${inlineLectureRowVisible ? " is-form-open" : ""}`}
+      >
+        <section
+          id="nogaPlanner_lecturesTableColumn"
+          className="nogaPlanner_lecturesTableColumn"
+        >
+            <div className="nogaPlanner_lecturesTabRow">
+            <div className="nogaPlanner_lecturesWorkspaceRow">
+              <div className="nogaPlanner_lecturesFormCourseFieldsWrapperLayout">
+                <div className="nogaPlanner_lecturesFormFieldsColumn">
+                  <span className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle">Lecture details</span>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Material metadata Id</span>
+                    <select className="nogaPlanner_savedCoursesDetailsInput" value={lectureDraft.lectureMetadataId} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureMetadataId: String(event.target.value || "").trim() }))}>
+                      <option value="">Select metadata</option>
+                      {contextOptions.map((optionEntry) => (
+                        <option key={optionEntry.value} value={optionEntry.value}>{optionEntry.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Lecture name</span>
+                    <input className="nogaPlanner_savedCoursesDetailsInput" type="text" value={lectureDraft.lectureName} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureName: event.target.value }))} />
+                  </label>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Lecture Instructor</span>
+                    <select className="nogaPlanner_savedCoursesDetailsInput" value={lectureDraft.lectureInstructor} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureInstructor: event.target.value }))}>
+                      <option value="">Select instructor</option>
+                      {programInstructors.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
+                    </select>
+                  </label>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Lecture editor</span>
+                    <select className="nogaPlanner_savedCoursesDetailsInput" value={lectureDraft.lectureEditor} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureEditor: event.target.value }))}>
+                      <option value="">Select editor</option>
+                      {programEditors.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div className="nogaPlanner_lecturesFormFieldsColumn">
+                  <span className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle">Lecture volume</span>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Total</span>
+                    <input className="nogaPlanner_savedCoursesDetailsInput" type="number" min="0" value={lectureDraft.lectureVolumeTotal} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureVolumeTotal: String(event.target.value || "") }))} />
+                  </label>
+                  <p className="nogaPlanner_lecturesVolumeStats">
+                    {`Finished: ${lectureDraftDone} | Remaining: ${lectureDraftRemaining}`}
+                  </p>
+                  <label className="nogaPlanner_lecturesFormFieldCluster">
+                    <span className="nogaPlanner_lecturesFieldEyebrow">Lecture location</span>
+                    <select className="nogaPlanner_savedCoursesDetailsInput" value={lectureDraft.lectureLocationKey} onChange={(event) => setLectureDraft((prev) => ({ ...prev, lectureLocationKey: event.target.value }))}>
+                      <option value="">Select location</option>
+                      {locationOptions.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}
+                    </select>
+                  </label>
+                  <div className="nogaPlanner_homeIntervalsAddRow">
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={!canSubmitLecture}
+                      onClick={async () => {
+                        const nextPayload = getDraftPayload();
+                        try {
+                          await updateAllLectures((lectures, contextValue) => {
+                            if (editingLectureKey) {
+                              return lectures.map((lectureEntry) =>
+                                String(lectureEntry?._id || lectureEntry?.lectureName || "").trim() === editingLectureKey
+                                  ? { ...lectureEntry, ...nextPayload }
+                                  : lectureEntry,
+                              );
+                            }
+                            return String(contextValue) === String(lectureDraft.lectureMetadataId)
+                              ? [...lectures, nextPayload]
+                              : lectures;
+                          });
+                          clearLectureDraft();
+                        } catch (error) {
+                          planner.props?.serverReply?.(
+                            String(error?.message || "Failed to save lecture."),
+                          );
+                        }
+                      }}
+                    >
+                      {editingLectureKey ? "Update" : "Add"}
+                    </button>
+                    <button type="button" className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel" onClick={clearLectureDraft}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <table id="nogaPlanner_lecturesTable" className="nogaPlanner_tabTable nogaPlanner_lecturesTable">
+              <thead id="nogaPlanner_lecturesTableHead" className="nogaPlanner_tableHead">
+                <tr id="nogaPlanner_lecturesTableHeadRow">
+                  <th rowSpan={2}>Material metadata Id</th>
+                  <th rowSpan={2}>Lecture name</th>
+                  <th rowSpan={2}>Lecture Instructor</th>
+                  <th rowSpan={2}>Lecture editor</th>
+                  <th colSpan={3}>Lecture volume</th>
+                  <th rowSpan={2}>Lecture location</th>
+                  <th rowSpan={2}>Actions</th>
+                </tr>
+                <tr>
+                  <th>Total</th>
+                  <th>Done</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody id="nogaPlanner_lecturesTableBody">
+                {lectureRows.length === 0 ? (
+                  <tr id="nogaPlanner_lecturesTableEmptyRow">
+                    <td id="nogaPlanner_lecturesTableEmptyCell" colSpan={9} style={{ textAlign: "center", opacity: 0.5, padding: "18px" }}>No lectures</td>
+                  </tr>
+                ) : lectureRows.map((rowEntry) => (
+                  <tr
+                    key={rowEntry.key}
+                    className={`nogaPlanner_tabTableRow${String(rowEntry.key || "") === selectedLectureKey ? " selected" : ""}`}
+                    onClick={() => setSelectedLectureKey(String(rowEntry.key || ""))}
+                  >
+                    <td>{rowEntry.contextLabel}</td>
+                    <td>{rowEntry.lectureName || "-"}</td>
+                    <td>{formatPlannerTextList(rowEntry.lectureInstructors)}</td>
+                    <td>{formatPlannerTextList(rowEntry.lectureEditors)}</td>
+                    <td>{String(rowEntry.lectureVolume?.total || "-")}</td>
+                    <td>{String(rowEntry.lectureVolume?.done || "0")}</td>
+                    <td>{String(rowEntry.lectureVolume?.remaining || "0")}</td>
+                    <td>{formatCourseLocationDisplay(rowEntry.lectureLocation || {}) || "-"}</td>
+                    <td>
+                      <button type="button" className="nogaPlanner_homePanelCardSetBtn" onClick={(event) => { event.stopPropagation(); beginEditLecture(rowEntry); }}>Edit</button>
+                      <button type="button" className="nogaPlanner_homeIntervalsDeleteIconBtn" aria-label="Delete lecture" onClick={async (event) => {
+                        event.stopPropagation();
+                        try {
+                          await updateAllLectures((lectures) =>
+                            lectures.filter((lectureEntry) =>
+                              String(lectureEntry?._id || lectureEntry?.lectureName || "").trim() !==
+                              String(rowEntry.lectureId || rowEntry.key || "").trim(),
+                            ),
+                          );
+                        } catch (error) {
+                          planner.props?.serverReply?.(
+                            String(error?.message || "Failed to delete lecture."),
+                          );
+                        }
+                      }}>
+                        <i className="fi fi-br-cross" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <aside className="nogaPlanner_lecturesPagesColumn">
+              <span className="nogaPlanner_lecturesFieldEyebrow nogaPlanner_lecturesFieldEyebrow--columnTitle">
+                Lecture pages
+              </span>
+              {selectedLectureRow && selectedLectureTotal > 0 ? (
+                <>
+                  <p className="nogaPlanner_lecturesVolumeStats">
+                    {`${String(selectedLectureRow?.lectureName || "Selected lecture")}: ${selectedLectureTotal} page(s) | Finished: ${selectedLectureDone} | Remaining: ${selectedLectureRemaining}`}
+                  </p>
+                  <div className="nogaPlanner_lecturesVolumePageGrid">
+                    {Array.from({ length: selectedLectureTotal }, (_, index) => {
+                      const pageNumber = index + 1;
+                      const isDone = selectedLecturePagesFinished.includes(pageNumber);
+                      return (
+                        <button
+                          key={`nogaPlanner_selectedLecturePage_${selectedLectureKey}_${pageNumber}`}
+                          type="button"
+                          className={
+                            "nogaPlanner_lecturesVolumePageCube" +
+                            (isDone ? " is-done" : "")
+                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleSelectedLecturePageFinished(pageNumber);
+                          }}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className="nogaPlanner_lecturesVolumeStats">
+                  Click a lecture with a total volume to show its pages.
+                </p>
+              )}
+            </aside>
+            </div>
+          </section>
+      </div>
+    );
+  }
 
   const lecturesFormEditor =
     inlineLectureRowVisible && renderMode !== "table" ? (
@@ -748,11 +1276,7 @@ const NogaPlannerLecturesTablePanel = ({
 
   return (
     <div
-      id="nogaPlanner_lecturesWorkspace"
-      className={
-        "nogaPlanner_lecturesWorkspace" +
-        (inlineLectureRowVisible ? " is-form-open" : "")
-      }
+      className={`nogaPlanner_lecturesPanelLayout${inlineLectureRowVisible ? " is-form-open" : ""}`}
     >
       {lecturesFormEditor}
 
@@ -761,35 +1285,6 @@ const NogaPlannerLecturesTablePanel = ({
           id="nogaPlanner_lecturesTableColumn"
           className="nogaPlanner_lecturesTableColumn"
         >
-          <div className="nogaPlanner_tabToolbarMount">
-          <div
-            id="nogaPlanner_lecturesTableToolbar"
-            className="nogaPlanner_tableToolbarRow"
-          >
-            <div className="nogaPlanner_tableToolbarGroup">
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                Home
-              </button>
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                Insert
-              </button>
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                Layout
-              </button>
-            </div>
-            <div className="nogaPlanner_tableToolbarGroup">
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                Sort
-              </button>
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                Filter
-              </button>
-              <button type="button" className="nogaPlanner_tableToolbarBtn">
-                View
-              </button>
-            </div>
-          </div>
-          </div>
           <table
             id="nogaPlanner_lecturesTable"
             className="nogaPlanner_tabTable nogaPlanner_lecturesTable"

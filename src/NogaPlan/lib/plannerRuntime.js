@@ -616,7 +616,13 @@ export const formatCourseLocationDisplay = (value) => {
     return normalizedValue || "-";
   }
 
-  const locationParts = [value?.building, value?.room]
+  const rooms = Array.isArray(value?.rooms)
+    ? value.rooms.map((entry) => String(entry || "").trim()).filter(Boolean)
+    : String(value?.room || "").trim()
+      ? [String(value.room).trim()]
+      : [];
+  const roomLabel = rooms.length > 0 ? rooms.join(", ") : "";
+  const locationParts = [value?.building, roomLabel]
     .map((entry) => String(entry || "").trim())
     .filter(Boolean);
 

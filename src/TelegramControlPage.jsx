@@ -836,9 +836,8 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const normalizedUsername = String(state?.username || "")
     .trim()
     .toLowerCase();
-  if (normalizedUsername !== TELEGRAM_CONTROL_OWNER_USERNAME) {
-    return null;
-  }
+  const isTelegramControlOwner =
+    normalizedUsername === TELEGRAM_CONTROL_OWNER_USERNAME;
   const [groupInput, setGroupInput] = React.useState("");
   const [groupReference, setGroupReference] = React.useState("");
   const [migrationGroupTitle, setMigrationGroupTitle] =
@@ -2181,6 +2180,9 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           ? ""
           : String(migrationToDate || "").trim();
     const shouldRunSync = migrationRunMode === "sync";
+    const nextStoreContent = {
+      pinnedOnly: Boolean(storeContentSelection?.pinnedOnly),
+    };
 
     setIsSaving(true);
     setFeedback("");
@@ -2199,9 +2201,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           syncMode: shouldRunSync ? "live" : "one-time",
           historyStartDate: nextHistoryStartDate,
           historyEndDate: nextHistoryEndDate,
-          storeContent: {
-            pinnedOnly: Boolean(storeContentSelection?.pinnedOnly),
-          },
+          storeContent: nextStoreContent,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -2216,6 +2216,15 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
 
       const nextReference = String(payload?.groupReference || "");
       publishFeedback(payload?.message || "");
+      setTelegramConfigStatus((currentStatus) => ({
+        ...currentStatus,
+        configured: Boolean(payload?.configured ?? currentStatus?.configured),
+        hasApiId: Boolean(payload?.hasApiId ?? currentStatus?.hasApiId),
+        hasApiHash: Boolean(payload?.hasApiHash ?? currentStatus?.hasApiHash),
+        hasStringSession: Boolean(
+          payload?.hasStringSession ?? currentStatus?.hasStringSession,
+        ),
+      }));
       if (nextReference) {
         setStoredGroupOptions((currentValue) => {
           const currentGroups = Array.isArray(currentValue) ? currentValue : [];
@@ -2260,14 +2269,11 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       );
       setGroupReference(nextReference);
       setStoreMessagesMode(
-        payload?.historyStartDate || payload?.historyEndDate ? "interval" : "all",
+        nextHistoryStartDate || nextHistoryEndDate ? "interval" : "all",
       );
       setGroupInput(nextReference);
-      setMigrationFromDate(
-        formatDateInputValue(payload?.historyStartDate) ||
-          defaultMigrationFromDate,
-      );
-      const savedHistoryEndDate = formatDateInputValue(payload?.historyEndDate);
+      setMigrationFromDate(nextHistoryStartDate || defaultMigrationFromDate);
+      const savedHistoryEndDate = nextHistoryEndDate;
       setMigrationToDate(savedHistoryEndDate);
       setIsMigrationToPresent(!savedHistoryEndDate);
       setMigrationGroupTitle(nextReference || "Telegram Migration");
@@ -2336,8 +2342,6 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         }
       }
       fetchStorageContext();
-      fetchTelegramGroups();
-      fetchTelegramConfig();
       fetchTelegramSyncStatus();
     } catch (nextError) {
       publishFeedback(
@@ -2397,31 +2401,6 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     telegramSyncLiveStatus?.importedCount,
   ]);
 
-  React.useEffect(() => {
-    if (!token) {
-      return;
-    }
-    const nextScope = {
-      query: String(activeStorageScope?.query || "").trim(),
-      allGroups: isSearchingAllGroups,
-      groupReference: selectedStoredGroupScope,
-      start: storageRangeStartDate,
-      end: storageRangeEndDate,
-    };
-    loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, nextScope, {
-      append: false,
-      offsetOverride: 0,
-    });
-  }, [
-    activeStorageScope?.query,
-    isSearchingAllGroups,
-    loadStoredMessages,
-    selectedStoredGroupScope,
-    storageRangeEndDate,
-    storageRangeStartDate,
-    token,
-  ]);
-
   const handleStorageSearch = () => {
     const nextScope = {
       query: storageSearchQuery,
@@ -2431,6 +2410,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       end: storageRangeEndDate,
     };
 
+    setActiveStorageScope(nextScope);
     loadStoredMessages(TELEGRAM_MESSAGES_FETCH_LIMIT, nextScope, {
       append: false,
       offsetOverride: 0,
@@ -4813,6 +4793,17 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       ) : null}
     </div>
   );
+
+  if (!isTelegramControlOwner) {
+    return (
+      <section id="telegramControlPage" className="telegramControlPage">
+        <header className="telegramControlPage_header">
+          <h1>Telegram Control</h1>
+          <p>This page is restricted to the admin account.</p>
+        </header>
+      </section>
+    );
+  }
 
   return (
     <section
