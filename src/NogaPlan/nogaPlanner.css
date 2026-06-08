@@ -1087,7 +1087,7 @@
 
 .nogaPlanner_traces {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
@@ -1096,6 +1096,144 @@
   overflow: hidden;
   border: 1px dashed rgba(255, 255, 255, 0.208);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.nogaPlanner_tracesColumns {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  gap: 12px;
+}
+
+.nogaPlanner_tracesMainColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 62%;
+  min-width: 0;
+  min-height: 0;
+  gap: 10px;
+}
+
+.nogaPlanner_tracesPdfPane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 min(420px, 38%);
+  min-width: 300px;
+  min-height: 0;
+  border: 1px solid rgba(132, 27, 45, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 250, 0.96) 0%,
+    rgba(242, 235, 231, 0.92) 100%
+  );
+  box-shadow:
+    inset 0 2px 6px rgba(73, 34, 23, 0.1),
+    0 8px 18px rgba(73, 34, 23, 0.08);
+  overflow: hidden;
+}
+
+.nogaPlanner_tracesPdfPaneHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(132, 27, 45, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.nogaPlanner_tracesPdfPaneCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.nogaPlanner_tracesPdfPaneEyebrow {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b4455;
+}
+
+.nogaPlanner_tracesPdfPaneTitle {
+  font-size: 0.95rem;
+  color: #5b2534;
+}
+
+.nogaPlanner_tracesPdfPager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nogaPlanner_tracesPdfPagerLabel {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #6a2f22;
+}
+
+.nogaPlanner_tracesPdfPaneBody {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.nogaPlanner_tracesPdfStageWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nogaPlanner_tracesPdfMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nogaPlanner_tracesPdfMeta > strong {
+  font-size: 0.82rem;
+  color: #5b2534;
+  word-break: break-word;
+}
+
+.nogaPlanner_tracesPdfMeta > span {
+  font-size: 0.72rem;
+  color: #7b5a50;
+  word-break: break-word;
+}
+
+.nogaPlanner_tracesPdfCanvasShell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: 220px;
+  padding: 10px;
+  border: 1px solid rgba(132, 27, 45, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+  overflow: auto;
+}
+
+.nogaPlanner_tracesPdfCanvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(44, 21, 28, 0.12);
+  background: #ffffff;
 }
 
 .nogaPlanner_tracesTabs {
@@ -1342,6 +1480,10 @@
   background: rgba(242, 106, 141, 0.16);
 }
 
+.nogaPlanner_tracesTableRow.is-previewing {
+  box-shadow: inset 4px 0 0 #dd2d4a;
+}
+
 .nogaPlanner_tracesTableTagCell {
   position: relative;
   overflow: visible !important;
@@ -1510,6 +1652,22 @@
   line-height: 1.25;
   white-space: pre-wrap;
   color: #3f2b22;
+}
+
+@media (max-width: 1100px) {
+  .nogaPlanner_traces {
+    flex-direction: column;
+  }
+
+  .nogaPlanner_tracesColumns {
+    flex-direction: column;
+  }
+
+  .nogaPlanner_tracesPdfPane {
+    flex-basis: auto;
+    min-width: 0;
+    min-height: 280px;
+  }
 }
 
 .nogaPlanner_tracesList {
@@ -2507,11 +2665,6 @@
   border-right: 1px solid rgba(132, 27, 45, 0.12);
 }
 
-.nogaPlanner_homeIntervalsMiniTable th:last-child,
-.nogaPlanner_homeIntervalsMiniTable td:last-child {
-  border-right: none;
-}
-
 .nogaPlanner_homeIntervalsMiniTable thead th {
   color: #ffffff;
   font-weight: 700;
@@ -2624,13 +2777,6 @@
   white-space: nowrap;
 }
 
-.nogaPlanner_homeIntervalsManualBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
 .nogaPlanner_homeIntervalsCurrentCard {
   width: 100%;
 }
@@ -2687,37 +2833,16 @@
   color: #ffffff;
 }
 
-.nogaPlanner_homeIntervalsManualList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.nogaPlanner_homePanelCard--intervalCourses {
+  width: 100%;
 }
 
-.nogaPlanner_homeIntervalsManualItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid rgba(132, 27, 45, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+.nogaPlanner_homeIntervalCoursesForm {
+  margin-bottom: 2px;
 }
 
-.nogaPlanner_homeIntervalsManualRemoveBtn {
-  border: 1px solid rgba(181, 70, 90, 0.22);
-  background: #fff;
-  color: #8a2741;
-  border-radius: 8px;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.nogaPlanner_homeIntervalsManualRemoveBtn:hover {
-  background: #ffeef1;
+.nogaPlanner_homeIntervalCoursesMiniTable {
+  min-width: 0;
 }
 
 .nogaPlanner_homeCoursesMiniTable {

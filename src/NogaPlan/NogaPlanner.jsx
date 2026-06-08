@@ -512,6 +512,7 @@ export default class NogaPlanner extends Component {
       homeCourseEditingKey: "",
       homeCourseOriginalId: "",
       homeCourseOriginalIntervalId: "",
+      homeCourseNameDraft: "",
       homeCourseIdDraft: "",
       homeCourseCodeDraft: "",
       homeCourseComponentDraft: [],
@@ -522,6 +523,16 @@ export default class NogaPlanner extends Component {
       homeCourseComponentPartialWeightDraft: "",
       homeCourseComponentStatusDraft: "",
       homeCourseIntervalIdDraft: "",
+    });
+  };
+  cancelHomeCourseComponentLecturesEditor = () => {
+    this.setState({
+      homeCourseComponentLecturesEditorOpen: false,
+      homeCourseComponentLectureCourseIdDraft: "",
+      homeCourseComponentLectureIntervalIdDraft: "",
+      homeCourseComponentLectureComponentIdDraft: "",
+      homeCourseComponentLectureNameDraft: "",
+      homeCourseComponentLectureDraftList: [],
     });
   };
   cancelHomeComponentsEditor = () => {
@@ -541,6 +552,7 @@ export default class NogaPlanner extends Component {
       homeManualIntervalTermDraft: "",
       homeManualIntervalsDraftList: [],
       homeDeletedIntervalIds: [],
+      homeCurrentIntervalStatusDraft: "Normal",
     });
   };
   persistStudyPlannerIntervals = async (intervals = []) => {
@@ -562,19 +574,24 @@ export default class NogaPlanner extends Component {
               entry?.intervalId ||
                 (entry?.regular === false ? subIntervalId : ""),
             ).trim() || subIntervalId;
-            const storageIntervalId =
-              entry?.regular === false ? subIntervalId : intervalId;
-            const intervalMapKey = storageIntervalId || subIntervalId;
+            const storageIntervalId = intervalId || subIntervalId;
+            const intervalMapKey = storageIntervalId;
+            const normalizedIntervalNum = Number.isInteger(
+              Number.parseInt(String(entry?.intervalNum || "").trim(), 10),
+            )
+              ? Number.parseInt(String(entry?.intervalNum || "").trim(), 10)
+              : null;
             const previousInterval = map.get(intervalMapKey) || {
               intervalId: intervalMapKey,
-              intervalStatus: "TBD",
+              intervalNum: normalizedIntervalNum,
+              intervalStatus: "Normal",
               intervalsubIntervals: [],
             };
             const previousStatus = String(previousInterval?.intervalStatus || "")
               .trim()
               .toLowerCase();
             const nextStatus =
-              String(entry?.intervalStatus || "TBD").trim() || "TBD";
+              String(entry?.intervalStatus || "Normal").trim() || "Normal";
             const nextSubIntervals = Array.from(
               new Map(
                 [
@@ -583,8 +600,12 @@ export default class NogaPlanner extends Component {
                     : []),
                   {
                     subIntervalId,
-                    subIntervalCourses: Array.isArray(entry?.intervalCourses)
-                      ? entry.intervalCourses
+                    subIntervalCourses: Array.isArray(
+                      entry?.subIntervalCourses,
+                    )
+                      ? entry.subIntervalCourses
+                      : Array.isArray(entry?.intervalCourses)
+                        ? entry.intervalCourses
                       : [],
                   },
                 ].map((subEntry) => [
@@ -597,6 +618,8 @@ export default class NogaPlanner extends Component {
                       subEntry?.subIntervalCourses,
                     )
                       ? subEntry.subIntervalCourses
+                      : Array.isArray(subEntry?.intervalCourses)
+                        ? subEntry.intervalCourses
                       : [],
                   },
                 ]),
@@ -604,6 +627,10 @@ export default class NogaPlanner extends Component {
             ).filter((subEntry) => Boolean(subEntry?.subIntervalId));
             map.set(intervalMapKey, {
               intervalId: intervalMapKey,
+              intervalNum:
+                normalizedIntervalNum ||
+                previousInterval?.intervalNum ||
+                null,
               intervalStatus:
                 previousStatus === "current" ||
                 nextStatus.toLowerCase() === "current"
@@ -645,19 +672,20 @@ export default class NogaPlanner extends Component {
   persistStudyPlannerIntervalStatus = async ({
     intervalId = "",
     subIntervalId = "",
-    intervalStatus = "TBD",
+    intervalStatus = "Normal",
   } = {}) => {
     return this.runPlannerPendingTask("Saving interval status...", async () => {
       const userId = String(this.props?.state?.my_id || "").trim();
       const token = String(this.props?.state?.token || "").trim();
       const normalizedIntervalId = String(intervalId || "").trim();
       const normalizedSubIntervalId = String(subIntervalId || "").trim();
-      const normalizedIntervalStatus =
-        String(intervalStatus || "")
-          .trim()
-          .toLowerCase() === "current"
+      const normalizedStatusValue = String(intervalStatus || "").trim();
+      const normalizedIntervalStatus = normalizedStatusValue
+        ? normalizedStatusValue.toLowerCase() === "current"
           ? "current"
-          : "TBD";
+          : normalizedStatusValue.charAt(0).toUpperCase() +
+            normalizedStatusValue.slice(1).toLowerCase()
+        : "Normal";
       if (!userId || !token) {
         throw new Error(
           "Failed to save interval status: login data is incomplete.",
@@ -739,9 +767,10 @@ export default class NogaPlanner extends Component {
         );
         generatedIntervals.push({
           intervalId: programIntervalId,
+          intervalNum: Number.parseInt(programIntervalId, 10) || null,
           subIntervalId: `${nextYear}${term}`,
           regular: true,
-          intervalStatus: "TBD",
+          intervalStatus: "Normal",
           intervalCourses: [],
         });
         termCursor += 1;
@@ -786,6 +815,16 @@ export default class NogaPlanner extends Component {
               {
                 intervalId:
                   String(entry?.intervalId || "").trim() || subIntervalId,
+                intervalNum:
+                  Number.parseInt(
+                    String(entry?.intervalNum || "").trim(),
+                    10,
+                  ) ||
+                  Number.parseInt(
+                    String(entry?.intervalId || "").trim(),
+                    10,
+                  ) ||
+                  null,
                 subIntervalId,
                 regular:
                   typeof entry?.regular === "boolean"
@@ -794,7 +833,7 @@ export default class NogaPlanner extends Component {
                       ? entry.expected
                       : false,
                 intervalStatus:
-                  String(entry?.intervalStatus || "TBD").trim() || "TBD",
+                  String(entry?.intervalStatus || "Normal").trim() || "Normal",
                 intervalCourses: Array.isArray(entry?.intervalCourses)
                   ? entry.intervalCourses
                   : [],
@@ -806,22 +845,139 @@ export default class NogaPlanner extends Component {
     );
   };
   appendHomeManualIntervalEntry = () => {
-    const intervalIdValue = String(
-      this.state?.homeManualIntervalIdDraft || "",
-    ).trim();
-    const yearValue = String(
-      this.state?.homeManualIntervalYearDraft || "",
-    ).trim();
-    const termValue = String(
-      this.state?.homeManualIntervalTermDraft || "",
-    ).trim();
-    const yearIsValid = /^\d{4}$/.test(yearValue);
-    const termIsValid = /^\d+$/.test(termValue) && Number(termValue) >= 1;
-    if (!intervalIdValue || !yearIsValid || !termIsValid) {
-      this.props.serverReply?.("Select Interval and enter valid Year and Term.");
+    const programTermsPerYear = Number(
+      String(this.state?.homeProgramTermsPerYearValue || "").trim(),
+    );
+    if (!Number.isInteger(programTermsPerYear) || programTermsPerYear < 1) {
+      this.props.serverReply?.(
+        "Set Program Terms Per Year before adding an extra sub-Interval.",
+      );
       return;
     }
-    const subIntervalId = `${yearValue}${termValue}`;
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const persistedIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
+    const generatedIntervals = this.state?.homeExpectedIntervalsGenerated
+      ? this.buildHomeGeneratedIntervals(
+          this.state?.homeProgramStartYearValue,
+          this.state?.homeProgramTotalYearsValue,
+          this.state?.homeProgramTermsPerYearValue,
+        )
+      : [];
+    const manualIntervals = this.getNormalizedHomeManualIntervals();
+    const deletedIntervalIds = new Set(
+      (Array.isArray(this.state?.homeDeletedIntervalIds)
+        ? this.state.homeDeletedIntervalIds
+        : []
+      )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    );
+    const sequenceEntries = [
+      ...persistedIntervals,
+      ...generatedIntervals,
+      ...manualIntervals,
+    ]
+      .map((entry) => {
+        const subIntervalId = String(
+          entry?.subIntervalId || entry?.subintervalId || entry?.key || "",
+        ).trim();
+        if (!subIntervalId || deletedIntervalIds.has(subIntervalId)) {
+          return null;
+        }
+        const parsedInterval = this.parseIntervalIdYearTerm(subIntervalId);
+        const year = Number(parsedInterval?.year || 0);
+        const term = Number(parsedInterval?.term || 0);
+        if (!year || !term) {
+          return null;
+        }
+        return {
+          intervalId: String(entry?.intervalId || "").trim(),
+          subIntervalId,
+          year,
+          term,
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => {
+        if (left.year !== right.year) {
+          return left.year - right.year;
+        }
+        return left.term - right.term;
+      });
+    if (sequenceEntries.length === 0) {
+      this.props.serverReply?.(
+        "Generate or save regular intervals first, then add an extra sub-Interval.",
+      );
+      return;
+    }
+    const latestEntry = sequenceEntries[sequenceEntries.length - 1];
+    const latestIntervalId = String(latestEntry?.intervalId || "").trim();
+    const latestIntervalNum = Number.parseInt(
+      String(latestEntry?.intervalNum || latestIntervalId || "").trim(),
+      10,
+    );
+    const latestIntervalKey = Number.isInteger(latestIntervalNum)
+      ? String(latestIntervalNum)
+      : latestIntervalId;
+    const latestIntervalEntryCount = sequenceEntries.filter((entry) => {
+      const entryIntervalNum = Number.parseInt(
+        String(entry?.intervalNum || entry?.intervalId || "").trim(),
+        10,
+      );
+      if (Number.isInteger(latestIntervalNum) && Number.isInteger(entryIntervalNum)) {
+        return entryIntervalNum === latestIntervalNum;
+      }
+      return String(entry?.intervalId || "").trim() === latestIntervalKey;
+    }).length;
+    const nextIntervalNum =
+      latestIntervalEntryCount >= programTermsPerYear
+        ? (Number.isInteger(latestIntervalNum) ? latestIntervalNum + 1 : sequenceEntries.length + 1)
+        : (Number.isInteger(latestIntervalNum) ? latestIntervalNum : Number.parseInt(latestIntervalId, 10) || sequenceEntries.length);
+    const existingSubIntervalIds = new Set(
+      sequenceEntries.map((entry) => String(entry?.subIntervalId || "").trim()),
+    );
+    const buildNextCandidate = (latestEntry = null) => {
+      if (!latestEntry) {
+        return null;
+      }
+      const intervalId = String(nextIntervalNum || "").trim();
+      if (!intervalId) {
+        return null;
+      }
+      return {
+        intervalId,
+        subIntervalId:
+          Number(latestEntry?.term || 0) >= programTermsPerYear
+            ? `${Number(latestEntry?.year || 0)}1`
+            : `${Number(latestEntry?.year || 0) + 1}${
+                Number(latestEntry?.term || 0) + 1
+              }`,
+      };
+    };
+    let latestEntryCursor = latestEntry;
+    let nextCandidate = buildNextCandidate(latestEntryCursor);
+    let safetyCounter = 0;
+    while (
+      nextCandidate &&
+      existingSubIntervalIds.has(String(nextCandidate.subIntervalId || "").trim()) &&
+      safetyCounter < 500
+    ) {
+      existingSubIntervalIds.add(String(nextCandidate.subIntervalId || "").trim());
+      latestEntryCursor = {
+        intervalId: nextCandidate.intervalId,
+        subIntervalId: nextCandidate.subIntervalId,
+        year: this.parseIntervalIdYearTerm(nextCandidate.subIntervalId)?.year || "",
+        term: this.parseIntervalIdYearTerm(nextCandidate.subIntervalId)?.term || "",
+      };
+      nextCandidate = buildNextCandidate(latestEntryCursor);
+      safetyCounter += 1;
+    }
+    if (!nextCandidate || !nextCandidate.subIntervalId || !nextCandidate.intervalId) {
+      this.props.serverReply?.("Could not determine the next extra sub-Interval.");
+      return;
+    }
+    const nextSubIntervalId = String(nextCandidate.subIntervalId || "").trim();
+    const nextIntervalId = String(nextCandidate.intervalId || "").trim();
     this.setState((previousState) => {
       const previousList = Array.isArray(
         previousState?.homeManualIntervalsDraftList,
@@ -833,7 +989,7 @@ export default class NogaPlanner extends Component {
           (entry) =>
             String(
               entry?.subIntervalId || entry?.subintervalId || entry?.intervalId || "",
-            ).trim() === subIntervalId,
+            ).trim() === nextSubIntervalId,
         )
       ) {
         return {
@@ -846,10 +1002,11 @@ export default class NogaPlanner extends Component {
         homeManualIntervalsDraftList: [
           ...previousList,
           {
-            intervalId: intervalIdValue,
-            subIntervalId,
+            intervalId: nextIntervalId,
+            intervalNum: Number.parseInt(nextIntervalId, 10) || null,
+            subIntervalId: nextSubIntervalId,
             regular: false,
-            intervalStatus: "TBD",
+            intervalStatus: "Normal",
             intervalCourses: [],
           },
         ],
@@ -969,7 +1126,7 @@ export default class NogaPlanner extends Component {
         normalizedIntervalKey,
     );
     const selectedEntryIsCurrent =
-      String(selectedEntry?.intervalStatus || "TBD")
+      String(selectedEntry?.intervalStatus || "Normal")
         .trim()
         .toLowerCase() === "current";
     const targetIntervalId = String(selectedEntry?.intervalId || "").trim();
@@ -977,17 +1134,17 @@ export default class NogaPlanner extends Component {
       this.props.serverReply?.("Failed to resolve the selected interval.");
       return;
     }
-    const nextStatus = selectedEntryIsCurrent ? "TBD" : "current";
+    const nextStatus = selectedEntryIsCurrent ? "Normal" : "current";
     const persistedStudyPlanner = await this.persistStudyPlannerIntervals(
       sourceEntries.map((entry) => ({
         ...entry,
         intervalStatus:
           String(entry?.intervalId || "").trim() === targetIntervalId
             ? nextStatus
-            : String(entry?.intervalStatus || "TBD").trim().toLowerCase() ===
+            : String(entry?.intervalStatus || "Normal").trim().toLowerCase() ===
                 "current"
-              ? "TBD"
-              : String(entry?.intervalStatus || "TBD").trim() || "TBD",
+              ? "Normal"
+              : String(entry?.intervalStatus || "Normal").trim() || "Normal",
       })),
     );
     this.setState({
@@ -998,6 +1155,9 @@ export default class NogaPlanner extends Component {
       homeCurrentIntervalDraft: selectedEntryIsCurrent
         ? ""
         : normalizedIntervalKey,
+      homeCurrentIntervalStatusDraft: selectedEntryIsCurrent
+        ? "Normal"
+        : "current",
     });
   };
   triggerHomeIntervalRetaking = async (intervalId = "") => {
@@ -1101,8 +1261,8 @@ export default class NogaPlanner extends Component {
       .flatMap((intervalEntry) => {
         const intervalId = String(intervalEntry?.intervalId || "").trim();
         const intervalStatus = Array.isArray(intervalEntry?.intervalStatus)
-          ? String(intervalEntry?.intervalStatus?.[0] || "TBD").trim() || "TBD"
-          : String(intervalEntry?.intervalStatus || "TBD").trim() || "TBD";
+          ? String(intervalEntry?.intervalStatus?.[0] || "Normal").trim() || "Normal"
+          : String(intervalEntry?.intervalStatus || "Normal").trim() || "Normal";
         const subIntervals = Array.isArray(intervalEntry?.intervalsubIntervals)
           ? intervalEntry.intervalsubIntervals
           : [];
@@ -1117,13 +1277,26 @@ export default class NogaPlanner extends Component {
             return {
               key: subIntervalId,
               intervalId,
+              intervalNum:
+                Number.parseInt(
+                  String(intervalEntry?.intervalNum || "").trim(),
+                  10,
+                ) || Number.parseInt(intervalId, 10) || null,
               subIntervalId,
               regular: intervalId !== subIntervalId,
               intervalStatus,
+              courseComponentId: String(
+                subIntervalEntry?.courseComponentId ||
+                  subIntervalEntry?.course_componentId ||
+                  "",
+              ).trim(),
+              courseName: String(subIntervalEntry?.courseName || "").trim(),
               intervalCourses: Array.isArray(
                 subIntervalEntry?.subIntervalCourses,
               )
                 ? subIntervalEntry.subIntervalCourses
+                : Array.isArray(subIntervalEntry?.intervalCourses)
+                  ? subIntervalEntry.intervalCourses
                 : [],
             };
           })
@@ -1151,8 +1324,10 @@ export default class NogaPlanner extends Component {
             .map((entry) => this.normalizeProgramComponentValue(entry))
             .filter(Boolean)
         : [];
-      const nextProgramExams = Array.isArray(nextPlannerRoot?.programExams)
-        ? nextPlannerRoot.programExams
+      const nextProgramExamClasses = Array.isArray(
+        nextPlannerRoot?.programExamClasses,
+      )
+        ? nextPlannerRoot.programExamClasses
             .map((entry) => String(entry || "").trim())
             .filter(Boolean)
         : [];
@@ -1225,10 +1400,11 @@ export default class NogaPlanner extends Component {
             ? nextProgramComponents
             : previousState?.homeComponentsDraftList || [],
         homeExamsCardSet:
-          Boolean(previousState?.homeExamsCardSet) || nextProgramExams.length > 0,
+          Boolean(previousState?.homeExamsCardSet) ||
+          nextProgramExamClasses.length > 0,
         homeExamsDraftList:
-          nextProgramExams.length > 0
-            ? nextProgramExams
+          nextProgramExamClasses.length > 0
+            ? nextProgramExamClasses
             : previousState?.homeExamsDraftList || [],
         homeManualIntervalsDraftList:
           previousState?.homeManualIntervalsDraftList || [],
@@ -1277,19 +1453,21 @@ export default class NogaPlanner extends Component {
       return payload?.studyPlanner || {};
     });
   };
-  persistStudyPlannerExams = async (programExams = []) => {
-    return this.runPlannerPendingTask("Saving exams...", async () => {
+  persistStudyPlannerExamClasses = async (programExamClasses = []) => {
+    return this.runPlannerPendingTask("Saving exam classes...", async () => {
       const userId = String(this.props?.state?.my_id || "").trim();
       const token = String(this.props?.state?.token || "").trim();
-      const normalizedProgramExams = Array.from(
+      const normalizedProgramExamClasses = Array.from(
         new Set(
-          (Array.isArray(programExams) ? programExams : [])
+          (Array.isArray(programExamClasses) ? programExamClasses : [])
             .map((entry) => String(entry || "").trim())
             .filter(Boolean),
         ),
       );
       if (!userId || !token) {
-        throw new Error("Failed to save exams: login data is incomplete.");
+        throw new Error(
+          "Failed to save exam classes: login data is incomplete.",
+        );
       }
       const response = await fetch(
         apiUrl(`/api/user/editStudyPlannerMeta/${userId}`),
@@ -1300,13 +1478,18 @@ export default class NogaPlanner extends Component {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ programExams: normalizedProgramExams }),
+          body: JSON.stringify({
+            programExamClasses: normalizedProgramExamClasses,
+          }),
         },
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(
-          String(payload?.message || `Failed to save exams (${response.status}).`),
+          String(
+            payload?.message ||
+              `Failed to save exam classes (${response.status}).`,
+          ),
         );
       }
       return payload?.studyPlanner || {};
@@ -1356,6 +1539,9 @@ export default class NogaPlanner extends Component {
       return true;
     }
     if (Array.isArray(plannerRoot?.programComponents)) {
+      return true;
+    }
+    if (Array.isArray(plannerRoot?.programExamClasses)) {
       return true;
     }
     if (Array.isArray(plannerRoot?.programExams)) {
@@ -1527,13 +1713,15 @@ export default class NogaPlanner extends Component {
     const draftList = Array.isArray(this.state?.homeExamsDraftList)
       ? this.state.homeExamsDraftList
       : [];
-    const programExams = Array.from(
+    const programExamClasses = Array.from(
       new Set(
         draftList.map((entry) => String(entry || "").trim()).filter(Boolean),
       ),
     );
     try {
-      const nextPlannerRoot = await this.persistStudyPlannerExams(programExams);
+      const nextPlannerRoot = await this.persistStudyPlannerExamClasses(
+        programExamClasses,
+      );
       this.setState({
         plannerRoot:
           nextPlannerRoot && typeof nextPlannerRoot === "object"
@@ -1542,10 +1730,10 @@ export default class NogaPlanner extends Component {
         homeExamsCardSet: true,
         homeExamsSetEditorOpen: false,
       });
-      this.props.serverReply?.("Exams set.");
+      this.props.serverReply?.("Program exam classes set.");
     } catch (error) {
       this.props.serverReply?.(
-        String(error?.message || "Failed to set exams."),
+        String(error?.message || "Failed to set program exam classes."),
       );
     }
   };
@@ -2177,8 +2365,16 @@ export default class NogaPlanner extends Component {
     }
     return {
       componentId,
+      componentWeightPercentage: String(
+        normalizedEntry?.componentPartialWeight ||
+          normalizedEntry?.componentWeightPercentage ||
+          normalizedEntry?.componentWeight ||
+          normalizedEntry?.partialWeight ||
+          "",
+      ).trim(),
       componentPartialWeight: String(
         normalizedEntry?.componentPartialWeight ||
+          normalizedEntry?.componentWeightPercentage ||
           normalizedEntry?.componentWeight ||
           normalizedEntry?.partialWeight ||
           "",
@@ -2189,7 +2385,132 @@ export default class NogaPlanner extends Component {
           normalizedEntry?.status ||
           "",
       ).trim(),
+      componentLectures: (Array.isArray(normalizedEntry?.componentLectures)
+        ? normalizedEntry.componentLectures
+        : []
+      )
+        .map((lectureEntry) => {
+          const normalizedLectureEntry =
+            lectureEntry && typeof lectureEntry === "object"
+              ? lectureEntry
+              : { lectureName: lectureEntry };
+          const lectureName = String(
+            normalizedLectureEntry?.lectureName ||
+              normalizedLectureEntry?.lectureId ||
+              normalizedLectureEntry?.lecture_name ||
+              normalizedLectureEntry?.name ||
+              "",
+          ).trim();
+          if (!lectureName) {
+            return null;
+          }
+          return {
+            lectureName,
+            lectureContent: Array.isArray(normalizedLectureEntry?.lectureContent)
+              ? normalizedLectureEntry.lectureContent
+              : [],
+          };
+      })
+        .filter(Boolean),
     };
+  };
+  formatPlannerComponentWeightPercentage = (value, treatAsFraction = true) => {
+    const normalizedValue =
+      typeof value === "number"
+        ? value
+        : Number.parseFloat(String(value || "").replace("%", "").trim());
+    if (!Number.isFinite(normalizedValue)) {
+      return "-";
+    }
+    const percentValue = treatAsFraction ? normalizedValue * 100 : normalizedValue;
+    const displayValue = Number.isInteger(percentValue)
+      ? String(Math.trunc(percentValue))
+      : String(Number(percentValue.toFixed(2)));
+    return `${displayValue}%`;
+  };
+  formatPlannerComponentWeightInputValue = (value) => {
+    const normalizedValue =
+      typeof value === "number"
+        ? value
+        : Number.parseFloat(String(value || "").replace("%", "").trim());
+    if (!Number.isFinite(normalizedValue)) {
+      return "";
+    }
+    const inputValue = Math.abs(normalizedValue) <= 1 ? normalizedValue * 100 : normalizedValue;
+    return String(Number.isInteger(inputValue) ? Math.trunc(inputValue) : Number(inputValue.toFixed(2)));
+  };
+  normalizeHomeCourseComponentLectureDraftEntry = (entry = {}) => {
+    const normalizedEntry =
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? entry
+        : { lectureName: entry };
+    const lectureName = String(
+      normalizedEntry?.lectureName ||
+        normalizedEntry?.lectureId ||
+        normalizedEntry?.lectureName ||
+        normalizedEntry?.lecture_name ||
+        normalizedEntry?.name ||
+        "",
+    ).trim();
+    if (!lectureName) {
+      return null;
+    }
+    return {
+      lectureName,
+      lectureContent: Array.isArray(normalizedEntry?.lectureContent)
+        ? normalizedEntry.lectureContent
+        : [],
+    };
+  };
+  findPlannerCourseByNameDraft = (courseName = "") => {
+    const normalizedName = String(courseName || "").trim().toLowerCase();
+    if (!normalizedName) {
+      return null;
+    }
+    return (
+      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+        (courseEntry) =>
+          String(courseEntry?.course_name || courseEntry?.name || "")
+            .trim()
+            .toLowerCase() === normalizedName,
+      ) || null
+    );
+  };
+  findPlannerCourseByCodeDraft = (courseCode = "") => {
+    const normalizedCode = String(courseCode || "").trim().toLowerCase();
+    if (!normalizedCode) {
+      return null;
+    }
+    return (
+      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+        (courseEntry) =>
+          String(courseEntry?.course_code || courseEntry?.code || "")
+            .trim()
+            .toLowerCase() === normalizedCode,
+      ) || null
+    );
+  };
+  resolvePlannerCourseDraft = ({
+    courseId = "",
+    courseName = "",
+    courseCode = "",
+  } = {}) => {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (normalizedCourseId) {
+      const matchedById =
+        (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+          (courseEntry) =>
+            String(courseEntry?._id || "").trim() === normalizedCourseId,
+        ) || null;
+      if (matchedById) {
+        return matchedById;
+      }
+    }
+    return (
+      this.findPlannerCourseByNameDraft(courseName) ||
+      this.findPlannerCourseByCodeDraft(courseCode) ||
+      null
+    );
   };
   appendHomeCourseComponentDraftEntry = () => {
     const nextComponent = this.normalizeHomeCourseComponentDraftEntry({
@@ -2223,18 +2544,113 @@ export default class NogaPlanner extends Component {
       };
     });
   };
+  appendHomeCourseComponentLectureDraftEntry = () => {
+    const lectureName = String(
+      this.state?.homeCourseComponentLectureNameDraft || "",
+    ).trim();
+    const courseName = String(
+      this.state?.homeCourseComponentLectureCourseIdDraft || "",
+    ).trim();
+    const intervalId = String(
+      this.state?.homeCourseComponentLectureIntervalIdDraft || "",
+    ).trim();
+    const componentId = String(
+      this.state?.homeCourseComponentLectureComponentIdDraft || "",
+    ).trim();
+    const nextLecture = this.normalizeHomeCourseComponentLectureDraftEntry({
+      lectureName,
+    });
+    if (!nextLecture || !courseName || !intervalId || !componentId) {
+      return;
+    }
+    this.setState((previousState) => {
+      const prevList = Array.isArray(
+        previousState?.homeCourseComponentLectureDraftList,
+      )
+        ? previousState.homeCourseComponentLectureDraftList
+        : [];
+      const lectureKey = `${courseName}_${intervalId}_${componentId}_${lectureName}`;
+      const existingIndex = prevList.findIndex(
+        (entry) =>
+          `${String(entry?.courseName || entry?.courseId || "").trim()}_${String(
+            entry?.intervalId || "",
+          ).trim()}_${String(entry?.componentId || "").trim()}_${String(
+            entry?.lectureName || entry?.lectureId || "",
+          ).trim()}` === lectureKey,
+      );
+      const nextList =
+        existingIndex >= 0
+          ? prevList.map((entry, index) =>
+              index === existingIndex
+                ? {
+                    courseName,
+                    intervalId,
+                    componentId,
+                    lectureName: nextLecture.lectureName,
+                    lectureContent: Array.isArray(nextLecture.lectureContent)
+                      ? nextLecture.lectureContent
+                      : [],
+                  }
+                : entry,
+            )
+          : [
+              ...prevList,
+              {
+                courseName,
+                intervalId,
+                componentId,
+                lectureName: nextLecture.lectureName,
+                lectureContent: Array.isArray(nextLecture.lectureContent)
+                  ? nextLecture.lectureContent
+                  : [],
+              },
+            ];
+      return {
+        homeCourseComponentLectureDraftList: nextList,
+        homeCourseComponentLectureNameDraft: "",
+      };
+    });
+  };
   handleHomeCoursesSetSubmit = async () => {
     const editingKey = String(this.state?.homeCourseEditingKey || "").trim();
-    const originalCourseId = String(
+    const originalCourseName = String(
       this.state?.homeCourseOriginalId || "",
     ).trim();
     const originalIntervalId = String(
       this.state?.homeCourseOriginalIntervalId || "",
     ).trim();
-    const courseId = String(this.state?.homeCourseIdDraft || "").trim();
-    const courseCode = String(this.state?.homeCourseCodeDraft || "").trim();
-    const courseTotalWeight = String(
+    const draftCourseId = String(this.state?.homeCourseIdDraft || "").trim();
+    const draftCourseName = String(
+      this.state?.homeCourseNameDraft || "",
+    ).trim();
+    const draftCourseCode = String(
+      this.state?.homeCourseCodeDraft || "",
+    ).trim();
+    const resolvedCourse = this.resolvePlannerCourseDraft({
+      courseId: draftCourseId,
+      courseName: draftCourseName,
+      courseCode: draftCourseCode,
+    });
+    const courseName = String(
+      draftCourseName ||
+        resolvedCourse?.course_name ||
+        resolvedCourse?.name ||
+        "",
+    ).trim();
+    const courseCode = String(
+      draftCourseCode ||
+        resolvedCourse?.course_code ||
+        resolvedCourse?.code ||
+        "",
+    ).trim();
+    const courseWeight = String(
       this.state?.homeCourseTotalWeightDraft || "",
+    ).trim();
+    const courseComponentId = String(
+      this.state?.homeCourseComponentIdDraft || "",
+    ).trim();
+    const componentWeightPercentage = String(
+      this.state?.homeCourseComponentPartialWeightDraft || "",
     ).trim();
     const subIntervalYear = String(
       this.state?.homeCourseSubIntervalYearDraft || "",
@@ -2246,27 +2662,38 @@ export default class NogaPlanner extends Component {
       this.state?.homeCourseIntervalIdDraft ||
         `${subIntervalYear}${subIntervalTerm}`,
     ).trim();
+    const liveComponentDraftEntry = this.normalizeHomeCourseComponentDraftEntry({
+      componentId: this.state?.homeCourseComponentIdDraft || "",
+      componentWeightPercentage,
+      componentStatus: this.state?.homeCourseComponentStatusDraft || "",
+    });
     const componentEntries = Array.from(
-      (Array.isArray(this.state?.homeCourseComponentDraft)
-        ? this.state.homeCourseComponentDraft
-        : [this.state?.homeCourseComponentDraft]
-      )
-        .map((entry) => this.normalizeHomeCourseComponentDraftEntry(entry))
-        .filter(Boolean)
-        .reduce((map, entry) => {
-          map.set(entry.componentId, entry);
-          return map;
-        }, new Map())
-        .values(),
+      new Map(
+        [
+          ...(
+            Array.isArray(this.state?.homeCourseComponentDraft)
+              ? this.state.homeCourseComponentDraft
+              : [this.state?.homeCourseComponentDraft]
+          )
+            .map((entry) => this.normalizeHomeCourseComponentDraftEntry(entry))
+            .filter(Boolean),
+          liveComponentDraftEntry,
+        ]
+          .filter(Boolean)
+          .map((entry) => [entry.componentId, entry]),
+      ).values(),
     );
     if (
-      !courseId ||
+      !courseName ||
       !courseCode ||
+      !courseWeight ||
+      !courseComponentId ||
+      !componentWeightPercentage ||
       !componentEntries.length ||
       !intervalId
     ) {
       this.props.serverReply?.(
-        "Enter course ID, code, component, and sub-Interval.",
+        "Enter course name, code, course weight, course component, component weight percentage, and sub-Interval.",
       );
       return;
     }
@@ -2276,58 +2703,141 @@ export default class NogaPlanner extends Component {
       const currentIntervalId = String(
         intervalEntry?.subIntervalId || intervalEntry?.intervalId || "",
       ).trim();
-      const currentIntervalCourses = Array.isArray(intervalEntry?.intervalCourses)
-        ? intervalEntry.intervalCourses
+      const currentIntervalCourses = Array.isArray(
+        intervalEntry?.subIntervalCourses,
+      )
+        ? intervalEntry.subIntervalCourses
+        : Array.isArray(intervalEntry?.intervalCourses)
+          ? intervalEntry.intervalCourses
         : [];
       const sanitizedIntervalCourses = currentIntervalCourses.filter(
         (courseEntry) => {
           if (!editingKey) {
             return true;
           }
-          const currentCourseId = String(courseEntry?.courseId || "").trim();
+          const currentCourseName = String(
+            courseEntry?.courseName || courseEntry?.courseId || "",
+          ).trim();
           return !(
-            currentCourseId === originalCourseId &&
+            currentCourseName === originalCourseName &&
             currentIntervalId === originalIntervalId
           );
         },
       );
-      if (currentIntervalId !== intervalId) {
-        return {
-          ...intervalEntry,
-          intervalCourses: sanitizedIntervalCourses,
-        };
-      }
+            if (currentIntervalId !== intervalId) {
+          return {
+            ...intervalEntry,
+            intervalNum:
+              Number.isInteger(
+                Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10),
+              )
+                ? Number.parseInt(
+                    String(intervalEntry?.intervalNum || "").trim(),
+                    10,
+                  )
+                : Number.parseInt(String(intervalEntry?.intervalId || "").trim(), 10) || null,
+            intervalCourses: sanitizedIntervalCourses,
+            subIntervalCourses: sanitizedIntervalCourses,
+          };
+        }
       const existingCourseIndex = sanitizedIntervalCourses.findIndex(
         (courseEntry) =>
-          String(courseEntry?.courseId || "").trim() === courseId,
+          String(courseEntry?.courseName || courseEntry?.courseId || "").trim() ===
+          courseName,
       );
       if (existingCourseIndex === -1) {
-        return {
-          ...intervalEntry,
-          intervalCourses: [
-            ...sanitizedIntervalCourses,
-            {
-              courseId,
+          return {
+            ...intervalEntry,
+            intervalNum:
+              Number.isInteger(
+                Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10),
+              )
+                ? Number.parseInt(
+                    String(intervalEntry?.intervalNum || "").trim(),
+                    10,
+                  )
+                : Number.parseInt(String(intervalEntry?.intervalId || "").trim(), 10) || null,
+            intervalCourses: [
+              ...sanitizedIntervalCourses,
+              {
+              courseName,
               courseCode,
-              courseTotalWeight,
-              course_totalWeight: courseTotalWeight,
+              courseWeight: Number.parseFloat(courseWeight),
+              courseComponentId,
               subIntervalId: intervalId,
               intervalId,
               courseComponents: componentEntries.map((componentEntry) => ({
                 componentId: componentEntry.componentId,
-                componentPartialWeight: String(
-                  componentEntry?.componentPartialWeight || "",
-                ).trim(),
-                componentWeight: String(
-                  componentEntry?.componentPartialWeight || "",
-                ).trim(),
+                componentWeightPercentage: Number.isFinite(
+                  Number.parseFloat(
+                    String(
+                      componentEntry?.componentWeightPercentage ||
+                        componentEntry?.componentPartialWeight ||
+                        "",
+                    ).trim(),
+                  ),
+                )
+                  ? Number.parseFloat(
+                      String(
+                        componentEntry?.componentWeightPercentage ||
+                          componentEntry?.componentPartialWeight ||
+                          "",
+                      ).trim(),
+                    ) / 100
+                  : null,
                 componentStatus: String(
                   componentEntry?.componentStatus || "",
                 ).trim(),
                 component_status: String(
                   componentEntry?.componentStatus || "",
                 ).trim(),
-                componentLectures: [],
+                componentLectures: Array.isArray(
+                  componentEntry?.componentLectures,
+                )
+                  ? componentEntry.componentLectures
+                  : [],
+              })),
+            },
+          ],
+          subIntervalCourses: [
+            ...sanitizedIntervalCourses,
+              {
+              courseName,
+              courseCode,
+              courseWeight: Number.parseFloat(courseWeight),
+              courseComponentId,
+              subIntervalId: intervalId,
+              intervalId,
+              courseComponents: componentEntries.map((componentEntry) => ({
+                componentId: componentEntry.componentId,
+                componentWeightPercentage: Number.isFinite(
+                  Number.parseFloat(
+                    String(
+                      componentEntry?.componentWeightPercentage ||
+                        componentEntry?.componentPartialWeight ||
+                        "",
+                    ).trim(),
+                  ),
+                )
+                  ? Number.parseFloat(
+                      String(
+                        componentEntry?.componentWeightPercentage ||
+                          componentEntry?.componentPartialWeight ||
+                          "",
+                      ).trim(),
+                    ) / 100
+                  : null,
+                componentStatus: String(
+                  componentEntry?.componentStatus || "",
+                ).trim(),
+                component_status: String(
+                  componentEntry?.componentStatus || "",
+                ).trim(),
+                componentLectures: Array.isArray(
+                  componentEntry?.componentLectures,
+                )
+                  ? componentEntry.componentLectures
+                  : [],
               })),
             },
           ],
@@ -2401,12 +2911,19 @@ export default class NogaPlanner extends Component {
                     componentEntry?.component_status ||
                     "",
                 ).trim(),
-                component_status: String(
-                  nextComponentEntry?.componentStatus ||
-                    componentEntry?.componentStatus ||
-                    componentEntry?.component_status ||
-                    "",
+              component_status: String(
+                nextComponentEntry?.componentStatus ||
+                  componentEntry?.componentStatus ||
+                  componentEntry?.component_status ||
+                  "",
                 ).trim(),
+                componentLectures: Array.isArray(
+                  nextComponentEntry?.componentLectures,
+                )
+                  ? nextComponentEntry.componentLectures
+                  : Array.isArray(componentEntry?.componentLectures)
+                    ? componentEntry.componentLectures
+                    : [],
               };
             },
           );
@@ -2426,30 +2943,46 @@ export default class NogaPlanner extends Component {
                 component_status: String(
                   componentEntry?.componentStatus || "",
                 ).trim(),
-                componentLectures: [],
+                componentLectures: Array.isArray(
+                  componentEntry?.componentLectures,
+                )
+                  ? componentEntry.componentLectures
+                  : [],
               });
             }
           });
           return {
-            ...courseEntry,
-            courseCode:
-              courseCode || String(courseEntry?.courseCode || "").trim(),
-            courseTotalWeight:
-              courseTotalWeight ||
-              String(courseEntry?.courseTotalWeight || "").trim(),
-            course_totalWeight:
-              courseTotalWeight ||
-              String(courseEntry?.course_totalWeight || "").trim(),
+          ...courseEntry,
+          courseName:
+            courseName || String(courseEntry?.courseName || "").trim(),
+          courseCode:
+            courseCode || String(courseEntry?.courseCode || "").trim(),
+          courseComponentId:
+            courseComponentId ||
+            String(courseEntry?.courseComponentId || "").trim(),
+            courseWeight:
+              courseWeight ||
+              String(courseEntry?.courseWeight || "").trim(),
             subIntervalId:
               intervalId || String(courseEntry?.subIntervalId || "").trim(),
-            intervalId: intervalId || String(courseEntry?.intervalId || "").trim(),
-            courseComponents: nextCourseComponents,
-          };
+          intervalId: intervalId || String(courseEntry?.intervalId || "").trim(),
+          courseComponents: nextCourseComponents,
+        };
         },
       );
       return {
         ...intervalEntry,
+        intervalNum:
+          Number.isInteger(
+            Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10),
+          )
+            ? Number.parseInt(
+                String(intervalEntry?.intervalNum || "").trim(),
+                10,
+              )
+            : Number.parseInt(String(intervalEntry?.intervalId || "").trim(), 10) || null,
         intervalCourses: nextIntervalCourses,
+        subIntervalCourses: nextIntervalCourses,
       };
     });
     try {
@@ -2464,6 +2997,7 @@ export default class NogaPlanner extends Component {
         homeCourseEditingKey: "",
         homeCourseOriginalId: "",
         homeCourseOriginalIntervalId: "",
+        homeCourseNameDraft: "",
         homeCourseIdDraft: "",
         homeCourseCodeDraft: "",
         homeCourseComponentDraft: [],
@@ -2482,15 +3016,190 @@ export default class NogaPlanner extends Component {
       );
     }
   };
+  handleHomeCourseComponentLecturesSetSubmit = async () => {
+    const lectureDrafts = Array.isArray(
+      this.state?.homeCourseComponentLectureDraftList,
+    )
+      ? this.state.homeCourseComponentLectureDraftList
+      : [];
+    if (lectureDrafts.length === 0) {
+      this.props.serverReply?.("Add at least one lecture name first.");
+      return;
+    }
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
+    const normalizedDrafts = lectureDrafts
+      .map((entry) => ({
+        courseName: String(entry?.courseName || entry?.courseId || "").trim(),
+        intervalId: String(entry?.intervalId || "").trim(),
+        componentId: String(entry?.componentId || "").trim(),
+        lectureName: String(
+          entry?.lectureName || entry?.lectureId || "",
+        ).trim(),
+      }))
+      .filter(
+        (entry) =>
+          entry.courseName &&
+          entry.intervalId &&
+          entry.componentId &&
+          entry.lectureName,
+      );
+    if (normalizedDrafts.length === 0) {
+      this.props.serverReply?.("Add at least one lecture name first.");
+      return;
+    }
+    const nextIntervals = currentIntervals.map((intervalEntry) => {
+      const currentIntervalId = String(
+        intervalEntry?.subIntervalId || intervalEntry?.intervalId || "",
+      ).trim();
+      const courseEntries = Array.isArray(intervalEntry?.intervalCourses)
+        ? intervalEntry.intervalCourses
+        : [];
+      const nextCourseEntries = courseEntries.map((courseEntry) => {
+        const currentCourseName = String(
+          courseEntry?.courseName || courseEntry?.courseId || "",
+        ).trim();
+        if (
+          !normalizedDrafts.some(
+            (draft) =>
+              draft.courseName === currentCourseName &&
+              draft.intervalId === currentIntervalId,
+          )
+        ) {
+          return courseEntry;
+        }
+        const currentCourseComponents = Array.isArray(courseEntry?.courseComponents)
+          ? courseEntry.courseComponents
+          : [];
+        const nextCourseComponents = currentCourseComponents.map(
+          (componentEntry) => {
+            const currentComponentId = String(
+              componentEntry?.componentId || "",
+            ).trim();
+            const matchedDrafts = normalizedDrafts.filter(
+              (draft) =>
+                draft.courseName === currentCourseName &&
+                draft.intervalId === currentIntervalId &&
+                draft.componentId === currentComponentId,
+            );
+            if (matchedDrafts.length === 0) {
+              return componentEntry;
+            }
+            const existingLectures = Array.isArray(
+              componentEntry?.componentLectures,
+            )
+              ? componentEntry.componentLectures
+              : [];
+            const existingLectureIds = new Set(
+              existingLectures
+                .map((lecture) =>
+                  String(lecture?.lectureName || lecture?.lectureId || "").trim(),
+                )
+                .filter(Boolean),
+            );
+            const nextLectures = [...existingLectures];
+            matchedDrafts.forEach((draft) => {
+              if (!existingLectureIds.has(draft.lectureName)) {
+                existingLectureIds.add(draft.lectureName);
+                nextLectures.push({
+                  lectureName: draft.lectureName,
+                  lectureContent: [],
+                });
+              }
+            });
+            return {
+              ...componentEntry,
+              componentLectures: nextLectures,
+            };
+          },
+        );
+        return {
+          ...courseEntry,
+          courseComponents: nextCourseComponents,
+        };
+      });
+      return {
+        ...intervalEntry,
+        intervalNum:
+          Number.isInteger(
+            Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10),
+          )
+            ? Number.parseInt(
+                String(intervalEntry?.intervalNum || "").trim(),
+                10,
+              )
+            : Number.parseInt(String(intervalEntry?.intervalId || "").trim(), 10) ||
+              null,
+        intervalCourses: nextCourseEntries,
+        subIntervalCourses: nextCourseEntries,
+      };
+    });
+    try {
+      const nextPlannerRoot =
+        await this.persistStudyPlannerIntervals(nextIntervals);
+      this.setState({
+        plannerRoot:
+          nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : this.state?.plannerRoot || {},
+        homeCourseComponentLecturesEditorOpen: false,
+        homeCourseComponentLectureCourseIdDraft: "",
+        homeCourseComponentLectureIntervalIdDraft: "",
+        homeCourseComponentLectureComponentIdDraft: "",
+        homeCourseComponentLectureNameDraft: "",
+        homeCourseComponentLectureDraftList: [],
+      });
+      this.props.serverReply?.("Lecture names saved.");
+    } catch (error) {
+      this.props.serverReply?.(
+        String(error?.message || "Failed to save lecture names."),
+      );
+    }
+  };
   editHomeCourseEntry = (courseEntry = {}) => {
+    const matchedCourse =
+      (Array.isArray(this.state?.courses) ? this.state.courses : []).find(
+        (plannerCourse) =>
+          String(plannerCourse?._id || "").trim() ===
+          String(courseEntry?.courseId || "").trim(),
+      ) || null;
+    const sourceCourseComponents = Array.isArray(courseEntry?.courseComponents)
+      ? courseEntry.courseComponents
+      : Array.isArray(courseEntry?.components)
+        ? courseEntry.components
+        : [];
+    const primaryCourseComponent = sourceCourseComponents.find((entry) => {
+      const nextComponentId = String(
+        entry?.componentId || entry?.course_componentId || "",
+      ).trim();
+      return Boolean(nextComponentId);
+    }) || null;
     const componentDrafts = (
-      Array.isArray(courseEntry?.courseComponents)
-        ? courseEntry.courseComponents
+      sourceCourseComponents.length > 0
+        ? sourceCourseComponents
         : Array.isArray(courseEntry?.componentIds)
           ? courseEntry.componentIds.map((entry) => ({ componentId: entry }))
           : []
     )
-      .map((entry) => this.normalizeHomeCourseComponentDraftEntry(entry))
+      .map((entry) => {
+        const normalizedEntry = this.normalizeHomeCourseComponentDraftEntry(
+          entry,
+        );
+        if (!normalizedEntry) {
+          return null;
+        }
+        return {
+          ...normalizedEntry,
+          componentWeightPercentage:
+            this.formatPlannerComponentWeightInputValue(
+              normalizedEntry.componentWeightPercentage,
+            ) || normalizedEntry.componentWeightPercentage,
+          componentPartialWeight:
+            this.formatPlannerComponentWeightInputValue(
+              normalizedEntry.componentPartialWeight,
+            ) || normalizedEntry.componentPartialWeight,
+        };
+      })
       .filter(Boolean);
     const parsedSubInterval = this.parseIntervalIdYearTerm(
       String(courseEntry?.subIntervalId || courseEntry?.intervalId || "").trim(),
@@ -2498,20 +3207,48 @@ export default class NogaPlanner extends Component {
     this.setState({
       homeCoursesEditorOpen: true,
       homeCourseEditingKey: String(courseEntry?.key || "").trim(),
-      homeCourseOriginalId: String(courseEntry?.courseId || "").trim(),
+      homeCourseOriginalId: String(
+        courseEntry?.courseName || courseEntry?.courseId || "",
+      ).trim(),
       homeCourseOriginalIntervalId: String(
         courseEntry?.subIntervalId || courseEntry?.intervalId || "",
       ).trim(),
-      homeCourseIdDraft: String(courseEntry?.courseId || "").trim(),
+      homeCourseNameDraft: String(
+        matchedCourse?.course_name ||
+          matchedCourse?.name ||
+          courseEntry?.courseName ||
+          courseEntry?.courseCode ||
+          "",
+      ).trim(),
+      homeCourseIdDraft: String(
+        courseEntry?.courseName || courseEntry?.courseId || "",
+      ).trim(),
       homeCourseCodeDraft: String(courseEntry?.courseCode || "").trim(),
+      homeCourseComponentIdDraft: String(
+        courseEntry?.courseComponentId ||
+          courseEntry?.course_componentId ||
+          primaryCourseComponent?.componentId ||
+          primaryCourseComponent?.course_componentId ||
+          "",
+      ).trim(),
       homeCourseComponentDraft: componentDrafts,
       homeCourseTotalWeightDraft: String(
-        courseEntry?.courseTotalWeight || courseEntry?.course_totalWeight || "",
+        courseEntry?.courseWeight ||
+          courseEntry?.courseTotalWeight ||
+          courseEntry?.course_totalWeight ||
+          "",
       ).trim(),
       homeCourseSubIntervalYearDraft: String(parsedSubInterval?.year || "").trim(),
       homeCourseSubIntervalTermDraft: String(parsedSubInterval?.term || "").trim(),
-      homeCourseComponentIdDraft: "",
-      homeCourseComponentPartialWeightDraft: "",
+      homeCourseComponentPartialWeightDraft: String(
+        this.formatPlannerComponentWeightInputValue(
+          courseEntry?.componentWeightPercentage ||
+            courseEntry?.componentPartialWeight ||
+            primaryCourseComponent?.componentWeightPercentage ||
+            primaryCourseComponent?.componentPartialWeight ||
+            "",
+        ),
+      ).trim(),
       homeCourseComponentStatusDraft: "",
       homeCourseIntervalIdDraft: String(
         courseEntry?.subIntervalId || courseEntry?.intervalId || "",
@@ -2519,9 +3256,11 @@ export default class NogaPlanner extends Component {
     });
   };
   deleteHomeCourseEntry = async (courseEntry = {}) => {
-    const targetCourseId = String(courseEntry?.courseId || "").trim();
+    const targetCourseName = String(
+      courseEntry?.courseName || courseEntry?.courseId || "",
+    ).trim();
     const targetIntervalId = String(courseEntry?.intervalId || "").trim();
-    if (!targetCourseId || !targetIntervalId) {
+    if (!targetCourseName || !targetIntervalId) {
       return;
     }
     const plannerRoot = this.getResolvedPlannerRoot();
@@ -2542,7 +3281,9 @@ export default class NogaPlanner extends Component {
       return {
         ...intervalEntry,
         intervalCourses: currentIntervalCourses.filter(
-          (entry) => String(entry?.courseId || "").trim() !== targetCourseId,
+          (entry) =>
+            String(entry?.courseName || entry?.courseId || "").trim() !==
+            targetCourseName,
         ),
       };
     });
@@ -7254,7 +7995,9 @@ export default class NogaPlanner extends Component {
       return {
         course_code: String(course?.course_code || "").trim(),
         course_status: String(course?.course_status || "").trim(),
-        course_totalWeight: String(course?.course_totalWeight || "").trim(),
+        courseWeight: String(
+          course?.courseWeight || course?.course_totalWeight || "",
+        ).trim(),
         component_status: String(course?.component_status || "").trim(),
         course_exams: Array.isArray(course?.course_exams)
           ? course.course_exams
@@ -7391,8 +8134,8 @@ export default class NogaPlanner extends Component {
       savedCourseDraft: {
         course_code: String(selectedCourse?.course_code || "").trim(),
         course_status: String(selectedCourse?.course_status || "").trim(),
-        course_totalWeight: String(
-          selectedCourse?.course_totalWeight || "",
+        courseWeight: String(
+          selectedCourse?.courseWeight || selectedCourse?.course_totalWeight || "",
         ).trim(),
         component_status: String(selectedCourse?.component_status || "").trim(),
         course_components: [],
@@ -7708,8 +8451,10 @@ export default class NogaPlanner extends Component {
     } = this.state;
     const courseName = String(savedCourseDraft?.course_name || "").trim();
     const courseCode = String(savedCourseDraft?.course_code || "").trim();
-    const courseTotalWeight = String(
-      savedCourseDraft?.course_totalWeight || "",
+    const courseWeight = String(
+      savedCourseDraft?.courseWeight ||
+        savedCourseDraft?.course_totalWeight ||
+        "",
     ).trim();
     if (!courseName) {
       this.props.serverReply(NOGAPLANNER_TEXT.messages.genericRetry);
@@ -7761,7 +8506,7 @@ export default class NogaPlanner extends Component {
           body: JSON.stringify({
             course_name: courseName,
             course_code: courseCode,
-            course_totalWeight: courseTotalWeight || "",
+            courseWeight: courseWeight || "",
             components: stagedComponents.map((componentEntry) => ({
               course_componentId:
                 String(componentEntry?.course_componentId || "").trim() ||
@@ -7803,7 +8548,7 @@ export default class NogaPlanner extends Component {
       this.rememberPlannerInputEntries({
         course_name: courseName,
         course_code: courseCode,
-        course_totalWeight: courseTotalWeight,
+        courseWeight,
       });
       stagedComponents.forEach((componentEntry) => {
         this.rememberPlannerInputEntries({
@@ -7833,7 +8578,7 @@ export default class NogaPlanner extends Component {
         body: JSON.stringify({
           course_name: courseName,
           course_code: courseCode,
-          course_totalWeight: courseTotalWeight || "",
+          courseWeight: courseWeight || "",
           course_components: stagedComponents.map((componentEntry) => ({
             course_class: componentEntry.course_class || "-",
             normativeCourseYearNum: componentEntry.normativeCourseYearNum
@@ -7879,7 +8624,7 @@ export default class NogaPlanner extends Component {
     this.rememberPlannerInputEntries({
       course_name: courseName,
       course_code: courseCode,
-      course_totalWeight: courseTotalWeight,
+      courseWeight,
     });
     stagedComponents.forEach((componentEntry) => {
       this.rememberPlannerInputEntries({
@@ -8047,9 +8792,9 @@ export default class NogaPlanner extends Component {
       initialPlannerRoot?.programTermsPerYear ?? "",
     ).trim();
     const initialPlannerProgramExams = Array.isArray(
-      initialPlannerRoot?.programExams,
+      initialPlannerRoot?.programExamClasses,
     )
-      ? initialPlannerRoot.programExams
+      ? initialPlannerRoot.programExamClasses
           .map((entry) => String(entry || "").trim())
           .filter(Boolean)
       : [];
@@ -8170,6 +8915,7 @@ export default class NogaPlanner extends Component {
       homeManualIntervalsDraftList: [],
       homeDeletedIntervalIds: [],
       homeCurrentIntervalDraft: "",
+      homeCurrentIntervalStatusDraft: "Normal",
       plannerRoot:
         initialPlannerRoot && typeof initialPlannerRoot === "object"
           ? initialPlannerRoot
@@ -8193,6 +8939,7 @@ export default class NogaPlanner extends Component {
       homeCourseEditingKey: "",
       homeCourseOriginalId: "",
       homeCourseOriginalIntervalId: "",
+      homeCourseNameDraft: "",
       homeCourseIdDraft: "",
       homeCourseCodeDraft: "",
       homeCourseComponentDraft: [],
@@ -8203,6 +8950,12 @@ export default class NogaPlanner extends Component {
       homeCourseComponentPartialWeightDraft: "",
       homeCourseComponentStatusDraft: "",
       homeCourseIntervalIdDraft: "",
+      homeCourseComponentLecturesEditorOpen: false,
+      homeCourseComponentLectureCourseIdDraft: "",
+      homeCourseComponentLectureIntervalIdDraft: "",
+      homeCourseComponentLectureComponentIdDraft: "",
+      homeCourseComponentLectureNameDraft: "",
+      homeCourseComponentLectureDraftList: [],
       homePanelModeTab: "intervals",
       plannerPendingRequests: 0,
       plannerPendingLabel: "",
@@ -8551,8 +9304,10 @@ export default class NogaPlanner extends Component {
     const nextPropsHasComponents =
       Array.isArray(nextPropsPlannerRoot?.programComponents) &&
       nextPropsPlannerRoot.programComponents.length > 0;
-    const nextPropsProgramExams = Array.isArray(nextPropsPlannerRoot?.programExams)
-      ? nextPropsPlannerRoot.programExams
+    const nextPropsProgramExams = Array.isArray(
+      nextPropsPlannerRoot?.programExamClasses,
+    )
+      ? nextPropsPlannerRoot.programExamClasses
           .map((entry) => String(entry || "").trim())
           .filter(Boolean)
       : [];
@@ -8730,11 +9485,11 @@ export default class NogaPlanner extends Component {
       return;
     }
     if (
-      Array.isArray(nextPropsPlannerRoot?.programExams) &&
-      nextPropsPlannerRoot.programExams.length > 0 &&
+      Array.isArray(nextPropsPlannerRoot?.programExamClasses) &&
+      nextPropsPlannerRoot.programExamClasses.length > 0 &&
       !this.state?.homeExamsCardSet
     ) {
-      const nextProgramExams = nextPropsPlannerRoot.programExams
+      const nextProgramExams = nextPropsPlannerRoot.programExamClasses
         .map((entry) => String(entry || "").trim())
         .filter(Boolean);
       this.setState({
@@ -10101,44 +10856,77 @@ export default class NogaPlanner extends Component {
               }
               return {
                 key: `${subIntervalId}_${courseIndex}_${String(
-                  courseEntry?.courseId || "",
+                  courseEntry?.courseName || courseEntry?.courseId || "",
                 ).trim()}_${normalizedComponent.componentId}_${componentIndex}`,
                 ...normalizedComponent,
+                componentLectures: Array.isArray(
+                  normalizedComponent?.componentLectures,
+                )
+                  ? normalizedComponent.componentLectures
+                  : [],
               };
             })
             .filter(Boolean);
-          return {
-            key: `${subIntervalId}_${courseIndex}_${String(
-              courseEntry?.courseId || "",
-            ).trim()}`,
-            courseId: String(courseEntry?.courseId || "").trim(),
-            courseCode: String(courseEntry?.courseCode || "").trim(),
-            subIntervalId,
-            intervalId: subIntervalId,
-            components:
-              courseComponents.length > 0
-                ? courseComponents
+        return {
+          key: `${subIntervalId}_${courseIndex}_${String(
+            courseEntry?.courseName || courseEntry?.courseId || "",
+          ).trim()}`,
+          courseId: String(
+            courseEntry?.courseName || courseEntry?.courseId || "",
+          ).trim(),
+          courseName: String(
+            courseEntry?.courseName || courseEntry?.courseId || "",
+          ).trim(),
+          courseCode: String(courseEntry?.courseCode || "").trim(),
+          courseComponentId: String(
+            courseEntry?.courseComponentId || courseEntry?.course_componentId || "",
+          ).trim(),
+          subIntervalId,
+          intervalId: subIntervalId,
+          components:
+            courseComponents.length > 0
+              ? courseComponents
                 : [
                     {
                       key: `${subIntervalId}_${courseIndex}_${String(
-                        courseEntry?.courseId || "",
+                        courseEntry?.courseName || courseEntry?.courseId || "",
                       ).trim()}_empty`,
                       componentId: "-",
-                      componentPartialWeight: "-",
+                      componentWeightPercentage: "-",
                       componentStatus: "-",
                     },
                   ],
           };
         });
       })
-      .filter((entry) => Boolean(entry.courseId) && Boolean(entry.intervalId));
+      .filter((entry) => Boolean(entry.courseName) && Boolean(entry.intervalId));
     const coursesHasRegisteredValue = homeCoursesRows.length > 0;
     const coursesEditorOpen = Boolean(this.state?.homeCoursesEditorOpen);
+    const courseNameDraftValue = String(
+      this.state?.homeCourseNameDraft || "",
+    ).trim();
     const courseIdDraftValue = String(
       this.state?.homeCourseIdDraft || "",
     ).trim();
     const courseCodeDraftValue = String(
       this.state?.homeCourseCodeDraft || "",
+    ).trim();
+    const courseWeightDraftValue = String(
+      this.state?.homeCourseTotalWeightDraft || "",
+    ).trim();
+    const resolvedCourseDraft = this.resolvePlannerCourseDraft({
+      courseId: courseIdDraftValue,
+      courseName: courseNameDraftValue,
+      courseCode: courseCodeDraftValue,
+    });
+    const resolvedCourseIdDraftValue = String(
+      resolvedCourseDraft?._id || courseIdDraftValue || "",
+    ).trim();
+    const resolvedCourseCodeDraftValue = String(
+      courseCodeDraftValue ||
+        resolvedCourseDraft?.course_code ||
+        resolvedCourseDraft?.code ||
+        "",
     ).trim();
     const courseSubIntervalYearDraftValue = String(
       this.state?.homeCourseSubIntervalYearDraft || "",
@@ -10153,7 +10941,7 @@ export default class NogaPlanner extends Component {
     const courseComponentIdDraftValue = String(
       this.state?.homeCourseComponentIdDraft || "",
     ).trim();
-    const courseComponentPartialWeightDraftValue = String(
+    const componentWeightPercentageDraftValue = String(
       this.state?.homeCourseComponentPartialWeightDraft || "",
     ).trim();
     const courseComponentStatusDraftValue = String(
@@ -10183,16 +10971,27 @@ export default class NogaPlanner extends Component {
       "ongoing",
     ];
     const canAddCourseComponentDraft = Boolean(
-      courseComponentIdDraftValue &&
-        courseComponentPartialWeightDraftValue &&
-        courseComponentStatusDraftValue,
+      courseComponentIdDraftValue && componentWeightPercentageDraftValue,
     );
     const canSubmitCourses = Boolean(
-      courseIdDraftValue &&
+      courseNameDraftValue &&
         courseCodeDraftValue &&
-        courseComponentDraftValues.length > 0 &&
+        courseWeightDraftValue &&
+        courseComponentIdDraftValue &&
+        componentWeightPercentageDraftValue &&
         courseIntervalDraftValue,
     );
+    const courseComponentDraftValuesForSubmit =
+      courseComponentDraftValues.length > 0
+          ? courseComponentDraftValues
+          : canAddCourseComponentDraft
+            ? [
+                this.normalizeHomeCourseComponentDraftEntry({
+                  componentId: courseComponentIdDraftValue,
+                  componentWeightPercentage: componentWeightPercentageDraftValue,
+                }),
+              ].filter(Boolean)
+            : [];
     const homeCoursesPreviewRows = (() => {
       const editingKey = String(this.state?.homeCourseEditingKey || "").trim();
       const nextRows = editingKey
@@ -10201,8 +11000,12 @@ export default class NogaPlanner extends Component {
           )
         : [...homeCoursesRows];
       const hasDraftValues = Boolean(
-        courseIdDraftValue ||
-          courseCodeDraftValue ||
+        resolvedCourseIdDraftValue ||
+          courseNameDraftValue ||
+          resolvedCourseCodeDraftValue ||
+          courseWeightDraftValue ||
+          courseComponentIdDraftValue ||
+          componentWeightPercentageDraftValue ||
           courseComponentDraftValues.length > 0 ||
           courseIntervalDraftValue,
       );
@@ -10211,17 +11014,22 @@ export default class NogaPlanner extends Component {
       }
       nextRows.unshift({
         key: `draft_${editingKey || "new"}`,
-        courseId: courseIdDraftValue || "-",
-        courseCode: courseCodeDraftValue || "-",
+        courseId: resolvedCourseIdDraftValue || "-",
+        courseName: courseNameDraftValue || "-",
+        courseCode: resolvedCourseCodeDraftValue || "-",
+        courseWeight: courseWeightDraftValue || "-",
+        courseComponentId: courseComponentIdDraftValue || "-",
+        componentWeightPercentage:
+          componentWeightPercentageDraftValue || "-",
         subIntervalId: courseIntervalDraftValue || "-",
         intervalId: courseIntervalDraftValue || "-",
         components:
-          courseComponentDraftValues.length > 0
-            ? courseComponentDraftValues
+          courseComponentDraftValuesForSubmit.length > 0
+            ? courseComponentDraftValuesForSubmit
             : [
                 {
                   componentId: "-",
-                  componentPartialWeight: "-",
+                  componentWeightPercentage: "-",
                   componentStatus: "-",
                 },
               ],
@@ -10259,6 +11067,7 @@ export default class NogaPlanner extends Component {
                     homeCourseEditingKey: "",
                     homeCourseOriginalId: "",
                     homeCourseOriginalIntervalId: "",
+                    homeCourseNameDraft: "",
                     homeCourseIdDraft: "",
                     homeCourseCodeDraft: "",
                     homeCourseComponentDraft: [],
@@ -10292,18 +11101,18 @@ export default class NogaPlanner extends Component {
             <div className="nogaPlanner_homeIntervalsAddRow">
               <div className="nogaPlanner_homeIntervalsMiniFormField">
                 <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                  Course ID
+                  Course name
                 </span>
                 <input
                   type="text"
-                  name="homeCourseId"
+                  name="homeCourseName"
                   className="nogaPlanner_homeIntervalsInput"
-                  placeholder="Course ID"
+                  placeholder="Course name"
                   disabled={isHomeCardsLocked}
-                  value={String(this.state?.homeCourseIdDraft || "")}
+                  value={String(this.state?.homeCourseNameDraft || "")}
                   onChange={(event) =>
                     this.setState({
-                      homeCourseIdDraft: String(event.target.value || ""),
+                      homeCourseNameDraft: String(event.target.value || ""),
                     })
                   }
                 />
@@ -10322,6 +11131,24 @@ export default class NogaPlanner extends Component {
                   onChange={(event) =>
                     this.setState({
                       homeCourseCodeDraft: String(event.target.value || ""),
+                    })
+                  }
+                />
+              </div>
+              <div className="nogaPlanner_homeIntervalsMiniFormField">
+                <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                  Course weight
+                </span>
+                <input
+                  type="number"
+                  name="homeCourseWeight"
+                  className="nogaPlanner_homeIntervalsInput"
+                  placeholder="Course weight"
+                  disabled={isHomeCardsLocked}
+                  value={String(this.state?.homeCourseTotalWeightDraft || "")}
+                  onChange={(event) =>
+                    this.setState({
+                      homeCourseTotalWeightDraft: String(event.target.value || ""),
                     })
                   }
                 />
@@ -10385,13 +11212,13 @@ export default class NogaPlanner extends Component {
               </div>
               <div className="nogaPlanner_homeIntervalsMiniFormField">
                 <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                  Partial Weight
+                  Component weight percentage
                 </span>
                 <input
-                  type="text"
+                  type="number"
                   name="homeCourseComponentPartialWeight"
                   className="nogaPlanner_homeIntervalsInput"
-                  placeholder="Partial Weight"
+                  placeholder="Component weight percentage"
                   disabled={isHomeCardsLocked}
                   value={String(
                     this.state?.homeCourseComponentPartialWeightDraft || "",
@@ -10474,12 +11301,14 @@ export default class NogaPlanner extends Component {
         <table className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCoursesMiniTable">
           <thead>
             <tr>
-              <th rowSpan={2}>Course ID</th>
+              <th rowSpan={2}>Course name</th>
               <th rowSpan={2}>Course Code</th>
+              <th rowSpan={2}>Course weight</th>
               <th colSpan={2}>Program sub-Interval</th>
               <th rowSpan={2}>Components</th>
-              <th rowSpan={2}>Component weight</th>
+              <th rowSpan={2}>Component weight percentage</th>
               <th rowSpan={2}>Component status</th>
+              <th rowSpan={2}>Actions</th>
             </tr>
             <tr>
               <th>YEAR</th>
@@ -10489,7 +11318,7 @@ export default class NogaPlanner extends Component {
           <tbody>
             {homeCoursesPreviewRows.length === 0 ? (
               <tr>
-                <td colSpan={7}>No courses yet.</td>
+                <td colSpan={9}>No courses yet.</td>
               </tr>
             ) : (
               homeCoursesPreviewRows.flatMap((courseEntry) => {
@@ -10506,7 +11335,7 @@ export default class NogaPlanner extends Component {
                         {
                           key: `${courseEntry?.key || "course"}_empty`,
                           componentId: "-",
-                          componentPartialWeight: "-",
+                          componentWeightPercentage: "-",
                           componentStatus: "-",
                         },
                       ];
@@ -10518,17 +11347,52 @@ export default class NogaPlanner extends Component {
                   >
                     {index === 0 ? (
                       <>
-                        <td rowSpan={rowSpan}>{courseEntry.courseId}</td>
+                        <td rowSpan={rowSpan}>{courseEntry.courseName || courseEntry.courseId}</td>
                         <td rowSpan={rowSpan}>{courseEntry.courseCode || "-"}</td>
+                        <td rowSpan={rowSpan}>{courseEntry.courseWeight || "-"}</td>
                         <td rowSpan={rowSpan}>{intervalDisplay.year || "-"}</td>
                         <td rowSpan={rowSpan}>{intervalDisplay.term || "-"}</td>
                       </>
                     ) : null}
                     <td>{componentEntry?.componentId || "-"}</td>
-                    <td>{componentEntry?.componentPartialWeight || "-"}</td>
+                    <td>
+                      {this.formatPlannerComponentWeightPercentage(
+                        componentEntry?.componentWeightPercentage ||
+                          componentEntry?.componentPartialWeight ||
+                          "",
+                        !courseEntry?.isPreview,
+                      )}
+                    </td>
                     <td>
                       {formatPlannerStatusLabel(componentEntry?.componentStatus)}
                     </td>
+                    {index === 0 ? (
+                      <td rowSpan={rowSpan}>
+                        {courseEntry?.isPreview ? (
+                          "-"
+                        ) : (
+                          <div className="nogaPlanner_homeIntervalRowActions">
+                            <button
+                              type="button"
+                              className="nogaPlanner_homePanelCardSetBtn"
+                              disabled={isHomeCardsLocked}
+                              onClick={() => this.editHomeCourseEntry(courseEntry)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                              aria-label="Delete course metadata row"
+                              disabled={isHomeCardsLocked}
+                              onClick={() => this.deleteHomeCourseEntry(courseEntry)}
+                            >
+                              <i className="fi fi-br-cross" aria-hidden="true" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ));
               })
@@ -10603,8 +11467,8 @@ export default class NogaPlanner extends Component {
     const plannerComponentIds = plannerComponents
       .map((entry) => this.normalizeProgramComponentValue(entry))
       .filter(Boolean);
-    const plannerExams = Array.isArray(plannerRoot?.programExams)
-      ? plannerRoot.programExams
+    const plannerExams = Array.isArray(plannerRoot?.programExamClasses)
+      ? plannerRoot.programExamClasses
           .map((entry) => String(entry || "").trim())
           .filter(Boolean)
       : [];
@@ -10714,7 +11578,7 @@ export default class NogaPlanner extends Component {
               year: parsedInterval.year || "-",
               term: parsedInterval.term || "-",
               intervalStatus:
-                String(entry?.intervalStatus || "TBD").trim() || "TBD",
+                String(entry?.intervalStatus || "Normal").trim() || "Normal",
               startDate: "",
               endDate: "",
             };
@@ -10747,7 +11611,7 @@ export default class NogaPlanner extends Component {
             year: intervalYear || "-",
             term: intervalTerm || "-",
             intervalStatus:
-              String(entry?.intervalStatus || "TBD").trim() || "TBD",
+              String(entry?.intervalStatus || "Normal").trim() || "Normal",
             startDate,
             endDate,
           };
@@ -10785,7 +11649,7 @@ export default class NogaPlanner extends Component {
               }
               return {
                 key: `${subIntervalId}_${courseIndex}_${String(
-                  courseEntry?.courseId || "",
+                  courseEntry?.courseName || courseEntry?.courseId || "",
                 ).trim()}_${normalizedComponent.componentId}_${componentIndex}`,
                 ...normalizedComponent,
               };
@@ -10793,12 +11657,18 @@ export default class NogaPlanner extends Component {
             .filter(Boolean);
           return {
             key: `${subIntervalId}_${courseIndex}_${String(
-              courseEntry?.courseId || "",
+              courseEntry?.courseName || courseEntry?.courseId || "",
             ).trim()}`,
-            courseId: String(courseEntry?.courseId || "").trim(),
+            courseId: String(
+              courseEntry?.courseName || courseEntry?.courseId || "",
+            ).trim(),
+            courseName: String(
+              courseEntry?.courseName || courseEntry?.courseId || "",
+            ).trim(),
             courseCode: String(courseEntry?.courseCode || "").trim(),
-            courseTotalWeight: String(
-              courseEntry?.courseTotalWeight ||
+            courseWeight: String(
+              courseEntry?.courseWeight ||
+                courseEntry?.courseTotalWeight ||
                 courseEntry?.course_totalWeight ||
                 "",
             ).trim(),
@@ -10807,29 +11677,46 @@ export default class NogaPlanner extends Component {
             components:
               courseComponents.length > 0
                 ? courseComponents
-            : [
+                : [
                     {
                       key: `${subIntervalId}_${courseIndex}_${String(
-                        courseEntry?.courseId || "",
+                        courseEntry?.courseName || courseEntry?.courseId || "",
                       ).trim()}_empty`,
                       componentId: "-",
-                      componentPartialWeight: "-",
+                      componentWeightPercentage: "-",
                       componentStatus: "-",
                     },
                   ],
           };
         });
       })
-      .filter((entry) => Boolean(entry.courseId) && Boolean(entry.intervalId));
+      .filter((entry) => Boolean(entry.courseName) && Boolean(entry.intervalId));
     const coursesHasRegisteredValue = homeCoursesRows.length > 0;
     const coursesEditorOpen = Boolean(this.state?.homeCoursesEditorOpen);
+    const courseNameDraftValueLegacy = String(
+      this.state?.homeCourseNameDraft || "",
+    ).trim();
     const courseIdDraftValue = String(
       this.state?.homeCourseIdDraft || "",
     ).trim();
     const courseCodeDraftValue = String(
       this.state?.homeCourseCodeDraft || "",
     ).trim();
-    const courseTotalWeightDraftValue = String(
+    const resolvedCourseDraftLegacy = this.resolvePlannerCourseDraft({
+      courseId: courseIdDraftValue,
+      courseName: courseNameDraftValueLegacy,
+      courseCode: courseCodeDraftValue,
+    });
+    const resolvedCourseIdDraftValueLegacy = String(
+      resolvedCourseDraftLegacy?._id || courseIdDraftValue || "",
+    ).trim();
+    const resolvedCourseCodeDraftValueLegacy = String(
+      courseCodeDraftValue ||
+        resolvedCourseDraftLegacy?.course_code ||
+        resolvedCourseDraftLegacy?.code ||
+        "",
+    ).trim();
+    const courseWeightDraftValue = String(
       this.state?.homeCourseTotalWeightDraft || "",
     ).trim();
     const courseSubIntervalYearDraftValue = String(
@@ -10845,7 +11732,7 @@ export default class NogaPlanner extends Component {
     const courseComponentIdDraftValue = String(
       this.state?.homeCourseComponentIdDraft || "",
     ).trim();
-    const courseComponentPartialWeightDraftValue = String(
+    const componentWeightPercentageDraftValue = String(
       this.state?.homeCourseComponentPartialWeightDraft || "",
     ).trim();
     const courseComponentStatusDraftValue = String(
@@ -10875,15 +11762,27 @@ export default class NogaPlanner extends Component {
     ];
     const canAddCourseComponentDraft = Boolean(
       courseComponentIdDraftValue &&
-      courseComponentPartialWeightDraftValue &&
-      courseComponentStatusDraftValue,
+      componentWeightPercentageDraftValue,
     );
     const canSubmitCourses = Boolean(
-      courseIdDraftValue &&
-      courseCodeDraftValue &&
-      courseComponentDraftValues.length > 0 &&
-      courseIntervalDraftValue,
+      courseNameDraftValueLegacy &&
+        courseCodeDraftValue &&
+        courseWeightDraftValue &&
+        courseComponentIdDraftValue &&
+        componentWeightPercentageDraftValue &&
+        courseIntervalDraftValue,
     );
+    const courseComponentDraftValuesForSubmit =
+      courseComponentDraftValues.length > 0
+          ? courseComponentDraftValues
+          : canAddCourseComponentDraft
+            ? [
+                this.normalizeHomeCourseComponentDraftEntry({
+                  componentId: courseComponentIdDraftValue,
+                  componentWeightPercentage: componentWeightPercentageDraftValue,
+                }),
+              ].filter(Boolean)
+            : [];
     const programStartYearEditorOpen = Boolean(
       this.state?.homeProgramStartYearEditorOpen,
     );
@@ -11066,33 +11965,334 @@ export default class NogaPlanner extends Component {
           )
         : [...homeCoursesRows];
       const hasDraftValues = Boolean(
-        courseIdDraftValue ||
-        courseCodeDraftValue ||
-        courseComponentDraftValues.length > 0 ||
-        courseIntervalDraftValue,
+        resolvedCourseIdDraftValueLegacy ||
+          courseNameDraftValueLegacy ||
+          resolvedCourseCodeDraftValueLegacy ||
+          courseWeightDraftValue ||
+          courseComponentIdDraftValue ||
+          componentWeightPercentageDraftValue ||
+          courseComponentDraftValues.length > 0 ||
+          courseIntervalDraftValue,
       );
       if (!coursesEditorOpen || !hasDraftValues) {
         return nextRows;
       }
       nextRows.unshift({
         key: `draft_${editingKey || "new"}`,
-        courseId: courseIdDraftValue || "-",
-        courseCode: courseCodeDraftValue || "-",
+        courseId: resolvedCourseIdDraftValueLegacy || "-",
+        courseName: courseNameDraftValueLegacy || "-",
+        courseCode: resolvedCourseCodeDraftValueLegacy || "-",
+        courseWeight: courseWeightDraftValue || "-",
+        courseComponentId: courseComponentIdDraftValue || "-",
+        componentWeightPercentage:
+          componentWeightPercentageDraftValue || "-",
         subIntervalId: courseIntervalDraftValue || "-",
         intervalId: courseIntervalDraftValue || "-",
         components:
-          courseComponentDraftValues.length > 0
-            ? courseComponentDraftValues
+          courseComponentDraftValuesForSubmit.length > 0
+            ? courseComponentDraftValuesForSubmit
             : [
                 {
                   componentId: "-",
-                  componentPartialWeight: "-",
+                  componentWeightPercentage: "-",
                   componentStatus: "-",
                 },
               ],
         isPreview: true,
       });
       return nextRows;
+    })();
+    const plannerCoursesById = new Map(
+      (Array.isArray(this.state?.courses) ? this.state.courses : [])
+        .map((courseEntry) => {
+          const courseId = String(courseEntry?._id || "").trim();
+          if (!courseId) {
+            return null;
+          }
+          return [courseId, courseEntry];
+        })
+        .filter(Boolean),
+    );
+    const plannerCoursesByLookupKey = new Map();
+    plannerCoursesById.forEach((courseEntry, courseId) => {
+      const courseName = String(courseEntry?.course_name || courseEntry?.name || "").trim();
+      const courseCode = String(courseEntry?.course_code || courseEntry?.code || "").trim();
+      const lookupKeys = [courseId, courseName, courseCode]
+        .map((entry) => String(entry || "").trim().toLowerCase())
+        .filter(Boolean);
+      lookupKeys.forEach((lookupKey) => {
+        if (!plannerCoursesByLookupKey.has(lookupKey)) {
+          plannerCoursesByLookupKey.set(lookupKey, courseEntry);
+        }
+      });
+    });
+    const resolvePlannerCourseEntry = (courseEntry = {}) => {
+      const directCourseId = String(courseEntry?.courseId || "").trim();
+      const directCourseCode = String(courseEntry?.courseCode || "").trim();
+      const directCourseName = String(courseEntry?.courseName || "").trim();
+      return (
+        plannerCoursesByLookupKey.get(directCourseId.toLowerCase()) ||
+        plannerCoursesByLookupKey.get(directCourseCode.toLowerCase()) ||
+        plannerCoursesByLookupKey.get(directCourseName.toLowerCase()) ||
+        null
+      );
+    };
+    const homeCourseNameOptions = Array.from(plannerCoursesById.values())
+      .map((courseEntry) => ({
+        value: String(courseEntry?._id || "").trim(),
+        label: String(courseEntry?.course_name || courseEntry?.name || "").trim(),
+        code: String(courseEntry?.course_code || courseEntry?.code || "").trim(),
+      }))
+      .filter((entry) => entry.value && entry.label)
+      .sort((left, right) => left.label.localeCompare(right.label));
+    const homeCourseNamesPerSubIntervalRows = homeCoursesPreviewRows.map((courseEntry) => {
+      const subIntervalId = String(
+        courseEntry?.subIntervalId || courseEntry?.intervalId || "",
+      ).trim();
+      const intervalDisplay = this.parseIntervalIdYearTerm(subIntervalId);
+      const mappedCourse = resolvePlannerCourseEntry(courseEntry);
+      const sourceCourseComponents = Array.isArray(courseEntry?.courseComponents)
+        ? courseEntry.courseComponents
+        : Array.isArray(courseEntry?.components)
+          ? courseEntry.components
+          : [];
+      const primaryCourseComponent = sourceCourseComponents.find((entry) => {
+        const nextComponentId = String(
+          entry?.componentId || entry?.course_componentId || "",
+        ).trim();
+        return Boolean(nextComponentId);
+      }) || null;
+      const courseName = String(
+        courseEntry?.courseName ||
+          mappedCourse?.course_name ||
+          mappedCourse?.name ||
+          courseEntry?.courseId ||
+          "",
+      ).trim();
+      return {
+        key: String(courseEntry?.key || `${courseName}_${subIntervalId}`).trim(),
+        courseName: courseName || "-",
+        courseCode: String(
+          courseEntry?.courseCode || mappedCourse?.course_code || mappedCourse?.code || "",
+        ).trim() || "-",
+        courseWeight: String(
+          courseEntry?.courseWeight ||
+            courseEntry?.courseTotalWeight ||
+            courseEntry?.course_totalWeight ||
+            "",
+        ).trim() || "-",
+        courseComponentId: String(
+          courseEntry?.courseComponentId ||
+            mappedCourse?.courseComponentId ||
+            primaryCourseComponent?.componentId ||
+            primaryCourseComponent?.course_componentId ||
+            courseEntry?.course_componentId ||
+            "",
+        ).trim() || "-",
+        componentWeightPercentage: String(
+          courseEntry?.componentWeightPercentage ||
+            primaryCourseComponent?.componentWeightPercentage ||
+            primaryCourseComponent?.componentPartialWeight ||
+            courseEntry?.componentPartialWeight ||
+            "",
+        ).trim() || "-",
+        subIntervalId,
+        subIntervalLabel:
+          intervalDisplay?.year && intervalDisplay?.term
+            ? `${intervalDisplay.year} / ${intervalDisplay.term}`
+            : subIntervalId || "-",
+        isPreview: Boolean(courseEntry?.isPreview),
+      };
+    });
+    const courseNameById = new Map(
+      homeCoursesRows
+        .map((courseEntry) => [
+          String(courseEntry?.courseId || "").trim(),
+          String(courseEntry?.courseName || "").trim(),
+        ])
+        .filter(([courseId, courseName]) => courseId && courseName),
+    );
+    const homeCourseComponentLectureRows = homeCoursesRows
+      .flatMap((courseEntry) => {
+        const subIntervalId = String(
+          courseEntry?.subIntervalId || courseEntry?.intervalId || "",
+        ).trim();
+        const intervalDisplay = this.parseIntervalIdYearTerm(subIntervalId);
+        const mappedCourse = resolvePlannerCourseEntry(courseEntry);
+        const courseName = String(
+          courseEntry?.courseName ||
+            courseNameById.get(String(courseEntry?.courseId || "").trim()) ||
+            mappedCourse?.course_name ||
+            mappedCourse?.name ||
+            courseEntry?.courseId ||
+            "",
+        ).trim();
+        return (Array.isArray(courseEntry?.components)
+          ? courseEntry.components
+          : []
+        ).flatMap((componentEntry, componentIndex) => {
+          const lectures = Array.isArray(componentEntry?.componentLectures)
+            ? componentEntry.componentLectures
+            : [];
+          return lectures.map((lectureEntry, lectureIndex) => ({
+            key: `${courseEntry.key}_${componentEntry.key || componentIndex}_${lectureIndex}`,
+            courseId: String(
+              courseEntry?.courseName || courseEntry?.courseId || "",
+            ).trim(),
+            courseName: courseName || "-",
+            courseCode: String(courseEntry?.courseCode || "").trim() || "-",
+            subIntervalId,
+            subIntervalLabel:
+              intervalDisplay?.year && intervalDisplay?.term
+                ? `${intervalDisplay.year} / ${intervalDisplay.term}`
+                : subIntervalId || "-",
+            componentId: String(componentEntry?.componentId || "").trim() || "-",
+            lectureName:
+              String(lectureEntry?.lectureName || lectureEntry?.lectureId || "")
+                .trim() || "-",
+          }));
+        });
+      })
+      .filter(Boolean);
+    const homeCourseComponentLectureEditorOpen = Boolean(
+      this.state?.homeCourseComponentLecturesEditorOpen,
+    );
+    const homeCourseComponentLectureCourseIdDraftValue = String(
+      this.state?.homeCourseComponentLectureCourseIdDraft || "",
+    ).trim();
+    const homeCourseComponentLectureIntervalDraftValue = String(
+      this.state?.homeCourseComponentLectureIntervalIdDraft || "",
+    ).trim();
+    const homeCourseComponentLectureComponentIdDraftValue = String(
+      this.state?.homeCourseComponentLectureComponentIdDraft || "",
+    ).trim();
+    const homeCourseComponentLectureNameDraftValue = String(
+      this.state?.homeCourseComponentLectureNameDraft || "",
+    ).trim();
+    const homeCourseComponentLectureDraftValues = Array.from(
+      new Map(
+        (Array.isArray(this.state?.homeCourseComponentLectureDraftList)
+          ? this.state.homeCourseComponentLectureDraftList
+          : []
+        )
+          .map((entry) => ({
+            courseId: String(
+              entry?.courseName || entry?.courseId || "",
+            ).trim(),
+            intervalId: String(entry?.intervalId || "").trim(),
+            componentId: String(entry?.componentId || "").trim(),
+            lectureId: String(
+              entry?.lectureName || entry?.lectureId || "",
+            ).trim(),
+            lectureContent: Array.isArray(entry?.lectureContent)
+              ? entry.lectureContent
+              : [],
+          }))
+          .filter(
+            (entry) =>
+              entry.courseId &&
+              entry.intervalId &&
+              entry.componentId &&
+              entry.lectureId,
+          )
+          .map((entry) => [
+            `${entry.courseId}_${entry.intervalId}_${entry.componentId}_${entry.lectureId}`,
+            entry,
+          ]),
+      ).values(),
+    );
+    const homeCourseComponentLectureCourseOptions = homeCoursesRows
+      .filter(
+        (entry) =>
+          !homeCourseComponentLectureIntervalDraftValue ||
+          String(entry?.intervalId || "").trim() ===
+            homeCourseComponentLectureIntervalDraftValue,
+      )
+      .map((entry) => {
+        const selectedCourseName = String(
+          entry?.courseName || entry?.courseId || "",
+        ).trim();
+        if (!selectedCourseName) {
+          return null;
+        }
+        const mappedCourse = plannerCoursesById.get(
+          String(entry?.courseId || "").trim(),
+        );
+        const intervalDisplay = this.parseIntervalIdYearTerm(
+          String(entry?.subIntervalId || entry?.intervalId || "").trim(),
+        );
+        const courseLabel = String(
+          mappedCourse?.course_name ||
+            mappedCourse?.name ||
+            entry?.courseName ||
+            entry?.courseCode ||
+            selectedCourseName,
+        ).trim();
+        return {
+          value: selectedCourseName,
+          label:
+            `${courseLabel || entry?.courseCode || "-"} ${intervalDisplay.year && intervalDisplay.term ? `(${intervalDisplay.year}/${intervalDisplay.term})` : ""}`.trim(),
+        };
+      })
+      .filter(Boolean);
+    const homeCourseComponentLectureComponentOptions = homeCoursesRows
+      .filter(
+        (entry) =>
+          (!homeCourseComponentLectureCourseIdDraftValue ||
+            String(entry?.courseName || entry?.courseId || "").trim() ===
+              homeCourseComponentLectureCourseIdDraftValue) &&
+          (!homeCourseComponentLectureIntervalDraftValue ||
+            String(entry?.intervalId || "").trim() ===
+              homeCourseComponentLectureIntervalDraftValue),
+      )
+      .flatMap((entry) =>
+        (Array.isArray(entry?.components) ? entry.components : []).map(
+          (componentEntry) => ({
+            value: String(componentEntry?.componentId || "").trim(),
+            label: String(componentEntry?.componentId || "").trim(),
+          }),
+        ),
+      )
+      .filter((entry) => entry.value);
+    const canAddCourseComponentLectureDraft = Boolean(
+      homeCourseComponentLectureCourseIdDraftValue &&
+        homeCourseComponentLectureIntervalDraftValue &&
+        homeCourseComponentLectureComponentIdDraftValue &&
+        homeCourseComponentLectureNameDraftValue,
+    );
+    const canSubmitCourseComponentLectures = Boolean(
+      homeCourseComponentLectureDraftValues.length > 0,
+    );
+    const homeCourseComponentLecturePreviewRows = (() => {
+      const draftRows = homeCourseComponentLectureDraftValues.map((entry) => {
+        const courseEntry = homeCoursesRows.find(
+          (row) =>
+            String(row?.courseName || row?.courseId || "").trim() ===
+              entry.courseId &&
+            String(row?.intervalId || "").trim() === entry.intervalId,
+        );
+        const courseName = String(
+          courseEntry?.courseName ||
+            courseEntry?.courseCode ||
+            entry.courseId,
+        ).trim();
+        const intervalDisplay = this.parseIntervalIdYearTerm(entry.intervalId);
+        return {
+          key: `draft_${entry.courseId}_${entry.intervalId}_${entry.componentId}_${entry.lectureId}`,
+          courseId: entry.courseId,
+          courseName: courseName || "-",
+          courseCode: String(courseEntry?.courseCode || "").trim() || "-",
+          subIntervalId: entry.intervalId,
+          subIntervalLabel:
+            intervalDisplay?.year && intervalDisplay?.term
+              ? `${intervalDisplay.year} / ${intervalDisplay.term}`
+              : entry.intervalId || "-",
+          componentId: entry.componentId,
+          lectureName: entry.lectureId,
+          isPreview: true,
+        };
+      });
+      return [...homeCourseComponentLectureRows, ...draftRows];
     })();
     const { startYear: intervalStartYear, endYear: intervalEndYear } =
       this.getPlannerCurrentAcademicYearRange();
@@ -11145,6 +12345,7 @@ export default class NogaPlanner extends Component {
       const previewGeneratedEntries = generatedIntervals
         .map((entry) => {
           const intervalId = String(entry?.intervalId || "").trim();
+          const intervalNumValue = Number.parseInt(intervalId, 10);
           const subIntervalId = String(
             entry?.subIntervalId || entry?.subintervalId || "",
           ).trim();
@@ -11157,12 +12358,13 @@ export default class NogaPlanner extends Component {
           return {
             key: subIntervalId,
             intervalId,
+            intervalNum: Number.isInteger(intervalNumValue) ? intervalNumValue : null,
             subIntervalId,
             regular: typeof entry?.regular === "boolean" ? entry.regular : true,
             year: parsedInterval.year || "-",
             term: parsedInterval.term || "-",
             intervalStatus:
-              String(entry?.intervalStatus || "TBD").trim() || "TBD",
+              String(entry?.intervalStatus || "Normal").trim() || "Normal",
             startDate: "",
             endDate: "",
             isPreview: true,
@@ -11173,6 +12375,7 @@ export default class NogaPlanner extends Component {
       const previewManualEntries = manualIntervalsDraftList
         .map((entry) => {
           const intervalId = String(entry?.intervalId || "").trim();
+          const intervalNumValue = Number.parseInt(intervalId, 10);
           const subIntervalId = String(
             entry?.subIntervalId || entry?.subintervalId || entry?.intervalId || "",
           ).trim();
@@ -11185,13 +12388,14 @@ export default class NogaPlanner extends Component {
           return {
             key: subIntervalId,
             intervalId,
+            intervalNum: Number.isInteger(intervalNumValue) ? intervalNumValue : null,
             subIntervalId,
             regular:
               typeof entry?.regular === "boolean" ? entry.regular : false,
             year: parsedInterval.year || "-",
             term: parsedInterval.term || "-",
             intervalStatus:
-              String(entry?.intervalStatus || "TBD").trim() || "TBD",
+              String(entry?.intervalStatus || "Normal").trim() || "Normal",
             startDate: "",
             endDate: "",
             isPreview: true,
@@ -11213,6 +12417,30 @@ export default class NogaPlanner extends Component {
         );
     })();
     const homeIntervalsDisplayRows = [...homeIntervalsPreview].reverse();
+    const homeCourseComponentLectureIntervalOptions = homeIntervalsDisplayRows
+      .map((intervalEntry) => {
+        const optionValue = String(
+          intervalEntry?.key ||
+            intervalEntry?.subIntervalId ||
+            intervalEntry?.intervalId ||
+            "",
+        ).trim();
+        if (!optionValue) {
+          return null;
+        }
+        const intervalDisplay = this.parseIntervalIdYearTerm(
+          intervalEntry?.subIntervalId ||
+            intervalEntry?.subintervalId ||
+            intervalEntry?.key,
+        );
+        return {
+          value: optionValue,
+          label: `${intervalDisplay.year || intervalEntry?.year || "-"} ${
+            intervalDisplay.term || intervalEntry?.term || "-"
+          }`.trim(),
+        };
+      })
+      .filter(Boolean);
     const currentHomeIntervalRow = homeIntervalsDisplayRows.find((intervalEntry) => {
       const intervalStatusValue = String(
         intervalEntry?.intervalStatus || "",
@@ -11252,6 +12480,8 @@ export default class NogaPlanner extends Component {
         return {
           value: optionValue,
           label: optionLabel,
+          intervalStatus:
+            String(intervalEntry?.intervalStatus || "Normal").trim() || "Normal",
           isCurrent:
             String(intervalEntry?.intervalStatus || "")
               .trim()
@@ -11272,28 +12502,57 @@ export default class NogaPlanner extends Component {
       homeCurrentIntervalOptions.find(
         (option) => option.value === homeCurrentIntervalSelectValue,
       ) || null;
+    const homeCurrentIntervalStatusOptions = [
+      { value: "Normal", label: "Normal" },
+      { value: "current", label: "Current" },
+      { value: "Failed", label: "Failed" },
+      { value: "Makeup", label: "Makeup" },
+    ];
+    const homeCurrentIntervalStatusDraftValue = homeCurrentIntervalSelectedOption
+      ? String(
+          this.state?.homeCurrentIntervalStatusDraft ||
+            homeCurrentIntervalSelectedOption?.intervalStatus ||
+            "Normal",
+        ).trim() || "Normal"
+      : String(this.state?.homeCurrentIntervalStatusDraft || "Normal").trim() ||
+        "Normal";
+    const homeCurrentIntervalStatusSelectValue =
+      homeCurrentIntervalStatusOptions.some(
+        (option) => option.value === homeCurrentIntervalStatusDraftValue,
+      )
+        ? homeCurrentIntervalStatusDraftValue
+        : "Normal";
     const intervalYearGroupRows = (() => {
       const groupedRows = [];
       let rowIndex = 0;
       while (rowIndex < homeIntervalsDisplayRows.length) {
         const intervalEntry = homeIntervalsDisplayRows[rowIndex] || {};
         if (intervalEntry?.regular === false) {
+          const intervalNumValue =
+            Number.parseInt(
+              String(intervalEntry?.intervalNum || intervalEntry?.intervalId || "").trim(),
+              10,
+            ) || null;
           groupedRows.push({
             rowIndex,
             rowSpan: 1,
             groupIndex: 0,
-            groupLabel: "+",
+            groupLabel: intervalNumValue ? String(intervalNumValue) : "-",
+            intervalNum: intervalNumValue,
           });
           rowIndex += 1;
           continue;
         }
-        const programIntervalId = String(intervalEntry?.intervalId || "").trim();
+        const programIntervalId = String(
+          intervalEntry?.intervalNum || intervalEntry?.intervalId || "",
+        ).trim();
         if (!programIntervalId) {
           groupedRows.push({
             rowIndex,
             rowSpan: 1,
             groupIndex: 0,
             groupLabel: "-",
+            intervalNum: null,
           });
           rowIndex += 1;
           continue;
@@ -11304,7 +12563,10 @@ export default class NogaPlanner extends Component {
           if (nextEntry?.regular === false) {
             break;
           }
-          if (String(nextEntry?.intervalId || "").trim() !== programIntervalId) {
+          if (
+            String(nextEntry?.intervalNum || nextEntry?.intervalId || "").trim() !==
+            programIntervalId
+          ) {
             break;
           }
           rowSpan += 1;
@@ -11314,6 +12576,7 @@ export default class NogaPlanner extends Component {
           rowSpan,
           groupIndex: Number(programIntervalId) || 0,
           groupLabel: programIntervalId,
+          intervalNum: Number(programIntervalId) || null,
         });
         rowIndex += rowSpan;
       }
@@ -11456,7 +12719,7 @@ export default class NogaPlanner extends Component {
           entry?.key || entry?.subIntervalId || entry?.intervalId || "",
         ).trim(),
         regular: Boolean(entry?.regular),
-        intervalStatus: String(entry?.intervalStatus || "TBD").trim() || "TBD",
+        intervalStatus: String(entry?.intervalStatus || "Normal").trim() || "Normal",
       }))
       .filter((entry) => entry.subIntervalId)
       .sort((left, right) =>
@@ -11469,7 +12732,7 @@ export default class NogaPlanner extends Component {
           entry?.key || entry?.subIntervalId || entry?.intervalId || "",
         ).trim(),
         regular: Boolean(entry?.regular),
-        intervalStatus: String(entry?.intervalStatus || "TBD").trim() || "TBD",
+        intervalStatus: String(entry?.intervalStatus || "Normal").trim() || "Normal",
       }))
       .filter((entry) => entry.subIntervalId)
       .sort((left, right) =>
@@ -12385,7 +13648,7 @@ export default class NogaPlanner extends Component {
               }
             >
               <div className="nogaPlanner_homePanelCardTitleRow">
-                <strong>Program Exams</strong>
+                <strong>Program Exam Classes</strong>
                 <div className="nogaPlanner_homePanelCardActions">
                   {examsEditorOpen ? (
                     <button
@@ -12431,7 +13694,7 @@ export default class NogaPlanner extends Component {
                       type="text"
                       name="homeExam"
                       className="nogaPlanner_homeIntervalsInput"
-                      placeholder="Exam"
+                      placeholder="Exam class"
                       disabled={isHomeCardsLocked}
                       value={String(this.state?.homeExamInput || "")}
                       onChange={(event) =>
@@ -12453,13 +13716,13 @@ export default class NogaPlanner extends Component {
               ) : null}
               <div className="nogaPlanner_homePanelCardStoredBlock">
                 <span className="nogaPlanner_homePanelCardStoredLabel">
-                  {examsEditorOpen ? "Draft Exams" : "Stored Exams"}
+                  {examsEditorOpen ? "Draft Exam Classes" : "Stored Exam Classes"}
                 </span>
                 {visibleProgramExams.length > 0 ? (
                   <table className="nogaPlanner_homeComponentsTable">
                     <thead>
                       <tr>
-                        <th>Exam</th>
+                        <th>Exam Class</th>
                         {examsEditorOpen ? <th>Actions</th> : null}
                       </tr>
                     </thead>
@@ -12501,7 +13764,9 @@ export default class NogaPlanner extends Component {
                   </table>
                 ) : (
                   <span className="nogaPlanner_homePanelCardEmptyValue">
-                    {examsEditorOpen ? "Add at least one exam." : "No stored exams"}
+                    {examsEditorOpen
+                      ? "Add at least one exam class."
+                      : "No stored exam classes"}
                   </span>
                 )}
               </div>
@@ -12534,6 +13799,11 @@ export default class NogaPlanner extends Component {
                         homeCurrentIntervalDraft: String(
                           event.target.value || "",
                         ).trim(),
+                        homeCurrentIntervalStatusDraft: String(
+                          homeCurrentIntervalOptions.find(
+                            (option) => option.value === event.target.value,
+                          )?.intervalStatus || "Normal",
+                        ).trim() || "Normal",
                       })
                     }
                   >
@@ -12560,6 +13830,56 @@ export default class NogaPlanner extends Component {
                     {homeCurrentIntervalSelectedOption?.isCurrent
                       ? "Unset Current"
                       : "Set Current"}
+                  </button>
+                </div>
+                <div className="nogaPlanner_homeIntervalsAddRow nogaPlanner_homeIntervalsCurrentCardRow">
+                  <select
+                    name="homeCurrentIntervalStatus"
+                    className="nogaPlanner_homeIntervalsInput"
+                    disabled={isHomeCardsLocked || !homeCurrentIntervalSelectValue}
+                    value={homeCurrentIntervalStatusSelectValue}
+                    onChange={(event) =>
+                      this.setState({
+                        homeCurrentIntervalStatusDraft: String(
+                          event.target.value || "Normal",
+                        ).trim() || "Normal",
+                      })
+                    }
+                  >
+                    {homeCurrentIntervalStatusOptions.map((statusOption) => (
+                      <option
+                        key={`nogaPlanner_homeCurrentIntervalStatusOption_${statusOption.value}`}
+                        value={statusOption.value}
+                      >
+                        {statusOption.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn"
+                    disabled={isHomeCardsLocked || !homeCurrentIntervalSelectValue}
+                    onClick={async () => {
+                      try {
+                        const persistedStudyPlanner =
+                          await this.persistStudyPlannerIntervalStatus({
+                            intervalId: homeCurrentIntervalSelectValue,
+                            intervalStatus: homeCurrentIntervalStatusSelectValue,
+                          });
+                        this.setState({
+                          plannerRoot: persistedStudyPlanner,
+                        });
+                      } catch (error) {
+                        this.props.serverReply?.(
+                          String(
+                            error?.message ||
+                              "Failed to update interval status.",
+                          ),
+                        );
+                      }
+                    }}
+                  >
+                    Update Status
                   </button>
                 </div>
                 {homeCurrentIntervalSelectedOption ? (
@@ -12650,114 +13970,9 @@ export default class NogaPlanner extends Component {
                   >
                     Generate Expected intervals
                   </button>
+               
                 </div>
-              ) : null}
-              {this.state?.homeIntervalToolbarOpen ? (
-                <div className="nogaPlanner_homeIntervalsManualBlock">
-                  <span className="nogaPlanner_homeIntervalsHelper">
-                    Unusual sub-Intervals
-                  </span>
-                  <div className="nogaPlanner_homeIntervalsAddRow">
-                    <select
-                      name="homeManualIntervalId"
-                      className="nogaPlanner_homeIntervalsInput"
-                      disabled={isHomeCardsLocked}
-                      value={String(
-                        this.state?.homeManualIntervalIdDraft || "",
-                      )}
-                      onChange={(event) =>
-                        this.setState({
-                          homeManualIntervalIdDraft: String(
-                            event.target.value || "",
-                          ).trim(),
-                        })
-                      }
-                    >
-                      <option value="">Interval</option>
-                      {manualIntervalOptions.map((intervalOption) => (
-                        <option
-                          key={`nogaPlanner_homeManualIntervalOption_${intervalOption}`}
-                          value={intervalOption}
-                        >
-                          {intervalOption}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      name="homeManualIntervalYear"
-                      className="nogaPlanner_homeIntervalsInput"
-                      placeholder="YEAR"
-                      disabled={isHomeCardsLocked}
-                      value={String(
-                        this.state?.homeManualIntervalYearDraft || "",
-                      )}
-                      onChange={(event) =>
-                        this.setState({
-                          homeManualIntervalYearDraft: String(
-                            event.target.value || "",
-                          ).trim(),
-                        })
-                      }
-                    />
-                    <select
-                      name="homeManualIntervalTerm"
-                      className="nogaPlanner_homeIntervalsInput"
-                      disabled={isHomeCardsLocked}
-                      value={String(
-                        this.state?.homeManualIntervalTermDraft || "",
-                      )}
-                      onChange={(event) =>
-                        this.setState({
-                          homeManualIntervalTermDraft: String(
-                            event.target.value || "",
-                          ).trim(),
-                        })
-                      }
-                    >
-                      <option value="">TERM</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.appendHomeManualIntervalEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {manualIntervalsDraftList.length > 0 ? (
-                    <div className="nogaPlanner_homeIntervalsManualList">
-                      {manualIntervalsDraftList.map((entry) => (
-                        <div
-                          key={`nogaPlanner_homeManualInterval_${entry.intervalId}_${entry.subIntervalId}`}
-                          className="nogaPlanner_homeIntervalsManualItem"
-                        >
-                          <span>
-                            {String(entry?.intervalId || "").trim() || "-"}:{" "}
-                            {String(entry?.subIntervalId || "").trim() || "-"}
-                          </span>
-                          <button
-                            type="button"
-                            className="nogaPlanner_homeIntervalsManualRemoveBtn"
-                            disabled={isHomeCardsLocked}
-                            onClick={() =>
-                              this.removeHomeManualIntervalEntry(
-                                entry.subIntervalId,
-                              )
-                            }
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                ) : null}
               <div className="nogaPlanner_homeIntervalsDangerRow">
                 <button
                   type="button"
@@ -12771,12 +13986,18 @@ export default class NogaPlanner extends Component {
               <table className="nogaPlanner_homeIntervalsMiniTable">
                 <thead>
                   <tr>
-                    <th className="nogaPlanner_homeIntervalsYearIndexCell">
-                      Intervals
+                    <th
+                      className="nogaPlanner_homeIntervalsYearIndexCell"
+                      rowSpan={2}
+                    >
+                      Interval num
                     </th>
+                    <th colSpan={2}>sub-Intervals</th>
+                    <th rowSpan={2}>Status</th>
+                  </tr>
+                  <tr>
                     <th>YEAR</th>
                     <th>TERM</th>
-                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -12794,7 +14015,9 @@ export default class NogaPlanner extends Component {
                       const intervalYearGroupMeta =
                         intervalYearGroupMetaByRowIndex.get(rowIndex) || null;
                       const intervalStatusValue = String(
-                        intervalEntry?.intervalStatus || "",
+                        intervalYearGroupMeta?.intervalStatus ||
+                          intervalEntry?.intervalStatus ||
+                          "",
                       )
                         .trim()
                         .toLowerCase();
@@ -12820,7 +14043,9 @@ export default class NogaPlanner extends Component {
                               rowSpan={intervalYearGroupMeta.rowSpan}
                             >
                               <span className="nogaPlanner_homeIntervalsYearIndexCellInner">
-                                {intervalYearGroupMeta.groupLabel || "-"}
+                                {intervalYearGroupMeta.intervalNum ||
+                                  intervalYearGroupMeta.groupLabel ||
+                                  "-"}
                               </span>
                             </td>
                           ) : null}
@@ -12830,50 +14055,599 @@ export default class NogaPlanner extends Component {
                           <td>
                             {intervalDisplay.term || intervalEntry.term || "-"}
                           </td>
-                          <td>
-                            <div className="nogaPlanner_homeIntervalStatusCell">
-                              <span>{intervalEntry.intervalStatus || "TBD"}</span>
-                              {String(intervalEntry?.intervalStatus || "")
-                                .trim()
-                                .toLowerCase() === "failed" ? (
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_homePanelCardSetBtn"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() =>
-                                    this.triggerHomeIntervalRetaking(
-                                      intervalEntry?.intervalId,
-                                    )
-                                  }
-                                >
-                                  Retaking?
-                                </button>
-                              ) : null}
-                              {intervalEntry?.regular === false ? (
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                  aria-label="Delete unusual sub interval"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() =>
-                                    this.deleteHomeIntervalEntry(
-                                      intervalEntry?.key ||
-                                        intervalEntry?.subIntervalId ||
+                          {intervalYearGroupMeta ? (
+                            <td rowSpan={intervalYearGroupMeta.rowSpan}>
+                              <div className="nogaPlanner_homeIntervalStatusCell">
+                                <span>{intervalYearGroupMeta.intervalStatus || "Normal"}</span>
+                                {String(intervalYearGroupMeta?.intervalStatus || "")
+                                  .trim()
+                                  .toLowerCase() === "failed" ? (
+                                  <button
+                                    type="button"
+                                    className="nogaPlanner_homePanelCardSetBtn"
+                                    disabled={isHomeCardsLocked}
+                                    onClick={() =>
+                                      this.triggerHomeIntervalRetaking(
                                         intervalEntry?.intervalId,
-                                    )
-                                  }
-                                >
-                                  <i className="fi fi-br-cross" aria-hidden="true" />
-                                </button>
-                              ) : null}
-                            </div>
-                          </td>
+                                      )
+                                    }
+                                  >
+                                    Retaking?
+                                  </button>
+                                ) : null}
+                                {intervalEntry?.regular === false ? (
+                                  <button
+                                    type="button"
+                                    className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                    aria-label="Delete unusual sub interval"
+                                    disabled={isHomeCardsLocked}
+                                    onClick={() =>
+                                      this.deleteHomeIntervalEntry(
+                                        intervalEntry?.key ||
+                                          intervalEntry?.subIntervalId ||
+                                          intervalEntry?.intervalId,
+                                      )
+                                    }
+                                  >
+                                    <i className="fi fi-br-cross" aria-hidden="true" />
+                                  </button>
+                                ) : null}
+                              </div>
+                            </td>
+                          ) : null}
                         </tr>
                       );
                     })
                   )}
                 </tbody>
               </table>
+            </div>
+            <div
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div className="nogaPlanner_homePanelCardTitleRow">
+                <strong>Material Metadata per sub-Interval</strong>
+                <div className="nogaPlanner_homePanelCardActions">
+                  {coursesEditorOpen ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                      disabled={isHomeCardsLocked || !canSubmitCourses}
+                      onClick={this.handleHomeCoursesSetSubmit}
+                    >
+                      Submit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked}
+                      onClick={() =>
+                        this.setState({
+                          homeCoursesEditorOpen: true,
+                          homeCourseEditingKey: "",
+                          homeCourseOriginalId: "",
+                          homeCourseOriginalIntervalId: "",
+                          homeCourseNameDraft: "",
+                          homeCourseIdDraft: "",
+                          homeCourseCodeDraft: "",
+                          homeCourseComponentDraft: [],
+                          homeCourseTotalWeightDraft: "",
+                          homeCourseSubIntervalYearDraft: "",
+                          homeCourseSubIntervalTermDraft: "",
+                          homeCourseComponentIdDraft: "",
+                          homeCourseComponentPartialWeightDraft: "",
+                          homeCourseComponentStatusDraft: "",
+                          homeCourseIntervalIdDraft: "",
+                        })
+                      }
+                    >
+                      {homeCourseNamesPerSubIntervalRows.length > 0 ? "Edit" : "Set"}
+                    </button>
+                  )}
+                  {coursesEditorOpen ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.cancelHomeCoursesEditor}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="nogaPlanner_homePanelCardBody">
+                {coursesEditorOpen ? (
+                  <div className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course name
+                      </span>
+                      <input
+                        list="nogaPlanner_homeCourseNameMiniOptions"
+                        type="text"
+                        name="homeCourseNameMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Type course name"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseNameDraft || "")}
+                        onChange={(event) => {
+                          const nextCourseName = String(
+                            event.target.value || "",
+                          );
+                          const matchedCourse = this.resolvePlannerCourseDraft({
+                            courseName: nextCourseName,
+                            courseCode: String(
+                              this.state?.homeCourseCodeDraft || "",
+                            ).trim(),
+                          });
+                          this.setState({
+                            homeCourseNameDraft: nextCourseName,
+                            homeCourseIdDraft: String(
+                              matchedCourse?._id || "",
+                            ).trim(),
+                            homeCourseCodeDraft: String(
+                              matchedCourse?.course_code ||
+                                matchedCourse?.code ||
+                                "",
+                            ).trim(),
+                          });
+                        }}
+                      />
+                      <datalist id="nogaPlanner_homeCourseNameMiniOptions">
+                        {homeCourseNameOptions.map((courseOption) => (
+                          <option
+                            key={`nogaPlanner_homeCourseNameMini_${courseOption.value}`}
+                            value={courseOption.label}
+                          >
+                            {courseOption.code || courseOption.label}
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course code
+                      </span>
+                      <input
+                        type="text"
+                        name="homeCourseCodeMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Course code"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseCodeDraft || "")}
+                        onChange={(event) => {
+                          const nextCourseCode = String(
+                            event.target.value || "",
+                          );
+                          const matchedCourse = this.resolvePlannerCourseDraft({
+                            courseName: String(
+                              this.state?.homeCourseNameDraft || "",
+                            ).trim(),
+                            courseCode: nextCourseCode,
+                          });
+                          this.setState((previousState) => ({
+                            homeCourseCodeDraft: nextCourseCode,
+                            homeCourseIdDraft: String(
+                              matchedCourse?._id || "",
+                            ).trim(),
+                            homeCourseNameDraft:
+                              String(previousState?.homeCourseNameDraft || "").trim() ||
+                              String(
+                                matchedCourse?.course_name ||
+                                  matchedCourse?.name ||
+                                  "",
+                              ).trim(),
+                          }));
+                        }}
+                      />
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course weight
+                      </span>
+                      <input
+                        type="number"
+                        name="homeCourseWeightMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Course weight"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseTotalWeightDraft || "")}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseTotalWeightDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course component
+                      </span>
+                      <select
+                        name="homeCourseComponentMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={courseComponentIdDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentIdDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                          })
+                        }
+                      >
+                        <option value="">Select component</option>
+                        {courseComponentOptions.map((componentId) => (
+                          <option
+                            key={`nogaPlanner_homeCourseComponentMini_${componentId}`}
+                            value={componentId}
+                          >
+                            {componentId}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Component weight percentage
+                      </span>
+                      <input
+                        type="number"
+                        name="homeCourseComponentWeightPercentageMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Component weight percentage"
+                        disabled={isHomeCardsLocked}
+                        value={String(
+                          this.state?.homeCourseComponentPartialWeightDraft || "",
+                        )}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentPartialWeightDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        sub-Interval
+                      </span>
+                      <select
+                        name="homeCourseSubIntervalMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={courseIntervalDraftValue}
+                        onChange={(event) => {
+                          const nextIntervalId = String(
+                            event.target.value || "",
+                          ).trim();
+                          const parsedInterval =
+                            this.parseIntervalIdYearTerm(nextIntervalId);
+                          this.setState({
+                            homeCourseIntervalIdDraft: nextIntervalId,
+                            homeCourseSubIntervalYearDraft: String(
+                              parsedInterval?.year || "",
+                            ).trim(),
+                            homeCourseSubIntervalTermDraft: String(
+                              parsedInterval?.term || "",
+                            ).trim(),
+                          });
+                        }}
+                      >
+                        <option value="">Select sub-Interval</option>
+                        {homeCurrentIntervalOptions.map((intervalOption) => (
+                          <option
+                            key={`nogaPlanner_homeCourseSubIntervalMini_${intervalOption.value}`}
+                            value={intervalOption.value}
+                          >
+                            {intervalOption.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : null}
+                {homeCourseNamesPerSubIntervalRows.length === 0 ? (
+                  <span className="nogaPlanner_homePanelCardEmptyValue">
+                    No course names mapped to sub-Intervals yet.
+                  </span>
+                ) : (
+                  <table className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeIntervalCoursesMiniTable">
+                    <thead>
+                      <tr>
+                        <th>Course name</th>
+                        <th>Course code</th>
+                        <th>Course weight</th>
+                        <th>Course component</th>
+                        <th>Component weight percentage</th>
+                        <th>sub-Interval</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {homeCourseNamesPerSubIntervalRows.map((intervalEntry) => (
+                        <tr
+                          key={`nogaPlanner_homeIntervalCourseNames_${intervalEntry.key}`}
+                          className={intervalEntry.isPreview ? "is-preview" : ""}
+                        >
+                          <td>{intervalEntry.courseName}</td>
+                          <td>{intervalEntry.courseCode}</td>
+                          <td>{intervalEntry.courseWeight || "-"}</td>
+                          <td>{intervalEntry.courseComponentId || "-"}</td>
+                          <td>
+                            {this.formatPlannerComponentWeightPercentage(
+                              intervalEntry.componentWeightPercentage,
+                              !intervalEntry.isPreview,
+                            )}
+                          </td>
+                          <td>{intervalEntry.subIntervalLabel}</td>
+                          <td>
+                            {intervalEntry.isPreview ? (
+                              "-"
+                            ) : (
+                              <div className="nogaPlanner_homeIntervalRowActions">
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.editHomeCourseEntry(intervalEntry)
+                                  }
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                  aria-label="Delete material metadata row"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.deleteHomeCourseEntry(intervalEntry)
+                                  }
+                                >
+                                  <i className="fi fi-br-cross" aria-hidden="true" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+            <div
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--courseLectures" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div className="nogaPlanner_homePanelCardTitleRow">
+                <strong>Lecture names per course component</strong>
+                <div className="nogaPlanner_homePanelCardActions">
+                  {homeCourseComponentLectureEditorOpen ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                      disabled={
+                        isHomeCardsLocked || !canSubmitCourseComponentLectures
+                      }
+                      onClick={this.handleHomeCourseComponentLecturesSetSubmit}
+                    >
+                      Submit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked}
+                      onClick={() =>
+                        this.setState({
+                          homeCourseComponentLecturesEditorOpen: true,
+                          homeCourseComponentLectureCourseIdDraft: "",
+                          homeCourseComponentLectureIntervalIdDraft: "",
+                          homeCourseComponentLectureComponentIdDraft: "",
+                          homeCourseComponentLectureNameDraft: "",
+                          homeCourseComponentLectureDraftList: [],
+                        })
+                      }
+                    >
+                      {homeCourseComponentLectureRows.length > 0 ? "Edit" : "Set"}
+                    </button>
+                  )}
+                  {homeCourseComponentLectureEditorOpen ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.cancelHomeCourseComponentLecturesEditor}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="nogaPlanner_homePanelCardBody">
+                {homeCourseComponentLectureEditorOpen ? (
+                  <div className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeCourseLecturesForm">
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        sub-Interval
+                      </span>
+                      <select
+                        name="homeCourseComponentLectureInterval"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={homeCourseComponentLectureIntervalDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentLectureIntervalIdDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                            homeCourseComponentLectureCourseIdDraft: "",
+                            homeCourseComponentLectureComponentIdDraft: "",
+                          })
+                        }
+                      >
+                        <option value="">Select sub-Interval</option>
+                        {homeCourseComponentLectureIntervalOptions.map(
+                          (intervalOption) => (
+                            <option
+                              key={`nogaPlanner_homeCourseComponentLectureInterval_${intervalOption.value}`}
+                              value={intervalOption.value}
+                            >
+                              {intervalOption.label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course name
+                      </span>
+                      <select
+                        name="homeCourseComponentLectureCourse"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={homeCourseComponentLectureCourseIdDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentLectureCourseIdDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                            homeCourseComponentLectureComponentIdDraft: "",
+                          })
+                        }
+                      >
+                        <option value="">Select course</option>
+                        {homeCourseComponentLectureCourseOptions.map(
+                          (courseOption) => (
+                            <option
+                              key={`nogaPlanner_homeCourseComponentLectureCourse_${courseOption.value}`}
+                              value={courseOption.value}
+                            >
+                              {courseOption.label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Course component
+                      </span>
+                      <select
+                        name="homeCourseComponentLectureComponent"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={homeCourseComponentLectureComponentIdDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentLectureComponentIdDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                          })
+                        }
+                      >
+                        <option value="">Select component</option>
+                        {homeCourseComponentLectureComponentOptions.map(
+                          (componentOption) => (
+                            <option
+                              key={`nogaPlanner_homeCourseComponentLectureComponent_${componentOption.value}`}
+                              value={componentOption.value}
+                            >
+                              {componentOption.label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture name
+                      </span>
+                      <input
+                        type="text"
+                        name="homeCourseComponentLectureName"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Lecture name"
+                        disabled={isHomeCardsLocked}
+                        value={homeCourseComponentLectureNameDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseComponentLectureNameDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={
+                        isHomeCardsLocked || !canAddCourseComponentLectureDraft
+                      }
+                      onClick={this.appendHomeCourseComponentLectureDraftEntry}
+                    >
+                      Add
+                    </button>
+                  </div>
+                ) : null}
+                {homeCourseComponentLecturePreviewRows.length === 0 ? (
+                  <span className="nogaPlanner_homePanelCardEmptyValue">
+                    No lecture names mapped to course components yet.
+                  </span>
+                ) : (
+                  <table className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCourseLecturesMiniTable">
+                    <thead>
+                      <tr>
+                        <th>Course name</th>
+                        <th>Course component</th>
+                        <th>Lecture name</th>
+                        <th>sub-Interval</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {homeCourseComponentLecturePreviewRows.map((lectureEntry) => (
+                        <tr
+                          key={`nogaPlanner_homeCourseComponentLecture_${lectureEntry.key}`}
+                          className={lectureEntry.isPreview ? "is-preview" : ""}
+                        >
+                          <td>{lectureEntry.courseName}</td>
+                          <td>{lectureEntry.componentId}</td>
+                          <td>{lectureEntry.lectureName}</td>
+                          <td>{lectureEntry.subIntervalLabel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
             <div
               className={
@@ -12961,16 +14735,7 @@ export default class NogaPlanner extends Component {
       );
     }
     if (wrapperTab === "lectures") {
-      return (
-        <div className="nogaPlanner_coursesTabMount">
-          {this.renderSelectedCourseLecturesTable("full")}
-          <NogaPlannerTelegramPanel
-            planner={this}
-            mode="language-only"
-            languageSection="lectures"
-          />
-        </div>
-      );
+      return null;
     }
     if (wrapperTab === "exams") {
       return this.renderSelectedCourseExamBoard(true);

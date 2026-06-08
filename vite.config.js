@@ -9,6 +9,7 @@ const isExpectedSocketProxyClose = (error) => {
   const errorMessage = String(error?.message || "").trim();
 
   return (
+    errorCode === "ECONNREFUSED" ||
     errorCode === "ECONNRESET" ||
     errorCode === "EPIPE" ||
     /socket has been ended/i.test(errorMessage) ||

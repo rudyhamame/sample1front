@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf";
+import pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js?url";
 import { apiUrl } from "../../config/api";
 import { formatPlannerStatusLabel } from "../lib/plannerRuntime";
 import { createWorker } from "tesseract.js";
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const TRACE_MAIN_TABS = [
   { key: "material", label: "material of study" },
@@ -252,8 +256,17 @@ const NogaPlannerTelegramPanel = ({
   const [ocrLoadingMessageId, setOcrLoadingMessageId] = useState("");
   const [ocrExtractedByMessageId, setOcrExtractedByMessageId] = useState({});
   const [zoomedTraceImageUrl, setZoomedTraceImageUrl] = useState("");
+  const [selectedPreviewMessageKey, setSelectedPreviewMessageKey] = useState("");
+  const [previewFileUrl, setPreviewFileUrl] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewPdfDocument, setPreviewPdfDocument] = useState(null);
+  const [previewPageCount, setPreviewPageCount] = useState(0);
+  const [previewPageNumber, setPreviewPageNumber] = useState(1);
   const telegramImagePreviewUrlsRef = useRef({});
   const telegramImagePreviewBlobUrlsRef = useRef(new Set());
+  const previewObjectUrlRef = useRef("");
+  const previewCanvasRef = useRef(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [physicalDraft, setPhysicalDraft] = useState({
     title: "",
@@ -389,8 +402,32 @@ const NogaPlannerTelegramPanel = ({
     telegramImagePreviewUrlsRef.current = telegramImagePreviewUrls;
   }, [telegramImagePreviewUrls]);
 
+  useEffect(() => {
+    return () => {
+      const previewObjectUrl = String(previewObjectUrlRef.current || "").trim();
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+      }
+    };
+  }, []);
+
   const getTelegramMessageMediaKey = (message = {}) =>
     `${String(message?.groupReference || "").trim()}::${Number(message?.id || 0)}`;
+
+  const selectedPreviewMessage = useMemo(
+    () =>
+      filteredTelegramDocumentMessages.find(
+        (message) =>
+          getTelegramMessageMediaKey(message) === selectedPreviewMessageKey,
+      ) || null,
+    [filteredTelegramDocumentMessages, selectedPreviewMessageKey],
+  );
+  const selectedPreviewSourceKey = useMemo(() => {
+    if (!selectedPreviewMessage || !isTelegramPdfDocument(selectedPreviewMessage)) {
+      return "";
+    }
+    return getTelegramMessageMediaKey(selectedPreviewMessage);
+  }, [selectedPreviewMessage]);
 
   const languageComponentClassOptions = LANGUAGE_COMPONENT_CLASS_OPTIONS;
 
@@ -648,6 +685,290 @@ const NogaPlannerTelegramPanel = ({
     });
     window.open(`/phenomed/pdf-reader?${params.toString()}`, "_blank");
   };
+
+  useEffect(() => {
+    if (traceMainTab !== "material" || materialSourceTab !== "telegram") {
+      setSelectedPreviewMessageKey("");
+      setPreviewError("");
+      return;
+    }
+
+    const availablePdfMessages = filteredTelegramDocumentMessages.filter((message) =>
+      isTelegramPdfDocument(message),
+    );
+
+    if (availablePdfMessages.length === 0) {
+      setSelectedPreviewMessageKey("");
+      return;
+    }
+
+    const selectedStillExists = availablePdfMessages.some(
+      (message) =>
+        getTelegramMessageMediaKey(message) === selectedPreviewMessageKey,
+    );
+
+    if (!selectedStillExists) {
+      setSelectedPreviewMessageKey(
+        getTelegramMessageMediaKey(availablePdfMessages[0]),
+      );
+    }
+  }, [
+    filteredTelegramDocumentMessages,
+    materialSourceTab,
+    selectedPreviewMessageKey,
+    traceMainTab,
+  ]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const currentPreviewObjectUrl = String(previewObjectUrlRef.current || "").trim();
+    if (currentPreviewObjectUrl) {
+      URL.revokeObjectURL(currentPreviewObjectUrl);
+      previewObjectUrlRef.current = "";
+    }
+
+    setPreviewFileUrl("");
+    setPreviewError("");
+    setPreviewLoading(false);
+    setPreviewPdfDocument((currentDocument) => {
+      currentDocument?.destroy?.().catch?.(() => {});
+      return null;
+    });
+    setPreviewPageCount(0);
+    setPreviewPageNumber(1);
+    const canvasNode = previewCanvasRef.current;
+    const canvasContext = canvasNode?.getContext?.("2d");
+    if (canvasNode && canvasContext) {
+      canvasContext.clearRect(0, 0, canvasNode.width || 0, canvasNode.height || 0);
+      canvasNode.width = 0;
+      canvasNode.height = 0;
+    }
+
+    if (!selectedPreviewMessage || !isTelegramPdfDocument(selectedPreviewMessage)) {
+      return undefined;
+    }
+
+    const groupReference = String(selectedPreviewMessage?.groupReference || "").trim();
+    const messageId = Number(selectedPreviewMessage?.id || 0);
+
+    if (!plannerToken || !groupReference || !messageId) {
+      setPreviewError("Stored PDF is missing its identifiers.");
+      return undefined;
+    }
+
+    const loadPreviewPdf = async () => {
+      setPreviewLoading(true);
+      try {
+        const params = new URLSearchParams({
+          groupReference,
+          messageId: String(messageId),
+        });
+        const response = await fetch(
+          apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${plannerToken}`,
+            },
+          },
+        );
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(
+            formatStoredMediaErrorMessage(
+              payload,
+              "Unable to load the selected PDF.",
+            ),
+          );
+        }
+        const blob = await response.blob();
+        if (isCancelled) {
+          return;
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        previewObjectUrlRef.current = objectUrl;
+        setPreviewFileUrl(objectUrl);
+      } catch (nextError) {
+        if (!isCancelled) {
+          setPreviewError(
+            String(nextError?.message || "Unable to load the selected PDF."),
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    loadPreviewPdf();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [plannerToken, selectedPreviewMessage, selectedPreviewSourceKey]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let loadingTask = null;
+
+    if (!previewFileUrl) {
+      setPreviewPdfDocument((currentDocument) => {
+        currentDocument?.destroy?.().catch?.(() => {});
+        return null;
+      });
+      setPreviewPageCount(0);
+      return undefined;
+    }
+
+    const loadPreviewDocument = async () => {
+      try {
+        loadingTask = pdfjs.getDocument(previewFileUrl);
+        const nextDocument = await loadingTask.promise;
+        if (isCancelled) {
+          await nextDocument.destroy();
+          return;
+        }
+        setPreviewPdfDocument((currentDocument) => {
+          currentDocument?.destroy?.().catch?.(() => {});
+          return nextDocument;
+        });
+        setPreviewPageCount(Number(nextDocument.numPages || 0));
+        setPreviewPageNumber(1);
+      } catch (nextError) {
+        if (!isCancelled) {
+          setPreviewPdfDocument(null);
+          setPreviewPageCount(0);
+          setPreviewError(
+            String(nextError?.message || "Unable to open this PDF preview."),
+          );
+        }
+      }
+    };
+
+    loadPreviewDocument();
+
+    return () => {
+      isCancelled = true;
+      loadingTask?.destroy?.();
+    };
+  }, [previewFileUrl, selectedPreviewSourceKey]);
+
+  useEffect(() => {
+    let renderTask = null;
+
+    if (!previewPdfDocument || !previewCanvasRef.current || previewPageNumber <= 0) {
+      return undefined;
+    }
+
+    const renderPreviewPage = async () => {
+      try {
+        const page = await previewPdfDocument.getPage(previewPageNumber);
+        const viewport = page.getViewport({ scale: 1 });
+        const maxWidth = 680;
+        const scale =
+          viewport.width > 0 ? Math.min(maxWidth / viewport.width, 1.5) : 1;
+        const scaledViewport = page.getViewport({ scale });
+        const canvas = previewCanvasRef.current;
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) {
+          return;
+        }
+        canvas.width = Math.ceil(scaledViewport.width);
+        canvas.height = Math.ceil(scaledViewport.height);
+        renderTask = page.render({
+          canvasContext: context,
+          viewport: scaledViewport,
+        });
+        await renderTask.promise;
+      } catch (nextError) {
+        if (nextError?.name !== "RenderingCancelledException") {
+          setPreviewError(
+            String(nextError?.message || "Unable to render this PDF page."),
+          );
+        }
+      }
+    };
+
+    renderPreviewPage();
+
+    return () => {
+      renderTask?.cancel?.();
+    };
+  }, [previewPdfDocument, previewPageNumber]);
+
+  const renderPdfPreviewPanel = () => (
+    <aside className="nogaPlanner_tracesPdfPane">
+      <div className="nogaPlanner_tracesPdfPaneHeader">
+        <div className="nogaPlanner_tracesPdfPaneCopy">
+          <span className="nogaPlanner_tracesPdfPaneEyebrow">Read-only</span>
+          <strong className="nogaPlanner_tracesPdfPaneTitle">PDF Reader</strong>
+        </div>
+        {previewPageCount > 0 ? (
+          <div className="nogaPlanner_tracesPdfPager">
+            <button
+              type="button"
+              className="nogaPlanner_tracesMiniTabBtn"
+              onClick={() =>
+                setPreviewPageNumber((currentValue) => Math.max(1, currentValue - 1))
+              }
+              disabled={previewPageNumber <= 1}
+            >
+              Prev
+            </button>
+            <span className="nogaPlanner_tracesPdfPagerLabel">
+              {`${previewPageNumber}/${previewPageCount}`}
+            </span>
+            <button
+              type="button"
+              className="nogaPlanner_tracesMiniTabBtn"
+              onClick={() =>
+                setPreviewPageNumber((currentValue) =>
+                  Math.min(previewPageCount, currentValue + 1),
+                )
+              }
+              disabled={previewPageNumber >= previewPageCount}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <div className="nogaPlanner_tracesPdfPaneBody">
+        {traceMainTab !== "material" || materialSourceTab !== "telegram" ? (
+          <p className="nogaPlanner_tracesStatus">
+            PDF preview is available for Telegram documents only.
+          </p>
+        ) : !selectedPreviewMessage ? (
+          <p className="nogaPlanner_tracesStatus">
+            Select a PDF row from the table to read it here.
+          </p>
+        ) : previewLoading ? (
+          <p className="nogaPlanner_tracesStatus">Opening selected PDF...</p>
+        ) : previewError ? (
+          <p className="nogaPlanner_tracesStatus">{previewError}</p>
+        ) : !previewPdfDocument ? (
+          <p className="nogaPlanner_tracesStatus">No PDF loaded yet.</p>
+        ) : (
+          <div className="nogaPlanner_tracesPdfStageWrap">
+            <div className="nogaPlanner_tracesPdfMeta">
+              <strong>{getFileNameWithoutExtension(buildTelegramDocumentFilename(selectedPreviewMessage)) || buildTelegramDocumentFilename(selectedPreviewMessage)}</strong>
+              <span>
+                {getStoredGroupLabelByReference(selectedPreviewMessage?.groupReference)}
+              </span>
+            </div>
+            <div className="nogaPlanner_tracesPdfCanvasShell">
+              <canvas
+                key={selectedPreviewSourceKey || "empty-preview"}
+                ref={previewCanvasRef}
+                className="nogaPlanner_tracesPdfCanvas"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
 
   useEffect(() => {
     if (
@@ -1201,18 +1522,21 @@ const NogaPlannerTelegramPanel = ({
                   ).trim();
                   const text = String(message?.text || "").trim();
                   const firstHashtag = (text.match(/#[^\s#]+/) || [])[0] || "";
-                  const tagValue = firstHashtag || documentType.toUpperCase();
+                  const tagValue = firstHashtag || "-";
                   const isOpenSupported =
                     isTelegramPdfDocument(message) || isTelegramImageDocument(message);
                   return (
                     <tr
                       key={`traces-telegram-message-row-${messageKey}`}
-                      className={`nogaPlanner_tracesTableRow${activeTelegramRowActionKey === messageKey ? " is-active" : ""}`}
-                      onClick={() =>
+                      className={`nogaPlanner_tracesTableRow${activeTelegramRowActionKey === messageKey ? " is-active" : ""}${selectedPreviewMessageKey === messageKey ? " is-previewing" : ""}`}
+                      onClick={() => {
+                        if (isTelegramPdfDocument(message)) {
+                          setSelectedPreviewMessageKey(messageKey);
+                        }
                         setActiveTelegramRowActionKey((currentValue) =>
                           currentValue === messageKey ? "" : messageKey,
-                        )
-                      }
+                        );
+                      }}
                     >
                       <td title={fileNameNoExt || fileName}>
                         {fileNameNoExt || fileName || "-"}
@@ -1517,37 +1841,42 @@ const NogaPlannerTelegramPanel = ({
 
   return (
     <section id="nogaPlanner_traces" className="nogaPlanner_traces">
-      <div className="nogaPlanner_tracesTabs">
-        <div className="nogaPlanner_tracesTabsButtons">
-          {TRACE_MAIN_TABS.map((entry) => (
-            <button
-              key={entry.key}
-              type="button"
-              className={
-                "nogaPlanner_tracesTabBtn" +
-                (traceMainTab === entry.key
-                  ? " nogaPlanner_tracesTabBtn--active"
-                  : "")
-              }
-              onClick={() => setTraceMainTab(entry.key)}
-            >
-              {entry.label}
-            </button>
-          ))}
+      <div className="nogaPlanner_tracesColumns">
+        <div className="nogaPlanner_tracesMainColumn">
+          <div className="nogaPlanner_tracesTabs">
+            <div className="nogaPlanner_tracesTabsButtons">
+              {TRACE_MAIN_TABS.map((entry) => (
+                <button
+                  key={entry.key}
+                  type="button"
+                  className={
+                    "nogaPlanner_tracesTabBtn" +
+                    (traceMainTab === entry.key
+                      ? " nogaPlanner_tracesTabBtn--active"
+                      : "")
+                  }
+                  onClick={() => setTraceMainTab(entry.key)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            <span className="nogaPlanner_tracesTabsStatus">
+              {traceMainTab === "material" && materialSourceTab === "telegram"
+                ? `${filteredTelegramDocumentMessages.length} documents`
+                : traceMainTab === "material"
+                  ? activeTraceSourceLabel
+                  : "Language traces"}
+            </span>
+          </div>
+          {materialSourceTab === "telegram"
+            ? renderTelegramSource()
+            : materialSourceTab === "upload"
+              ? renderUploadSource()
+              : renderPhysicalSource()}
         </div>
-        <span className="nogaPlanner_tracesTabsStatus">
-          {traceMainTab === "material" && materialSourceTab === "telegram"
-            ? `${filteredTelegramDocumentMessages.length} documents`
-            : traceMainTab === "material"
-              ? activeTraceSourceLabel
-              : "Language traces"}
-        </span>
+        {renderPdfPreviewPanel()}
       </div>
-      {materialSourceTab === "telegram"
-        ? renderTelegramSource()
-        : materialSourceTab === "upload"
-          ? renderUploadSource()
-          : renderPhysicalSource()}
       {zoomedTraceImageUrl ? (
         <div
           className="nogaPlanner_tracesImageZoomOverlay"
