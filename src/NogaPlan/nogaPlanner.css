@@ -29,6 +29,27 @@
   box-sizing: border-box;
 }
 
+#nogaPlanner_article p,
+#nogaPlanner_article span,
+#nogaPlanner_article div,
+#nogaPlanner_article td,
+#nogaPlanner_article th,
+#nogaPlanner_article li,
+#nogaPlanner_article h1,
+#nogaPlanner_article h2,
+#nogaPlanner_article h3,
+#nogaPlanner_article h4,
+#nogaPlanner_article h5,
+#nogaPlanner_article h6,
+#nogaPlanner_article label,
+#nogaPlanner_article button,
+#nogaPlanner_article input,
+#nogaPlanner_article textarea,
+#nogaPlanner_article select,
+#nogaPlanner_article option {
+  unicode-bidi: plaintext;
+}
+
 #nogaPlanner_article ul {
   list-style: none;
 }
@@ -2597,7 +2618,6 @@ color: #fff;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  flex: 1 1 auto;
   width: auto;
   align-content: flex-start;
 }
@@ -2608,6 +2628,7 @@ color: #fff;
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  flex-grow: 1;
 }
 
 .nogaPlanner_homePanelModesHeader {
@@ -2882,10 +2903,10 @@ color: #fff;
 
 .nogaPlanner_homeIntervalsMiniForm {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   gap: 10px;
-  align-items: flex-end;
-  margin: 8px 0 10px;
+  justify-content: space-between;
 }
 
 .nogaPlanner_homeIntervalsHelper {
@@ -2901,7 +2922,6 @@ color: #fff;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1 1 140px;
   min-width: 120px;
 }
 
@@ -3001,17 +3021,12 @@ color: #fff;
   width: 100%;
 }
 
-.nogaPlanner_homeIntervalCoursesForm {
-  margin-bottom: 2px;
-}
+
 
 .nogaPlanner_homeIntervalCoursesMiniTable {
   min-width: 0;
 }
 
-.nogaPlanner_homeCoursesMiniTable {
-  min-width: 1080px;
-}
 
 .nogaPlanner_homeCoursesMiniTable td[rowspan] {
   vertical-align: middle;
@@ -6090,4 +6105,123 @@ color: var(--nogaPlanner-heading);
 flex-direction: row;
 flex-grow: 1;
 width: 100%;
+}
+
+#nogaPlanner_home_materialMetadata_modeRow {
+  display: flex;
+  flex-direction: row;
+}
+
+#nogaPlanner_homeIntervalsMiniFormRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#nogaPlanner_homeIntervalsMiniFormFields_course {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
+
+#nogaPlanner_homeIntervalsMiniFormFields_component {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+#nogaPlanner_homeIntervalsMiniFormFields_componentInputs {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+#nogaPlanner_homeCourseStagedComponentsWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#nogaPlanner_homeCourseStagedComponentsList {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  min-width: 160px;
+  border: 1px solid rgba(118, 64, 53, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 247, 243, 0.72);
+  align-self: flex-start;
+}
+
+.nogaPlanner_homeCourseStagedComponentItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid rgba(118, 64, 53, 0.1);
+}
+
+.nogaPlanner_homeCourseStagedComponentItem span:first-of-type {
+  flex: 1 1 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #61273b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nogaPlanner_homeCourseStagedComponentItem span:last-of-type {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a5965;
+  background: rgba(239, 179, 200, 0.22);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.nogaPlanner_locationAddRoomRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.nogaPlanner_locationAddRoomRow .nogaPlanner_homeIntervalsInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nogaPlanner_locationRoomsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nogaPlanner_locationRoomsListItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nogaPlanner_locationRoomsListItem span {
+  flex: 1 1 auto;
+  font-size: 12px;
+}
+
+.nogaPlanner_locationRoomsListItem .nogaPlanner_homePanelCardSetBtn {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  font-size: 11px;
+  min-width: unset;
 }

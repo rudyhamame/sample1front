@@ -1418,7 +1418,7 @@ const NogaPlannerTelegramPanel = ({
     <div id="telegramTrace" className="telegramTrace">
       {renderMaterialSourceTabs()}
       <div
-        id="nogaPlanner_auto_div_132"
+        id="nogaPlanner_traces_controlsContainer"
         className="nogaPlanner_tracesControls"
       >
         <select
@@ -1441,7 +1441,7 @@ const NogaPlannerTelegramPanel = ({
           })}
         </select>
         <div
-          id="nogaPlanner_auto_div_140"
+          id="nogaPlanner_traces_searchRow"
           className="nogaPlanner_tracesSearchRow"
         >
           <input
