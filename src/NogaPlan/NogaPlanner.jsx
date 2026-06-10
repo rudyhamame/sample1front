@@ -3745,9 +3745,7 @@ export default class NogaPlanner extends Component {
     );
     const courseRow =
       materialMetadataCourseRows.find(
-        (entry) =>
-          String(entry?.courseID || entry?.courseId || "").trim() ===
-          lectureCourseContextDraftValue,
+        (entry) => String(entry?.key || "").trim() === lectureCourseContextDraftValue,
       ) || null;
     if (!courseRow) {
       return null;
@@ -3765,7 +3763,9 @@ export default class NogaPlanner extends Component {
         .filter(
           (row) =>
             String(row?.courseID || row?.courseId || "").trim() ===
-            lectureCourseContextDraftValue,
+              String(courseRow?.courseID || "").trim() &&
+            String(row?.courseComponent || "").trim() ===
+              String(courseRow?.courseComponent || "").trim(),
         )
         .reduce((maxValue, row) => {
           const currentLectureNum = Number.parseInt(
@@ -4766,7 +4766,7 @@ export default class NogaPlanner extends Component {
           });
         });
         if (!lectureWasMounted) {
-          this.props.serverReply?.("The selected Course ID could not be found.");
+          this.props.serverReply?.("The selected Component ID could not be found.");
           return;
         }
         try {
@@ -4827,7 +4827,7 @@ export default class NogaPlanner extends Component {
       ).trim();
       if (!lectureCourseContextValue || !lectureName || !lectureInstructor) {
         this.props.serverReply?.(
-          "Select Course ID, then enter lecture name and lecture instructor.",
+          "Select Component ID, then enter lecture name and lecture instructor.",
         );
         return;
       }
@@ -4847,7 +4847,7 @@ export default class NogaPlanner extends Component {
         !Number.isInteger(targetCourseNum) ||
         !targetComponentClass
       ) {
-        this.props.serverReply?.("Selected Course ID is invalid.");
+        this.props.serverReply?.("Selected Component ID is invalid.");
         return;
       }
       const plannerRoot = this.getResolvedPlannerRoot();
@@ -4969,7 +4969,7 @@ export default class NogaPlanner extends Component {
         };
       });
       if (!lectureWasMounted) {
-        this.props.serverReply?.("The selected Course ID could not be found.");
+        this.props.serverReply?.("The selected Component ID could not be found.");
         return;
       }
       try {
@@ -18619,7 +18619,7 @@ id="nogaPlanner_homePanelCardSetBtn_9"
                       <>
                         <div id="nogaPlanner_homeIntervalsMiniFormField_15" className="nogaPlanner_homeIntervalsMiniFormField">
                           <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_17" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                            Course ID
+                            Component ID
                           </span>
                           <select
                             id="nogaPlanner_homeIntervalsInput_32"
@@ -18628,7 +18628,7 @@ id="nogaPlanner_homePanelCardSetBtn_9"
                             disabled={isHomeCardsLocked}
                             value={lectureCourseContextDraftValue}
                             onChange={(event) => {
-                              const nextCourseId = String(
+                              const nextKey = String(
                                 event.target.value || "",
                               ).trim();
                               const selectedOption =
@@ -18640,20 +18640,20 @@ id="nogaPlanner_homePanelCardSetBtn_9"
                                 /^(.*)\s+\((.*)\)$/,
                               );
                               this.setState({
-                                homeCourseLectureCourseContextDraft: nextCourseId,
+                                homeCourseLectureCourseContextDraft: nextKey,
                                 homeCourseLectureCourseNameDraft: parsedLabel
                                   ? String(parsedLabel[1] || "").trim()
                                   : selectedLabel.replace(/\s+\([^)]*\)$/, "").trim(),
                               });
                             }}
                           >
-                            <option value="">Select Course ID</option>
+                            <option value="">Select Component ID</option>
                             {materialMetadataCourseRows.map((courseRow) => (
                               <option
-                                key={`nogaPlanner_homeCourseLectureCourseContextMini_${courseRow.courseID}`}
-                                value={courseRow.courseID}
+                                key={`nogaPlanner_homeCourseLectureCourseContextMini_${courseRow.key}`}
+                                value={courseRow.key}
                               >
-                                {courseRow.courseName || "-"} ({courseRow.courseID})
+                                {courseRow.courseName || "-"} ({courseRow.componentID !== "-" ? courseRow.componentID : courseRow.courseComponent})
                               </option>
                             ))}
                           </select>
@@ -18735,7 +18735,7 @@ id="nogaPlanner_homePanelCardSetBtn_9"
                   <table id="nogaPlanner_homeIntervalsMiniTable_4" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCoursesMiniTable">
                     <thead id="nogaPlanner_homeIntervalsMiniTable_4_head">
                       <tr id="nogaPlanner_homeIntervalsMiniTable_4_row1">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_4_th_Course_ID">Course ID</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_4_th_Course_ID">Component ID</th>
                         <th id="nogaPlanner_homeIntervalsMiniTable_4_th_Course_name">Course name</th>
                         <th id="nogaPlanner_homeIntervalsMiniTable_4_th_Lecture_num">Lecture num</th>
                         <th id="nogaPlanner_homeIntervalsMiniTable_4_th_Lecture_name">Lecture name</th>

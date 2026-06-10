@@ -248,6 +248,7 @@ const NogaPlannerTelegramPanel = ({
   const [messagesHasMore, setMessagesHasMore] = useState(false);
   const [messagesFilteredTotalCount, setMessagesFilteredTotalCount] = useState(0);
   const [messagesRawCount, setMessagesRawCount] = useState(0);
+  const [messagesTypeCounts, setMessagesTypeCounts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [downloadingMessageId, setDownloadingMessageId] = useState("");
@@ -515,6 +516,7 @@ const NogaPlannerTelegramPanel = ({
     }
     if (!groupReference) {
       setMessages([]);
+      setMessagesTypeCounts({});
       setError("Choose a stored group first.");
       return;
     }
@@ -551,12 +553,22 @@ const NogaPlannerTelegramPanel = ({
         Number(payload?.filteredTotalCount || nextMessages.length || 0),
       );
       setMessagesRawCount(Number(payload?.rawCount || 0));
+      if (payload?.typeCounts && typeof payload.typeCounts === "object") {
+        setMessagesTypeCounts(reset ? payload.typeCounts : (prev) => {
+          const merged = { ...prev };
+          Object.entries(payload.typeCounts).forEach(([k, v]) => {
+            merged[k] = Number(v || 0);
+          });
+          return merged;
+        });
+      }
     } catch (nextError) {
       setMessages([]);
       setMessagesOffset(0);
       setMessagesHasMore(false);
       setMessagesFilteredTotalCount(0);
       setMessagesRawCount(0);
+      setMessagesTypeCounts({});
       setError(nextError?.message || "Unable to load Telegram messages.");
     } finally {
       setIsLoading(false);
@@ -1477,7 +1489,7 @@ const NogaPlannerTelegramPanel = ({
               }
               onClick={() => setDocumentTypeTab(entry.key)}
             >
-              {`${entry.label} (${Number(telegramDocumentTypeCounts[entry.key] || 0)})`}
+              {`${entry.label} (${Object.keys(messagesTypeCounts).length > 0 ? Number(messagesTypeCounts[entry.key] || 0) : Number(telegramDocumentTypeCounts[entry.key] || 0)})`}
             </button>
           ))}
         </div>
@@ -1492,12 +1504,13 @@ const NogaPlannerTelegramPanel = ({
             <table className="nogaPlanner_tracesTable">
               <thead>
                 <tr>
+                  <th style={{ whiteSpace: "nowrap" }}>ID</th>
                   <th>Name</th>
                   <th>Uploader</th>
                   <th>Type</th>
                   <th>Telegram group</th>
                   <th>Created at</th>
-                  <th>Tag</th>
+                  <th>Hashtags</th>
                 </tr>
               </thead>
               <tbody>
@@ -1521,8 +1534,12 @@ const NogaPlannerTelegramPanel = ({
                     message?.groupReference || selectedGroupReference || "",
                   ).trim();
                   const text = String(message?.text || "").trim();
-                  const firstHashtag = (text.match(/#[^\s#]+/) || [])[0] || "";
-                  const tagValue = firstHashtag || "-";
+                  const hashtagEntities = Array.isArray(message?.entities)
+                    ? message.entities.filter((e) => e?.type === "hashtag")
+                    : [];
+                  const hashtags = hashtagEntities.length > 0
+                    ? hashtagEntities.map((e) => text.slice(e.offset, e.offset + e.length))
+                    : (text.match(/#[^\s#]+/g) || []);
                   const isOpenSupported =
                     isTelegramPdfDocument(message) || isTelegramImageDocument(message);
                   return (
@@ -1538,6 +1555,7 @@ const NogaPlannerTelegramPanel = ({
                         );
                       }}
                     >
+                      <td style={{ whiteSpace: "nowrap" }}>{Number(message?.id || 0) || "-"}</td>
                       <td title={fileNameNoExt || fileName}>
                         {fileNameNoExt || fileName || "-"}
                       </td>
@@ -1546,7 +1564,11 @@ const NogaPlannerTelegramPanel = ({
                       <td>{getStoredGroupLabelByReference(groupReference)}</td>
                       <td>{formatTelegramMessageDate(message?.date) || "-"}</td>
                       <td className="nogaPlanner_tracesTableTagCell">
-                        <span className="nogaPlanner_tracesTableTag">{tagValue}</span>
+                        <div className="nogaPlanner_tracesTableTagList">
+                          {hashtags.length > 0 ? hashtags.map((tag, i) => (
+                            <span key={i} className="nogaPlanner_tracesTableTag">{tag}</span>
+                          )) : <span className="nogaPlanner_tracesTableTag">-</span>}
+                        </div>
                         {activeTelegramRowActionKey === messageKey ? (
                           <div className="nogaPlanner_tracesMessageActionsPopover">
                             <button

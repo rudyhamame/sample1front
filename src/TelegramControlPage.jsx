@@ -882,6 +882,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     [serverReply],
   );
   const [messages, setMessages] = React.useState([]);
+  const [totalMessageTypeCounts, setTotalMessageTypeCounts] = React.useState(null);
   const [messagesOffset, setMessagesOffset] = React.useState(0);
   const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
   const [isLoadingMoreMessages, setIsLoadingMoreMessages] = React.useState(false);
@@ -1042,6 +1043,10 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const fallbackImportantMessages = Array.isArray(memory?.importantMessages)
     ? memory.importantMessages
     : EMPTY_TELEGRAM_ARRAY;
+  const fallbackPlannerCoursesRef = React.useRef(fallbackPlannerCourses);
+  const fallbackImportantMessagesRef = React.useRef(fallbackImportantMessages);
+  fallbackPlannerCoursesRef.current = fallbackPlannerCourses;
+  fallbackImportantMessagesRef.current = fallbackImportantMessages;
   const fetchJsonWithTimeout = React.useCallback(
     async (url, { method = "GET", headers = {}, body, timeoutMs = 10000 } = {}) => {
       const shouldAbortByTimeout = Number(timeoutMs) > 0;
@@ -1512,10 +1517,10 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
           nextCourses =
             Array.isArray(payload?.courses) && payload.courses.length > 0
               ? payload.courses
-              : fallbackPlannerCourses;
+              : fallbackPlannerCoursesRef.current;
           nextImportantMessages = Array.isArray(payload?.importantMessages)
             ? payload.importantMessages
-            : fallbackImportantMessages;
+            : fallbackImportantMessagesRef.current;
           const debug = payload?.debug && typeof payload.debug === "object"
             ? payload.debug
             : null;
@@ -1599,8 +1604,8 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
       });
         setStorageFeedback("");
       } catch (nextError) {
-        setCourses(fallbackPlannerCourses);
-        setImportantMessages(fallbackImportantMessages);
+        setCourses(fallbackPlannerCoursesRef.current);
+        setImportantMessages(fallbackImportantMessagesRef.current);
         setStorageFeedback(
           nextError?.message || "Unable to load Telegram storage context.",
         );
@@ -1610,7 +1615,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     });
     storageContextRequestRef.current = requestPromise;
     return requestPromise;
-  }, [fallbackImportantMessages, fallbackPlannerCourses, fetchJsonWithTimeout, token]);
+  }, [fetchJsonWithTimeout, token]);
 
   const fetchTelegramConfig = React.useCallback(async () => {
     if (!token) {
@@ -2040,12 +2045,16 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
         );
         setHasMoreMessages(Boolean(payload?.hasMore));
         setStreamTitle(String(payload?.group?.title || "Telegram messages"));
+        if (!append && payload?.typeCounts && typeof payload.typeCounts === "object") {
+          setTotalMessageTypeCounts(payload.typeCounts);
+        }
       } catch (nextError) {
         setError(
           nextError?.message || "Unable to load stored Telegram messages.",
         );
         if (!append) {
           setMessages([]);
+          setTotalMessageTypeCounts(null);
           setMessagesOffset(0);
           setHasMoreMessages(false);
         }
@@ -3879,6 +3888,16 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   }, [activeDocumentTypeTab, activeMessageTypeTab, messages]);
 
   const messageTypeCounts = React.useMemo(() => {
+    if (totalMessageTypeCounts && typeof totalMessageTypeCounts === "object") {
+      return {
+        all: Number(totalMessageTypeCounts.all || 0),
+        texts: Number(totalMessageTypeCounts.texts || 0),
+        photos: Number(totalMessageTypeCounts.photos || 0),
+        videos: Number(totalMessageTypeCounts.videos || 0),
+        audios: Number(totalMessageTypeCounts.audios || 0),
+        documents: Number(totalMessageTypeCounts.documents || 0),
+      };
+    }
     const source = Array.isArray(messages) ? messages : [];
     const counts = {
       all: source.length,
@@ -3905,7 +3924,7 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     });
 
     return counts;
-  }, [messages]);
+  }, [messages, totalMessageTypeCounts]);
 
   const documentTypeCounts = React.useMemo(() => {
     const source = (Array.isArray(messages) ? messages : []).filter((message) => {

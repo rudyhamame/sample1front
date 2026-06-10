@@ -1477,12 +1477,8 @@
   box-sizing: border-box;
   overflow: hidden;
   color: #1b7589;
-  padding: 8px 12px;
   font: inherit;  
   background-color: white;
-  box-shadow:
-    inset 0 2px 8px rgba(24, 83, 104, 0.2),
-    inset 0 -1px 4px rgba(24, 83, 104, 0.1);
   flex-grow: 1;
 }
 
@@ -1685,10 +1681,16 @@
   overflow: visible !important;
 }
 
+.nogaPlanner_tracesTableTagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .nogaPlanner_tracesTableTag {
   display: inline-flex;
   align-items: center;
-  max-width: 100%;
+  width: fit-content;
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid rgba(132, 27, 45, 0.25);

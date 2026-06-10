@@ -77,21 +77,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       icon: "fi fi-rr-folder",
     },
     {
-      key: "lectures",
-      label: NOGAPLANNER_TEXT.savedCourses.lecturesTitle,
-      icon: "fi fi-rc-leader-speech",
-    },
-    {
-      key: "courses",
-      label: NOGAPLANNER_TEXT.savedCourses.coursesTitle,
-      icon: "fi fi-rr-lesson",
-    },
-    {
-      key: "exams",
-      label: NOGAPLANNER_TEXT.examBoard.tabExams,
-      icon: "fi fi-rr-test",
-    },
-    {
       key: "plan",
       label: NOGAPLANNER_TEXT.studyPlan.title,
       icon: "fi fi-rr-calendar-clock",
