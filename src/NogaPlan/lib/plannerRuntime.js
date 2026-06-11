@@ -236,6 +236,7 @@ export const NOGAPLANNER_TEXT = {
     courses: "Courses",
     lectures: "Lectures",
     exams: "Exams",
+    aiHelper: "AI Helper",
   },
   // User-facing status and failure messages surfaced by planner workflows.
   messages: {
@@ -543,6 +544,7 @@ export const NOGAPLANNER_WRAPPER_TABS = [
   { key: "courses", label: NOGAPLANNER_TEXT.wrapperTabs.courses },
   { key: "lectures", label: NOGAPLANNER_TEXT.wrapperTabs.lectures },
   { key: "exams", label: NOGAPLANNER_TEXT.wrapperTabs.exams },
+  { key: "ai", label: NOGAPLANNER_TEXT.wrapperTabs.aiHelper },
 ];
 
 export const isPendingCourseValue = (value) =>

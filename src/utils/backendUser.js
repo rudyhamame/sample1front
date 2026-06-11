@@ -383,7 +383,7 @@ export const normalizeUserUpdatePayload = (payload) => {
     posts: toArray(payload?.posts),
     chat: toArray(payload?.chat),
     isOnline: Boolean(payload?.isOnline),
-    aiProvider: String(settings?.aiProvider || "openai").trim() || "openai",
+    aiProvider: String(settings?.ai?.aiProvider || settings?.aiProvider || "openai").trim() || "openai",
     profilePicture: nextProfilePicture,
     profilePictureViewport: normalizeProfilePictureViewport(
       media?.profilePictureViewport ||

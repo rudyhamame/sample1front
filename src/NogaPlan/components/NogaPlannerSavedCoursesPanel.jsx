@@ -81,6 +81,11 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       label: NOGAPLANNER_TEXT.studyPlan.title,
       icon: "fi fi-rr-calendar-clock",
     },
+    {
+      key: "ai",
+      label: NOGAPLANNER_TEXT.wrapperTabs.aiHelper,
+      icon: "fi fi-rr-sparkles",
+    },
   ];
   const settingsTabEntry = {
     key: "settings",
@@ -2265,4 +2270,3 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
 };
 
 export default NogaPlannerSavedCoursesPanel;
-

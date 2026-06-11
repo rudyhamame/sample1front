@@ -1,5 +1,7 @@
 export const getHomeSubApps = (username = "") => {
   const normalizedUsername = String(username || "").trim().toLowerCase();
+  const studyPlannerLabel =
+    normalizedUsername === "naghamtrkmani" ? "Noga Planner" : "Study Planner";
   return [
     {
       id: "ecg",
@@ -37,7 +39,7 @@ export const getHomeSubApps = (username = "") => {
     },
     {
       id: "school",
-      label: "Study Planner",
+      label: studyPlannerLabel,
       icon: "fas fa-layer-group",
       path: "/phenomed/nogaplan",
     },

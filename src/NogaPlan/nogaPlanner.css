@@ -1,5 +1,6 @@
 
 @import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap");
 
 #nogaPlanner_article {
   position: relative;
@@ -10,6 +11,7 @@
   min-width: 0;
   min-height: 0;
   overflow: visible;
+  --nogaPlanner-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "IBM Plex Sans Arabic", sans-serif;
   font-family: var(--nogaPlanner-font-family);
   color: var(--nogaPlanner-ink);
 }
@@ -1383,6 +1385,31 @@
   padding: 12px;
 }
 
+.nogaPlanner_tracesTextPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nogaPlanner_tracesTextPreviewMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.nogaPlanner_tracesTextPreviewBody {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #2c2c2c;
+  margin: 0;
+}
+
 .nogaPlanner_tracesPdfStageWrap {
   display: flex;
   flex-direction: column;
@@ -1584,7 +1611,7 @@ flex-direction: column;
   border: 1px solid rgba(132, 27, 45, 0.24);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #f26a8d;
+  background: #dd2d4a;
   color: #fff8f2;
   font: inherit;
   font-weight: 700;
@@ -1659,7 +1686,7 @@ flex-direction: column;
   top: 0;
   z-index: 1;
   font-weight: 800;
-  background: #f26a8d;
+  background: #dd2d4a;
   color: #fff;
 }
 
@@ -1870,21 +1897,7 @@ flex-direction: column;
   color: #3f2b22;
 }
 
-@media (max-width: 1100px) {
-  .nogaPlanner_traces {
-    flex-direction: column;
-  }
 
-  .nogaPlanner_tracesColumns {
-    flex-direction: column;
-  }
-
-  .nogaPlanner_tracesPdfPane {
-    flex-basis: auto;
-    min-width: 0;
-    min-height: 280px;
-  }
-}
 
 .nogaPlanner_tracesList {
   display: flex;
@@ -2830,6 +2843,40 @@ color: #fff;
 
 }
 
+#nogaPlanner_traces_aiGenerateContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(132, 27, 45, 0.1);
+}
+
+.nogaPlanner_tracesCourseResult {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nogaPlanner_tracesCourseResultInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nogaPlanner_tracesCourseResultName {
+  font-size: 0.82rem;
+  color: #3f2b22;
+  word-break: break-word;
+}
+
+.nogaPlanner_tracesCourseResultCode {
+  font-size: 0.74rem;
+  color: #8a6a5a;
+  font-style: italic;
+}
+
 .nogaPlanner_homePanelCardSetBtn--cancel:hover {
   background: #b9424b;
 }
@@ -3013,8 +3060,28 @@ color: #fff;
 
 .nogaPlanner_homeIntervalsDangerRow {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
   margin: 0 0 10px;
+}
+
+.nogaPlanner_homeIntervalsDangerRowFields {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.nogaPlanner_homeIntervalsDatePair {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nogaPlanner_homeIntervalsDatePair .nogaPlanner_homeIntervalsInput {
+  min-width: 62px;
 }
 
 .nogaPlanner_homeIntervalsTabsBar {
@@ -6251,4 +6318,120 @@ width: 100%;
   padding: 1px 5px;
   font-size: 11px;
   min-width: unset;
+}
+
+.nogaPlanner_resetPasswordOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nogaPlanner_resetPasswordDialog {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+  max-width: 360px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+}
+
+.nogaPlanner_resetPasswordTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #5d2437;
+  margin: 0;
+}
+
+.nogaPlanner_resetPasswordError {
+  font-size: 0.78rem;
+  color: #c0392b;
+}
+
+.nogaPlanner_resetPasswordActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.nogaPlanner_aiHelperPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nogaPlanner_aiHelperIntro {
+  margin: 0 0 12px;
+  line-height: 1.55;
+}
+
+.nogaPlanner_aiHelperQuickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nogaPlanner_aiHelperQuickActions .nogaPlanner_homePanelCardSetBtn {
+  flex: 1 1 160px;
+}
+
+.nogaPlanner_aiHistory_list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nogaPlanner_aiHistory_entry {
+  border: 1px solid var(--nogaPlanner-border-color, #e0e0e0);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nogaPlanner_aiHistory_entryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nogaPlanner_aiHistory_goal {
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: capitalize;
+  color: var(--nogaPlanner-accent-color, #2563eb);
+}
+
+.nogaPlanner_aiHistory_ts {
+  font-size: 0.75em;
+  color: var(--nogaPlanner-muted-color, #888);
+  white-space: nowrap;
+}
+
+.nogaPlanner_aiHistory_items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nogaPlanner_aiHistory_item {
+  font-size: 0.85em;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--nogaPlanner-border-color, #e0e0e0);
+}
+
+.nogaPlanner_aiHistory_item:last-child {
+  border-bottom: none;
 }

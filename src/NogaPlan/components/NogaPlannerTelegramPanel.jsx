@@ -276,9 +276,13 @@ const NogaPlannerTelegramPanel = ({
   const [previewPageCount, setPreviewPageCount] = useState(0);
   const [previewPageNumber, setPreviewPageNumber] = useState(1);
   const [pdfPaneMode, setPdfPaneMode] = useState("pdf");
+  const [selectedTextPreviewMessage, setSelectedTextPreviewMessage] = useState(null);
   const [findInstructorsResults, setFindInstructorsResults] = useState([]);
   const [isFindingInstructors, setIsFindingInstructors] = useState(false);
   const [findInstructorsError, setFindInstructorsError] = useState("");
+  const [extractCourseNamesResults, setExtractCourseNamesResults] = useState([]);
+  const [isExtractingCourseNames, setIsExtractingCourseNames] = useState(false);
+  const [extractCourseNamesError, setExtractCourseNamesError] = useState("");
   const [isSyncingPinned, setIsSyncingPinned] = useState(false);
   const telegramImagePreviewUrlsRef = useRef({});
   const telegramImagePreviewBlobUrlsRef = useRef(new Set());
@@ -615,6 +619,25 @@ const NogaPlannerTelegramPanel = ({
         results.push({ name, groupLabel: "" });
       }
       setFindInstructorsResults(results);
+      if (results.length > 0 && planner?.persistStudyPlannerMeta) {
+        try {
+          const currentExtractions = Array.isArray(planner?.state?.plannerRoot?.programAIExtractions)
+            ? planner.state.plannerRoot.programAIExtractions
+            : [];
+          const nextExtractions = [
+            ...currentExtractions,
+            {
+              extractionGoal: "instructors",
+              extractionItems: results.map((r) => r.name),
+              extractionTimestamp: new Date().toISOString(),
+            },
+          ];
+          const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
+          if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+            planner.setState({ plannerRoot: nextPlannerRoot });
+          }
+        } catch (_) {}
+      }
     } catch (err) {
       setFindInstructorsError(err?.message || "Search failed.");
     } finally {
@@ -679,6 +702,131 @@ const NogaPlannerTelegramPanel = ({
       }
     } catch (err) {
       planner.props?.serverReply?.(String(err?.message || "Failed to deduplicate instructors."));
+    }
+  };
+
+  const extractCourseNames = async () => {
+    setPdfPaneMode("courses");
+    setExtractCourseNamesResults([]);
+    setExtractCourseNamesError("");
+    if (!plannerToken) {
+      setExtractCourseNamesError("Login token is missing.");
+      return;
+    }
+    const groupReference = String(selectedGroupReference || "").trim();
+    if (!groupReference) {
+      setExtractCourseNamesError("Select a group first.");
+      return;
+    }
+    setIsExtractingCourseNames(true);
+    try {
+      const searchParams = new URLSearchParams();
+      searchParams.set("group", groupReference);
+      searchParams.set("limit", "all");
+      searchParams.set("offset", "0");
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+        { headers: { Authorization: `Bearer ${plannerToken}` } },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setExtractCourseNamesError(String(payload?.error || "Failed to load group messages."));
+        return;
+      }
+      const groupMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+      const allTexts = groupMessages
+        .map((m) => String(m?.text || "").trim())
+        .filter(Boolean);
+      if (allTexts.length === 0) {
+        setExtractCourseNamesResults([]);
+        return;
+      }
+      const aiResponse = await fetch(apiUrl("/api/telegram/ai/extract-courses"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${plannerToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ texts: allTexts }),
+      });
+      const aiPayload = await aiResponse.json().catch(() => ({}));
+      if (!aiResponse.ok) {
+        setExtractCourseNamesError(String(aiPayload?.error || "AI extraction failed."));
+        return;
+      }
+      const courses = Array.isArray(aiPayload?.courses) ? aiPayload.courses : [];
+      const nameSet = new Set();
+      const results = [];
+      for (const entry of courses) {
+        const courseName = String(entry?.courseName || "").trim();
+        if (!courseName || nameSet.has(courseName)) continue;
+        nameSet.add(courseName);
+        results.push({ courseName, courseCode: String(entry?.courseCode || "").trim() });
+      }
+      setExtractCourseNamesResults(results);
+      if (results.length > 0 && planner?.persistStudyPlannerMeta) {
+        try {
+          const currentExtractions = Array.isArray(planner?.state?.plannerRoot?.programAIExtractions)
+            ? planner.state.plannerRoot.programAIExtractions
+            : [];
+          const nextExtractions = [
+            ...currentExtractions,
+            {
+              extractionGoal: "courses",
+              extractionItems: results.map((r) =>
+                [String(r?.courseName || "").trim(), String(r?.courseCode || "").trim()]
+                  .filter(Boolean)
+                  .join(" — ")
+              ),
+              extractionTimestamp: new Date().toISOString(),
+            },
+          ];
+          const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
+          if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+            planner.setState({ plannerRoot: nextPlannerRoot });
+          }
+        } catch (_) {}
+      }
+    } catch (err) {
+      setExtractCourseNamesError(String(err?.message || "Extraction failed."));
+    } finally {
+      setIsExtractingCourseNames(false);
+    }
+  };
+
+  const addCourseToPlanner = async ({ courseName, courseCode }) => {
+    const current = Array.isArray(planner?.state?.plannerRoot?.programCoursesNamesCodes)
+      ? planner.state.plannerRoot.programCoursesNamesCodes
+      : [];
+    const next = [...current, { courseName, courseCode }];
+    try {
+      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: next });
+      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+        planner.setState({ plannerRoot: nextPlannerRoot });
+      }
+    } catch (err) {
+      planner.props?.serverReply?.(String(err?.message || "Failed to add course."));
+    }
+  };
+
+  const deleteDuplicateCourseNames = async () => {
+    const current = Array.isArray(planner?.state?.plannerRoot?.programCoursesNamesCodes)
+      ? planner.state.plannerRoot.programCoursesNamesCodes
+      : [];
+    const seen = new Set();
+    const deduped = current.filter((entry) => {
+      const key = `${String(entry?.courseName || "").trim()}|${String(entry?.courseCode || "").trim()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    try {
+      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: deduped });
+      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+        planner.setState({ plannerRoot: nextPlannerRoot });
+      }
+    } catch (err) {
+      planner.props?.serverReply?.(String(err?.message || "Failed to deduplicate course names."));
     }
   };
 
@@ -1150,15 +1298,40 @@ const NogaPlannerTelegramPanel = ({
         <div className="nogaPlanner_tracesPdfPaneCopy">
           <span className="nogaPlanner_tracesPdfPaneEyebrow">Read-only</span>
           <strong className="nogaPlanner_tracesPdfPaneTitle">
-            {pdfPaneMode === "instructors" ? "Found Instructors" : "PDF Reader"}
+            {pdfPaneMode === "instructors" ? "Found Instructors" : pdfPaneMode === "courses" ? "Extracted Course Names" : pdfPaneMode === "text" ? "Text Preview" : "PDF Reader"}
           </strong>
         </div>
-        {pdfPaneMode === "instructors" ? (
+        {pdfPaneMode === "text" ? (
+          <button
+            type="button"
+            className="nogaPlanner_tracesDeleteBtn"
+            onClick={() => { setSelectedTextPreviewMessage(null); setPdfPaneMode("pdf"); }}
+          >
+            Close
+          </button>
+        ) : pdfPaneMode === "instructors" ? (
           <>
             <button
               type="button"
               className="nogaPlanner_tracesDeleteBtn"
               onClick={deleteDuplicateInstructors}
+            >
+              Delete duplicated items
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesMiniTabBtn"
+              onClick={() => setPdfPaneMode("pdf")}
+            >
+              PDF Reader
+            </button>
+          </>
+        ) : pdfPaneMode === "courses" ? (
+          <>
+            <button
+              type="button"
+              className="nogaPlanner_tracesDeleteBtn"
+              onClick={deleteDuplicateCourseNames}
             >
               Delete duplicated items
             </button>
@@ -1201,7 +1374,21 @@ const NogaPlannerTelegramPanel = ({
         ) : null}
       </div>
       <div className="nogaPlanner_tracesPdfPaneBody">
-        {pdfPaneMode === "instructors" ? (
+        {pdfPaneMode === "text" ? (
+          selectedTextPreviewMessage ? (
+            <div className="nogaPlanner_tracesTextPreview">
+              <div className="nogaPlanner_tracesTextPreviewMeta">
+                <span>{formatTelegramMessageDate(selectedTextPreviewMessage?.date) || "-"}</span>
+                <span>{String(selectedTextPreviewMessage?.senderName || selectedTextPreviewMessage?.sender || selectedTextPreviewMessage?.from || "").trim() || "Unknown sender"}</span>
+              </div>
+              <p className="nogaPlanner_tracesTextPreviewBody">
+                {String(selectedTextPreviewMessage?.text || "").trim() || "(empty)"}
+              </p>
+            </div>
+          ) : (
+            <p className="nogaPlanner_tracesStatus">Select a text message to preview.</p>
+          )
+        ) : pdfPaneMode === "instructors" ? (
           isFindingInstructors ? (
             <p className="nogaPlanner_tracesStatus">Searching all groups...</p>
           ) : findInstructorsError ? (
@@ -1227,6 +1414,41 @@ const NogaPlannerTelegramPanel = ({
                     onClick={() => addInstructorToPlanner(result.name)}
                   >
                     Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        ) : pdfPaneMode === "courses" ? (
+          isExtractingCourseNames ? (
+            <p className="nogaPlanner_tracesStatus">Extracting course names...</p>
+          ) : extractCourseNamesError ? (
+            <p className="nogaPlanner_tracesStatus">{extractCourseNamesError}</p>
+          ) : extractCourseNamesResults.length === 0 ? (
+            <p className="nogaPlanner_tracesStatus">No course names found.</p>
+          ) : (
+            <div className="nogaPlanner_tracesPdfStageWrap">
+              <p className="nogaPlanner_tracesStatus--summary">
+                {extractCourseNamesResults.length} courses found
+              </p>
+              {extractCourseNamesResults.map((entry, idx) => (
+                <div
+                  key={`course-result-${idx}`}
+                  className="nogaPlanner_tracesMessage nogaPlanner_tracesCourseResult"
+                >
+                  <div className="nogaPlanner_tracesCourseResultInfo">
+                    <span className="nogaPlanner_tracesCourseResultName">{entry.courseName}</span>
+                    {entry.courseCode ? (
+                      <span className="nogaPlanner_tracesCourseResultCode">{entry.courseCode}</span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="nogaPlanner_tracesActionBtn"
+                    style={{ minWidth: "auto", padding: "6px 10px", flexShrink: 0 }}
+                    onClick={() => addCourseToPlanner(entry)}
+                  >
+                    Save
                   </button>
                 </div>
               ))}
@@ -1832,6 +2054,26 @@ const NogaPlannerTelegramPanel = ({
           </button>
         </div>
       </div>
+      <div id="nogaPlanner_traces_aiGenerateContainer" className="nogaPlanner_tracesAiGenerateRow">
+        <button
+          id="nogaPlanner_traces_aiExtractCoursesBtn"
+          type="button"
+          className="nogaPlanner_tracesActionBtn"
+          disabled={isExtractingCourseNames || storedGroups.length === 0}
+          onClick={extractCourseNames}
+        >
+          {isExtractingCourseNames ? "Extracting..." : "Extract course names"}
+        </button>
+        <button
+          id="nogaPlanner_traces_aiExtractInstructorsBtn"
+          type="button"
+          className="nogaPlanner_tracesActionBtn"
+          disabled={isFindingInstructors || storedGroups.length === 0}
+          onClick={findInstructors}
+        >
+          {isFindingInstructors ? "Searching..." : "Extract instructor names"}
+        </button>
+      </div>
       <div className="nogaPlanner_tracesMiniTabsAndViewer">
         <div className="nogaPlanner_tracesMiniTabs">
           {TELEGRAM_DOCUMENT_TYPE_TABS.map((entry) => (
@@ -1917,6 +2159,11 @@ const NogaPlannerTelegramPanel = ({
                         if (isTelegramPdfDocument(message) || isTelegramImageDocument(message)) {
                           setSelectedPreviewMessageKey(mediaKey);
                           setPdfPaneMode("pdf");
+                        } else if (documentType === "text") {
+                          setSelectedTextPreviewMessage((current) =>
+                            current?._id === message?._id && current?.date === message?.date ? null : message
+                          );
+                          setPdfPaneMode("text");
                         }
                         setActiveTelegramRowActionKey((currentValue) =>
                           currentValue === messageKey ? "" : messageKey,
