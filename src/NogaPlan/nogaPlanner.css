@@ -2824,6 +2824,12 @@ color: #fff;
   color: #ffffff;
 }
 
+#nogaPlanner_traces_controlsContainer{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+}
+
 .nogaPlanner_homePanelCardSetBtn--cancel:hover {
   background: #b9424b;
 }
@@ -3108,6 +3114,7 @@ color: #fff;
 
 .nogaPlanner_homeIntervalStatusCell {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
