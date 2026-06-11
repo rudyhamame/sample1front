@@ -21,6 +21,7 @@ const LANGUAGE_COMPONENT_CLASS_OPTIONS = ["Class", "Lab", "Pharmacy"];
 
 const TELEGRAM_DOCUMENT_TYPE_TABS = [
   { key: "all", label: "All" },
+  { key: "text", label: "Text" },
   { key: "image", label: "Images" },
   { key: "pdf", label: "PDF" },
   { key: "word", label: "Word" },
@@ -119,6 +120,9 @@ const classifyTelegramDocumentType = (message = {}) => {
         .toLowerCase()
         .replace(/^\./, "");
 
+  if (!attachmentKind || attachmentKind === "text") {
+    return "text";
+  }
   if (attachmentKind === "photo" || mimeType.startsWith("image/")) {
     return "image";
   }
@@ -188,12 +192,19 @@ const classifyTelegramDocumentType = (message = {}) => {
   ) {
     return "code";
   }
+  if (attachmentKind === "pdf") {
+    return "pdf";
+  }
+  if (attachmentKind === "document") {
+    return "pdf";
+  }
   return "other";
 };
 
 const formatKnownTelegramDocumentType = (typeKey = "") => {
   const normalized = String(typeKey || "").trim().toLowerCase();
   const labelMap = {
+    text: "Text",
     image: "Image",
     pdf: "PDF",
     word: "Word",
@@ -242,6 +253,8 @@ const NogaPlannerTelegramPanel = ({
   const [documentTypeTab, setDocumentTypeTab] = useState("all");
   const [storedGroups, setStoredGroups] = useState([]);
   const [selectedGroupReference, setSelectedGroupReference] = useState("");
+  const [selectedLectureKey, setSelectedLectureKey] = useState("");
+  const [selectedCourseName, setSelectedCourseName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [messages, setMessages] = useState([]);
   const [messagesOffset, setMessagesOffset] = useState(0);
@@ -264,6 +277,10 @@ const NogaPlannerTelegramPanel = ({
   const [previewPdfDocument, setPreviewPdfDocument] = useState(null);
   const [previewPageCount, setPreviewPageCount] = useState(0);
   const [previewPageNumber, setPreviewPageNumber] = useState(1);
+  const [pdfPaneMode, setPdfPaneMode] = useState("pdf");
+  const [findInstructorsResults, setFindInstructorsResults] = useState([]);
+  const [isFindingInstructors, setIsFindingInstructors] = useState(false);
+  const [findInstructorsError, setFindInstructorsError] = useState("");
   const telegramImagePreviewUrlsRef = useRef({});
   const telegramImagePreviewBlobUrlsRef = useRef(new Set());
   const previewObjectUrlRef = useRef("");
@@ -358,6 +375,37 @@ const NogaPlannerTelegramPanel = ({
     return Array.from(dedupedById.values());
   }, [planner?.state?.courses]);
 
+  const plannerLectureRows = useMemo(() => {
+    if (!planner?.getPlannerMaterialMetadataLectureRows || !planner?.getResolvedPlannerRoot) {
+      return [];
+    }
+    try {
+      return planner.getPlannerMaterialMetadataLectureRows(planner.getResolvedPlannerRoot()) || [];
+    } catch {
+      return [];
+    }
+  }, [planner?.state?.plannerRoot]);
+
+  const plannerCourseOptions = useMemo(() => {
+    if (!planner?.getPlannerMaterialMetadataCourseRows || !planner?.getResolvedPlannerRoot) {
+      return [];
+    }
+    try {
+      const rows = planner.getPlannerMaterialMetadataCourseRows(planner.getResolvedPlannerRoot()) || [];
+      const seen = new Set();
+      return rows.reduce((acc, row) => {
+        const name = String(row?.courseName || "").trim();
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          acc.push({ name, code: String(row?.courseCode || "").trim() });
+        }
+        return acc;
+      }, []);
+    } catch {
+      return [];
+    }
+  }, [planner?.state?.plannerRoot]);
+
   const activeTraceSourceLabel = useMemo(
     () =>
       MATERIAL_SOURCE_TABS.find((entry) => entry.key === materialSourceTab)?.label ||
@@ -365,16 +413,13 @@ const NogaPlannerTelegramPanel = ({
     [materialSourceTab],
   );
   const telegramDocumentMessages = useMemo(
-    () =>
-      (Array.isArray(messages) ? messages : []).filter((message) => {
-        const kind = String(message?.attachmentKind || "").trim().toLowerCase();
-        return kind === "document" || kind === "pdf" || kind === "photo";
-      }),
+    () => (Array.isArray(messages) ? messages : []),
     [messages],
   );
   const telegramDocumentTypeCounts = useMemo(() => {
     const counts = {
       all: telegramDocumentMessages.length,
+      text: 0,
       image: 0,
       pdf: 0,
       word: 0,
@@ -391,12 +436,30 @@ const NogaPlannerTelegramPanel = ({
     return counts;
   }, [telegramDocumentMessages]);
   const filteredTelegramDocumentMessages = useMemo(() => {
-    if (documentTypeTab === "all") {
-      return telegramDocumentMessages;
-    }
-    return telegramDocumentMessages.filter(
-      (message) => classifyTelegramDocumentType(message) === documentTypeTab,
-    );
+    const base = documentTypeTab === "all"
+      ? telegramDocumentMessages
+      : telegramDocumentMessages.filter(
+          (message) => classifyTelegramDocumentType(message) === documentTypeTab,
+        );
+    const seenGroupedIds = new Set();
+    const groupedIdCounts = new Map();
+    base.forEach((message) => {
+      const gid = String(message?.groupedId || "").trim();
+      if (gid) groupedIdCounts.set(gid, (groupedIdCounts.get(gid) || 0) + 1);
+    });
+    return base
+      .filter((message) => {
+        const gid = String(message?.groupedId || "").trim();
+        if (!gid) return true;
+        if (seenGroupedIds.has(gid)) return false;
+        seenGroupedIds.add(gid);
+        return true;
+      })
+      .map((message) => {
+        const gid = String(message?.groupedId || "").trim();
+        const count = gid ? (groupedIdCounts.get(gid) || 1) : 1;
+        return count > 1 ? { ...message, _albumCount: count } : message;
+      });
   }, [documentTypeTab, telegramDocumentMessages]);
 
   useEffect(() => {
@@ -465,6 +528,108 @@ const NogaPlannerTelegramPanel = ({
       : targetRef;
   };
 
+  const INSTRUCTOR_PATTERNS = [
+    {
+      // دكتورة / دكتوره / الدكتورة / الدكتوره as a standalone word
+      regex: /(^|\s)(دكتورة|دكتوره|الدكتورة|الدكتوره)(?=\s|$)/u,
+      label: "دكتورة",
+    },
+    {
+      // دكتور as a standalone word (not followed by ة/ه)
+      regex: /(^|\s)دكتور(?=\s|$)/u,
+      label: "دكتور",
+    },
+    {
+      // د or د. as a standalone word/abbreviation
+      regex: /(^|\s)د\.?(?=\s|$)/u,
+      label: "د",
+    },
+  ];
+
+  const extractInstructorName = (text, pattern) => {
+    const match = pattern.regex.exec(text);
+    if (!match) return "";
+    const afterMatch = text.slice(match.index + match[0].length).trimStart();
+    const words = afterMatch.split(/\s+/).filter(Boolean);
+    return words.slice(0, 2).join(" ").trim();
+  };
+
+  const findInstructors = async () => {
+    setPdfPaneMode("instructors");
+    setFindInstructorsResults([]);
+    setFindInstructorsError("");
+    if (!plannerToken) {
+      setFindInstructorsError("Login token is missing.");
+      return;
+    }
+    if (storedGroups.length === 0) {
+      setFindInstructorsError("No stored groups available. Load groups first.");
+      return;
+    }
+    setIsFindingInstructors(true);
+    try {
+      const nameMap = new Map();
+      for (const group of storedGroups) {
+        const groupReference = String(group?.groupReference || "").trim();
+        if (!groupReference) continue;
+        const searchParams = new URLSearchParams();
+        searchParams.set("group", groupReference);
+        searchParams.set("limit", "all");
+        searchParams.set("offset", "0");
+        const response = await fetch(
+          apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
+          { headers: { Authorization: `Bearer ${plannerToken}` } },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) continue;
+        const groupMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+        for (const message of groupMessages) {
+          const text = String(message?.text || "").trim();
+          if (!text) continue;
+          const matched = INSTRUCTOR_PATTERNS.find(({ regex }) => regex.test(text));
+          if (!matched) continue;
+          const name = extractInstructorName(text, matched);
+          if (!name) continue;
+          if (!nameMap.has(name)) {
+            nameMap.set(name, {
+              matchedPattern: matched.label,
+              groupLabel: formatStoredGroupOptionLabel(group),
+            });
+          }
+        }
+      }
+      setFindInstructorsResults(
+        Array.from(nameMap.entries()).map(([name, meta]) => ({ name, ...meta })),
+      );
+    } catch (err) {
+      setFindInstructorsError(err?.message || "Search failed.");
+    } finally {
+      setIsFindingInstructors(false);
+    }
+  };
+
+  const addInstructorToPlanner = async (name) => {
+    const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
+      ? planner.state.plannerRoot.programInstructors
+      : [];
+    const nextInstructors = [...currentInstructors, name];
+    try {
+      await planner.persistStudyPlannerMeta({ programInstructors: nextInstructors });
+    } catch (_err) {}
+  };
+
+  const deleteDuplicateInstructors = async () => {
+    const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
+      ? planner.state.plannerRoot.programInstructors
+      : [];
+    const deduped = Array.from(
+      new Set(currentInstructors.map((s) => String(s || "").trim()).filter(Boolean)),
+    );
+    try {
+      await planner.persistStudyPlannerMeta({ programInstructors: deduped });
+    } catch (_err) {}
+  };
+
   const fetchStoredGroups = async () => {
     if (!plannerToken) {
       setError("Telegram login token is missing.");
@@ -528,8 +693,22 @@ const NogaPlannerTelegramPanel = ({
       searchParams.set("limit", String(TELEGRAM_STORED_MESSAGES_PAGE_SIZE));
       searchParams.set("offset", String(nextOffset));
       searchParams.set("group", groupReference);
-      if (String(searchQuery || "").trim()) {
-        searchParams.set("q", String(searchQuery).trim());
+      const selectedLecture = selectedLectureKey
+        ? plannerLectureRows.find((l) => String(l?.key || "").trim() === selectedLectureKey) || null
+        : null;
+      const lectureTerm = selectedLecture
+        ? String(selectedLecture.lectureName || "").trim()
+        : "";
+      const courseTerm = String(selectedCourseName || "").trim();
+      const combinedQuery = [String(searchQuery || "").trim(), courseTerm, lectureTerm]
+        .filter(Boolean)
+        .join(" ");
+      if (combinedQuery) {
+        searchParams.set("q", combinedQuery);
+      }
+      if (documentTypeTab && documentTypeTab !== "all") {
+        searchParams.set("attachmentType", documentTypeTab);
+        searchParams.set("limit", "all");
       }
       const response = await fetch(
         apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
@@ -914,9 +1093,28 @@ const NogaPlannerTelegramPanel = ({
       <div className="nogaPlanner_tracesPdfPaneHeader">
         <div className="nogaPlanner_tracesPdfPaneCopy">
           <span className="nogaPlanner_tracesPdfPaneEyebrow">Read-only</span>
-          <strong className="nogaPlanner_tracesPdfPaneTitle">PDF Reader</strong>
+          <strong className="nogaPlanner_tracesPdfPaneTitle">
+            {pdfPaneMode === "instructors" ? "Found Instructors" : "PDF Reader"}
+          </strong>
         </div>
-        {previewPageCount > 0 ? (
+        {pdfPaneMode === "instructors" ? (
+          <>
+            <button
+              type="button"
+              className="nogaPlanner_tracesDeleteBtn"
+              onClick={deleteDuplicateInstructors}
+            >
+              Delete duplicated items
+            </button>
+            <button
+              type="button"
+              className="nogaPlanner_tracesMiniTabBtn"
+              onClick={() => setPdfPaneMode("pdf")}
+            >
+              PDF Reader
+            </button>
+          </>
+        ) : previewPageCount > 0 ? (
           <div className="nogaPlanner_tracesPdfPager">
             <button
               type="button"
@@ -947,7 +1145,38 @@ const NogaPlannerTelegramPanel = ({
         ) : null}
       </div>
       <div className="nogaPlanner_tracesPdfPaneBody">
-        {traceMainTab !== "material" || materialSourceTab !== "telegram" ? (
+        {pdfPaneMode === "instructors" ? (
+          isFindingInstructors ? (
+            <p className="nogaPlanner_tracesStatus">Searching all groups...</p>
+          ) : findInstructorsError ? (
+            <p className="nogaPlanner_tracesStatus">{findInstructorsError}</p>
+          ) : findInstructorsResults.length === 0 ? (
+            <p className="nogaPlanner_tracesStatus">No instructor mentions found.</p>
+          ) : (
+            <div className="nogaPlanner_tracesPdfStageWrap">
+              <p className="nogaPlanner_tracesStatus--summary">
+                {findInstructorsResults.length} instructors found
+              </p>
+              {findInstructorsResults.map((result, idx) => (
+                <div
+                  key={`instructor-result-${idx}`}
+                  className="nogaPlanner_tracesMessage"
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span style={{ fontSize: "0.82rem", color: "#3f2b22" }}>{result.name}</span>
+                  <button
+                    type="button"
+                    className="nogaPlanner_tracesActionBtn"
+                    style={{ minWidth: "auto", padding: "6px 10px" }}
+                    onClick={() => addInstructorToPlanner(result.name)}
+                  >
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        ) : traceMainTab !== "material" || materialSourceTab !== "telegram" ? (
           <p className="nogaPlanner_tracesStatus">
             PDF preview is available for Telegram documents only.
           </p>
@@ -1396,7 +1625,7 @@ const NogaPlannerTelegramPanel = ({
       groupReferenceOverride: selectedGroupReference,
       reset: true,
     });
-  }, [materialSourceTab, selectedGroupReference, traceMainTab]);
+  }, [materialSourceTab, selectedCourseName, selectedGroupReference, selectedLectureKey, traceMainTab, documentTypeTab]);
   useEffect(() => {
     if (
       (traceMainTab !== "material" || materialSourceTab !== "telegram") &&
@@ -1452,6 +1681,45 @@ const NogaPlannerTelegramPanel = ({
             );
           })}
         </select>
+        <select
+          id="nogaPlanner_tracesCourseSelect"
+          className="nogaPlanner_tracesInput"
+          value={selectedCourseName}
+          onChange={(event) => setSelectedCourseName(event.target.value)}
+        >
+          <option value="">Select course</option>
+          {plannerCourseOptions.map((course) => {
+            const label = course.code ? `${course.name} (${course.code})` : course.name;
+            return (
+              <option key={`traces-course-${course.name}`} value={course.name}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
+        <select
+          id="nogaPlanner_tracesLectureSelect"
+          className="nogaPlanner_tracesInput"
+          value={selectedLectureKey}
+          onChange={(event) => setSelectedLectureKey(event.target.value)}
+        >
+          <option value="">Select lecture</option>
+          {plannerLectureRows.map((lecture) => {
+            const key = String(lecture?.key || "").trim();
+            if (!key) return null;
+            const courseName = String(lecture?.courseName || "").trim() || "-";
+            const lectureName = String(lecture?.lectureName || "").trim() || "-";
+            const instructors = String(lecture?.lectureInstructor || "").trim();
+            const label = instructors
+              ? `${courseName}: ${lectureName} (${instructors})`
+              : `${courseName}: ${lectureName}`;
+            return (
+              <option key={`traces-lecture-${key}`} value={key}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
         <div
           id="nogaPlanner_traces_searchRow"
           className="nogaPlanner_tracesSearchRow"
@@ -1472,6 +1740,15 @@ const NogaPlannerTelegramPanel = ({
             disabled={isLoading}
           >
             Search
+          </button>
+          <button
+            id="nogaPlanner_tracesFindInstructorsBtn"
+            type="button"
+            className="nogaPlanner_tracesActionBtn"
+            onClick={findInstructors}
+            disabled={isFindingInstructors || storedGroups.length === 0}
+          >
+            {isFindingInstructors ? "Searching..." : "Find Instructors"}
           </button>
         </div>
       </div>
@@ -1556,8 +1833,13 @@ const NogaPlannerTelegramPanel = ({
                       }}
                     >
                       <td style={{ whiteSpace: "nowrap" }}>{Number(message?.id || 0) || "-"}</td>
-                      <td title={fileNameNoExt || fileName}>
-                        {fileNameNoExt || fileName || "-"}
+                      <td title={documentType === "text" ? text : (fileNameNoExt || fileName)}>
+                        {documentType === "text"
+                          ? (text ? (text.length > 60 ? `${text.slice(0, 60)}…` : text) : "-")
+                          : (fileNameNoExt || fileName || "-")}
+                        {message?._albumCount > 1 ? (
+                          <span className="nogaPlanner_tracesAlbumBadge">+{message._albumCount - 1} more</span>
+                        ) : null}
                       </td>
                       <td>{sender || "-"}</td>
                       <td>{formatKnownTelegramDocumentType(documentType)}</td>
@@ -1611,7 +1893,7 @@ const NogaPlannerTelegramPanel = ({
           {!isLoading &&
           !error &&
           filteredTelegramDocumentMessages.length > 0 &&
-          messagesHasMore ? (
+          messagesHasMore && (!documentTypeTab || documentTypeTab === "all") ? (
             <div className="nogaPlanner_tracesLoadMoreRow">
               <button
                 type="button"
@@ -1626,7 +1908,13 @@ const NogaPlannerTelegramPanel = ({
           !error &&
           (messagesFilteredTotalCount > 0 || messagesRawCount > 0) ? (
             <p className="nogaPlanner_tracesStatus nogaPlanner_tracesStatus--summary">
-              {`Showing ${filteredTelegramDocumentMessages.length} of ${messagesFilteredTotalCount || filteredTelegramDocumentMessages.length} matching documents from ${messagesRawCount || messagesFilteredTotalCount || filteredTelegramDocumentMessages.length} stored messages.`}
+              {`Showing ${filteredTelegramDocumentMessages.length} of ${
+                Number(
+                  Object.keys(messagesTypeCounts).length > 0
+                    ? (messagesTypeCounts[documentTypeTab] ?? messagesTypeCounts.all)
+                    : (telegramDocumentTypeCounts[documentTypeTab] ?? telegramDocumentTypeCounts.all),
+                ) || filteredTelegramDocumentMessages.length
+              } ${documentTypeTab === "all" ? "items" : documentTypeTab === "text" ? "text messages" : "documents"} from ${messagesRawCount || 0} stored messages.`}
             </p>
           ) : null}
         </div>

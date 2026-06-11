@@ -1482,6 +1482,11 @@
   flex-grow: 1;
 }
 
+#nogaPlanner_homeIntervalsAddRow_2{
+display: flex;
+flex-direction: column;
+}
+
 .nogaPlanner_tracesTabBtn--active {
   background: #dd2d4a;
   color: #fff8f2;
@@ -1698,6 +1703,19 @@
   color: #6d2f40;
   font-size: 0.68rem;
   font-weight: 700;
+}
+
+.nogaPlanner_tracesAlbumBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(100, 100, 200, 0.12);
+  border: 1px solid rgba(100, 100, 200, 0.3);
+  color: #3a3a8a;
+  font-size: 0.65rem;
+  font-weight: 600;
+  vertical-align: middle;
 }
 
 .nogaPlanner_tracesMessageActionsPopover {
@@ -2826,8 +2844,8 @@ color: #fff;
 
   .nogaPlanner_homePanelColumn--left,
   .nogaPlanner_homePanelColumn--right {
-    width: 100%;
-    flex-basis: auto;
+    display: flex;
+    flex-direction: column;
   }
 
   .nogaPlanner_homePanelCard {
