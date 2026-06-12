@@ -452,6 +452,12 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [authFormInlineStyle, setAuthFormInlineStyle] = useState({});
   const [alignedBlockMinHeight, setAlignedBlockMinHeight] = useState(0);
+  const [videoUnlocked, setVideoUnlocked] = useState(
+    () => sessionStorage.getItem("videoGateUnlocked") === "1",
+  );
+  const [videoGateForm, setVideoGateForm] = useState({ companyName: "", password: "" });
+  const [videoGateError, setVideoGateError] = useState("");
+  const [videoGatePending, setVideoGatePending] = useState(false);
   const [pendingSignupAuthReport, setPendingSignupAuthReport] = useState(null);
   const [isPendingSignupUsernameEditable, setIsPendingSignupUsernameEditable] =
     useState(false);
@@ -1034,6 +1040,36 @@ const Login = ({ onLogin, onForceLogout }) => {
       }
     };
   }, []);
+
+  const submitVideoGate = async (e) => {
+    e.preventDefault();
+    const companyName = videoGateForm.companyName.trim();
+    const password = videoGateForm.password.trim();
+    if (!companyName || !password) {
+      setVideoGateError("Please fill in both fields.");
+      return;
+    }
+    setVideoGatePending(true);
+    setVideoGateError("");
+    try {
+      const res = await fetch(apiUrl("/api/user/video-gate/verify"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.verified) {
+        setVideoGateError(data?.message || "Invalid credentials.");
+        return;
+      }
+      sessionStorage.setItem("videoGateUnlocked", "1");
+      setVideoUnlocked(true);
+    } catch {
+      setVideoGateError("Unable to verify. Please try again.");
+    } finally {
+      setVideoGatePending(false);
+    }
+  };
 
   const login = () => {
     let login;
@@ -1668,20 +1704,59 @@ const Login = ({ onLogin, onForceLogout }) => {
                 <span className="Login_brandName">MCTOS</span>
               </span>
             </h1>
-            <video
-              id="Login_brandVideo"
-              controls
-              playsInline
-            >
-              <source
-                src="https://res.cloudinary.com/dtoxkii3q/video/upload/v1781289280/video_2026-06-12_14-19-27_hymtzn.mp4"
-                type="video/mp4"
-              />
-            </video>
             <h2 id="Login_brandProduct">PhenoMed</h2>
             <h4 id="Login_brandTagline">
               From Clinical-related Phenomena to Diagnosis
             </h4>
+            <div id="Login_brandVideoWrap" className={videoUnlocked ? "Login_brandVideoWrap--unlocked" : ""}>
+              <video
+                id="Login_brandVideo"
+                controls
+                playsInline
+              >
+                <source
+                  src="https://res.cloudinary.com/dtoxkii3q/video/upload/v1781289280/video_2026-06-12_14-19-27_hymtzn.mp4"
+                  type="video/mp4"
+                />
+              </video>
+              {!videoUnlocked && (
+                <form
+                  id="Login_videoGateOverlay"
+                  onSubmit={submitVideoGate}
+                  noValidate
+                >
+                  <p id="Login_videoGateTitle">Members only</p>
+                  <input
+                    className="Login_videoGateInput"
+                    type="text"
+                    placeholder="Company name"
+                    autoComplete="organization"
+                    value={videoGateForm.companyName}
+                    onChange={(e) => setVideoGateForm((f) => ({ ...f, companyName: e.target.value }))}
+                    disabled={videoGatePending}
+                  />
+                  <input
+                    className="Login_videoGateInput"
+                    type="password"
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    value={videoGateForm.password}
+                    onChange={(e) => setVideoGateForm((f) => ({ ...f, password: e.target.value }))}
+                    disabled={videoGatePending}
+                  />
+                  {videoGateError && (
+                    <p className="Login_videoGateError">{videoGateError}</p>
+                  )}
+                  <button
+                    id="Login_videoGateSubmit"
+                    type="submit"
+                    disabled={videoGatePending}
+                  >
+                    {videoGatePending ? "Verifying…" : "Unlock"}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </section>
         <section

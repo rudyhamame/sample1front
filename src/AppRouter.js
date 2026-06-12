@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   BrowserRouter as Router,
   Redirect,
@@ -67,6 +67,11 @@ const AppRouter = () => {
       changeCount: 0,
     })),
   );
+  const shellHeightMonitorRef = useRef(null);
+  const shellHeightMonitorPositionRef = useRef({
+    x: 10,
+    y: 10,
+  });
   const isAuthenticated =
     authState?.isLoggedIn === true || authState?.isConnected === true;
   const profileIsAllowed = authState?.profileCompleted !== false;
@@ -84,6 +89,10 @@ const AppRouter = () => {
     clearStoredSession();
     setAuthState(null);
   }, []);
+
+  useEffect(() => {
+    shellHeightMonitorPositionRef.current = shellHeightMonitorPosition;
+  }, [shellHeightMonitorPosition]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -210,10 +219,23 @@ const AppRouter = () => {
     }
 
     let dragPointerId = null;
+    let dragAnimationFrameId = null;
     let dragStartPointerX = 0;
     let dragStartPointerY = 0;
     let dragStartPanelX = 0;
     let dragStartPanelY = 0;
+    let pendingDragPosition = null;
+
+    const applyDragPosition = () => {
+      dragAnimationFrameId = null;
+
+      if (!pendingDragPosition || !shellHeightMonitorRef.current) {
+        return;
+      }
+
+      shellHeightMonitorRef.current.style.left = `${pendingDragPosition.x}px`;
+      shellHeightMonitorRef.current.style.top = `${pendingDragPosition.y}px`;
+    };
 
     const handlePointerMove = (event) => {
       if (dragPointerId === null || event.pointerId !== dragPointerId) {
@@ -229,10 +251,14 @@ const AppRouter = () => {
         Math.round(dragStartPanelY + (event.clientY - dragStartPointerY)),
       );
 
-      setShellHeightMonitorPosition({
+      pendingDragPosition = {
         x: nextX,
         y: nextY,
-      });
+      };
+
+      if (!dragAnimationFrameId) {
+        dragAnimationFrameId = window.requestAnimationFrame(applyDragPosition);
+      }
     };
 
     const stopDragging = (event) => {
@@ -242,6 +268,17 @@ const AppRouter = () => {
 
       if (event && event.pointerId !== undefined && event.pointerId !== dragPointerId) {
         return;
+      }
+
+      if (dragAnimationFrameId) {
+        window.cancelAnimationFrame(dragAnimationFrameId);
+        dragAnimationFrameId = null;
+      }
+
+      if (pendingDragPosition) {
+        shellHeightMonitorPositionRef.current = pendingDragPosition;
+        setShellHeightMonitorPosition(pendingDragPosition);
+        pendingDragPosition = null;
       }
 
       dragPointerId = null;
@@ -255,22 +292,26 @@ const AppRouter = () => {
       dragPointerId = event.pointerId;
       dragStartPointerX = event.clientX;
       dragStartPointerY = event.clientY;
-      dragStartPanelX = shellHeightMonitorPosition.x;
-      dragStartPanelY = shellHeightMonitorPosition.y;
+      dragStartPanelX = shellHeightMonitorPositionRef.current.x;
+      dragStartPanelY = shellHeightMonitorPositionRef.current.y;
     };
 
     return () => {
+      if (dragAnimationFrameId) {
+        window.cancelAnimationFrame(dragAnimationFrameId);
+      }
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", stopDragging);
       window.removeEventListener("pointercancel", stopDragging);
       delete window.__startShellHeightMonitorDrag;
     };
-  }, [shellHeightMonitorPosition.x, shellHeightMonitorPosition.y]);
+  }, []);
 
   return (
     <>
       <div
         id="App_shellHeightMonitor"
+        ref={shellHeightMonitorRef}
         style={{
           top: `${shellHeightMonitorPosition.y}px`,
           left: `${shellHeightMonitorPosition.x}px`,
@@ -284,7 +325,7 @@ const AppRouter = () => {
               window.__startShellHeightMonitorDrag?.(event);
             }}
           >
-            Shell Heights
+            UI Diagnostic
           </strong>
           <button
             id="App_shellHeightMonitor_toggle"
@@ -293,10 +334,14 @@ const AppRouter = () => {
               setIsShellHeightMonitorMinimized((currentValue) => !currentValue)
             }
             aria-label={
-              isShellHeightMonitorMinimized ? "Expand shell heights" : "Minimize shell heights"
+              isShellHeightMonitorMinimized
+                ? "Expand UI diagnostic tool"
+                : "Minimize UI diagnostic tool"
             }
             title={
-              isShellHeightMonitorMinimized ? "Expand shell heights" : "Minimize shell heights"
+              isShellHeightMonitorMinimized
+                ? "Expand UI diagnostic tool"
+                : "Minimize UI diagnostic tool"
             }
           >
             {isShellHeightMonitorMinimized ? "+" : "-"}
@@ -304,6 +349,9 @@ const AppRouter = () => {
         </div>
         {!isShellHeightMonitorMinimized ? (
           <>
+            <p id="App_shellHeightMonitor_caption">
+              Layout shell, viewport, and scroll metrics
+            </p>
             <div id="App_shellHeightMonitor_metrics">
               <span className="App_shellHeightMonitor_metric">
                 inner: {shellViewportMetrics.innerWidth} x {shellViewportMetrics.innerHeight}

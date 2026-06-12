@@ -30,6 +30,60 @@ const VisitLogPage = ({ state, serverReply }) => {
   const [isVisitLogDeleting, setIsVisitLogDeleting] = React.useState(false);
   const [visitLogError, setVisitLogError] = React.useState("");
 
+  const [videoGate, setVideoGate] = React.useState(null);
+  const [videoGateForm, setVideoGateForm] = React.useState({ companyName: "", password: "", enabled: true });
+  const [videoGateSaving, setVideoGateSaving] = React.useState(false);
+  const [videoGateMessage, setVideoGateMessage] = React.useState("");
+
+  React.useEffect(() => {
+    if (!canAccessVisitLog || !state?.token) return;
+    fetch(apiUrl("/api/user/video-gate"), {
+      headers: { Authorization: `Bearer ${state.token}` },
+    })
+      .then((r) => r.json().catch(() => ({})))
+      .then((data) => {
+        if (data?.videoGate) {
+          setVideoGate(data.videoGate);
+          setVideoGateForm((f) => ({
+            ...f,
+            companyName: data.videoGate.companyName || "",
+            enabled: data.videoGate.enabled !== false,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [canAccessVisitLog, state?.token]);
+
+  const saveVideoGate = async (e) => {
+    e.preventDefault();
+    if (videoGateSaving) return;
+    setVideoGateSaving(true);
+    setVideoGateMessage("");
+    try {
+      const res = await fetch(apiUrl("/api/user/video-gate"), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({
+          enabled: videoGateForm.enabled,
+          companyName: videoGateForm.companyName,
+          password: videoGateForm.password,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "Failed to save.");
+      setVideoGate(data.videoGate);
+      setVideoGateForm((f) => ({ ...f, password: "" }));
+      setVideoGateMessage("Saved.");
+    } catch (err) {
+      setVideoGateMessage(err?.message || "Failed to save.");
+    } finally {
+      setVideoGateSaving(false);
+    }
+  };
+
   const loadVisitLog = React.useCallback(() => {
     if (!canAccessVisitLog || !state?.token) {
       setVisitLogEntries([]);
@@ -173,6 +227,47 @@ const VisitLogPage = ({ state, serverReply }) => {
           </button>
         </div>
       </header>
+
+      <section id="VisitLogPage_videoGate" className="fc">
+        <h2 className="VisitLogPage_sectionTitle">Video Gate</h2>
+        <p className="VisitLogPage_subtitle">
+          Control access to the login-page video. Visitors must enter the company name and password to unblur it.
+        </p>
+        <form className="fc VisitLogPage_videoGateForm" onSubmit={saveVideoGate} noValidate>
+          <label className="VisitLogPage_videoGateLabel">
+            <input
+              type="checkbox"
+              checked={videoGateForm.enabled}
+              onChange={(e) => setVideoGateForm((f) => ({ ...f, enabled: e.target.checked }))}
+            />
+            {" "}Gate enabled
+          </label>
+          <input
+            className="VisitLogPage_input"
+            type="text"
+            placeholder="Company name"
+            value={videoGateForm.companyName}
+            onChange={(e) => setVideoGateForm((f) => ({ ...f, companyName: e.target.value }))}
+          />
+          <input
+            className="VisitLogPage_input"
+            type="password"
+            placeholder={videoGate?.hasPassword ? "New password (leave blank to keep current)" : "Password"}
+            value={videoGateForm.password}
+            onChange={(e) => setVideoGateForm((f) => ({ ...f, password: e.target.value }))}
+          />
+          {videoGateMessage && (
+            <p className="VisitLogPage_videoGateMessage">{videoGateMessage}</p>
+          )}
+          <button
+            type="submit"
+            className="VisitLogPage_button"
+            disabled={videoGateSaving}
+          >
+            {videoGateSaving ? "Saving…" : "Save"}
+          </button>
+        </form>
+      </section>
 
       <div id="VisitLogPage_body" className="fc">
         {visitLogError ? (

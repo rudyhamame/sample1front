@@ -355,6 +355,102 @@
   }
 }
 
+#Login_brandVideoWrap {
+  position: relative;
+  width: 100%;
+  margin-block: clamp(8px, 1.4cqi, 16px);
+}
+
+#Login_brandVideoWrap #Login_brandVideo {
+  margin-block: 0;
+  filter: blur(12px) brightness(0.7);
+  transition: filter 0.5s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+#Login_brandVideoWrap.Login_brandVideoWrap--unlocked #Login_brandVideo {
+  filter: none;
+  pointer-events: auto;
+  user-select: auto;
+}
+
+#Login_videoGateOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  background: rgba(8, 30, 34, 0.52);
+  backdrop-filter: blur(2px);
+  border-radius: clamp(8px, 1.2cqi, 14px);
+}
+
+#Login_videoGateTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0 0 2px;
+}
+
+.Login_videoGateInput {
+  width: 100%;
+  max-width: 220px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(21, 185, 168, 0.4);
+  border-radius: 6px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.Login_videoGateInput::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.Login_videoGateInput:focus {
+  border-color: rgba(21, 185, 168, 0.85);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.Login_videoGateError {
+  font-size: 0.75rem;
+  color: #ff8a80;
+  margin: 0;
+  text-align: center;
+}
+
+#Login_videoGateSubmit {
+  padding: 7px 22px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(21, 185, 168, 0.85);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.18s ease, opacity 0.18s ease;
+}
+
+#Login_videoGateSubmit:hover:not(:disabled) {
+  background: rgba(21, 185, 168, 1);
+}
+
+#Login_videoGateSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 #Login_brandVideo {
   display: block;
   width: 100%;

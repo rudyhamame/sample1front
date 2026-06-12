@@ -184,3 +184,52 @@
     gap: 0.25rem;
   }
 }
+
+/* Video Gate admin section */
+#VisitLogPage_videoGate {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  gap: 0.6rem;
+}
+
+.VisitLogPage_sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a2a2e;
+}
+
+.VisitLogPage_videoGateForm {
+  gap: 0.6rem;
+  max-width: 360px;
+}
+
+.VisitLogPage_videoGateLabel {
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.VisitLogPage_input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.VisitLogPage_input:focus {
+  border-color: #15b9a8;
+}
+
+.VisitLogPage_videoGateMessage {
+  font-size: 0.8rem;
+  margin: 0;
+  color: #2e7d32;
+}
