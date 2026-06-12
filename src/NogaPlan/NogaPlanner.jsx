@@ -2235,23 +2235,45 @@ export default class NogaPlanner extends Component {
         this.props.serverReply?.(String(aiPayload?.error || "AI extraction failed."));
         return;
       }
-      const persons = Array.isArray(aiPayload?.persons) ? aiPayload.persons : [];
-      const results = persons.filter(
-        (p) => p && typeof p === "object" &&
-          String(p?.firstName || "").trim() &&
-          String(p?.lastName || "").trim(),
-      );
+      const programInstructorNames = Array.isArray(aiPayload?.programInstructorNames)
+        ? aiPayload.programInstructorNames
+        : [];
+      const results = programInstructorNames
+        .filter((entry) => entry && typeof entry === "object")
+        .map((entry) => ({
+          firstName: String(entry?.firstName || "").trim() || null,
+          lastName: String(entry?.lastName || "").trim() || null,
+          fullName: String(
+            entry?.fullName ||
+              [
+                String(entry?.firstName || "").trim(),
+                String(entry?.lastName || "").trim(),
+              ]
+                .filter(Boolean)
+                .join(" "),
+          ).trim(),
+          personality: String(entry?.personality || "").trim() || null,
+          courseNames: Array.isArray(entry?.courseNames)
+            ? entry.courseNames.map((value) => String(value || "").trim()).filter(Boolean)
+            : [],
+          evidence: Array.isArray(entry?.evidence)
+            ? entry.evidence.map((value) => String(value || "").trim()).filter(Boolean)
+            : [],
+          confidence: ["high", "medium", "low"].includes(
+            String(entry?.confidence || "").trim().toLowerCase(),
+          )
+            ? String(entry.confidence).trim().toLowerCase()
+            : "low",
+        }))
+        .filter((entry) => entry.fullName);
       if (results.length === 0) {
-        this.props.serverReply?.("No instructors with both first and last name found.");
+        this.props.serverReply?.("No instructors found.");
         return;
       }
       const currentExtractions = Array.isArray(this.state?.plannerRoot?.programAIExtractions)
         ? this.state.plannerRoot.programAIExtractions : [];
       const nextExtractions = [...currentExtractions, {
-        instructorsNames: results.map((p) => ({
-          firstName: String(p.firstName || "").trim(),
-          lastName: String(p.lastName || "").trim(),
-        })),
+        programInstructorNames: results,
       }];
       const nextPlannerRoot = await this.persistStudyPlannerMeta({
         programAIExtractions: nextExtractions,
@@ -2522,24 +2544,84 @@ export default class NogaPlanner extends Component {
       } else if (goal === "instructors") {
         const current = Array.isArray(this.state?.plannerRoot?.programInstructors)
           ? this.state.plannerRoot.programInstructors : [];
+        const normalizeAcceptedInstructor = (entry) => {
+          if (entry && typeof entry === "object") {
+            const firstName = String(entry?.firstName || "").trim();
+            const lastName = String(entry?.lastName || "").trim();
+            const fullName = String(
+              entry?.fullName || [firstName, lastName].filter(Boolean).join(" "),
+            ).trim();
+
+            if (!fullName && !firstName && !lastName) {
+              return null;
+            }
+
+            return {
+              firstName: firstName || null,
+              lastName: lastName || null,
+              fullName,
+              personality: String(entry?.personality || "").trim() || null,
+              courseNames: Array.isArray(entry?.courseNames)
+                ? entry.courseNames.map((value) => String(value || "").trim()).filter(Boolean)
+                : [],
+              evidence: Array.isArray(entry?.evidence)
+                ? entry.evidence.map((value) => String(value || "").trim()).filter(Boolean)
+                : [],
+              confidence: ["high", "medium", "low"].includes(
+                String(entry?.confidence || "").trim().toLowerCase(),
+              )
+                ? String(entry.confidence).trim().toLowerCase()
+                : "low",
+            };
+          }
+
+          const fullName = String(entry || "").trim();
+          if (!fullName) {
+            return null;
+          }
+
+          const [firstName = "", ...lastNameParts] = fullName.split(/\s+/).filter(Boolean);
+          return {
+            firstName: firstName || null,
+            lastName: lastNameParts.join(" ").trim() || null,
+            fullName,
+            personality: null,
+            courseNames: [],
+            evidence: [],
+            confidence: "low",
+          };
+        };
+        const normalizedAccepted = accepted
+          .map((entry) => normalizeAcceptedInstructor(entry))
+          .filter(Boolean);
         const seen = new Set(
           current
             .map((entry) => formatInstructorDisplayName(entry).trim().toLowerCase())
             .filter(Boolean),
         );
-        const toAdd = accepted.filter(
-          (name) =>
-            !seen.has(formatInstructorDisplayName({ firstName: String(name || "").trim() }).trim().toLowerCase()),
+        const toAdd = normalizedAccepted.filter(
+          (entry) =>
+            !seen.has(
+              String(
+                entry?.fullName ||
+                  formatInstructorDisplayName({
+                    firstName: String(entry?.firstName || "").trim(),
+                    lastName: String(entry?.lastName || "").trim(),
+                  }),
+              )
+                .trim()
+                .toLowerCase(),
+            ),
         );
         const nextInstructors = [
           ...current,
-          ...toAdd.map((name) => ({ firstName: String(name || "").trim(), lastName: "" })),
+          ...toAdd.map((entry) => ({
+            firstName: String(entry?.firstName || "").trim(),
+            lastName: String(entry?.lastName || "").trim(),
+          })),
         ];
         const nextExtractions = [...currentExtractions, {
-          instructorsNames: accepted.map((name) => ({
-            firstName: String(name || "").trim(),
-            lastName: "",
-          })),
+          programInstructorNames: normalizedAccepted,
         }];
         const nextPlannerRoot = await this.persistStudyPlannerMeta({
           programInstructors: nextInstructors,

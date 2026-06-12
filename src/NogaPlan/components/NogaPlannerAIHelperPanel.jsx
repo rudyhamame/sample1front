@@ -11,11 +11,32 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
     ? planner.state.plannerRoot.programAIExtractions
     : [];
 
-  const latestCourseInfoEntry = storedProgramAIExtractions
-    .slice()
-    .reverse()
-    .find((e) => Array.isArray(e?.subIntervalCourses) && e.subIntervalCourses.length > 0) || null;
+  const latestCoursesEntry = storedProgramAIExtractions
+    .slice().reverse()
+    .find((e) => Array.isArray(e?.coursesNameCode) && e.coursesNameCode.length > 0) || null;
+  const courseNames = Array.isArray(latestCoursesEntry?.coursesNameCode)
+    ? latestCoursesEntry.coursesNameCode
+    : [];
 
+  const latestInstructorsEntry = storedProgramAIExtractions
+    .slice().reverse()
+    .find((e) => {
+      const arr = Array.isArray(e?.programInstructorNames)
+        ? e.programInstructorNames
+        : Array.isArray(e?.instructorsNames)
+          ? e.instructorsNames
+          : [];
+      return arr.length > 0;
+    }) || null;
+  const instructors = Array.isArray(latestInstructorsEntry?.programInstructorNames)
+    ? latestInstructorsEntry.programInstructorNames
+    : Array.isArray(latestInstructorsEntry?.instructorsNames)
+      ? latestInstructorsEntry.instructorsNames
+      : [];
+
+  const latestCourseInfoEntry = storedProgramAIExtractions
+    .slice().reverse()
+    .find((e) => Array.isArray(e?.subIntervalCourses) && e.subIntervalCourses.length > 0) || null;
   const subIntervalCourses = Array.isArray(latestCourseInfoEntry?.subIntervalCourses)
     ? latestCourseInfoEntry.subIntervalCourses
     : [];
@@ -24,42 +45,142 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
     <section id="nogaPlanner_aiHelperPanel" className="nogaPlanner_aiHelperPanel">
       <div id="nogaPlanner_aiHelperPanel_main" className="nogaPlanner_aiHelperPanel_main">
 
-        <div id="nogaPlanner_traces_aiGenerateContainer" className="nogaPlanner_tracesAiGenerateRow">
-          <button
-            id="nogaPlanner_traces_aiExtractCoursesBtn"
-            type="button"
-            className="nogaPlanner_tracesActionBtn"
-            disabled={isBusy || !telegramHasStoredGroups}
-            onClick={() => planner?.extractTelegramCourseNames?.()}
-          >
-            {isTelegramExtractingCourseNames ? "Extracting..." : "Extract course names"}
-          </button>
-          <button
-            id="nogaPlanner_traces_aiExtractInstructorsBtn"
-            type="button"
-            className="nogaPlanner_tracesActionBtn"
-            disabled={isBusy || !telegramHasStoredGroups}
-            onClick={() => planner?.findTelegramInstructors?.()}
-          >
-            {isTelegramFindingInstructors ? "Searching..." : "Extract instructor names"}
-          </button>
-          <button
-            id="nogaPlanner_traces_aiBuildCourseInfoBtn"
-            type="button"
-            className="nogaPlanner_tracesActionBtn"
-            disabled={isBusy || !telegramHasStoredGroups}
-            onClick={() => planner?.extractTelegramCourseInfo?.()}
-          >
-            {isTelegramExtractingCourseInfo ? "Building..." : "Build course info"}
-          </button>
-        </div>
-
-        <div id="nogaPlanner_aiCourseInfoTable_card" className="nogaPlanner_homePanelCard">
+        {/* Card 1 — Extract course names */}
+        <div className="nogaPlanner_homePanelCard nogaPlanner_aiHelperCard">
           <div className="nogaPlanner_homePanelCardTitleRow">
-            <strong>Course Info</strong>
+            <strong>Course Names</strong>
+            <button
+              type="button"
+              className={"nogaPlanner_coursesMiniBarBtn nogaPlanner_aiHelperTriggerBtn" + (isTelegramExtractingCourseNames ? " nogaPlanner_coursesMiniBarBtn--active" : "")}
+              disabled={isBusy || !telegramHasStoredGroups}
+              onClick={() => planner?.extractTelegramCourseNames?.()}
+              title="Extract course names"
+            >
+              <i className={isTelegramExtractingCourseNames ? "fi fi-rr-spinner nogaPlanner_aiHelperSpinner" : "fi fi-rr-magic-wand"} aria-hidden="true" />
+              <span>{isTelegramExtractingCourseNames ? "Extracting…" : "Extract"}</span>
+            </button>
           </div>
           <div className="nogaPlanner_aiCourseInfoTableWrapper">
-            <table id="nogaPlanner_aiCourseInfoTable" className="nogaPlanner_aiCourseInfoTable">
+            <table className="nogaPlanner_aiCourseInfoTable">
+              <thead>
+                <tr>
+                  <th className="nogaPlanner_aiCourseInfoTh">#</th>
+                  <th className="nogaPlanner_aiCourseInfoTh">Course Name</th>
+                  <th className="nogaPlanner_aiCourseInfoTh">Code</th>
+                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {courseNames.length === 0 ? (
+                  <tr>
+                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={4}>
+                      No results yet
+                    </td>
+                  </tr>
+                ) : courseNames.map((c, idx) => (
+                  <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
+                    <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
+                    <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseName || "").trim() || "—"}</td>
+                    <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseCode || "").trim() || "—"}</td>
+                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={() => planner?.acceptAICourseName?.(c?.courseName, c?.courseCode)}
+                        title="Accept"
+                      >
+                        <i className="fi fi-rr-check" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Card 2 — Extract instructor names */}
+        <div className="nogaPlanner_homePanelCard nogaPlanner_aiHelperCard">
+          <div className="nogaPlanner_homePanelCardTitleRow">
+            <strong>Instructors</strong>
+            <button
+              type="button"
+              className={"nogaPlanner_coursesMiniBarBtn nogaPlanner_aiHelperTriggerBtn" + (isTelegramFindingInstructors ? " nogaPlanner_coursesMiniBarBtn--active" : "")}
+              disabled={isBusy || !telegramHasStoredGroups}
+              onClick={() => planner?.findTelegramInstructors?.()}
+              title="Extract instructor names"
+            >
+              <i className={isTelegramFindingInstructors ? "fi fi-rr-spinner nogaPlanner_aiHelperSpinner" : "fi fi-rr-user"} aria-hidden="true" />
+              <span>{isTelegramFindingInstructors ? "Searching…" : "Extract"}</span>
+            </button>
+          </div>
+          <div className="nogaPlanner_aiCourseInfoTableWrapper">
+            <table className="nogaPlanner_aiCourseInfoTable">
+              <thead>
+                <tr>
+                  <th className="nogaPlanner_aiCourseInfoTh">#</th>
+                  <th className="nogaPlanner_aiCourseInfoTh">First Name</th>
+                  <th className="nogaPlanner_aiCourseInfoTh">Last Name</th>
+                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {instructors.length === 0 ? (
+                  <tr>
+                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={4}>
+                      No results yet
+                    </td>
+                  </tr>
+                ) : instructors.map((n, idx) => {
+                  const firstName = String(n?.firstName || "").trim();
+                  const lastName = String(n?.lastName || "").trim();
+                  const fullName = String(n?.fullName || "").trim();
+                  const displayFirst = firstName || (fullName ? fullName.split(/\s+/)[0] : "—");
+                  const displayLast = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "") || "—";
+                  return (
+                    <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
+                      <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd">{displayFirst}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd">{displayLast}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() => {
+                            const fn = firstName || (fullName ? fullName.split(/\s+/)[0] : "");
+                            const ln = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "");
+                            planner?.acceptAIInstructorName?.(fn, ln);
+                          }}
+                          title="Accept"
+                        >
+                          <i className="fi fi-rr-check" aria-hidden="true" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Card 3 — Build course info */}
+        <div className="nogaPlanner_homePanelCard nogaPlanner_aiHelperCard">
+          <div className="nogaPlanner_homePanelCardTitleRow">
+            <strong>Course Info</strong>
+            <button
+              type="button"
+              className={"nogaPlanner_coursesMiniBarBtn nogaPlanner_aiHelperTriggerBtn" + (isTelegramExtractingCourseInfo ? " nogaPlanner_coursesMiniBarBtn--active" : "")}
+              disabled={isBusy || !telegramHasStoredGroups}
+              onClick={() => planner?.extractTelegramCourseInfo?.()}
+              title="Build course info"
+            >
+              <i className={isTelegramExtractingCourseInfo ? "fi fi-rr-spinner nogaPlanner_aiHelperSpinner" : "fi fi-rr-hammer"} aria-hidden="true" />
+              <span>{isTelegramExtractingCourseInfo ? "Building…" : "Build"}</span>
+            </button>
+          </div>
+          <div className="nogaPlanner_aiCourseInfoTableWrapper">
+            <table className="nogaPlanner_aiCourseInfoTable">
               <thead>
                 <tr>
                   <th className="nogaPlanner_aiCourseInfoTh">#</th>
@@ -67,14 +188,18 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
                   <th className="nogaPlanner_aiCourseInfoTh">Code</th>
                   <th className="nogaPlanner_aiCourseInfoTh">Weight</th>
                   <th className="nogaPlanner_aiCourseInfoTh">Components</th>
-                  <th className="nogaPlanner_aiCourseInfoTh"></th>
+                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
                 </tr>
               </thead>
               <tbody>
-                {subIntervalCourses.map((course, idx) => {
-                  const components = Array.isArray(course?.courseComponents)
-                    ? course.courseComponents
-                    : [];
+                {subIntervalCourses.length === 0 ? (
+                  <tr>
+                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={6}>
+                      No results yet
+                    </td>
+                  </tr>
+                ) : subIntervalCourses.map((course, idx) => {
+                  const components = Array.isArray(course?.courseComponents) ? course.courseComponents : [];
                   return (
                     <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
                       <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
@@ -99,13 +224,14 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
                           </ul>
                         ) : "—"}
                       </td>
-                      <td className="nogaPlanner_aiCourseInfoTd">
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
                         <button
                           type="button"
-                          className="nogaPlanner_aiHistory_acceptBtn"
+                          className="nogaPlanner_coursesMiniBarBtn"
                           onClick={() => planner?.acceptAISubIntervalCourse?.(course)}
+                          title="Accept"
                         >
-                          Accept
+                          <i className="fi fi-rr-check" aria-hidden="true" />
                         </button>
                       </td>
                     </tr>
@@ -113,97 +239,6 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
                 })}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        <div className="nogaPlanner_homePanelCard">
-          <div className="nogaPlanner_homePanelCardTitleRow">
-            <strong>AI History</strong>
-          </div>
-          <div className="nogaPlanner_homePanelCardStoredBlock">
-            {storedProgramAIExtractions.length === 0 ? (
-              <span className="nogaPlanner_homePanelCardEmptyValue">No AI extractions yet</span>
-            ) : (
-              <div className="nogaPlanner_aiHistory_list">
-                {storedProgramAIExtractions
-                  .slice()
-                  .reverse()
-                  .map((entry, idx) => {
-                    const hasCourses = Array.isArray(entry?.coursesNameCode) && entry.coursesNameCode.length > 0;
-                    const hasInstructors = Array.isArray(entry?.instructorsNames) && entry.instructorsNames.length > 0;
-                    const hasCourseInfo = Array.isArray(entry?.subIntervalCourses) && entry.subIntervalCourses.length > 0;
-                    const label = hasCourses ? "Courses" : hasInstructors ? "Instructors" : hasCourseInfo ? "Course Info" : "AI Extraction";
-                    const key = `${label}_${idx}`;
-
-                    return (
-                      <div key={key} className="nogaPlanner_aiHistory_entry">
-                        <div className="nogaPlanner_aiHistory_entryHeader">
-                          <span className="nogaPlanner_aiHistory_goal">{label}</span>
-                        </div>
-
-                        {hasCourses && (
-                          <ul className="nogaPlanner_aiHistory_items">
-                            {entry.coursesNameCode.map((c, iIdx) => (
-                              <li key={iIdx} className="nogaPlanner_aiHistory_item">
-                                <span>
-                                  {[String(c?.courseName || "").trim(), String(c?.courseCode || "").trim()]
-                                    .filter(Boolean)
-                                    .join(" — ")}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_aiHistory_acceptBtn"
-                                  onClick={() => planner?.acceptAICourseName?.(c?.courseName, c?.courseCode)}
-                                >
-                                  Accept
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {hasInstructors && (
-                          <ul className="nogaPlanner_aiHistory_items">
-                            {entry.instructorsNames.map((n, iIdx) => (
-                              <li key={iIdx} className="nogaPlanner_aiHistory_item">
-                                <span>
-                                  {[String(n?.firstName || "").trim(), String(n?.lastName || "").trim()]
-                                    .filter(Boolean)
-                                    .join(" ")}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_aiHistory_acceptBtn"
-                                  onClick={() => planner?.acceptAIInstructorName?.(n?.firstName, n?.lastName)}
-                                >
-                                  Accept
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        {hasCourseInfo && (
-                          <ul className="nogaPlanner_aiHistory_items">
-                            {entry.subIntervalCourses.map((c, iIdx) => (
-                              <li key={iIdx} className="nogaPlanner_aiHistory_item">
-                                <span>{String(c?.courseName || "").trim() || "—"}</span>
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_aiHistory_acceptBtn"
-                                  onClick={() => planner?.acceptAISubIntervalCourse?.(c)}
-                                >
-                                  Accept
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
           </div>
         </div>
 

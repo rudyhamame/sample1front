@@ -69,6 +69,40 @@ const serializeInstructorSchemaEntry = (entry) => {
   return [normalizedEntry.firstName, normalizedEntry.lastName].filter(Boolean).join(" ");
 };
 
+const normalizeAiInstructorRecord = (entry) => {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+
+  const firstName = String(entry?.firstName || "").trim() || null;
+  const lastName = String(entry?.lastName || "").trim() || null;
+  const fullName = String(
+    entry?.fullName || [firstName, lastName].filter(Boolean).join(" "),
+  ).trim();
+
+  if (!fullName) {
+    return null;
+  }
+
+  return {
+    firstName,
+    lastName,
+    fullName,
+    personality: String(entry?.personality || "").trim() || null,
+    courseNames: Array.isArray(entry?.courseNames)
+      ? entry.courseNames.map((value) => String(value || "").trim()).filter(Boolean)
+      : [],
+    evidence: Array.isArray(entry?.evidence)
+      ? entry.evidence.map((value) => String(value || "").trim()).filter(Boolean)
+      : [],
+    confidence: ["high", "medium", "low"].includes(
+      String(entry?.confidence || "").trim().toLowerCase(),
+    )
+      ? String(entry.confidence).trim().toLowerCase()
+      : "low",
+  };
+};
+
 const formatFileSize = (size = 0) => {
   const nextSize = Number(size || 0);
   if (!Number.isFinite(nextSize) || nextSize <= 0) {
@@ -652,14 +686,22 @@ const NogaPlannerTelegramPanel = ({
         return;
       }
 
-      const persons = Array.isArray(aiPayload?.persons) ? aiPayload.persons : [];
+      const programInstructorNames = Array.isArray(aiPayload?.programInstructorNames)
+        ? aiPayload.programInstructorNames
+        : [];
       const nameSet = new Set();
       const results = [];
-      for (const raw of persons) {
-        const name = normalizeArabicName(String(raw || "").trim());
+      for (const raw of programInstructorNames) {
+        const normalizedRecord = normalizeAiInstructorRecord(raw);
+        const name = normalizeArabicName(String(normalizedRecord?.fullName || "").trim());
         if (!name || nameSet.has(name)) continue;
         nameSet.add(name);
-        results.push({ name, groupLabel: "" });
+        results.push({
+          ...normalizedRecord,
+          fullName: String(normalizedRecord?.fullName || "").trim(),
+          displayName: String(normalizedRecord?.fullName || "").trim(),
+          groupLabel: "",
+        });
       }
       setFindInstructorsResults(results);
       if (results.length > 0 && planner?.persistStudyPlannerMeta) {
@@ -671,7 +713,15 @@ const NogaPlannerTelegramPanel = ({
             ...currentExtractions,
             {
               extractionGoal: "instructors",
-              extractionItems: results.map((r) => r.name),
+              programInstructorNames: results.map((result) => ({
+                firstName: result?.firstName || null,
+                lastName: result?.lastName || null,
+                fullName: String(result?.fullName || "").trim(),
+                personality: result?.personality || null,
+                courseNames: Array.isArray(result?.courseNames) ? result.courseNames : [],
+                evidence: Array.isArray(result?.evidence) ? result.evidence : [],
+                confidence: result?.confidence || "low",
+              })),
               extractionTimestamp: new Date().toISOString(),
             },
           ];
@@ -716,11 +766,15 @@ const NogaPlannerTelegramPanel = ({
     }
   };
 
-  const addInstructorToPlanner = async (name) => {
+  const addInstructorToPlanner = async (result) => {
     const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
       ? planner.state.plannerRoot.programInstructors
       : [];
-    const nextInstructorEntry = buildInstructorSchemaEntry(name);
+    const nextInstructorEntry =
+      normalizeInstructorSchemaEntry({
+        firstName: String(result?.firstName || "").trim(),
+        lastName: String(result?.lastName || "").trim(),
+      }) || buildInstructorSchemaEntry(String(result?.fullName || "").trim());
     if (!nextInstructorEntry) {
       return;
     }
@@ -1464,12 +1518,15 @@ const NogaPlannerTelegramPanel = ({
                   className="nogaPlanner_tracesMessage"
                   style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <span style={{ fontSize: "0.82rem", color: "#3f2b22" }}>{result.name}</span>
+                  <span style={{ fontSize: "0.82rem", color: "#3f2b22" }}>
+                    {result.fullName}
+                    {result.confidence ? ` (${result.confidence})` : ""}
+                  </span>
                   <button
                     type="button"
                     className="nogaPlanner_tracesActionBtn"
                     style={{ minWidth: "auto", padding: "6px 10px" }}
-                    onClick={() => addInstructorToPlanner(result.name)}
+                    onClick={() => addInstructorToPlanner(result)}
                   >
                     Add
                   </button>

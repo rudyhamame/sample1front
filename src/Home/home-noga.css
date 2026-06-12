@@ -1597,6 +1597,17 @@ width: 100%;
 
 .Home_Noga_compactBioEditorActions {
 gap: 8px;
+  flex-wrap: wrap;
+}
+
+.Home_Noga_compactBioAiButton {
+white-space: nowrap;
+  min-width: 32px;
+  width: 32px;
+  padding-inline: 0;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
 }
 
 .Home_Noga_profileInfoColumn {
@@ -5268,6 +5279,61 @@ display: block;
   text-decoration: none;
 }
 
+#Home_Noga_rightColumn_wrapper .Chat_messageImageMeta {
+display: flex;
+  justify-content: flex-end;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageMetaBadge {
+display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(205, 107, 106, 0.14);
+  color: rgba(120, 51, 62, 0.88);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageExpired {
+display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 132px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(205, 107, 106, 0.3);
+  background: rgba(255, 250, 250, 0.92);
+  justify-content: center;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageExpiredBadge {
+display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(205, 107, 106, 0.14);
+  color: rgba(120, 51, 62, 0.96);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_messageImageExpiredText {
+margin: 0;
+  color: rgba(120, 51, 62, 0.9);
+  font-size: 0.62rem;
+  line-height: 1.45;
+}
+
 #Home_Noga_rightColumn_wrapper
   .Chat_messageImageCard--failed
   .Chat_messageImageLink {
@@ -5446,21 +5512,100 @@ display: flex;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(205, 107, 106, 0.22);
-  background: rgba(255, 255, 255, 0.88);
   color: rgba(120, 51, 62, 0.92);
-  font-size: 0.58rem;
+  font-size: 1.5rem;
   font-weight: 700;
   cursor: pointer;
+  background: transparent;
 }
 
-#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle input {
-  margin: 0;
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle,
+#Home_Noga_rightColumn_wrapper .Chat_secretImagePromptBadge {
+display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle {
+  min-height: 32px;
+  min-width: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(205, 107, 106, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle--open {
+  color: #1a9b57;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle--secret {
+  color: #c33949;
+}
+
+
+#Home_Noga_rightColumn_wrapper .Chat_secretImagePromptBadge {
+  min-width: 30px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_secretImagePromptBadge i {
+  font-size: 0.92rem;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle {
+display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(205, 107, 106, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle--open {
+  color: #1a9b57;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle--secret {
+  color: #c33949;
+}
+
+#Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle i {
+  font-size: 0.96rem;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard {
@@ -5812,6 +5957,32 @@ color: rgba(230, 242, 244, 0.94);
   #Home_Noga_rightColumn_wrapper
   .Chat_messageImageLink {
 background: rgba(255, 255, 255, 0.06);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_attachmentSelfDestructToggle,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_attachmentSelfDestructToggle select,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageMetaBadge,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageExpired,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageExpiredBadge {
+border-color: rgba(110, 168, 180, 0.18);
+  background: rgba(13, 34, 41, 0.94);
+  color: rgba(230, 242, 244, 0.92);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  .Chat_messageImageExpiredText {
+color: rgba(216, 232, 237, 0.78);
 }
 
 #Home_Noga_article.Home_Noga_themeDark

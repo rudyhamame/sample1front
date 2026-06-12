@@ -6533,11 +6533,12 @@ width: 100%;
 .nogaPlanner_aiHelperPanel_main {
   flex: 1 1 auto;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 16px;
   overflow-y: auto;
   padding: 12px;
   min-width: 0;
+  align-items: stretch;
 }
 
 #nogaPlanner_aiHelperPreviewAside {
@@ -6770,4 +6771,89 @@ width: 100%;
   background: rgba(143, 95, 107, 0.1);
   border-radius: 4px;
   padding: 1px 5px;
+}
+
+/* AI Helper — per-card layout */
+.nogaPlanner_aiHelperCard {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nogaPlanner_aiHelperCard .nogaPlanner_homePanelCardTitleRow {
+  padding-bottom: 8px;
+}
+
+/* Trigger button in card title row */
+.nogaPlanner_aiHelperTriggerBtn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  border-radius: 4px;
+  background: rgba(132, 27, 45, 0.08) !important;
+  color: #7a2b3f !important;
+  border: 1px solid rgba(132, 27, 45, 0.2);
+}
+
+.nogaPlanner_aiHelperTriggerBtn:hover:not(:disabled) {
+  background: rgba(132, 27, 45, 0.15) !important;
+}
+
+.nogaPlanner_aiHelperTriggerBtn:disabled {
+  opacity: 0.45;
+}
+
+.nogaPlanner_aiHelperTriggerBtn span {
+  font-size: 0.78rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* Spinner animation for loading state */
+@keyframes nogaPlanner_aiHelperSpin {
+  to { transform: rotate(360deg); }
+}
+.nogaPlanner_aiHelperSpinner {
+  display: inline-block;
+  animation: nogaPlanner_aiHelperSpin 0.8s linear infinite;
+}
+
+/* Per-row minibar cell */
+.nogaPlanner_aiCourseInfoTh--actions {
+  width: 36px;
+}
+
+.nogaPlanner_aiHelperRowMinibar {
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.nogaPlanner_aiHelperRowMinibar .nogaPlanner_coursesMiniBarBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 4px;
+  background: rgba(46, 125, 50, 0.1) !important;
+  color: #2e7d32 !important;
+  border: 1px solid rgba(46, 125, 50, 0.25);
+  font-size: 0.85rem;
+}
+
+.nogaPlanner_aiHelperRowMinibar .nogaPlanner_coursesMiniBarBtn:hover:not(:disabled) {
+  background: rgba(46, 125, 50, 0.2) !important;
+}
+
+/* Empty state cell */
+.nogaPlanner_aiHelperEmptyCell {
+  text-align: center;
+  color: #9e9e9e;
+  font-size: 0.8rem;
+  padding: 16px 8px;
+  font-style: italic;
 }

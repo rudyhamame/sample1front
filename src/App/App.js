@@ -2131,30 +2131,16 @@ class App extends React.Component {
       return false;
     }
 
-    try {
-      const response = await fetch(
-        apiUrl("/api/chat/message/") +
-          normalizedFriendId +
-          "/" +
-          this.state.my_id +
-          "/" +
-          normalizedMessageId +
-          `?scope=${normalizedScope}`,
-        {
-          method: "DELETE",
-          mode: "cors",
-          headers: {
-            Authorization: "Bearer " + this.state.token,
-          },
-        },
-      );
-      const payload = await response.json().catch(() => ({}));
+    const currentChat = Array.isArray(this.state.chat) ? this.state.chat : [];
+    const matchingMessageIndex = currentChat.findIndex(
+      (message) =>
+        String(message?._id || "").trim() === normalizedFriendId &&
+        String(message?.id || "").trim() === normalizedMessageId,
+    );
+    const matchingMessage =
+      matchingMessageIndex >= 0 ? currentChat[matchingMessageIndex] : null;
 
-      if (!response.ok) {
-        this.serverReply(payload?.message || "Unable to delete message.");
-        return false;
-      }
-
+    if (matchingMessage) {
       this.safeSetState((prevState) => ({
         chat:
           normalizedScope === "me"
@@ -2183,9 +2169,93 @@ class App extends React.Component {
                 };
               }),
       }));
+    }
+
+    try {
+      const response = await fetch(
+        apiUrl("/api/chat/message/") +
+          normalizedFriendId +
+          "/" +
+          this.state.my_id +
+          "/" +
+          normalizedMessageId +
+          `?scope=${normalizedScope}`,
+        {
+          method: "DELETE",
+          mode: "cors",
+          headers: {
+            Authorization: "Bearer " + this.state.token,
+          },
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        this.serverReply(payload?.message || "Unable to delete message.");
+        if (matchingMessage) {
+          this.safeSetState((prevState) => ({
+            chat:
+              normalizedScope === "me"
+                ? (() => {
+                    const existingChat = Array.isArray(prevState.chat)
+                      ? prevState.chat
+                      : [];
+                    const nextChat = [...existingChat];
+                    const reinstateIndex =
+                      matchingMessageIndex >= 0
+                        ? Math.min(matchingMessageIndex, nextChat.length)
+                        : nextChat.length;
+
+                    nextChat.splice(reinstateIndex, 0, matchingMessage);
+                    return nextChat;
+                  })()
+                : (Array.isArray(prevState.chat) ? prevState.chat : []).map((message) => {
+                    if (
+                      String(message?._id || "").trim() !== normalizedFriendId ||
+                      String(message?.id || "").trim() !== normalizedMessageId
+                    ) {
+                      return message;
+                    }
+
+                    return matchingMessage;
+                  }),
+          }));
+        }
+        return false;
+      }
+
       return true;
     } catch (error) {
       this.serverReply(error?.message || "Unable to delete message.");
+      if (matchingMessage) {
+        this.safeSetState((prevState) => ({
+          chat:
+            normalizedScope === "me"
+              ? (() => {
+                  const existingChat = Array.isArray(prevState.chat)
+                    ? prevState.chat
+                    : [];
+                  const nextChat = [...existingChat];
+                  const reinstateIndex =
+                    matchingMessageIndex >= 0
+                      ? Math.min(matchingMessageIndex, nextChat.length)
+                      : nextChat.length;
+
+                  nextChat.splice(reinstateIndex, 0, matchingMessage);
+                  return nextChat;
+                })()
+              : (Array.isArray(prevState.chat) ? prevState.chat : []).map((message) => {
+                  if (
+                    String(message?._id || "").trim() !== normalizedFriendId ||
+                    String(message?.id || "").trim() !== normalizedMessageId
+                  ) {
+                    return message;
+                  }
+
+                  return matchingMessage;
+                }),
+        }));
+      }
       return false;
     }
   };
@@ -3027,13 +3097,9 @@ class App extends React.Component {
     }
 
     const scaleMap = this.getScaleSettingMap(scaleEntries);
-    const hasExpandedNonPageScale = Object.entries(scaleMap).some(
-      ([elementId, scaleNum]) =>
-        elementId !== "app_page" && Number(scaleNum) > 1,
-    );
     const rootElement = document.getElementById("root");
     if (rootElement) {
-      rootElement.style.overflow = hasExpandedNonPageScale ? "auto" : "";
+      rootElement.style.overflow = "hidden";
     }
 
     Object.entries(scaleMap).forEach(([elementId, scaleNum]) => {

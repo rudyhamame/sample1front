@@ -9,6 +9,33 @@ import {
 } from "../utils/sessionCleanup";
 import { stopSharedPlannerMusic } from "../music/globalMusicPlayer";
 import { normalizeUserPayload } from "../utils/normalizeUser";
+
+const LOGIN_KEYBOARD_OPEN_THRESHOLD = 120;
+const LOGIN_KEYBOARD_SCROLL_MARGIN = 20;
+
+const isEditableFormElement = (element) => {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  const tagName = String(element.tagName || "").toLowerCase();
+  if (tagName === "textarea" || tagName === "select") {
+    return true;
+  }
+
+  if (tagName !== "input") {
+    return false;
+  }
+
+  const inputType = String(element.getAttribute("type") || "text").toLowerCase();
+  return !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(
+    inputType,
+  );
+};
 const formatAppLastUpdatedLabel = (value) =>
   new Intl.DateTimeFormat(undefined, {
     year: "numeric",
@@ -405,10 +432,12 @@ const parseApiPayload = async (response) => {
     message: trimmedText,
   };
 };
+
 const Login = ({ onLogin, onForceLogout }) => {
   const articleRef = useRef(null);
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
+  const authFieldsRef = useRef(null);
   const previousAuthFormRectRef = useRef(null);
   const authFormAnimationFrameRef = useRef(null);
   const authFormAnimationTimeoutRef = useRef(null);
@@ -438,6 +467,7 @@ const Login = ({ onLogin, onForceLogout }) => {
     width: window.innerWidth,
     height: window.innerHeight,
   });
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
   const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
     loginAppLastUpdatedFallbackLabel,
@@ -570,6 +600,100 @@ const Login = ({ onLogin, onForceLogout }) => {
       window.visualViewport?.removeEventListener("resize", updateZoomScale);
     };
   }, []);
+
+  useEffect(() => {
+    if (!articleRef.current) {
+      return;
+    }
+
+    articleRef.current.style.setProperty(
+      "--login-keyboard-inset",
+      `${Math.max(0, keyboardInset)}px`,
+    );
+  }, [keyboardInset]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const scrollFocusedFieldIntoView = () => {
+      const scroller = authFieldsRef.current;
+      const activeElement = document.activeElement;
+
+      if (!scroller || !(activeElement instanceof HTMLElement)) {
+        return;
+      }
+
+      if (!scroller.contains(activeElement)) {
+        return;
+      }
+
+      const scrollerRect = scroller.getBoundingClientRect();
+      const fieldRect = activeElement.getBoundingClientRect();
+      const visibleTop = scrollerRect.top + LOGIN_KEYBOARD_SCROLL_MARGIN;
+      const visibleBottom =
+        scrollerRect.bottom -
+        Math.max(
+          LOGIN_KEYBOARD_SCROLL_MARGIN,
+          keyboardInset + LOGIN_KEYBOARD_SCROLL_MARGIN,
+        );
+
+      if (fieldRect.bottom > visibleBottom) {
+        scroller.scrollTop += fieldRect.bottom - visibleBottom;
+      } else if (fieldRect.top < visibleTop) {
+        scroller.scrollTop -= visibleTop - fieldRect.top;
+      }
+    };
+
+    const updateKeyboardInset = () => {
+      const articleElement = articleRef.current;
+      const activeElement = document.activeElement;
+      const visualViewport = window.visualViewport;
+      const keyboardLoss = Math.max(
+        0,
+        Math.round(
+          (window.innerHeight || 0) -
+            Number(visualViewport?.height || window.innerHeight || 0),
+        ),
+      );
+      const shouldTreatAsKeyboard =
+        Boolean(articleElement) &&
+        articleElement.contains(activeElement) &&
+        isEditableFormElement(activeElement) &&
+        keyboardLoss > LOGIN_KEYBOARD_OPEN_THRESHOLD;
+
+      setKeyboardInset(shouldTreatAsKeyboard ? keyboardLoss : 0);
+
+      if (shouldTreatAsKeyboard) {
+        window.requestAnimationFrame(() => {
+          scrollFocusedFieldIntoView();
+        });
+      }
+    };
+
+    const handleFocusChange = () => {
+      updateKeyboardInset();
+      window.requestAnimationFrame(() => {
+        scrollFocusedFieldIntoView();
+      });
+    };
+
+    window.addEventListener("resize", updateKeyboardInset);
+    window.addEventListener("focusin", handleFocusChange);
+    window.addEventListener("focusout", handleFocusChange);
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.visualViewport?.addEventListener("scroll", updateKeyboardInset);
+    updateKeyboardInset();
+
+    return () => {
+      window.removeEventListener("resize", updateKeyboardInset);
+      window.removeEventListener("focusin", handleFocusChange);
+      window.removeEventListener("focusout", handleFocusChange);
+      window.visualViewport?.removeEventListener("resize", updateKeyboardInset);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardInset);
+    };
+  }, [keyboardInset]);
 
   useEffect(() => {
     // Legacy backend source (kept as a supplemental fallback list).
@@ -1544,6 +1668,16 @@ const Login = ({ onLogin, onForceLogout }) => {
                 <span className="Login_brandName">MCTOS</span>
               </span>
             </h1>
+            <video
+              id="Login_brandVideo"
+              controls
+              playsInline
+            >
+              <source
+                src="https://res.cloudinary.com/dtoxkii3q/video/upload/v1781289280/video_2026-06-12_14-19-27_hymtzn.mp4"
+                type="video/mp4"
+              />
+            </video>
             <h2 id="Login_brandProduct">PhenoMed</h2>
             <h4 id="Login_brandTagline">
               From Clinical-related Phenomena to Diagnosis
@@ -1552,7 +1686,7 @@ const Login = ({ onLogin, onForceLogout }) => {
         </section>
         <section
           id="Login_authPanel"
-          className=""
+          className={keyboardInset > 0 ? "Login_authPanel--keyboardOpen" : ""}
         >
           <section
             id="Login_authCard"
@@ -1579,6 +1713,7 @@ const Login = ({ onLogin, onForceLogout }) => {
             <section
               id="Login_authFields"
               className={`fc${authMode === "complete-profile" ? " is-scrollable" : ""}`}
+              ref={authFieldsRef}
             >
               {credentialFields}
               {completeProfileFields}
@@ -1678,7 +1813,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       </main>
       <footer
         id="Login_footer"
-        className=""
+        className={keyboardInset > 0 ? "is-hidden" : ""}
         ref={footerRef}
       >
         <div id="Login_footer_left">

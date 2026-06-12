@@ -235,12 +235,80 @@ const normalizeMessageAudio = (value) => String(value || "").trim();
 
 const SECRET_CHAT_IMAGE_PREFIX = "secret-image:v1:";
 const CHAT_IMAGE_ENTRY_PREFIX = "chat-image:v2:";
+const CHAT_IMAGE_SELF_DESTRUCT_STORAGE_KEY =
+  "phenomed.chat.oneTimeConsumedImages";
+const CHAT_IMAGE_SELF_DESTRUCT_MODES = [
+  { value: "none", label: "Off", durationMs: 0 },
+  { value: "10s", label: "After 10 secs", durationMs: 10_000 },
+  { value: "30s", label: "After 30 secs", durationMs: 30_000 },
+];
+
+const getChatImageSelfDestructMode = (value) => {
+  const normalizedValue = String(value || "none").trim().toLowerCase();
+  return CHAT_IMAGE_SELF_DESTRUCT_MODES.some(
+    (option) => option.value === normalizedValue,
+  )
+    ? normalizedValue
+    : "none";
+};
+
+const getChatImageSelfDestructDurationMs = (mode) => {
+  const normalizedMode = getChatImageSelfDestructMode(mode);
+  return (
+    CHAT_IMAGE_SELF_DESTRUCT_MODES.find((option) => option.value === normalizedMode)
+      ?.durationMs || 0
+  );
+};
+
+const loadConsumedChatImageEntries = () => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(
+      CHAT_IMAGE_SELF_DESTRUCT_STORAGE_KEY,
+    );
+    const parsedValue = rawValue ? JSON.parse(rawValue) : {};
+
+    return parsedValue && typeof parsedValue === "object" ? parsedValue : {};
+  } catch {
+    return {};
+  }
+};
+
+const persistConsumedChatImageEntries = (value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      CHAT_IMAGE_SELF_DESTRUCT_STORAGE_KEY,
+      JSON.stringify(value && typeof value === "object" ? value : {}),
+    );
+  } catch {
+    // Ignore storage failures.
+  }
+};
 
 const encodeChatImageEntry = (value) => {
   const normalizedUrl = String(value?.url || value || "").trim();
   if (!normalizedUrl) {
     return "";
   }
+
+  const selfDestructMode = getChatImageSelfDestructMode(
+    value?.selfDestructMode,
+  );
+  const selfDestructDurationMs = getChatImageSelfDestructDurationMs(
+    selfDestructMode,
+  );
+  const selfDestructCreatedAt = Number(value?.selfDestructCreatedAt) || Date.now();
+  const selfDestructExpiresAt =
+    selfDestructMode !== "one-time" && selfDestructDurationMs > 0
+      ? Number(value?.selfDestructExpiresAt) || selfDestructCreatedAt + selfDestructDurationMs
+      : Number(value?.selfDestructExpiresAt) || 0;
 
   try {
     return `${CHAT_IMAGE_ENTRY_PREFIX}${window.btoa(
@@ -255,6 +323,10 @@ const encodeChatImageEntry = (value) => {
             mimeType: String(value?.mimeType || "").trim(),
             resourceType: String(value?.resourceType || "image").trim() || "image",
             format: String(value?.format || "").trim(),
+            selfDestructMode,
+            selfDestructDurationMs,
+            selfDestructCreatedAt,
+            selfDestructExpiresAt,
           }),
         ),
       ),
@@ -277,6 +349,10 @@ const parseChatImageEntry = (value) => {
       mimeType: "",
       resourceType: "image",
       format: "",
+      selfDestructMode: "none",
+      selfDestructDurationMs: 0,
+      selfDestructCreatedAt: 0,
+      selfDestructExpiresAt: 0,
     };
   }
 
@@ -296,6 +372,16 @@ const parseChatImageEntry = (value) => {
         mimeType: String(parsedPayload?.mimeType || "").trim(),
         resourceType: String(parsedPayload?.resourceType || "image").trim() || "image",
         format: String(parsedPayload?.format || "").trim(),
+        selfDestructMode: getChatImageSelfDestructMode(
+          parsedPayload?.selfDestructMode,
+        ),
+        selfDestructDurationMs: getChatImageSelfDestructDurationMs(
+          parsedPayload?.selfDestructMode,
+        ),
+        selfDestructCreatedAt:
+          Number(parsedPayload?.selfDestructCreatedAt) || 0,
+        selfDestructExpiresAt:
+          Number(parsedPayload?.selfDestructExpiresAt) || 0,
       };
     } catch {
       return {
@@ -308,6 +394,10 @@ const parseChatImageEntry = (value) => {
         mimeType: "",
         resourceType: "image",
         format: "",
+        selfDestructMode: "none",
+        selfDestructDurationMs: 0,
+        selfDestructCreatedAt: 0,
+        selfDestructExpiresAt: 0,
       };
     }
   }
@@ -323,6 +413,10 @@ const parseChatImageEntry = (value) => {
       mimeType: "",
       resourceType: "image",
       format: "",
+      selfDestructMode: "none",
+      selfDestructDurationMs: 0,
+      selfDestructCreatedAt: 0,
+      selfDestructExpiresAt: 0,
     };
   }
 
@@ -341,6 +435,10 @@ const parseChatImageEntry = (value) => {
       mimeType: "",
       resourceType: "image",
       format: "",
+      selfDestructMode: "none",
+      selfDestructDurationMs: 0,
+      selfDestructCreatedAt: 0,
+      selfDestructExpiresAt: 0,
     };
   } catch {
     return {
@@ -353,6 +451,10 @@ const parseChatImageEntry = (value) => {
       mimeType: "",
       resourceType: "image",
       format: "",
+      selfDestructMode: "none",
+      selfDestructDurationMs: 0,
+      selfDestructCreatedAt: 0,
+      selfDestructExpiresAt: 0,
     };
   }
 };
@@ -530,6 +632,8 @@ const FriendChat = ({
   const isSendInFlightRef = React.useRef(false);
   const [localMessages, setLocalMessages] = React.useState([]);
   const [selectedImages, setSelectedImages] = React.useState([]);
+  const [selectedImageSelfDestructMode, setSelectedImageSelfDestructMode] =
+    React.useState("none");
   const [recordedVoiceNote, setRecordedVoiceNote] = React.useState(null);
   const [isRecordingVoiceNote, setIsRecordingVoiceNote] = React.useState(false);
   const [shouldSendSecretAttachments, setShouldSendSecretAttachments] =
@@ -547,6 +651,9 @@ const FriendChat = ({
     React.useState("");
   const [isSecretImagePasswordSubmitting, setIsSecretImagePasswordSubmitting] =
     React.useState(false);
+  const [consumedChatImageEntries, setConsumedChatImageEntries] =
+    React.useState(() => loadConsumedChatImageEntries());
+  const [chatImageClock, setChatImageClock] = React.useState(() => Date.now());
   const selectedImagesRef = React.useRef([]);
   const mediaRecorderRef = React.useRef(null);
   const mediaRecorderStreamRef = React.useRef(null);
@@ -1521,6 +1628,20 @@ const FriendChat = ({
     selectedImagesRef.current = selectedImages;
   }, [selectedImages]);
 
+  React.useEffect(() => {
+    persistConsumedChatImageEntries(consumedChatImageEntries);
+  }, [consumedChatImageEntries]);
+
+  React.useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setChatImageClock(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, []);
+
   React.useEffect(
     () => () => {
       if (messageLongPressTimeoutRef.current) {
@@ -1567,6 +1688,32 @@ const FriendChat = ({
     ]);
   };
 
+  const markChatImageEntryConsumed = React.useCallback((imageEntry) => {
+    const normalizedImageEntry = String(imageEntry || "").trim();
+    if (!normalizedImageEntry) {
+      return;
+    }
+
+    setConsumedChatImageEntries((currentValue) => {
+      if (currentValue?.[normalizedImageEntry]) {
+        return currentValue;
+      }
+
+      return {
+        ...(currentValue || {}),
+        [normalizedImageEntry]: Date.now(),
+      };
+    });
+  }, []);
+
+  const isChatImageEntryConsumed = React.useCallback(
+    (imageEntry) => {
+      const normalizedImageEntry = String(imageEntry || "").trim();
+      return Boolean(consumedChatImageEntries?.[normalizedImageEntry]);
+    },
+    [consumedChatImageEntries],
+  );
+
   const handleRemoveSelectedImage = (imageId) => {
     setSelectedImages((currentImages) => {
       const targetImage = currentImages.find((image) => image.id === imageId);
@@ -1577,6 +1724,7 @@ const FriendChat = ({
       const nextImages = currentImages.filter((image) => image.id !== imageId);
       if (nextImages.length === 0) {
         setShouldSendSecretAttachments(false);
+        setSelectedImageSelfDestructMode("none");
       }
 
       return nextImages;
@@ -1755,6 +1903,8 @@ const FriendChat = ({
             encodeChatImageEntry({
               ...media,
               isSecret: shouldSendSecretAttachments,
+              selfDestructMode: selectedImageSelfDestructMode,
+              selfDestructCreatedAt: Date.now(),
             }),
           )
           .filter(Boolean);
@@ -1829,6 +1979,7 @@ const FriendChat = ({
     } finally {
       setIsUploadingAttachments(false);
       setShouldSendSecretAttachments(false);
+      setSelectedImageSelfDestructMode("none");
       isSendInFlightRef.current = false;
     }
 
@@ -1912,6 +2063,7 @@ const FriendChat = ({
     setSecretImagePasswordFeedback("");
     setSecretImageUnlockingKey("");
     setShouldSendSecretAttachments(false);
+    setSelectedImageSelfDestructMode("none");
     setRecordedVoiceNote((currentValue) => {
       if (currentValue?.previewUrl) {
         URL.revokeObjectURL(currentValue.previewUrl);
@@ -2236,11 +2388,58 @@ const FriendChat = ({
     }
   };
 
+  const getChatImageSelfDestructLabel = React.useCallback((mode) => {
+    const normalizedMode = getChatImageSelfDestructMode(mode);
+    return (
+      CHAT_IMAGE_SELF_DESTRUCT_MODES.find(
+        (option) => option.value === normalizedMode,
+      )?.label || "Off"
+    );
+  }, []);
+
+  const isChatImageExpired = React.useCallback(
+    (parsedImageEntry) => {
+      if (!parsedImageEntry?.rawValue) {
+        return true;
+      }
+
+      if (isChatImageEntryConsumed(parsedImageEntry.rawValue)) {
+        return true;
+      }
+
+      const selfDestructMode = getChatImageSelfDestructMode(
+        parsedImageEntry?.selfDestructMode,
+      );
+      if (selfDestructMode === "none" || selfDestructMode === "one-time") {
+        return false;
+      }
+
+      const expiresAt = Number(parsedImageEntry?.selfDestructExpiresAt) || 0;
+      if (expiresAt > 0) {
+        return chatImageClock >= expiresAt;
+      }
+
+      const createdAt = Number(parsedImageEntry?.selfDestructCreatedAt) || 0;
+      const durationMs = getChatImageSelfDestructDurationMs(selfDestructMode);
+      if (!createdAt || !durationMs) {
+        return false;
+      }
+
+      return chatImageClock >= createdAt + durationMs;
+    },
+    [chatImageClock, isChatImageEntryConsumed],
+  );
+
   const renderChatImageCard = (imageUrl, options = {}) => {
     const parsedImageEntry = parseChatImageEntry(imageUrl);
     const normalizedImageEntry = parsedImageEntry.rawValue;
     const normalizedImageUrl = parsedImageEntry.url;
     const isSecretImage = parsedImageEntry.isSecret;
+    const selfDestructMode = getChatImageSelfDestructMode(
+      parsedImageEntry.selfDestructMode,
+    );
+    const isOneTimeImage = selfDestructMode === "one-time";
+    const isExpiredImage = isChatImageExpired(parsedImageEntry);
     const isSecretUnlocked =
       !isSecretImage || Boolean(unlockedSecretImageMap[normalizedImageEntry]);
 
@@ -2257,6 +2456,27 @@ const FriendChat = ({
       secretImageUnlockingKey === normalizedImageEntry &&
       isSecretImagePasswordSubmitting;
 
+    if (isExpiredImage) {
+      return (
+        <div
+          key={options.key || normalizedImageEntry}
+          className={`Chat_messageImageCard Chat_messageImageCard--expired${
+            options.panelVariant ? ` ${options.panelVariant}` : ""
+          }`}
+        >
+          <div className="Chat_messageImageExpired">
+            <div className="Chat_messageImageExpiredBadge">
+              <i className="fas fa-hourglass-half" aria-hidden="true"></i>
+              <span>Expired</span>
+            </div>
+            <p className="Chat_messageImageExpiredText">
+              This attachment has self-destructed.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     if (isSecretImage && !isSecretUnlocked) {
       return (
         <div
@@ -2266,9 +2486,12 @@ const FriendChat = ({
           }`}
         >
           <div className="Chat_secretImagePrompt fc">
-            <div className="Chat_secretImagePromptBadge fr">
-              <i className="fas fa-user-secret" aria-hidden="true"></i>
-              <span>Secret</span>
+            <div
+              className="Chat_secretImagePromptBadge fr"
+              aria-label="Secret attachment"
+              title="Secret attachment"
+            >
+              <i className="fi fi-rr-lock" aria-hidden="true"></i>
             </div>
             <p className="Chat_secretImagePromptText">
               Enter your password to view this attachment.
@@ -2316,6 +2539,8 @@ const FriendChat = ({
         className={`Chat_messageImageCard${
           isSecretImage ? " Chat_messageImageCard--unlockedSecret" : ""
         }${
+          isOneTimeImage ? " Chat_messageImageCard--oneTime" : ""
+        }${
           options.panelVariant ? ` ${options.panelVariant}` : ""
         }`}
       >
@@ -2324,6 +2549,11 @@ const FriendChat = ({
           target="_blank"
           rel="noreferrer"
           className="Chat_messageImageLink"
+          onClick={() => {
+            if (isOneTimeImage) {
+              markChatImageEntryConsumed(normalizedImageEntry);
+            }
+          }}
         >
           <img
             src={normalizedImageUrl}
@@ -2344,6 +2574,13 @@ const FriendChat = ({
             }}
           />
         </a>
+        {selfDestructMode !== "none" ? (
+          <div className="Chat_messageImageMeta">
+            <span className="Chat_messageImageMetaBadge">
+              {getChatImageSelfDestructLabel(selfDestructMode)}
+            </span>
+          </div>
+        ) : null}
         <a
           href={normalizedImageUrl}
           target="_blank"
@@ -3856,17 +4093,93 @@ const FriendChat = ({
                           />
                         </div>
                       ) : null}
-                      <label className="Chat_attachmentSecretToggle">
-                        <input
-                          type="checkbox"
-                          checked={shouldSendSecretAttachments}
+                      <button
+                        type="button"
+                        className={`Chat_attachmentSecretToggle${
+                          shouldSendSecretAttachments
+                            ? " Chat_attachmentSecretToggle--secret"
+                            : " Chat_attachmentSecretToggle--open"
+                        }`}
+                        disabled={Boolean(recordedVoiceNote)}
+                        onClick={() =>
+                          setShouldSendSecretAttachments(
+                            (currentValue) => !currentValue,
+                          )
+                        }
+                        aria-label={
+                          shouldSendSecretAttachments
+                            ? "Secret attachment enabled"
+                            : "Secret attachment disabled"
+                        }
+                        title={
+                          shouldSendSecretAttachments
+                            ? "Secret attachment enabled"
+                            : "Secret attachment disabled"
+                        }
+                      >
+                        <i
+                          className={`${
+                            shouldSendSecretAttachments
+                              ? "fi fi-rr-lock"
+                              : "fi fi-rr-lock-open-alt"
+                          }`}
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                      <div className="Chat_attachmentSelfDestructGroup">
+                        <button
+                          type="button"
+                          className={`Chat_attachmentSelfDestructToggle${
+                            selectedImageSelfDestructMode === "10s"
+                              ? " Chat_attachmentSelfDestructToggle--secret"
+                              : " Chat_attachmentSelfDestructToggle--open"
+                          }`}
                           disabled={Boolean(recordedVoiceNote)}
-                          onChange={(event) =>
-                            setShouldSendSecretAttachments(event.target.checked)
+                          onClick={() =>
+                            setSelectedImageSelfDestructMode((currentValue) =>
+                              currentValue === "10s" ? "none" : "10s",
+                            )
                           }
-                        />
-                        <span>Secret</span>
-                      </label>
+                          aria-label={
+                            selectedImageSelfDestructMode === "10s"
+                              ? "Self-destruction enabled for 10 seconds"
+                              : "Self-destruction disabled"
+                          }
+                          title={
+                            selectedImageSelfDestructMode === "10s"
+                              ? "Self-destruction enabled for 10 seconds"
+                              : "Self-destruction disabled"
+                          }
+                        >
+                          <i className="fi fi-rr-time-forward-ten" aria-hidden="true"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className={`Chat_attachmentSelfDestructToggle${
+                            selectedImageSelfDestructMode === "30s"
+                              ? " Chat_attachmentSelfDestructToggle--secret"
+                              : " Chat_attachmentSelfDestructToggle--open"
+                          }`}
+                          disabled={Boolean(recordedVoiceNote)}
+                          onClick={() =>
+                            setSelectedImageSelfDestructMode((currentValue) =>
+                              currentValue === "30s" ? "none" : "30s",
+                            )
+                          }
+                          aria-label={
+                            selectedImageSelfDestructMode === "30s"
+                              ? "Self-destruction enabled for 30 seconds"
+                              : "Self-destruction disabled"
+                          }
+                          title={
+                            selectedImageSelfDestructMode === "30s"
+                              ? "Self-destruction enabled for 30 seconds"
+                              : "Self-destruction disabled"
+                          }
+                        >
+                          <i className="fi fi-br-time-forward-thirty" aria-hidden="true"></i>
+                        </button>
+                      </div>
 	                  </div>
 	                ) : null}
 	                <div className="Chat_formControls fr">

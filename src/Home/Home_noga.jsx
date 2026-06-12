@@ -1849,6 +1849,7 @@ function HomeNoga(props) {
   const [personalInfoInputValue, setPersonalInfoInputValue] = useState("");
   const [isPersonalInfoInlineSubmitting, setIsPersonalInfoInlineSubmitting] =
     useState(false);
+  const [isCompactBioGenerating, setIsCompactBioGenerating] = useState(false);
   const [loginLogEntries, setLoginLogEntries] = useState([]);
   const [isLoginLogDeleting, setIsLoginLogDeleting] = useState(false);
   const [loginLogError, setLoginLogError] = useState("");
@@ -7819,6 +7820,229 @@ function HomeNoga(props) {
     }
   };
 
+  const extractCompactBioEventSummaries = (sourceValue) => {
+    const sourceItems = Array.isArray(sourceValue)
+      ? sourceValue
+      : sourceValue && typeof sourceValue === "object"
+        ? Object.values(sourceValue)
+        : [];
+
+    return sourceItems
+      .map((item) => {
+        if (typeof item === "string") {
+          return item.trim();
+        }
+
+        if (!item || typeof item !== "object") {
+          return "";
+        }
+
+        const title = String(
+          item.title ||
+            item.name ||
+            item.eventName ||
+            item.label ||
+            item.subject ||
+            "",
+        ).trim();
+        const date = String(
+          item.date || item.startDate || item.start || item.when || "",
+        ).trim();
+        const location = String(
+          item.location || item.place || item.venue || item.city || "",
+        ).trim();
+        const description = String(
+          item.description || item.summary || item.note || "",
+        ).trim();
+
+        return [title, date, location, description].filter(Boolean).join(" • ");
+      })
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+  };
+
+  const buildCompactBioGenerationContext = () => {
+    const candidateEventSources = [
+      props.state?.events,
+      props.state?.eventList,
+      props.state?.calendarEvents,
+      props.state?.upcomingEvents,
+      props.state?.login_record,
+    ];
+    const events = Array.from(
+      new Set(
+        candidateEventSources.flatMap((sourceValue) =>
+          extractCompactBioEventSummaries(sourceValue),
+        ),
+      ),
+    ).slice(0, 6);
+
+    return {
+      profile: {
+        displayName: compactDisplayName,
+        username: profileState.username,
+        firstName: profileState.firstname,
+        lastName: profileState.lastname,
+        bio: compactBio,
+        university: formatProfileValue(profileStudying.university || profileState.university),
+        faculty: formatProfileValue(profileStudying.faculty || profileState.faculty),
+        program: formatProfileValue(profileStudying.program || profileState.program),
+        currentAcademicYear: formatProfileValue(
+          profileStudyingCurrent.programYearInterval ||
+            profileStudyingTime.currentAcademicYear ||
+            profileState.studyYear,
+        ),
+        currentYearNumber: formatProfileValue(profileStudyingCurrent.programYearNum),
+        currentTerm: formatProfileValue(
+          readProgramTermValue(profileStudyingCurrent.programTerm) ||
+            profileStudyingCurrentDate.term ||
+            profileStudying.term ||
+            profileState.term,
+        ),
+        language: formatProfileValue(profileStudying.language),
+        company: formatProfileValue(profileWorking.company),
+        position: formatProfileValue(profileWorking.position),
+        hometown: formatProfileValue(
+          [profileHometown.City, profileHometown.Country]
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+            .join(", "),
+        ),
+        componentsClass: Array.isArray(profileStudying.componentsClass)
+          ? profileStudying.componentsClass
+              .map((entry) => String(entry || "").trim())
+              .filter(Boolean)
+          : [],
+      },
+      events,
+    };
+  };
+
+  const buildLocalCompactBio = (context) => {
+    const profile = context?.profile || {};
+    const events = Array.isArray(context?.events) ? context.events : [];
+    const introParts = [];
+
+    if (profile.program && profile.university) {
+      introParts.push(
+        `studying ${profile.program} at ${profile.university}`,
+      );
+    } else if (profile.program) {
+      introParts.push(`studying ${profile.program}`);
+    } else if (profile.university) {
+      introParts.push(`based at ${profile.university}`);
+    }
+
+    if (profile.faculty) {
+      introParts.push(`part of the ${profile.faculty} faculty`);
+    }
+
+    if (profile.company || profile.position) {
+      introParts.push(
+        `working${profile.position ? ` as ${profile.position}` : ""}${
+          profile.company ? ` at ${profile.company}` : ""
+        }`,
+      );
+    }
+
+    if (profile.language && profile.language !== "-") {
+      introParts.push(`speaks ${profile.language}`);
+    }
+
+    if (Array.isArray(profile.componentsClass) && profile.componentsClass.length) {
+      introParts.push(
+        `focused on ${profile.componentsClass.slice(0, 3).join(", ")}`,
+      );
+    }
+
+    const introSentence = introParts.length
+      ? `${profile.displayName || "This user"} is ${introParts.join(", ")}.`
+      : `${profile.displayName || "This user"} keeps a profile that is still taking shape.`;
+
+    const locationSentence =
+      profile.hometown && profile.hometown !== "-"
+        ? `They are connected to ${profile.hometown}.`
+        : "";
+
+    const eventSentence = events.length
+      ? `Recent activity includes ${events.slice(0, 2).join(" and ")}.`
+      : "Their event trail is still quiet, so the bio stays focused on the profile itself.";
+
+    return [introSentence, locationSentence, eventSentence]
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  const handleGenerateCompactBio = async () => {
+    if (isCompactBioGenerating || isPersonalInfoInlineSubmitting) {
+      return;
+    }
+
+    const context = buildCompactBioGenerationContext();
+    setIsCompactBioGenerating(true);
+    setAcademicInfoFeedback({
+      tone: "",
+      message: "",
+    });
+
+    try {
+      const token = String(props.state?.token || "").trim();
+      if (token) {
+        const response = await fetch(apiUrl("/api/telegram/ai/profile-bio"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            aiProvider: String(props.state?.aiProvider || "openai").trim(),
+            profile: context.profile,
+            events: context.events,
+            currentBio: compactBio,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.message || "Unable to generate the bio right now.",
+          );
+        }
+
+        const nextBio = String(
+          payload?.bio || payload?.generatedBio || payload?.text || "",
+        ).trim();
+
+        if (nextBio) {
+          setPersonalInfoInputValue(nextBio);
+          setAcademicInfoFeedback({
+            tone: "success",
+            message: "Bio generated from your profile and activity.",
+          });
+          return;
+        }
+      }
+
+      const fallbackBio = buildLocalCompactBio(context);
+      setPersonalInfoInputValue(fallbackBio);
+      setAcademicInfoFeedback({
+        tone: "success",
+        message: "Bio generated from your profile and activity.",
+      });
+    } catch (error) {
+      const fallbackBio = buildLocalCompactBio(context);
+      setPersonalInfoInputValue(fallbackBio);
+      setAcademicInfoFeedback({
+        tone: "success",
+        message:
+          error?.message ||
+          "Generated a local bio from your profile and activity.",
+      });
+    } finally {
+      setIsCompactBioGenerating(false);
+    }
+  };
+
   const handleUpdateGalleryImageVisibility = async (publicId, visibility) => {
     const nextPublicId = String(publicId || "").trim();
     const nextVisibility = normalizeGalleryVisibility(visibility);
@@ -9098,9 +9322,28 @@ function HomeNoga(props) {
                               <div className="Home_Noga_compactBioEditorActions fr">
                                 <button
                                   type="button"
+                                  className="Home_Noga_aboutButton Home_Noga_compactBioAiButton"
+                                  onClick={handleGenerateCompactBio}
+                                  disabled={
+                                    isPersonalInfoInlineSubmitting ||
+                                    isCompactBioGenerating
+                                  }
+                                  aria-label="Generate AI bio"
+                                  title="Generate AI bio"
+                                >
+                                  <i
+                                    className={`fi ${isCompactBioGenerating ? "fi-rr-spinner" : "fi-br-artificial-intelligence"}`}
+                                    aria-hidden="true"
+                                  ></i>
+                                </button>
+                                <button
+                                  type="button"
                                   className="Home_Noga_aboutButton"
                                   onClick={submitInlinePersonalInfoEdit}
-                                  disabled={isPersonalInfoInlineSubmitting}
+                                  disabled={
+                                    isPersonalInfoInlineSubmitting ||
+                                    isCompactBioGenerating
+                                  }
                                 >
                                   Save
                                 </button>
@@ -9111,7 +9354,10 @@ function HomeNoga(props) {
                                     setActivePersonalInfoField("");
                                     setPersonalInfoInputValue("");
                                   }}
-                                  disabled={isPersonalInfoInlineSubmitting}
+                                  disabled={
+                                    isPersonalInfoInlineSubmitting ||
+                                    isCompactBioGenerating
+                                  }
                                 >
                                   Cancel
                                 </button>
