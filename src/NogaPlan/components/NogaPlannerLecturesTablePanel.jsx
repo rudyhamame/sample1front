@@ -5,6 +5,14 @@ const NogaPlannerLecturesTablePanel = ({
   runtime,
   renderMode = "full",
 }) => {
+  const formatInstructorName = (entry) => {
+    if (!entry || typeof entry !== "object") {
+      return "";
+    }
+    return [String(entry?.firstName || "").trim(), String(entry?.lastName || "").trim()]
+      .filter(Boolean)
+      .join(" ");
+  };
   const {
     getCellAlignmentStyle,
     formatPlannerTextList,
@@ -163,7 +171,7 @@ const NogaPlannerLecturesTablePanel = ({
       ? plannerRoot.programIntervals
       : [];
     const programInstructors = Array.isArray(plannerRoot?.programInstructors)
-      ? plannerRoot.programInstructors.map((entry) => String(entry || "").trim()).filter(Boolean)
+      ? plannerRoot.programInstructors.map((entry) => formatInstructorName(entry)).filter(Boolean)
       : [];
     const programEditors = Array.isArray(plannerRoot?.programEditors)
       ? plannerRoot.programEditors.map((entry) => String(entry || "").trim()).filter(Boolean)
@@ -191,15 +199,21 @@ const NogaPlannerLecturesTablePanel = ({
     const contextOptions = [];
     const lectureRows = [];
     plannerIntervals.forEach((intervalEntry) => {
-      const intervalId = String(intervalEntry?.intervalId || "").trim();
-      const subIntervals = Array.isArray(intervalEntry?.intervalsubIntervals)
-        ? intervalEntry.intervalsubIntervals
-        : [];
+      const intervalId = String(
+        intervalEntry?.intervalID || intervalEntry?.intervalId || "",
+      ).trim();
+      const subIntervals = (Array.isArray(intervalEntry?.intervalTry)
+        ? intervalEntry.intervalTry
+        : []
+      ).flatMap((tryEntry) =>
+        Array.isArray(tryEntry?.intervalTrysubIntervals)
+          ? tryEntry.intervalTrysubIntervals
+          : [],
+      );
       subIntervals.forEach((subIntervalEntry) => {
         const subIntervalId = String(
           subIntervalEntry?.subIntervalID ||
             subIntervalEntry?.subIntervalId ||
-            subIntervalEntry?.subIntervalNum ||
             "",
         ).trim();
         const intervalCourses = Array.isArray(subIntervalEntry?.subIntervalCourses)
@@ -350,19 +364,25 @@ const NogaPlannerLecturesTablePanel = ({
     });
     const updateAllLectures = async (transform) => {
       const nextIntervals = plannerIntervals.flatMap((intervalEntry) => {
-        const intervalId = String(intervalEntry?.intervalId || "").trim();
+        const intervalId = String(
+          intervalEntry?.intervalID || intervalEntry?.intervalId || "",
+        ).trim();
         const intervalNum = Number.isFinite(Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10))
           ? Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10)
           : null;
         const intervalStatus = String(intervalEntry?.intervalStatus || "Normal").trim() || "Normal";
-        const subIntervals = Array.isArray(intervalEntry?.intervalsubIntervals)
-          ? intervalEntry.intervalsubIntervals
-          : [];
+        const subIntervals = (Array.isArray(intervalEntry?.intervalTry)
+          ? intervalEntry.intervalTry
+          : []
+        ).flatMap((tryEntry) =>
+          Array.isArray(tryEntry?.intervalTrysubIntervals)
+            ? tryEntry.intervalTrysubIntervals
+            : [],
+        );
         return subIntervals.map((subIntervalEntry) => {
           const subIntervalId = String(
             subIntervalEntry?.subIntervalID ||
               subIntervalEntry?.subIntervalId ||
-              subIntervalEntry?.subIntervalNum ||
               "",
           ).trim();
           const nextSubIntervalCourses = (Array.isArray(subIntervalEntry?.subIntervalCourses)

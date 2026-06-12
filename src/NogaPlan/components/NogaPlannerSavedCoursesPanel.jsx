@@ -1,6 +1,12 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../../config/api";
 import "../../telegramControlPage.css";
+import {
+  getPlannerCountdownEndDate,
+  isPlannerActive,
+  PLANNER_COUNTDOWN_EVENT,
+  PLANNER_ACTIVE_EVENT,
+} from "../plannerCountdown";
 
 const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) => {
   const [coursesMiniBarActionsLeft, setCoursesMiniBarActionsLeft] =
@@ -26,6 +32,24 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     height: 620,
     zIndex: 28,
   });
+  const [countdownEndIso, setCountdownEndIso] = useState(() => getPlannerCountdownEndDate());
+  const [countdownActive, setCountdownActive] = useState(() => isPlannerActive());
+  const [countdownNowMs, setCountdownNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const onActive = (e) => {
+      setCountdownActive(Boolean(e?.detail?.active));
+      setCountdownEndIso(e?.detail?.endIso || null);
+    };
+    const onChange = (e) => setCountdownEndIso(e?.detail?.endIso || null);
+    window.addEventListener(PLANNER_ACTIVE_EVENT, onActive);
+    window.addEventListener(PLANNER_COUNTDOWN_EVENT, onChange);
+    const ticker = setInterval(() => setCountdownNowMs(Date.now()), 60000);
+    return () => {
+      window.removeEventListener(PLANNER_ACTIVE_EVENT, onActive);
+      window.removeEventListener(PLANNER_COUNTDOWN_EVENT, onChange);
+      clearInterval(ticker);
+    };
+  }, []);
   const telegramChatFrameRef = useRef({
     top: 84,
     right: 16,
@@ -53,7 +77,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     formatSavedCourseTitle,
     splitCourseTextList,
     buildSavedCourseComponentEntryFromDraft,
-    normalizeAcademicYearValue,
     formatCourseLocationDisplay,
     formatAcademicTermDisplay,
     HOUR_OPTIONS,
@@ -933,21 +956,20 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   );
 
   const savedCourseProfileNormativeAcademicYear =
-    normalizeAcademicYearValue(
-      String(savedCourseDraft?.normativeCourseYearInterval || "").trim(),
-    ) || "";
+    String(savedCourseDraft?.normativeCourseYearInterval || "").trim() || "";
   const savedCourseProfileNormativeTerm = String(
     savedCourseDraft?.normativeCourseTerm || "",
   ).trim();
   const savedCourseProfileActualAcademicYear =
-    normalizeAcademicYearValue(
-      String(savedCourseDraft?.actualCourseYearInterval || "").trim() ||
-        (planner.props.state?.studying?.time?.currentAcademicYear ??
-          planner.props.state?.studying?.currentAcademicYear ??
-          planner.props.state?.profile?.studying?.time?.currentAcademicYear ??
-          planner.props.state?.profile?.studying?.currentAcademicYear ??
-          planner.props.state?.currentAcademicYear),
-    ) || "";
+    String(
+      savedCourseDraft?.actualCourseYearInterval ||
+        planner.props.state?.studying?.time?.currentAcademicYear ||
+        planner.props.state?.studying?.currentAcademicYear ||
+        planner.props.state?.profile?.studying?.time?.currentAcademicYear ||
+        planner.props.state?.profile?.studying?.currentAcademicYear ||
+        planner.props.state?.currentAcademicYear ||
+        "",
+    ).trim() || "";
   const savedCourseProfileActualTerm = planner.getPlannerCurrentAcademicTerm();
 
   const buildRenderCourses = () => {
@@ -1224,19 +1246,49 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
               {renderSavedCourseFieldEyebrow("Name", {
                 fieldName: "course_name",
               })}
-              <input
-                id="nogaPlanner_savedCourseInput_course_name"
-                className="nogaPlanner_savedCoursesDetailsInput"
-                type="text"
-                value={savedCourseDraft.course_name}
-                onChange={(event) =>
+              {(() => {
+                const courseNameOptions = Array.isArray(
+                  planner.state?.plannerRoot?.programCoursesNamesCodes,
+                )
+                  ? planner.state.plannerRoot.programCoursesNamesCodes
+                  : [];
+                const handleCourseNameChange = (selectedName) => {
+                  const match = courseNameOptions.find(
+                    (c) => String(c?.courseName || "").trim() === selectedName,
+                  );
+                  planner.handleSavedCourseDraftChange("course_name", selectedName);
                   planner.handleSavedCourseDraftChange(
-                    "course_name",
-                    event.target.value,
-                  )
-                }
-                placeholder="Name"
-              />
+                    "course_code",
+                    String(match?.courseCode || "").trim(),
+                  );
+                };
+                return courseNameOptions.length > 0 ? (
+                  <select
+                    id="nogaPlanner_savedCourseInput_course_name"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    value={savedCourseDraft.course_name}
+                    onChange={(event) => handleCourseNameChange(event.target.value)}
+                  >
+                    <option value="">Name</option>
+                    {courseNameOptions.map((c, i) => (
+                      <option key={i} value={String(c?.courseName || "").trim()}>
+                        {String(c?.courseName || "").trim()}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="nogaPlanner_savedCourseInput_course_name"
+                    className="nogaPlanner_savedCoursesDetailsInput"
+                    type="text"
+                    value={savedCourseDraft.course_name}
+                    onChange={(event) =>
+                      planner.handleSavedCourseDraftChange("course_name", event.target.value)
+                    }
+                    placeholder="Name"
+                  />
+                );
+              })()}
             </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
               {renderSavedCourseFieldEyebrow(courseFieldLabel("course_code"), {
@@ -1244,15 +1296,10 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
               })}
               <input
                 id="nogaPlanner_savedCourseInput_course_code"
-                className="nogaPlanner_savedCoursesDetailsInput"
+                className="nogaPlanner_savedCoursesDetailsInput nogaPlanner_savedCoursesDetailsInput--pending"
                 type="text"
                 value={savedCourseDraft.course_code}
-                onChange={(event) =>
-                  planner.handleSavedCourseDraftChange(
-                    "course_code",
-                    event.target.value,
-                  )
-                }
+                readOnly
                 placeholder={courseFieldLabel("course_code")}
               />
             </div>
@@ -2246,12 +2293,42 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   };
 
   if (shellOnly) {
+    let shellCountdownValue = null;
+    let shellCountdownLabel = "To end:";
+    if (countdownActive && countdownEndIso) {
+      let endDate = new Date(`${countdownEndIso}T23:59:59`);
+      if (Number.isNaN(endDate.getTime()) && /^\d{4}$/.test(countdownEndIso)) {
+        endDate = new Date(`${countdownEndIso}-12-31T23:59:59`);
+      }
+      if (!Number.isNaN(endDate.getTime())) {
+        const diffMs = endDate.getTime() - countdownNowMs;
+        const isPast = diffMs < 0;
+        const absDiffMs = Math.abs(diffMs);
+        const totalMins = Math.floor(absDiffMs / 60000);
+        const totalHours = Math.floor(totalMins / 60);
+        const totalDays = Math.floor(totalHours / 24);
+        const months = Math.floor(totalDays / 30.44);
+        const remDays = Math.floor(totalDays - months * 30.44);
+        const weeks = Math.floor(remDays / 7);
+        const days = remDays % 7;
+        const hours = totalHours % 24;
+        const mins = totalMins % 60;
+        shellCountdownLabel = isPast ? "Since end:" : "To end:";
+        shellCountdownValue = `${months}mo — ${weeks}w — ${days}d — ${hours}h — ${mins}m`;
+      }
+    }
     return (
       <aside
         id="nogaPlanner_shellAside"
         className="nogaPlanner_homeSoulPanel"
         ref={planner.savedCoursesColumnHeaderRef}
       >
+        {countdownActive ? (
+          <div id="nogaPlanner_shellAsideCountdown" className="nogaPlanner_shellAsideCountdown">
+            <span className="nogaPlanner_shellAsideCountdownLabel">{shellCountdownLabel}</span>
+            <span className="nogaPlanner_shellAsideCountdownValue">{shellCountdownValue || "—"}</span>
+          </div>
+        ) : null}
         {renderWrapperTabs()}
       </aside>
     );

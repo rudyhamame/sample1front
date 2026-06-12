@@ -7,7 +7,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     buildDefaultPlannerWeekdayOptions,
     NOGAPLANNER_WRAPPER_TABS,
     NOGAPLANNER_TEXT,
-    normalizeStudyPlanAid,
   } = runtime;
   const SETTINGS_TEXT = NOGAPLANNER_TEXT.settings;
   const SAVED_COURSE_FIELD_TEXT = NOGAPLANNER_TEXT.savedCourses.fields || {};
@@ -277,9 +276,11 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     lectureInstructorOptions,
     lectureWriterOptions,
   };
-  const plannerStudyPlanAid = normalizeStudyPlanAid(
-    planner.getPlannerStudyPlanAid(),
-  );
+  const plannerStudyPlanAid =
+    planner.getPlannerStudyPlanAid() &&
+    typeof planner.getPlannerStudyPlanAid() === "object"
+      ? planner.getPlannerStudyPlanAid()
+      : {};
   const selectedStudyPlanDay =
     planner.state?.selectedStudyPlanDay &&
     typeof planner.state.selectedStudyPlanDay === "object"

@@ -35,6 +35,40 @@ const TELEGRAM_DOCUMENT_TYPE_TABS = [
 
 const TELEGRAM_STORED_MESSAGES_PAGE_SIZE = 40;
 
+const normalizeInstructorSchemaEntry = (entry) => {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const firstName = String(entry?.firstName || "").trim();
+  const lastName = String(entry?.lastName || "").trim();
+  if (!firstName && !lastName) {
+    return null;
+  }
+  return { firstName, lastName };
+};
+
+const buildInstructorSchemaEntry = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return null;
+  }
+  const separatorIndex = normalizedValue.indexOf(" ");
+  return separatorIndex === -1
+    ? { firstName: normalizedValue, lastName: "" }
+    : {
+        firstName: normalizedValue.slice(0, separatorIndex).trim(),
+        lastName: normalizedValue.slice(separatorIndex + 1).trim(),
+      };
+};
+
+const serializeInstructorSchemaEntry = (entry) => {
+  const normalizedEntry = normalizeInstructorSchemaEntry(entry);
+  if (!normalizedEntry) {
+    return "";
+  }
+  return [normalizedEntry.firstName, normalizedEntry.lastName].filter(Boolean).join(" ");
+};
+
 const formatFileSize = (size = 0) => {
   const nextSize = Number(size || 0);
   if (!Number.isFinite(nextSize) || nextSize <= 0) {
@@ -479,6 +513,15 @@ const NogaPlannerTelegramPanel = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (planner) {
+      planner.setState({
+        telegramSelectedGroupReference: selectedGroupReference,
+        telegramHasStoredGroups: storedGroups.length > 0,
+      });
+    }
+  }, [selectedGroupReference, storedGroups]);
+
   const getTelegramMessageMediaKey = (message = {}) =>
     `${String(message?.groupReference || "").trim()}::${Number(message?.id || 0)}`;
 
@@ -677,7 +720,11 @@ const NogaPlannerTelegramPanel = ({
     const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
       ? planner.state.plannerRoot.programInstructors
       : [];
-    const nextInstructors = [...currentInstructors, name];
+    const nextInstructorEntry = buildInstructorSchemaEntry(name);
+    if (!nextInstructorEntry) {
+      return;
+    }
+    const nextInstructors = [...currentInstructors, nextInstructorEntry];
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: nextInstructors });
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
@@ -693,7 +740,18 @@ const NogaPlannerTelegramPanel = ({
       ? planner.state.plannerRoot.programInstructors
       : [];
     const deduped = Array.from(
-      new Set(currentInstructors.map((s) => String(s || "").trim()).filter(Boolean)),
+      new Map(
+        currentInstructors
+          .map((entry) => {
+            const normalizedEntry = normalizeInstructorSchemaEntry(entry);
+            if (!normalizedEntry) {
+              return null;
+            }
+            const key = serializeInstructorSchemaEntry(normalizedEntry);
+            return key ? [key, normalizedEntry] : null;
+          })
+          .filter(Boolean),
+      ).values(),
     );
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: deduped });
@@ -1983,45 +2041,6 @@ const NogaPlannerTelegramPanel = ({
             );
           })}
         </select>
-        <select
-          id="nogaPlanner_tracesCourseSelect"
-          className="nogaPlanner_tracesInput"
-          value={selectedCourseName}
-          onChange={(event) => setSelectedCourseName(event.target.value)}
-        >
-          <option value="">Select course</option>
-          {plannerCourseOptions.map((course) => {
-            const label = course.code ? `${course.name} (${course.code})` : course.name;
-            return (
-              <option key={`traces-course-${course.name}`} value={course.name}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
-        <select
-          id="nogaPlanner_tracesLectureSelect"
-          className="nogaPlanner_tracesInput"
-          value={selectedLectureKey}
-          onChange={(event) => setSelectedLectureKey(event.target.value)}
-        >
-          <option value="">Select lecture</option>
-          {plannerLectureRows.map((lecture) => {
-            const key = String(lecture?.key || "").trim();
-            if (!key) return null;
-            const courseName = String(lecture?.courseName || "").trim() || "-";
-            const lectureName = String(lecture?.lectureName || "").trim() || "-";
-            const instructors = String(lecture?.lectureInstructor || "").trim();
-            const label = instructors
-              ? `${courseName}: ${lectureName} (${instructors})`
-              : `${courseName}: ${lectureName}`;
-            return (
-              <option key={`traces-lecture-${key}`} value={key}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
         <div
           id="nogaPlanner_traces_searchRow"
           className="nogaPlanner_tracesSearchRow"
@@ -2053,26 +2072,6 @@ const NogaPlannerTelegramPanel = ({
             {isFindingInstructors ? "Searching..." : "Find Instructors"}
           </button>
         </div>
-      </div>
-      <div id="nogaPlanner_traces_aiGenerateContainer" className="nogaPlanner_tracesAiGenerateRow">
-        <button
-          id="nogaPlanner_traces_aiExtractCoursesBtn"
-          type="button"
-          className="nogaPlanner_tracesActionBtn"
-          disabled={isExtractingCourseNames || storedGroups.length === 0}
-          onClick={extractCourseNames}
-        >
-          {isExtractingCourseNames ? "Extracting..." : "Extract course names"}
-        </button>
-        <button
-          id="nogaPlanner_traces_aiExtractInstructorsBtn"
-          type="button"
-          className="nogaPlanner_tracesActionBtn"
-          disabled={isFindingInstructors || storedGroups.length === 0}
-          onClick={findInstructors}
-        >
-          {isFindingInstructors ? "Searching..." : "Extract instructor names"}
-        </button>
       </div>
       <div className="nogaPlanner_tracesMiniTabsAndViewer">
         <div className="nogaPlanner_tracesMiniTabs">

@@ -60,7 +60,6 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
   const {
     NOGAPLANNER_TEXT,
     getPlannerDefaultFieldsForForm,
-    normalizeStudyPlanAid,
     buildPlannerStudyPlanTimeline,
   } = runtime;
   const PLAN_TEXT = NOGAPLANNER_TEXT.studyPlan;
@@ -81,7 +80,11 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
     ? planner.state.lectures
     : [];
   const profile = planner.props?.state?.profile || planner.props?.state || {};
-  const studyPlanAid = normalizeStudyPlanAid(planner.getPlannerStudyPlanAid());
+  const studyPlanAid =
+    planner.getPlannerStudyPlanAid() &&
+    typeof planner.getPlannerStudyPlanAid() === "object"
+      ? planner.getPlannerStudyPlanAid()
+      : {};
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedComponentId, setSelectedComponentId] = useState("");
   const [selectedLectureId, setSelectedLectureId] = useState("");
@@ -646,9 +649,12 @@ const NogaPlannerStudyPlanPanel = ({ planner, runtime }) => {
   };
 
   const handleSave = async () => {
-    const nextStudyPlanAid = normalizeStudyPlanAid({
-      intervals: Array.isArray(studyPlanAid?.intervals) ? studyPlanAid.intervals : [],
-    });
+    const nextStudyPlanAid = {
+      ...(studyPlanAid && typeof studyPlanAid === "object" ? studyPlanAid : {}),
+      intervals: Array.isArray(studyPlanAid?.intervals)
+        ? studyPlanAid.intervals
+        : [],
+    };
 
     if (selectedCourseId && selectedComponentId) {
       const nextCoursePlans = Array.isArray(nextStudyPlanAid.coursePlans)

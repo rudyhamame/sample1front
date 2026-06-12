@@ -384,6 +384,71 @@ body.dark #server_answer_musicPlayer {
   opacity: 0.72;
 }
 
+#server_answer_plannerCountdown {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.2rem;
+  padding: 0.12rem 0.2rem 0.12rem 0.12rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 233, 242, 0.38);
+  background: rgba(255, 244, 248, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 14px rgba(86, 10, 41, 0.24);
+}
+
+#app_page.app_page--home-dark #server_answer_plannerCountdown,
+body.dark #server_answer_plannerCountdown {
+  border-color: rgba(110, 168, 180, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 24, 30, 0.96),
+    rgba(12, 33, 40, 0.94)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+#server_answer_plannerCountdownLabel,
+#server_answer_plannerCountdownValue {
+  margin: 0;
+  min-width: 0;
+  font-family: "IBM Plex Mono", monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#server_answer_plannerCountdownLabel {
+  font-size: 0.44rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 231, 242, 0.84);
+}
+
+#app_page.app_page--home-dark #server_answer_plannerCountdownLabel,
+body.dark #server_answer_plannerCountdownLabel {
+  color: rgba(173, 217, 226, 0.82);
+}
+
+#server_answer_plannerCountdownValue {
+  font-size: 0.54rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255, 247, 251, 0.96);
+}
+
+#app_page.app_page--home-dark #server_answer_plannerCountdownValue,
+body.dark #server_answer_plannerCountdownValue {
+  color: rgba(239, 249, 250, 0.96);
+}
+
 #server_answer_musicMeta {
   min-width: 0;
   display: flex;
@@ -603,10 +668,50 @@ body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicTrac
   color: rgba(86, 36, 41, 0.94);
 }
 
+body:not(.dark)
+  #server_answer.server_answer--home-noga
+  #server_answer_plannerCountdown {
+  border-color: rgba(176, 188, 198, 0.2);
+  background: rgba(250, 252, 253, 0.9);
+}
+
+body:not(.dark)
+  #server_answer.server_answer--home-noga
+  #server_answer_plannerCountdownLabel {
+  color: rgba(74, 98, 109, 0.62);
+}
+
+body:not(.dark)
+  #server_answer.server_answer--home-noga
+  #server_answer_plannerCountdownValue {
+  color: rgba(24, 49, 58, 0.88);
+}
+
 body.dark #server_answer.server_answer--home-noga #server_answer_musicPlayer,
 body.dark #server_answer.server_answer--home-noga #server_answer_musicLabel,
 body.dark #server_answer.server_answer--home-noga #server_answer_musicTrack {
   color: rgba(255, 237, 239, 0.9);
+}
+
+body.dark #server_answer.server_answer--home-noga #server_answer_plannerCountdown {
+  border-color: rgba(110, 168, 180, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 24, 30, 0.96),
+    rgba(12, 33, 40, 0.94)
+  );
+}
+
+body.dark
+  #server_answer.server_answer--home-noga
+  #server_answer_plannerCountdownLabel {
+  color: rgba(173, 217, 226, 0.82);
+}
+
+body.dark
+  #server_answer.server_answer--home-noga
+  #server_answer_plannerCountdownValue {
+  color: rgba(239, 249, 250, 0.96);
 }
 
 #server_answer.server_answer--home .server_answer_locale_button {
