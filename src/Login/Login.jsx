@@ -1801,7 +1801,6 @@ const Login = ({ onLogin, onForceLogout }) => {
                 id="Login_brandVideo"
                 ref={brandVideoRef}
                 controls
-                autoPlay
                 preload="auto"
                 playsInline
                 onPlay={() => setBrandVideoAutoplayBlocked(false)}
