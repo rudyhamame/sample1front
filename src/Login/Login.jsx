@@ -483,6 +483,7 @@ const Login = ({ onLogin, onForceLogout }) => {
     loginAppLastUpdatedFallbackLabel,
   );
   const [universityOptions, setUniversityOptions] = useState([]);
+  const isVisitorVideoReady = !videoGateRequiresVerification || videoUnlocked;
   const feedbackMessage =
     (login_ok === false &&
       (loginMessage ||
@@ -508,7 +509,8 @@ const Login = ({ onLogin, onForceLogout }) => {
 
   useEffect(() => {
     const video = brandVideoRef.current;
-    if (!video) {
+    if (!video || !isVisitorVideoReady) {
+      setBrandVideoAutoplayBlocked(false);
       return undefined;
     }
 
@@ -537,7 +539,7 @@ const Login = ({ onLogin, onForceLogout }) => {
       cancelled = true;
       window.cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [isVisitorVideoReady]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1809,7 +1811,7 @@ const Login = ({ onLogin, onForceLogout }) => {
                   type="video/mp4"
                 />
               </video>
-              {brandVideoAutoplayBlocked && (
+              {isVisitorVideoReady && brandVideoAutoplayBlocked && (
                 <div className="Login_brandVideoFallback">
                   <p className="Login_brandVideoFallbackText">
                     Your browser blocked autoplay with sound.
