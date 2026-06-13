@@ -89,9 +89,6 @@ const normalizeAiInstructorRecord = (entry) => {
     lastName,
     fullName,
     personality: String(entry?.personality || "").trim() || null,
-    courseNames: Array.isArray(entry?.courseNames)
-      ? entry.courseNames.map((value) => String(value || "").trim()).filter(Boolean)
-      : [],
     evidence: Array.isArray(entry?.evidence)
       ? entry.evidence.map((value) => String(value || "").trim()).filter(Boolean)
       : [],
@@ -718,7 +715,6 @@ const NogaPlannerTelegramPanel = ({
                 lastName: result?.lastName || null,
                 fullName: String(result?.fullName || "").trim(),
                 personality: result?.personality || null,
-                courseNames: Array.isArray(result?.courseNames) ? result.courseNames : [],
                 evidence: Array.isArray(result?.evidence) ? result.evidence : [],
                 confidence: result?.confidence || "low",
               })),

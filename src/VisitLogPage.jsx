@@ -229,10 +229,34 @@ const VisitLogPage = ({ state, serverReply }) => {
       </header>
 
       <section id="VisitLogPage_videoGate" className="fc">
-        <h2 className="VisitLogPage_sectionTitle">Video Gate</h2>
-        <p className="VisitLogPage_subtitle">
-          Control access to the login-page video. Visitors must enter the company name and password to unblur it.
-        </p>
+        <div className="VisitLogPage_videoGateHero fc">
+          <div className="VisitLogPage_videoGateHeroTop fr">
+            <div className="fc VisitLogPage_videoGateCopy">
+              <p className="VisitLogPage_eyebrow">Access control</p>
+              <h2 className="VisitLogPage_sectionTitle">Video Gate</h2>
+              <p className="VisitLogPage_subtitle">
+                Control access to the login-page video. When gate is enabled, the video is open to all visitors. When disabled, only visitors who enter the correct company name and password can view it.
+              </p>
+            </div>
+            <div className="VisitLogPage_videoGatePill">
+              {videoGateForm.enabled ? "Public" : "Gated"}
+            </div>
+          </div>
+          <div className="VisitLogPage_videoGateStats">
+            <div className="VisitLogPage_videoGateStat">
+              <span className="VisitLogPage_videoGateStatLabel">Authorized visitors</span>
+              <strong className="VisitLogPage_videoGateStatValue">
+                {Number(videoGate?.authorizedCount || 0)}
+              </strong>
+            </div>
+            <div className="VisitLogPage_videoGateStat">
+              <span className="VisitLogPage_videoGateStatLabel">Company</span>
+              <strong className="VisitLogPage_videoGateStatValue">
+                {videoGateForm.companyName?.trim() || "Not set"}
+              </strong>
+            </div>
+          </div>
+        </div>
         <form className="fc VisitLogPage_videoGateForm" onSubmit={saveVideoGate} noValidate>
           <label className="VisitLogPage_videoGateLabel">
             <input
@@ -267,6 +291,40 @@ const VisitLogPage = ({ state, serverReply }) => {
             {videoGateSaving ? "Saving…" : "Save"}
           </button>
         </form>
+        {Array.isArray(videoGate?.recentAuthorizedVisitors) &&
+        videoGate.recentAuthorizedVisitors.length > 0 ? (
+          <div className="fc VisitLogPage_videoGateRecent">
+            <div className="VisitLogPage_videoGateRecentHeader fr">
+              <h3 className="VisitLogPage_videoGateRecentTitle">Recent unlocks</h3>
+              <span className="VisitLogPage_videoGateRecentCount">
+                {videoGate.recentAuthorizedVisitors.length}
+              </span>
+            </div>
+            {videoGate.recentAuthorizedVisitors.map((visitor, index) => (
+              <div
+                key={`${visitor?.ip || "visitor"}-${visitor?.verifiedAt || index}`}
+                className="VisitLogPage_videoGateRecentItem"
+              >
+                <div className="VisitLogPage_videoGateRecentPrimary">
+                  <span className="VisitLogPage_videoGateRecentCompany">
+                    {visitor?.companyName || "Authorized"}
+                  </span>
+                  <span className="VisitLogPage_videoGateRecentIp">
+                    {visitor?.ip || "Unknown IP"}
+                  </span>
+                </div>
+                <div className="VisitLogPage_videoGateRecentMeta">
+                  <span>{visitor?.country || "Unknown"}</span>
+                  <span>
+                    {visitor?.verifiedAt
+                      ? formatVisitTimestamp(visitor.verifiedAt)
+                      : "No time"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <div id="VisitLogPage_body" className="fc">
@@ -305,6 +363,22 @@ const VisitLogPage = ({ state, serverReply }) => {
                     {formatVisitTimestamp(entry?.visitedAt)}
                   </span>
                 </div>
+                <div className="VisitLogPage_row">
+                  <span className="VisitLogPage_label">Video gate</span>
+                  <span className="VisitLogPage_value">
+                    {entry?.videoGate?.unlocked
+                      ? `Unlocked${entry?.videoGate?.authorizedCompany ? ` · ${entry.videoGate.authorizedCompany}` : ""}`
+                      : "Locked"}
+                  </span>
+                </div>
+                {entry?.videoGate?.verifiedAt ? (
+                  <div className="VisitLogPage_row">
+                    <span className="VisitLogPage_label">Verified</span>
+                    <span className="VisitLogPage_value">
+                      {formatVisitTimestamp(entry.videoGate.verifiedAt)}
+                    </span>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -41,6 +41,8 @@ const getHomeRouteForUser = (authState) => {
 
 const AppRouter = () => {
   const [authState, setAuthState] = useState(getStoredAuth);
+  const [isShellHeightMonitorMounted, setIsShellHeightMonitorMounted] =
+    useState(false);
   const [isShellHeightMonitorMinimized, setIsShellHeightMonitorMinimized] =
     useState(false);
   const [shellHeightMonitorPosition, setShellHeightMonitorPosition] = useState({
@@ -93,6 +95,36 @@ const AppRouter = () => {
   useEffect(() => {
     shellHeightMonitorPositionRef.current = shellHeightMonitorPosition;
   }, [shellHeightMonitorPosition]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (!event.ctrlKey || String(event.key || "").toLowerCase() !== "i") {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsShellHeightMonitorMounted((currentValue) => !currentValue);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -309,85 +341,87 @@ const AppRouter = () => {
 
   return (
     <>
-      <div
-        id="App_shellHeightMonitor"
-        ref={shellHeightMonitorRef}
-        style={{
-          top: `${shellHeightMonitorPosition.y}px`,
-          left: `${shellHeightMonitorPosition.x}px`,
-          right: "auto",
-        }}
-      >
-        <div id="App_shellHeightMonitor_header">
-          <strong
-            id="App_shellHeightMonitor_title"
-            onPointerDown={(event) => {
-              window.__startShellHeightMonitorDrag?.(event);
-            }}
-          >
-            UI Diagnostic
-          </strong>
-          <button
-            id="App_shellHeightMonitor_toggle"
-            type="button"
-            onClick={() =>
-              setIsShellHeightMonitorMinimized((currentValue) => !currentValue)
-            }
-            aria-label={
-              isShellHeightMonitorMinimized
-                ? "Expand UI diagnostic tool"
-                : "Minimize UI diagnostic tool"
-            }
-            title={
-              isShellHeightMonitorMinimized
-                ? "Expand UI diagnostic tool"
-                : "Minimize UI diagnostic tool"
-            }
-          >
-            {isShellHeightMonitorMinimized ? "+" : "-"}
-          </button>
+      {isShellHeightMonitorMounted ? (
+        <div
+          id="App_shellHeightMonitor"
+          ref={shellHeightMonitorRef}
+          style={{
+            top: `${shellHeightMonitorPosition.y}px`,
+            left: `${shellHeightMonitorPosition.x}px`,
+            right: "auto",
+          }}
+        >
+          <div id="App_shellHeightMonitor_header">
+            <strong
+              id="App_shellHeightMonitor_title"
+              onPointerDown={(event) => {
+                window.__startShellHeightMonitorDrag?.(event);
+              }}
+            >
+              UI Diagnostic
+            </strong>
+            <button
+              id="App_shellHeightMonitor_toggle"
+              type="button"
+              onClick={() =>
+                setIsShellHeightMonitorMinimized((currentValue) => !currentValue)
+              }
+              aria-label={
+                isShellHeightMonitorMinimized
+                  ? "Expand UI diagnostic tool"
+                  : "Minimize UI diagnostic tool"
+              }
+              title={
+                isShellHeightMonitorMinimized
+                  ? "Expand UI diagnostic tool"
+                  : "Minimize UI diagnostic tool"
+              }
+            >
+              {isShellHeightMonitorMinimized ? "+" : "-"}
+            </button>
+          </div>
+          {!isShellHeightMonitorMinimized ? (
+            <>
+              <p id="App_shellHeightMonitor_caption">
+                Layout shell, viewport, and scroll metrics
+              </p>
+              <div id="App_shellHeightMonitor_metrics">
+                <span className="App_shellHeightMonitor_metric">
+                  inner: {shellViewportMetrics.innerWidth} x {shellViewportMetrics.innerHeight}
+                </span>
+                <span className="App_shellHeightMonitor_metric">
+                  vv: {shellViewportMetrics.visualViewportWidth} x {shellViewportMetrics.visualViewportHeight}
+                </span>
+                <span className="App_shellHeightMonitor_metric">
+                  vvOff: {shellViewportMetrics.visualViewportOffsetLeft}, {shellViewportMetrics.visualViewportOffsetTop}
+                </span>
+                <span className="App_shellHeightMonitor_metric">
+                  scroll: {shellViewportMetrics.scrollX}, {shellViewportMetrics.scrollY}
+                </span>
+                <span className="App_shellHeightMonitor_metric">
+                  doc: {shellViewportMetrics.documentClientHeight} / {shellViewportMetrics.documentScrollHeight}
+                </span>
+              </div>
+              <ul id="App_shellHeightMonitor_list">
+                {shellHeightEntries.map((entry) => (
+                  <li key={entry.selector} className="App_shellHeightMonitor_item">
+                    <span className="App_shellHeightMonitor_selector">{entry.selector}</span>
+                    <span className="App_shellHeightMonitor_value">
+                      h:{entry.currentHeight}px
+                    </span>
+                    <span className="App_shellHeightMonitor_value">
+                      sum:{entry.accumulatedHeight}px
+                    </span>
+                    <span className="App_shellHeightMonitor_value">
+                      n:{entry.changeCount}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </div>
-        {!isShellHeightMonitorMinimized ? (
-          <>
-            <p id="App_shellHeightMonitor_caption">
-              Layout shell, viewport, and scroll metrics
-            </p>
-            <div id="App_shellHeightMonitor_metrics">
-              <span className="App_shellHeightMonitor_metric">
-                inner: {shellViewportMetrics.innerWidth} x {shellViewportMetrics.innerHeight}
-              </span>
-              <span className="App_shellHeightMonitor_metric">
-                vv: {shellViewportMetrics.visualViewportWidth} x {shellViewportMetrics.visualViewportHeight}
-              </span>
-              <span className="App_shellHeightMonitor_metric">
-                vvOff: {shellViewportMetrics.visualViewportOffsetLeft}, {shellViewportMetrics.visualViewportOffsetTop}
-              </span>
-              <span className="App_shellHeightMonitor_metric">
-                scroll: {shellViewportMetrics.scrollX}, {shellViewportMetrics.scrollY}
-              </span>
-              <span className="App_shellHeightMonitor_metric">
-                doc: {shellViewportMetrics.documentClientHeight} / {shellViewportMetrics.documentScrollHeight}
-              </span>
-            </div>
-            <ul id="App_shellHeightMonitor_list">
-              {shellHeightEntries.map((entry) => (
-                <li key={entry.selector} className="App_shellHeightMonitor_item">
-                  <span className="App_shellHeightMonitor_selector">{entry.selector}</span>
-                  <span className="App_shellHeightMonitor_value">
-                    h:{entry.currentHeight}px
-                  </span>
-                  <span className="App_shellHeightMonitor_value">
-                    sum:{entry.accumulatedHeight}px
-                  </span>
-                  <span className="App_shellHeightMonitor_value">
-                    n:{entry.changeCount}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-      </div>
+      ) : null}
       <Router>
         <Switch>
           <Route exact path="/">

@@ -60,42 +60,44 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
               <span>{isTelegramExtractingCourseNames ? "Extracting…" : "Extract"}</span>
             </button>
           </div>
-          <div className="nogaPlanner_aiCourseInfoTableWrapper">
-            <table className="nogaPlanner_aiCourseInfoTable">
-              <thead>
-                <tr>
-                  <th className="nogaPlanner_aiCourseInfoTh">#</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Course Name</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Code</th>
-                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {courseNames.length === 0 ? (
+          <div className="nogaPlanner_homePanelCardBody nogaPlanner_aiHelperCardBody">
+            <div className="nogaPlanner_aiCourseInfoTableWrapper">
+              <table className="nogaPlanner_aiCourseInfoTable">
+                <thead>
                   <tr>
-                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={4}>
-                      No results yet
-                    </td>
+                    <th className="nogaPlanner_aiCourseInfoTh">#</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Course Name</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Code</th>
+                    <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
                   </tr>
-                ) : courseNames.map((c, idx) => (
-                  <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
-                    <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
-                    <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseName || "").trim() || "—"}</td>
-                    <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseCode || "").trim() || "—"}</td>
-                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
-                      <button
-                        type="button"
-                        className="nogaPlanner_coursesMiniBarBtn"
-                        onClick={() => planner?.acceptAICourseName?.(c?.courseName, c?.courseCode)}
-                        title="Accept"
-                      >
-                        <i className="fi fi-rr-check" aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {courseNames.length === 0 ? (
+                    <tr>
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={4}>
+                        No results yet
+                      </td>
+                    </tr>
+                  ) : courseNames.map((c, idx) => (
+                    <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
+                      <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseName || "").trim() || "—"}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd">{String(c?.courseCode || "").trim() || "—"}</td>
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() => planner?.acceptAICourseName?.(c?.courseName, c?.courseCode)}
+                          title="Accept"
+                        >
+                          <i className="fi fi-rr-check" aria-hidden="true" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -114,53 +116,68 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
               <span>{isTelegramFindingInstructors ? "Searching…" : "Extract"}</span>
             </button>
           </div>
-          <div className="nogaPlanner_aiCourseInfoTableWrapper">
-            <table className="nogaPlanner_aiCourseInfoTable">
-              <thead>
-                <tr>
-                  <th className="nogaPlanner_aiCourseInfoTh">#</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">First Name</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Last Name</th>
-                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {instructors.length === 0 ? (
+          <div className="nogaPlanner_homePanelCardBody nogaPlanner_aiHelperCardBody">
+            <div className="nogaPlanner_aiCourseInfoTableWrapper">
+              <table className="nogaPlanner_aiCourseInfoTable">
+                <thead>
                   <tr>
-                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={4}>
-                      No results yet
-                    </td>
+                    <th className="nogaPlanner_aiCourseInfoTh">#</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">First Name</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Last Name</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Full Name</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Personality</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Evidence</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Confidence</th>
+                    <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
                   </tr>
-                ) : instructors.map((n, idx) => {
-                  const firstName = String(n?.firstName || "").trim();
-                  const lastName = String(n?.lastName || "").trim();
-                  const fullName = String(n?.fullName || "").trim();
-                  const displayFirst = firstName || (fullName ? fullName.split(/\s+/)[0] : "—");
-                  const displayLast = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "") || "—";
-                  return (
-                    <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
-                      <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">{displayFirst}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">{displayLast}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
-                        <button
-                          type="button"
-                          className="nogaPlanner_coursesMiniBarBtn"
-                          onClick={() => {
-                            const fn = firstName || (fullName ? fullName.split(/\s+/)[0] : "");
-                            const ln = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "");
-                            planner?.acceptAIInstructorName?.(fn, ln);
-                          }}
-                          title="Accept"
-                        >
-                          <i className="fi fi-rr-check" aria-hidden="true" />
-                        </button>
+                </thead>
+                <tbody>
+                  {instructors.length === 0 ? (
+                    <tr>
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={8}>
+                        No results yet
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : instructors.map((n, idx) => {
+                    const firstName = String(n?.firstName || "").trim();
+                    const lastName = String(n?.lastName || "").trim();
+                    const fullName = String(n?.fullName || "").trim();
+                    const displayFirst = firstName || (fullName ? fullName.split(/\s+/)[0] : "—");
+                    const displayLast = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "") || "—";
+                    const personality = String(n?.personality || "").trim() || "—";
+                    const evidence = Array.isArray(n?.evidence) && n.evidence.length > 0
+                      ? n.evidence.join(" · ")
+                      : "—";
+                    const confidence = String(n?.confidence || "").trim() || "—";
+                    return (
+                      <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
+                        <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{displayFirst}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{displayLast}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{fullName || "—"}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{personality}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{evidence}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{confidence}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
+                          <button
+                            type="button"
+                            className="nogaPlanner_coursesMiniBarBtn"
+                            onClick={() => {
+                              const fn = firstName || (fullName ? fullName.split(/\s+/)[0] : "");
+                              const ln = lastName || (fullName ? fullName.split(/\s+/).slice(1).join(" ") : "");
+                              planner?.acceptAIInstructorName?.(fn, ln);
+                            }}
+                            title="Accept"
+                          >
+                            <i className="fi fi-rr-check" aria-hidden="true" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -179,66 +196,68 @@ const NogaPlannerAIHelperPanel = ({ planner }) => {
               <span>{isTelegramExtractingCourseInfo ? "Building…" : "Build"}</span>
             </button>
           </div>
-          <div className="nogaPlanner_aiCourseInfoTableWrapper">
-            <table className="nogaPlanner_aiCourseInfoTable">
-              <thead>
-                <tr>
-                  <th className="nogaPlanner_aiCourseInfoTh">#</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Course Name</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Code</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Weight</th>
-                  <th className="nogaPlanner_aiCourseInfoTh">Components</th>
-                  <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {subIntervalCourses.length === 0 ? (
+          <div className="nogaPlanner_homePanelCardBody nogaPlanner_aiHelperCardBody">
+            <div className="nogaPlanner_aiCourseInfoTableWrapper">
+              <table className="nogaPlanner_aiCourseInfoTable">
+                <thead>
                   <tr>
-                    <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={6}>
-                      No results yet
-                    </td>
+                    <th className="nogaPlanner_aiCourseInfoTh">#</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Course Name</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Code</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Weight</th>
+                    <th className="nogaPlanner_aiCourseInfoTh">Components</th>
+                    <th className="nogaPlanner_aiCourseInfoTh nogaPlanner_aiCourseInfoTh--actions" />
                   </tr>
-                ) : subIntervalCourses.map((course, idx) => {
-                  const components = Array.isArray(course?.courseComponents) ? course.courseComponents : [];
-                  return (
-                    <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
-                      <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">{String(course?.courseName || "").trim() || "—"}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">{String(course?.courseCode || "").trim() || "—"}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">{course?.courseWeight ?? "—"}</td>
-                      <td className="nogaPlanner_aiCourseInfoTd">
-                        {components.length > 0 ? (
-                          <ul className="nogaPlanner_aiCourseInfoComponentList">
-                            {components.map((comp, cIdx) => (
-                              <li key={cIdx} className="nogaPlanner_aiCourseInfoComponentItem">
-                                <span className="nogaPlanner_aiCourseInfoComponentClass">
-                                  {String(comp?.componentClass || "").trim() || "—"}
-                                </span>
-                                {comp?.componentWeight != null && (
-                                  <span className="nogaPlanner_aiCourseInfoComponentWeight">
-                                    {comp.componentWeight}%
-                                  </span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : "—"}
-                      </td>
-                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
-                        <button
-                          type="button"
-                          className="nogaPlanner_coursesMiniBarBtn"
-                          onClick={() => planner?.acceptAISubIntervalCourse?.(course)}
-                          title="Accept"
-                        >
-                          <i className="fi fi-rr-check" aria-hidden="true" />
-                        </button>
+                </thead>
+                <tbody>
+                  {subIntervalCourses.length === 0 ? (
+                    <tr>
+                      <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperEmptyCell" colSpan={6}>
+                        No results yet
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : subIntervalCourses.map((course, idx) => {
+                    const components = Array.isArray(course?.courseComponents) ? course.courseComponents : [];
+                    return (
+                      <tr key={idx} className="nogaPlanner_aiCourseInfoTr">
+                        <td className="nogaPlanner_aiCourseInfoTd">{idx + 1}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{String(course?.courseName || "").trim() || "—"}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{String(course?.courseCode || "").trim() || "—"}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">{course?.courseWeight ?? "—"}</td>
+                        <td className="nogaPlanner_aiCourseInfoTd">
+                          {components.length > 0 ? (
+                            <ul className="nogaPlanner_aiCourseInfoComponentList">
+                              {components.map((comp, cIdx) => (
+                                <li key={cIdx} className="nogaPlanner_aiCourseInfoComponentItem">
+                                  <span className="nogaPlanner_aiCourseInfoComponentClass">
+                                    {String(comp?.componentClass || "").trim() || "—"}
+                                  </span>
+                                  {comp?.componentWeight != null && (
+                                    <span className="nogaPlanner_aiCourseInfoComponentWeight">
+                                      {comp.componentWeight}%
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : "—"}
+                        </td>
+                        <td className="nogaPlanner_aiCourseInfoTd nogaPlanner_aiHelperRowMinibar">
+                          <button
+                            type="button"
+                            className="nogaPlanner_coursesMiniBarBtn"
+                            onClick={() => planner?.acceptAISubIntervalCourse?.(course)}
+                            title="Accept"
+                          >
+                            <i className="fi fi-rr-check" aria-hidden="true" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

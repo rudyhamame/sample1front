@@ -434,6 +434,7 @@ const parseApiPayload = async (response) => {
 };
 
 const Login = ({ onLogin, onForceLogout }) => {
+  const VIDEO_GATE_SESSION_KEY = "videoGateUnlockedKey";
   const articleRef = useRef(null);
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
@@ -442,6 +443,8 @@ const Login = ({ onLogin, onForceLogout }) => {
   const authFormAnimationFrameRef = useRef(null);
   const authFormAnimationTimeoutRef = useRef(null);
   const isMountedRef = useRef(true);
+  const videoGateKeyRef = useRef("");
+  const brandVideoRef = useRef(null);
   const [is_loading, setIs_loading] = useState(null);
   const [signup_ok, setSignup_ok] = useState(null);
   const [login_ok, setLogin_ok] = useState(null);
@@ -452,12 +455,13 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [authFormInlineStyle, setAuthFormInlineStyle] = useState({});
   const [alignedBlockMinHeight, setAlignedBlockMinHeight] = useState(0);
-  const [videoUnlocked, setVideoUnlocked] = useState(
-    () => sessionStorage.getItem("videoGateUnlocked") === "1",
-  );
+  const [videoUnlocked, setVideoUnlocked] = useState(false);
+  const [videoGateRequiresVerification, setVideoGateRequiresVerification] =
+    useState(true);
   const [videoGateForm, setVideoGateForm] = useState({ companyName: "", password: "" });
   const [videoGateError, setVideoGateError] = useState("");
   const [videoGatePending, setVideoGatePending] = useState(false);
+  const [brandVideoAutoplayBlocked, setBrandVideoAutoplayBlocked] = useState(false);
   const [pendingSignupAuthReport, setPendingSignupAuthReport] = useState(null);
   const [isPendingSignupUsernameEditable, setIsPendingSignupUsernameEditable] =
     useState(false);
@@ -503,6 +507,39 @@ const Login = ({ onLogin, onForceLogout }) => {
   }, []);
 
   useEffect(() => {
+    const video = brandVideoRef.current;
+    if (!video) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const tryStartVideo = async () => {
+      try {
+        const playResult = video.play();
+        if (playResult && typeof playResult.then === "function") {
+          await playResult;
+        }
+        if (!cancelled) {
+          setBrandVideoAutoplayBlocked(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setBrandVideoAutoplayBlocked(true);
+        }
+      }
+    };
+
+    const rafId = window.requestAnimationFrame(() => {
+      void tryStartVideo();
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
     const cachedPayload = readSessionJson(LOGIN_APP_LAST_UPDATED_CACHE_KEY, null);
@@ -530,6 +567,57 @@ const Login = ({ onLogin, onForceLogout }) => {
         }
       })
       .catch(() => {});
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    fetch(apiUrl("/api/user/video-gate/public"), {
+      signal: controller.signal,
+    })
+      .then((response) => response.json().catch(() => ({})))
+      .then((payload) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const enabled = payload?.videoGate?.enabled === true;
+        const configured = payload?.videoGate?.configured === true;
+        const gateKey = String(payload?.videoGate?.gateKey || "");
+        const visitorUnlocked = payload?.videoGate?.visitorUnlocked === true;
+
+        videoGateKeyRef.current = gateKey;
+
+        if (enabled || !configured) {
+          // Gate ON = public (or not configured): video is open to all.
+          sessionStorage.removeItem(VIDEO_GATE_SESSION_KEY);
+          setVideoGateRequiresVerification(false);
+          setVideoUnlocked(true);
+          return;
+        }
+
+        // Gate OFF and configured: restricted to allowed visitors.
+        setVideoGateRequiresVerification(true);
+        setVideoUnlocked(
+          visitorUnlocked ||
+            sessionStorage.getItem(VIDEO_GATE_SESSION_KEY) === gateKey,
+        );
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        videoGateKeyRef.current = "";
+        setVideoGateRequiresVerification(true);
+        setVideoUnlocked(false);
+      });
 
     return () => {
       isMounted = false;
@@ -1062,7 +1150,9 @@ const Login = ({ onLogin, onForceLogout }) => {
         setVideoGateError(data?.message || "Invalid credentials.");
         return;
       }
-      sessionStorage.setItem("videoGateUnlocked", "1");
+      if (videoGateKeyRef.current) {
+        sessionStorage.setItem(VIDEO_GATE_SESSION_KEY, videoGateKeyRef.current);
+      }
       setVideoUnlocked(true);
     } catch {
       setVideoGateError("Unable to verify. Please try again.");
@@ -1697,11 +1787,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           <div id="Login_brandContentWrap" className="fc">
             <h1 id="Login_brandWordmark">
               <span className="Login_brandWordmarkFlex">
-                <span className="Login_brandMark">H</span>
-                <span className="Login_brandDivider" aria-hidden="true">
-                  &middot;
-                </span>
-                <span className="Login_brandName">MCTOS</span>
+                <span className="Login_brandName">MCTOS|H</span>
               </span>
             </h1>
             <h2 id="Login_brandProduct">PhenoMed</h2>
@@ -1711,15 +1797,44 @@ const Login = ({ onLogin, onForceLogout }) => {
             <div id="Login_brandVideoWrap" className={videoUnlocked ? "Login_brandVideoWrap--unlocked" : ""}>
               <video
                 id="Login_brandVideo"
+                ref={brandVideoRef}
                 controls
+                autoPlay
+                preload="auto"
                 playsInline
+                onPlay={() => setBrandVideoAutoplayBlocked(false)}
               >
                 <source
-                  src="https://res.cloudinary.com/dtoxkii3q/video/upload/v1781289280/video_2026-06-12_14-19-27_hymtzn.mp4"
+                  src="https://res.cloudinary.com/dtoxkii3q/video/upload/v1781323258/copy_DBC85EC1-1520-4CBA-AF16-B27EB6DE8979_qvcziy.mp4"
                   type="video/mp4"
                 />
               </video>
-              {!videoUnlocked && (
+              {brandVideoAutoplayBlocked && (
+                <div className="Login_brandVideoFallback">
+                  <p className="Login_brandVideoFallbackText">
+                    Your browser blocked autoplay with sound.
+                  </p>
+                  <button
+                    type="button"
+                    className="Login_brandVideoFallbackButton"
+                    onClick={() => {
+                      const video = brandVideoRef.current;
+                      if (!video) {
+                        return;
+                      }
+                      video.muted = false;
+                      video.volume = 1;
+                      const playResult = video.play();
+                      if (playResult && typeof playResult.catch === "function") {
+                        playResult.catch(() => setBrandVideoAutoplayBlocked(true));
+                      }
+                    }}
+                  >
+                    Play with sound
+                  </button>
+                </div>
+              )}
+              {videoGateRequiresVerification && !videoUnlocked && (
                 <form
                   id="Login_videoGateOverlay"
                   onSubmit={submitVideoGate}
