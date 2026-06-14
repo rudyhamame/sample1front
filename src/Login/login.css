@@ -1,79 +1,20 @@
-
-/* Base Scope */
-* {
-  font-family: "Raleway", sans-serif;
-}
-
-#Login_article.Login_debugBordersOn * {
-  outline: 1px dashed rgba(1, 121, 111, 0.35);
-  outline-offset: -1px;
-}
-
-#Login_article,
-#Login_article * {
-  transition:
-    width 220ms ease,
-    min-width 220ms ease,
-    max-width 220ms ease,
-    height 220ms ease,
-    min-height 220ms ease,
-    max-height 220ms ease,
-    padding 220ms ease,
-    margin 220ms ease,
-    gap 220ms ease,
-    border-radius 220ms ease,
-    transform 220ms ease,
-    opacity 220ms ease,
-    flex-basis 220ms ease,
-    grid-template-columns 220ms ease;
-}
-
-#Login_article,
-#Login_main,
-#Login_footer {
-  transition: none !important;
-}
-
-#Login_article button,
-#Login_article button:hover,
-#Login_article button i,
-#Login_article button i:hover,
-#Login_article .fi,
-#Login_article .fi:hover {
-  transition: none !important;
-}
-
-/* Page Shell */
-#Login_article {
-  --login-footer-height: calc(var(--app-visual-viewport-height, 100dvh) / 7);
-  --login-keyboard-inset: 0px;
-  --login-hover-x: 0px;
-  --login-hover-y: 0px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: var(--app-visual-viewport-height, 100dvh);
-  min-height: var(--app-visual-viewport-height, 100dvh);
-  max-height: var(--app-visual-viewport-height, 100dvh);
-  background-color: var(--white);
-  overflow: hidden;
-  width: 100%;
-}
-
 #Login_viewportBadge {
   position: fixed;
-  top: 12px;
+  top: 52px;
   right: 12px;
   z-index: 9999;
   padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.82);
+  border-radius: 18px;
+  background: rgba(16, 25, 30, 0.88);
   color: #fff;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0.04em;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  user-select: none;
 }
 
 #Login_hoveredIdBadge {
@@ -108,23 +49,58 @@
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
+#Login_keyboardDebugPanel {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + var(--login-footer-height, 72px) + env(safe-area-inset-bottom));
+  z-index: 10001;
+  display: grid;
+  gap: 4px;
+  min-width: 170px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(16, 25, 30, 0.9);
+  color: #f5fbfb;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+.Login_keyboardDebugRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.Login_keyboardDebugRow span:first-child {
+  color: rgba(145, 231, 220, 0.94);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 
 /* Main Layout */
-#Login_main {
+.Login_page {
   --login-main-gap: 50px;
-  display: grid;
-  grid-template-columns: minmax(220px, 0.72fr) minmax(420px, 420px);
-  grid-auto-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
   gap: var(--login-main-gap);
   justify-content: center;
-  align-items: space-around;
-  flex: 1 0 calc(var(--app-visual-viewport-height, 100dvh) - var(--login-footer-height));
-  flex-shrink: 0;
-  height: 100%;
+  align-items: stretch;
+  flex: 1 1 auto;
+  flex-shrink: 1;
+  height: auto;
   width: min(100%, 1440px);
   margin: 0 auto;
-  min-height: calc(var(--app-visual-viewport-height, 100dvh) - var(--login-footer-height));
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   background:
     radial-gradient(circle, rgba(1, 121, 111, 0.08) 1px, transparent 1.2px),
     radial-gradient(circle, rgba(21, 185, 168, 0.05) 1px, transparent 1.2px);
@@ -135,29 +111,30 @@
   position: relative;
 }
 
-#Login_main.Login_main--post-signup {
-  grid-template-columns: minmax(640px, 920px);
+.Login_page.Login_page--post-signup {
   justify-content: center;
 }
 
-#Login_main.Login_main--post-signup #Login_brandPanel {
+.Login_page.Login_page--post-signup #Login_brandPanel {
   display: none;
 }
 
-#Login_main.Login_main--post-signup #Login_authPanel {
-  grid-column: 1;
-  justify-self: center;
+.Login_page.Login_page--post-signup #Login_authPanel {
   align-self: stretch;
   width: 100%;
   max-width: 920px;
 }
 
-#Login_main.Login_main--post-signup #Login_authCard {
+.Login_page.Login_page--post-signup #Login_authCard {
   width: 100%;
   max-width: 920px;
 }
 
-#Login_main.Login_main--post-signup #Login_authFields.is-scrollable {
+.Login_page.Login_page--post-signup #Login_separator {
+  display: none;
+}
+
+.Login_page.Login_page--post-signup #Login_authFields.is-scrollable {
   max-height: min(58vh, 620px);
 }
 
@@ -165,67 +142,49 @@
 #Login_authPanel {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  flex: 0 0 auto;
+  width: 100%;
 }
 
-#Login_brandPanel::after {
-  content: "";
-  position: absolute;
-  top: 56px;
-  bottom: 56px;
-  right: calc(var(--login-main-gap) / -2);
-  width: 1px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(1, 121, 111, 0),
-    rgba(1, 121, 111, 0.22) 14%,
-    rgba(21, 185, 168, 0.5) 50%,
-    rgba(1, 121, 111, 0.22) 86%,
-    rgba(1, 121, 111, 0)
-  );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 24px rgba(21, 185, 168, 0.14);
-  pointer-events: none;
+#Login_separator {
+  display: none;
 }
 
 #Login_brandPanel {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
   gap: 0.08em;
-  height: 100%;
+  height: auto;
   min-height: 0;
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  padding: 0 20px;
-  box-sizing: border-box;
   overflow: visible;
-  container-type: inline-size;
-  justify-self: stretch;
-  align-self: stretch;
   position: relative;
-  background: transparent;
-  border: none;
-  box-shadow: none;
 }
 
-#Login_brandPanel::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 48%;
-  width: min(90%, 620px);
-  height: min(70%, 300px);
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(21, 185, 168, 0.12), rgba(21, 185, 168, 0));
-  filter: blur(12px);
-  pointer-events: none;
-  z-index: -1;
+#Login_brandContentWrap{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: min(100%, clamp(300px, 42vw, 520px));
+  container-type: inline-size;
+  container-name: login-brand-content;
+  gap: clamp(18px, 2.4vw, 34px);
+  overflow: visible;
+}
+
+#Login_brandTextColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  gap: clamp(0.15rem, 0.6cqi, 0.5rem);
+  width: 100%;
+  min-width: 0;
 }
 
 #Login_brandPanel.is-collapsed {
@@ -238,15 +197,6 @@
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-}
-
-#Login_brandContentWrap {
-  width: min(100%, 460px);
-  min-height: var(--login-aligned-block-min-height, 0px);
-  justify-content: flex-start;
-  align-items: center;
-  padding-inline: clamp(16px, 2.4cqi, 28px);
-  box-sizing: border-box;
 }
 
 /* Mode Navigation */
@@ -337,28 +287,34 @@
   letter-spacing: 0.05em;
 }
 
-@container (max-width: 360px) {
-  #Login_brandWordmark {
-    font-size: clamp(2.75rem, 13.5cqi, 6.5rem);
-  }
-
-  .Login_brandWordmarkFlex {
-    gap: 0.16em;
-  }
-
-  #Login_brandWordmark .Login_brandDivider {
-    transform: translateY(-0.01em) scaleY(0.74);
-  }
-
-  #Login_brandWordmark .Login_brandName {
-    letter-spacing: 0.03em;
-  }
-}
 
 #Login_brandVideoWrap {
   position: relative;
+  flex: 0 0 auto;
+  width: min(100%, clamp(220px, 42vw, 460px));
+  margin-top: clamp(2px, 0.8vw, 10px);
+  overflow: visible;
+}
+
+#Login_brandStats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 16px;
   width: 100%;
-  margin-block: clamp(8px, 1.4cqi, 16px);
+  margin: 0;
+  padding: 0;
+  color: rgba(1, 121, 111, 0.54);
+  font-size: clamp(0.53rem, 0.9cqi, 0.68rem);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#Login_brandStats span {
+  white-space: nowrap;
 }
 
 #Login_brandVideoWrap #Login_brandVideo {
@@ -527,7 +483,7 @@
 }
 #Login_brandTagline {
   font-family: "Playwrite DK Uloopet Guides", cursive;
-  font-size: min(2.2cqi, 1.1rem);
+  font-size: min(4cqi, 2rem);
   font-weight: 400;
   font-style: normal;
   color: var(--black);
@@ -545,24 +501,25 @@
 /* Form Shell */
 #Login_authPanel {
   display: flex;
-  grid-column: 2;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: none;
   justify-content: center;
   align-items: center;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  min-height: 0;
   overflow: visible;
-  padding: 0;
+  padding: clamp(14px, 1.8vw, 30px);
   box-sizing: border-box;
   border-radius: 30px;
   justify-self: stretch;
   align-self: stretch;
+  transform: scale(var(--login-auth-scale, 1));
+  transform-origin: top center;
+  will-change: transform;
   opacity: 0.94;
   filter: saturate(0.92);
-  transform: none;
+  touch-action: none;
+  overscroll-behavior: none;
+  container-type: inline-size;
+  container-name: login-auth-panel;
 }
 
 #Login_authPanel.Login_authPanel--keyboardOpen {
@@ -581,21 +538,22 @@
 }
 
 #Login_authCard {
-  --login-form-text-size: 0.95rem;
-  --login-form-strong-text-size: 0.98rem;
+  --login-form-text-size: clamp(0.8rem, 1.6cqi, 0.95rem);
+  --login-form-strong-text-size: clamp(0.9rem, 1.9cqi, 0.98rem);
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-start;
   align-items: flex-start;
   gap: 14px;
-  width: 100%;
-  max-width: 420px;
+  width: min(100%, clamp(320px, 94cqi, 560px));
   min-width: 0;
   min-height: 0;
   height: auto;
-  max-height: 100%;
-  padding: 28px 28px 24px;
+  max-height: none;
+  padding: clamp(20px, 3cqi, 28px) clamp(20px, 3cqi, 28px) clamp(18px, 2.5cqi, 24px);
+  container-type: inline-size;
+  container-name: login-auth-card;
   background:
     radial-gradient(circle at 10% 18%, rgba(220, 170, 38, 0.32) 0 1.3px, transparent 1.3px 28px),
     radial-gradient(circle at 78% 26%, rgba(190, 137, 18, 0.27) 0 1.2px, transparent 1.2px 24px),
@@ -619,14 +577,16 @@
   border-radius: 34px;
   text-align: center;
   box-shadow:
-    0 26px 56px rgba(9, 69, 80, 0.16),
-    0 12px 26px rgba(9, 69, 80, 0.1),
-    0 2px 6px rgba(9, 69, 80, 0.08),
+    0 14px 30px rgba(9, 69, 80, 0.12),
+    0 6px 14px rgba(9, 69, 80, 0.08),
+    0 1px 3px rgba(9, 69, 80, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -12px 20px rgba(120, 86, 8, 0.07);
-  overflow: visible;
   box-sizing: border-box;
   border: 1px solid rgba(146, 109, 18, 0.2);
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 #Login_authSubmitButton,
@@ -637,8 +597,8 @@
 
 #Login_authEditUsernameButton {
   width: 100%;
-  min-height: 44px;
-  border-radius: 12px;
+  min-height: clamp(40px, 7cqi, 44px);
+  border-radius: clamp(10px, 1.8cqi, 12px);
   border: 1px solid rgba(1, 121, 111, 0.24);
   background: linear-gradient(
     180deg,
@@ -646,7 +606,7 @@
     rgba(221, 241, 236, 0.9)
   );
   color: rgba(1, 110, 101, 0.92);
-  font-size: 0.9rem;
+  font-size: clamp(0.78rem, 1.6cqi, 0.9rem);
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -672,10 +632,10 @@
 
 #Login_authContinueToPostSignupButton {
   flex: 0 0 auto;
-  min-height: 44px;
-  min-width: 44px;
+  min-height: clamp(40px, 7cqi, 44px);
+  min-width: clamp(40px, 7cqi, 44px);
   padding: 0 12px;
-  border-radius: 12px;
+  border-radius: clamp(10px, 1.8cqi, 12px);
   border: 1px solid rgba(1, 121, 111, 0.24);
   background: linear-gradient(
     180deg,
@@ -687,17 +647,17 @@
 }
 
 #Login_authContinueToPostSignupButton i {
-  font-size: 0.9rem;
+  font-size: clamp(0.78rem, 1.6cqi, 0.9rem);
 }
 
 #Login_authFields {
   display: flex;
   flex-direction: column;
   width: 100%;
-  flex: 1 1 auto;
   min-height: 0;
-  gap: 14px;
-  padding: 14px 12px calc(14px + var(--login-keyboard-inset)) 14px;
+  flex: 1 1 auto;
+  gap: clamp(10px, 2cqi, 14px);
+  padding: clamp(10px, 2cqi, 14px) clamp(10px, 1.8cqi, 12px) clamp(10px, 2cqi, 14px) clamp(10px, 2cqi, 14px);
   box-sizing: border-box;
   background: linear-gradient(
     180deg,
@@ -711,15 +671,12 @@
     0 2px 4px rgba(76, 104, 112, 0.08),
     inset 0 2px 10px rgba(76, 104, 112, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  scroll-padding-bottom: calc(24px + var(--login-keyboard-inset));
+  scroll-padding-bottom: calc(24px + var(--keyboard-inset, 0px));
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
-#Login_authFields.is-scrollable {
-  max-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
+#Login_authFields.is-scrollable,
 #Login_authPanel.Login_authPanel--keyboardOpen #Login_authFields {
   max-height: 100%;
   overflow-x: hidden;
@@ -750,9 +707,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: clamp(32px, 6cqi, 36px);
+  height: clamp(32px, 6cqi, 36px);
+  border-radius: clamp(8px, 1.6cqi, 10px);
   border: 1px solid rgba(1, 121, 111, 0.24);
   background: linear-gradient(180deg, rgba(240, 251, 248, 0.94), rgba(218, 241, 236, 0.9));
   color: rgba(1, 121, 111, 0.9);
@@ -784,7 +741,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: clamp(3px, 0.8cqi, 4px);
 }
 
 .Login_authInlineRow {
@@ -792,7 +749,7 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 10px;
+  gap: clamp(8px, 1.6cqi, 10px);
 }
 
 .Login_authInlineRow > label[for="complete-profile-phoneCountry"] {
@@ -812,8 +769,22 @@
   align-items: center;
 }
 
+.Login_authInput {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: clamp(44px, 6.2cqi, 56px);
+  padding: clamp(9px, 1.6cqi, 13px) clamp(10px, 1.9cqi, 14px);
+  border-radius: clamp(10px, 1.8cqi, 14px);
+  border: 1px solid rgba(1, 121, 111, 0.2);
+  background: rgba(247, 251, 250, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  font-size: max(16px, var(--login-form-text-size));
+  line-height: 1.2;
+}
+
 .Login_authFieldLabel {
-  font-size: 0.72rem;
+  font-size: clamp(0.62rem, 1.35cqi, 0.72rem);
   line-height: 1.1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -822,21 +793,15 @@
   padding-left: 2px;
 }
 
-#Login_authCard input,
-#Login_authCard select {
-  font-size: var(--login-form-text-size);
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 52px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(1, 121, 111, 0.2);
-  background: rgba(247, 251, 250, 0.96);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
-}
-
 #Login_authCard .Login_authInput--password {
   padding-right: 44px;
+}
+
+#Login_videoGateOverlay input,
+#Login_videoGateOverlay select,
+#Login_videoGateOverlay textarea,
+.Login_brandVideoFallbackButton {
+  font-size: 16px;
 }
 
 .Login_passwordToggle {
@@ -876,13 +841,13 @@
 
 #Login_authSubmitButton {
   background: linear-gradient(135deg, #0a9e8e, #018579 58%, #006f65);
-  border-radius: 14px;
+  border-radius: clamp(11px, 2cqi, 14px);
   border: 1.5px solid rgba(1, 86, 79, 0.6);
   color: rgba(247, 255, 253, 0.98);
   font-weight: bold;
-  font-size: var(--login-form-strong-text-size);
+  font-size: clamp(0.95rem, 1.9cqi, 1.05rem);
   width: 100%;
-  min-height: 52px;
+  min-height: clamp(46px, 7.5cqi, 52px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     0 5px 14px rgba(1, 103, 94, 0.26);
@@ -922,9 +887,9 @@
 
 #Login_authClearButton {
   flex: 0 0 auto;
-  min-height: 52px;
-  padding: 12px 18px;
-  border-radius: 14px;
+  min-height: clamp(46px, 7.5cqi, 52px);
+  padding: clamp(10px, 1.8cqi, 12px) clamp(14px, 2.6cqi, 18px);
+  border-radius: clamp(11px, 2cqi, 14px);
   border: 1px solid rgba(1, 121, 111, 0.28);
   background: linear-gradient(180deg, rgba(240, 251, 248, 0.9), rgba(220, 241, 236, 0.88));
   color: rgba(1, 108, 99, 0.92);
@@ -953,9 +918,10 @@
 #Login_authFeedback {
   width: 100%;
   margin: 6px 0 0;
-  padding: 12px 14px;
+  padding: clamp(10px, 1.8cqi, 12px) clamp(12px, 2.4cqi, 14px);
   text-align: center;
   color: rgba(1, 121, 111, 0.92);
+  font-size: clamp(0.72rem, 1.55cqi, 0.92rem);
   line-height: 1.55;
   min-height: 48px;
   border-radius: 12px;
@@ -972,36 +938,126 @@
   overflow-wrap: break-word;
 }
 
-#Login_authDemoNote {
-  width: 100%;
-  margin: 10px 0 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(1, 121, 111, 0.16);
-  background: linear-gradient(
-    180deg,
-    rgba(244, 250, 249, 0.98),
-    rgba(235, 245, 243, 0.94)
-  );
-  color: rgba(1, 84, 78, 0.9);
-  font-size: 0.7rem;
-  line-height: 1.55;
-  box-sizing: border-box;
-  letter-spacing: 0.01em;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  text-align: left;
+
+
+
+@container login-auth-card (max-width: 380px) {
+  #Login_authCard {
+    gap: 10px;
+    padding: 16px 14px 14px;
+    border-radius: 28px;
+  }
+
+  #Login_authFields {
+    gap: 8px;
+    padding: 8px 8px 10px;
+    border-radius: 16px;
+  }
+
+  .Login_authField {
+    gap: 2px;
+  }
+
+  .Login_authFieldLabel {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+
+  .Login_authInput {
+    min-height: 42px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+  }
+
+  #Login_authSubmitButton,
+  #Login_authClearButton,
+  #Login_authEditUsernameButton,
+  #Login_authContinueToPostSignupButton,
+  #Login_authBackButton {
+    min-height: 40px;
+    border-radius: 10px;
+  }
+
+  #Login_authSubmitButton {
+    font-size: 0.92rem;
+  }
+
+  #Login_authFeedback {
+    min-height: 42px;
+    font-size: 0.68rem;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  #Login_authCardHeader {
+    gap: 8px;
+  }
 }
 
-#Login_authDemoNote strong {
-  font-weight: 700;
+@container login-auth-card (min-width: 381px) and (max-width: 519px) {
+  #Login_authCard {
+    gap: 12px;
+    padding: 18px 16px 16px;
+  }
+
+  #Login_authFields {
+    gap: 10px;
+    padding: 9px 9px 11px;
+  }
+
+  .Login_authFieldLabel {
+    font-size: clamp(0.64rem, 1.1cqi, 0.72rem);
+  }
+
+  .Login_authInput {
+    min-height: clamp(42px, 6.4cqi, 48px);
+    padding: clamp(8px, 1.3cqi, 10px) clamp(9px, 1.7cqi, 12px);
+  }
+
+  #Login_authSubmitButton,
+  #Login_authClearButton,
+  #Login_authEditUsernameButton,
+  #Login_authContinueToPostSignupButton {
+    min-height: clamp(40px, 6.2cqi, 44px);
+  }
+
+  #Login_authFeedback {
+    min-height: 44px;
+    font-size: clamp(0.68rem, 1.2cqi, 0.82rem);
+  }
+}
+
+@container login-auth-card (min-width: 520px) and (max-width: 699px) {
+  #Login_authCard {
+    gap: 14px;
+  }
+
+  #Login_authFields {
+    gap: clamp(10px, 1.6cqi, 14px);
+  }
+
+  .Login_authFieldLabel {
+    font-size: clamp(0.66rem, 1.05cqi, 0.76rem);
+  }
+
+  .Login_authInput {
+    min-height: clamp(44px, 5.8cqi, 54px);
+    padding: clamp(9px, 1.4cqi, 12px) clamp(10px, 1.8cqi, 14px);
+  }
+
+  #Login_authFeedback {
+    min-height: 46px;
+    font-size: clamp(0.7rem, 1.15cqi, 0.86rem);
+  }
 }
 
 /* Footer */
-#Login_footer {
+#login-footer {
   --login-footer-scale: 1;
   --login-footer-width: 100%;
   background-color: #fff;
-  box-shadow: 0px 60px 100px rgba(18, 118, 175, 0.486);
+  box-shadow: 0 20px 36px rgba(18, 118, 175, 0.22);
   width: var(--login-footer-width);
   height: min-content;
   flex: 0 0 auto;
@@ -1009,7 +1065,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
+  padding: 8px 16px;
   box-sizing: border-box;
   transform: scale(var(--login-footer-scale));
   transform-origin: bottom center;
@@ -1018,14 +1074,14 @@
 
 
 
-#Login_footer.is-hidden {
+#login-footer.is-hidden {
   display: none;
 }
 
 #Login_copyright_text {
   font-family: "Archivo Black", "Raleway", sans-serif;
   font-weight: 400;
-  font-size: 10pt;
+  font-size: clamp(0.68rem, 1.2vw, 0.85rem);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #0d695e;
@@ -1035,15 +1091,15 @@
 
 #Login_poweredBy_text {
   margin: 0;
-  font-size: 8.5pt;
-  line-height: 1.5;
+  font-size: clamp(0.64rem, 1vw, 0.78rem);
+  line-height: 1.35;
   color: rgba(0, 0, 0, 0.68);
 }
 
 #Login_lastUpdated_text {
   margin: 3px 0 0;
-  font-size: 7.4pt;
-  line-height: 1.4;
+  font-size: clamp(0.58rem, 0.95vw, 0.72rem);
+  line-height: 1.25;
   letter-spacing: 0.03em;
   color: rgba(0, 0, 0, 0.34);
   font-weight: 300;
@@ -1054,39 +1110,41 @@
   display: flex;
   align-items: center;
   position: relative;
-  padding-right: calc(24px / 2);
-}
-
-#Login_footer_left::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 28px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(1, 121, 111, 0),
-    rgba(1, 121, 111, 0.22) 14%,
-    rgba(21, 185, 168, 0.5) 50%,
-    rgba(1, 121, 111, 0.22) 86%,
-    rgba(1, 121, 111, 0)
-  );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 8px rgba(21, 185, 168, 0.14);
-  pointer-events: none;
+  padding-right: 12px;
 }
 
 #Login_footer_right {
-  padding-left: calc(24px / 2);
+  padding-left: 12px;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
+}
+
+@media (max-width: 767px) {
+  #login-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  #Login_footer_left,
+  #Login_footer_right {
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
+  }
+
+  #Login_footer_left {
+    justify-content: center;
+  }
+
+  #Login_footer_right {
+    align-items: center;
+    text-align: center;
+  }
 }
 
 .profile-section{
@@ -1113,3 +1171,5 @@
   font-weight: 700;
   color: rgba(1, 121, 111, 0.88);
 }
+
+

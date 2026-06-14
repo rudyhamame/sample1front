@@ -219,12 +219,12 @@ background: var(--main-color-dark, #f0f0f0);
 background: #333;
 }
 
-body.dark #Main_article {
+body.dark #page {
 background: #10181c !important;
   color: #e6e6e6;
 }
 
-.dark #Main_article {
+.dark #page {
 background: #10181c !important;
   color: #e6e6e6;
 }

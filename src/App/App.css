@@ -1,317 +1,35 @@
 @import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css");
 @import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css");
 
-* {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
-  transition: background-color cubic-bezier(0.445, 0.05, 0.55, 0.95) 0.7s,
-    width cubic-bezier(1, 0.46, 0.33, 1) 0.7s,
-    height cubic-bezier(1, 0.46, 0.33, 1) 0.7s,
-    transform cubic-bezier(1, 0.46, 0.33, 1) 0.1s,
-    font-size cubic-bezier(1, 0.46, 0.33, 1) 0.7s;
-}
-
-html,
-body,
-#root,
-#App_viewportScale,
-#app_page,
-#Main_article {
-  transition: none !important;
-}
-
-body,
-button,
-input,
-select,
-textarea,
-option,
-label,
-p,
-span,
-div,
-li,
-ul,
-ol,
-nav,
-section,
-article,
-aside,
-main,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-a {
-  font-family: "IBM Plex Mono", monospace;
-}
-*::selection {
-  background-color: var(--blue);
-}
-
-html,
-body {
-  height: var(--app-visual-viewport-height, 100dvh);
-  min-height: var(--app-visual-viewport-height, 100dvh);
-  max-height: var(--app-visual-viewport-height, 100dvh);
-  width: 100%;
-  font-size: 100%;
-  overflow-x: hidden;
-  overflow-y: hidden;
-  overscroll-behavior: none
-}
-
-body {
-  position: relative;
-}
 
 :root {
-  --app-visual-viewport-height: 100dvh;
-  --app-visual-viewport-width: 100vw;
-  --app-visual-viewport-top: 0px;
-  --app-visual-viewport-left: 0px;
+  --app-height: 100dvh;
+  --app-width: 100%;
+
   --server-answer-height: 24px;
-  --brightestWhite: #ffffff;
-  --blue: #1877f2;
-  --blue2: #6fa7dc;
-  --blue3:#00d4f5;
-  --blue4:#0099ae;
-  --blue5:#04b8d0;
+
   --white: #f0f2f5;
-  --white2:#fffafa;
-  --gray: rgb(224, 214, 214);
-  --gray_for_read: #696969;
-  --pacifico: "Pacifico", cursive;
-  --orange: #c73a13;
-  --green: #5d7e4d;
-  --green2:#01796f;
-  --green3:#2f847c;
-  --green4:#01978b;
+  --white2: #fffafa;
+
+
+
   --black: #18191a;
   --black2: #3a3b3c;
   --black3: #242526;
   --black_for_appform: black;
+
   --special_black: #302e2e;
-  --special_black2:#3d3d3d;
-  --red: rgba(255, 0, 0, 0.795);
-  --red2:#ff007c;
-  --red3:#ff6651;
+  --special_black2: #3d3d3d;
+
   --background_menu: rgba(0, 0, 0, 0.459);
-  --yellow:#ffff00;
-  --grayScale: #575757;
+
   --transient-surface: rgba(230, 240, 242, 0.94);
   --transient-surface-strong: #214652;
   --transient-surface-border: rgba(124, 157, 165, 0.22);
-}
 
-#App_shellHeightMonitor {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 50000;
-  width: min(360px, calc(100vw - 20px));
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(16, 25, 30, 0.88);
-  color: #f8fbfc;
-  border: 1px solid rgba(180, 216, 223, 0.2);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(12px);
-  overflow: hidden;
-}
+  --app-bg: var(--white);
 
-#App_shellHeightMonitor_title {
-  display: block;
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-#App_shellHeightMonitor_title:active {
-  cursor: grabbing;
-}
-
-#App_shellHeightMonitor_header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-#App_shellHeightMonitor_toggle {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(180, 216, 223, 0.22);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fbfc;
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-#App_shellHeightMonitor_toggle:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-#App_shellHeightMonitor_caption {
-  margin: 0 0 8px;
-  font-size: 0.69rem;
-  line-height: 1.35;
-  color: rgba(205, 226, 231, 0.82);
-}
-
-#App_shellHeightMonitor_list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#App_shellHeightMonitor_metrics {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 5px;
-  margin-bottom: 8px;
-}
-
-.App_shellHeightMonitor_metric {
-  display: block;
-  padding: 5px 7px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 235, 187, 0.96);
-  font-size: 0.71rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.App_shellHeightMonitor_item {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) repeat(3, auto);
-  gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  font-size: 0.72rem;
-}
-
-.App_shellHeightMonitor_selector {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(241, 249, 251, 0.96);
-}
-
-.App_shellHeightMonitor_value {
-  color: rgba(173, 225, 234, 0.94);
-  white-space: nowrap;
-}
-
-#root {
-  position: fixed;
-  top: var(--app-visual-viewport-top, 0px);
-  left: var(--app-visual-viewport-left, 0px);
-  right: auto;
-  bottom: auto;
-  display: flex;
-  flex-direction: column;
-  width: var(--app-visual-viewport-width, 100vw);
-  height: var(--app-visual-viewport-height, 100dvh);
-  min-height: var(--app-visual-viewport-height, 100dvh);
-  max-height: var(--app-visual-viewport-height, 100dvh);
-  background-color: var(--brightestWhite);
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-#App_viewportScale {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-  --app-scale: 0.8;
-}
-
-#App_viewportScale > * {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-#app_page {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: hidden;
-  width: calc(var(--app-visual-viewport-width, 100vw) / var(--app-scale, 0.8));
-  height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  min-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  max-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  transform: scale(var(--app-scale, 0.8));
-  transform-origin: top left;
-}
-
-@keyframes zoomOut {
-  from {
-    background-size: 130%;
-  }
-  to {
-    background-size: 100%;
-  }
-}
-
-#Main_article {
-    /* Main color for dynamic server_answer background */
-    --main-article-color1: rgba(234, 147, 128, 0.95);
-    --main-article-color2: rgba(237, 159, 146, 0.92);
-    --main-article-color3: rgba(235, 148, 129, 0.95);
-  flex: 1 1 0;
-  height: 0;
-  max-height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-#Main_article > * {
-  flex: 1 1 0;
-  min-height: 0;
-  max-height: 100%;
-}
-
-#app_page.app_page--has-background-pattern #Main_article {
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  animation: zoomOut 1.5s ease-out forwards;
-}
-
-#app_page.app_page--footer-hidden {
-  padding-bottom: 0;
-}
-
-#app_page.app_page--has-background-pattern {
-  --home-pattern-button-bg-start: rgba(255, 247, 239, 0.96);
+    --home-pattern-button-bg-start: rgba(255, 247, 239, 0.96);
   --home-pattern-button-bg-end: rgba(250, 233, 223, 0.92);
   --home-pattern-button-border: rgba(215, 140, 121, 0.46);
   --home-pattern-button-text: rgba(80, 40, 30, 0.92);
@@ -325,135 +43,80 @@ body {
   --home-pattern-button-primary-text: rgba(255, 247, 241, 0.98);
 }
 
-
-/* ...........loader.............. */
-.loaderImg_div {
-  font-size: 15pt;
-  position: absolute;
-  z-index: 10000;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 18px;
-  border-radius: 18px;
-  background: transparent;
-  border: 1px solid var(--transient-surface-border);
-  box-shadow: 0 18px 35px rgba(96, 126, 135, 0.18);
-  backdrop-filter: blur(10px);
+*,
+*::before,
+*::after {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "IBM Plex Mono", monospace;
+}
+html {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  overflow: hidden;
 }
 
-::-webkit-scrollbar {
-  display: none;
-}
-
-.slide-top {
-  -webkit-animation: slide-top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  animation: slide-top 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-i:hover {
-  cursor: pointer;
-}
-
-li {
-  list-style: none;
+body {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  transition: opacity ease-in 0.2s;
+  display: block;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 input,
 textarea,
 select {
-  font-weight: 300;
-  outline-style: none;
-  border: none;
-  font-size: 10pt;
-  padding: 8px;
-  /* box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.226); */
+  font-size: 16px;
+}
+
+button,
+body {
+  font-size: 14px;
+}
+#root {
   width: 100%;
-  resize: none;
-  background-color: var(--white);
-}
-input::selection {
-  background-color: #841b2d;
-  color: white;
-}
-button {
-  border: none;
-  padding: 6px;
-  outline-style: none;
-  cursor: pointer;
-}
-button:hover {
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ----------------------------------------------
- * Generated by Animista on 2021-1-21 23:27:40
- * Licensed under FreeBSD License.
- * See http://animista.net/license for more info. 
- * w: http://animista.net, t: @cssanimista
- * ---------------------------------------------- */
-
-/**
- * ----------------------------------------
- * animation slide-top
- * ----------------------------------------
- */
-@-webkit-keyframes slide-top {
-  0% {
-    -webkit-transform: translateY(0);
-    transform: translateY(0);
-  }
-  75% {
-    -webkit-transform: translateY(-50px);
-    transform: translateY(-50px);
-  }
-  100% {
-    -webkit-transform: translateY(0);
-    transform: translateY(0);
-  }
-}
-@keyframes slide-top {
-  0% {
-    -webkit-transform: translateY(0);
-    transform: translateY(0);
-  }
-  75% {
-    -webkit-transform: translateY(-50px);
-    transform: translateY(-50px);
-  }
-  100% {
-    -webkit-transform: translateY(0);
-    transform: translateY(0);
-  }
-}
-/*......................................*/
-.slide-top {
-  -webkit-animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  animation: slide-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+#app-shell,
+.app-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
 }
 
-@-webkit-keyframes slide-top {
-  0% {
-    -webkit-transform: translateY(100px);
-    transform: translateY(100px);
-  }
-  100% {
-    -webkit-transform: translateY(0px);
-    transform: translateY(0px);
-  }
-}
-@keyframes slide-top {
-  0% {
-    -webkit-transform: translateY(100px);
-    transform: translateY(100px);
-  }
-  100% {
-    -webkit-transform: translateY(0px);
-    transform: translateY(0px);
-  }
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
+#login-footer {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: white;
+}

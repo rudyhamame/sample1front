@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import "../Login/login.css";
+import "../Login/login_responsive.css";
 import { apiUrl } from "../config/api";
 import InspectionOverlay from "../debug/InspectionOverlay";
 import {
@@ -9,9 +10,34 @@ import {
 } from "../utils/sessionCleanup";
 import { stopSharedPlannerMusic } from "../music/globalMusicPlayer";
 import { normalizeUserPayload } from "../utils/normalizeUser";
+import { useVisualViewportKeyboard } from "../hooks/useVisualViewportKeyboard";
 
 const LOGIN_KEYBOARD_OPEN_THRESHOLD = 120;
 const LOGIN_KEYBOARD_SCROLL_MARGIN = 20;
+const isIOSWebKit = (() => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = String(navigator.userAgent || "");
+  const isIOSDevice =
+    /iPad|iPhone|iPod/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isWebKit = /WebKit/i.test(userAgent);
+  return isIOSDevice && isWebKit;
+})();
+const isIpadChrome = (() => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = String(navigator.userAgent || "");
+  const isIpadDevice =
+    /iPad/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isChromeFamily = /CriOS|Chrome/i.test(userAgent);
+  return isIpadDevice && isChromeFamily;
+})();
 
 const isEditableFormElement = (element) => {
   if (!(element instanceof HTMLElement)) {
@@ -35,6 +61,32 @@ const isEditableFormElement = (element) => {
   return !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(
     inputType,
   );
+};
+
+const resetOuterShellScroll = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
+  const scrollingElement =
+    document.scrollingElement || document.documentElement || document.body;
+
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
+  if (scrollingElement) {
+    scrollingElement.scrollTop = 0;
+    scrollingElement.scrollLeft = 0;
+  }
+
+  if (document.documentElement) {
+    document.documentElement.scrollTop = 0;
+    document.documentElement.scrollLeft = 0;
+  }
+
+  if (document.body) {
+    document.body.scrollTop = 0;
+    document.body.scrollLeft = 0;
+  }
 };
 const formatAppLastUpdatedLabel = (value) =>
   new Intl.DateTimeFormat(undefined, {
@@ -435,13 +487,11 @@ const parseApiPayload = async (response) => {
 
 const Login = ({ onLogin, onForceLogout }) => {
   const VIDEO_GATE_SESSION_KEY = "videoGateUnlockedKey";
-  const articleRef = useRef(null);
+  const shellRef = useRef(null);
+  const pageRef = useRef(null);
   const footerRef = useRef(null);
   const loginFormRef = useRef(null);
   const authFieldsRef = useRef(null);
-  const previousAuthFormRectRef = useRef(null);
-  const authFormAnimationFrameRef = useRef(null);
-  const authFormAnimationTimeoutRef = useRef(null);
   const isMountedRef = useRef(true);
   const videoGateKeyRef = useRef("");
   const brandVideoRef = useRef(null);
@@ -453,8 +503,6 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [signupMessage, setSignupMessage] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [authFormInlineStyle, setAuthFormInlineStyle] = useState({});
-  const [alignedBlockMinHeight, setAlignedBlockMinHeight] = useState(0);
   const [videoUnlocked, setVideoUnlocked] = useState(false);
   const [videoGateRequiresVerification, setVideoGateRequiresVerification] =
     useState(true);
@@ -462,6 +510,10 @@ const Login = ({ onLogin, onForceLogout }) => {
   const [videoGateError, setVideoGateError] = useState("");
   const [videoGatePending, setVideoGatePending] = useState(false);
   const [brandVideoAutoplayBlocked, setBrandVideoAutoplayBlocked] = useState(false);
+  const [loginVisitorStats, setLoginVisitorStats] = useState({
+    totalVisits: null,
+    totalUsers: null,
+  });
   const [pendingSignupAuthReport, setPendingSignupAuthReport] = useState(null);
   const [isPendingSignupUsernameEditable, setIsPendingSignupUsernameEditable] =
     useState(false);
@@ -477,8 +529,20 @@ const Login = ({ onLogin, onForceLogout }) => {
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [keyboardInset, setKeyboardInset] = useState(0);
+  const { keyboardInset } = useVisualViewportKeyboard();
   const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
+  const [keyboardDebugMetrics, setKeyboardDebugMetrics] = useState({
+    windowScrollY: 0,
+    bodyScrollHeight: 0,
+    bodyClientHeight: 0,
+    documentScrollHeight: 0,
+    documentClientHeight: 0,
+    pageScrollTop: 0,
+    pageScrollHeight: 0,
+    pageClientHeight: 0,
+    visualViewportHeight: 0,
+    visualViewportOffsetTop: 0,
+  });
   const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
     loginAppLastUpdatedFallbackLabel,
   );
@@ -504,6 +568,32 @@ const Login = ({ onLogin, onForceLogout }) => {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const htmlElement = document.documentElement;
+    const bodyElement = document.body;
+    const previousHtmlOverflow = htmlElement.style.overflow;
+    const previousHtmlOverscroll = htmlElement.style.overscrollBehavior;
+    const previousBodyOverflow = bodyElement.style.overflow;
+    const previousBodyOverscroll = bodyElement.style.overscrollBehavior;
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    htmlElement.style.overflow = "hidden";
+    htmlElement.style.overscrollBehavior = "none";
+    bodyElement.style.overflow = "hidden";
+    bodyElement.style.overscrollBehavior = "none";
+
+    return () => {
+      htmlElement.style.overflow = previousHtmlOverflow;
+      htmlElement.style.overscrollBehavior = previousHtmlOverscroll;
+      bodyElement.style.overflow = previousBodyOverflow;
+      bodyElement.style.overscrollBehavior = previousBodyOverscroll;
     };
   }, []);
 
@@ -589,6 +679,13 @@ const Login = ({ onLogin, onForceLogout }) => {
           return;
         }
 
+        const totalVisits = Number(payload?.videoGate?.visitStats?.totalVisits);
+        const totalUsers = Number(payload?.videoGate?.visitStats?.totalUsers);
+        setLoginVisitorStats({
+          totalVisits: Number.isFinite(totalVisits) ? totalVisits : null,
+          totalUsers: Number.isFinite(totalUsers) ? totalUsers : null,
+        });
+
         const enabled = payload?.videoGate?.enabled === true;
         const configured = payload?.videoGate?.configured === true;
         const gateKey = String(payload?.videoGate?.gateKey || "");
@@ -616,6 +713,10 @@ const Login = ({ onLogin, onForceLogout }) => {
           return;
         }
 
+        setLoginVisitorStats({
+          totalVisits: null,
+          totalUsers: null,
+        });
         videoGateKeyRef.current = "";
         setVideoGateRequiresVerification(true);
         setVideoUnlocked(false);
@@ -678,6 +779,11 @@ const Login = ({ onLogin, onForceLogout }) => {
       });
     };
 
+    if (isIpadChrome) {
+      handleResize();
+      return undefined;
+    }
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -688,6 +794,11 @@ const Login = ({ onLogin, onForceLogout }) => {
     };
 
     updateZoomScale();
+
+    if (isIpadChrome) {
+      return undefined;
+    }
+
     window.addEventListener("resize", updateZoomScale);
     window.visualViewport?.addEventListener("resize", updateZoomScale);
 
@@ -698,14 +809,70 @@ const Login = ({ onLogin, onForceLogout }) => {
   }, []);
 
   useEffect(() => {
-    if (!articleRef.current) {
-      return;
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
     }
 
-    articleRef.current.style.setProperty(
-      "--login-keyboard-inset",
-      `${Math.max(0, keyboardInset)}px`,
-    );
+    let touchStartY = 0;
+
+    const blurActiveLoginInput = (event) => {
+      if (!isIOSWebKit) {
+        return false;
+      }
+
+      const activeElement = document.activeElement;
+      const shellElement = shellRef.current;
+      const keyboardIsAlreadyOpen = keyboardInset > LOGIN_KEYBOARD_OPEN_THRESHOLD;
+
+      if (
+        !activeElement ||
+        !shellElement ||
+        !shellElement.contains(activeElement) ||
+        !isEditableFormElement(activeElement) ||
+        !keyboardIsAlreadyOpen
+      ) {
+        return false;
+      }
+
+      if (typeof activeElement.blur === "function") {
+        activeElement.blur();
+      }
+
+      resetOuterShellScroll();
+
+      if (event?.cancelable) {
+        event.preventDefault();
+      }
+
+      return true;
+    };
+
+    const handleTouchStart = (event) => {
+      touchStartY = Number(event.touches?.[0]?.clientY || 0);
+    };
+
+    const closeKeyboardOnTouchMove = (event) => {
+      const nextTouchY = Number(event.touches?.[0]?.clientY || 0);
+      const movedEnoughToScroll = Math.abs(nextTouchY - touchStartY) > 4;
+
+      if (movedEnoughToScroll) {
+        blurActiveLoginInput(event);
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("touchmove", closeKeyboardOnTouchMove, {
+      passive: false,
+      capture: true,
+    });
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart, true);
+      window.removeEventListener("touchmove", closeKeyboardOnTouchMove, true);
+    };
   }, [keyboardInset]);
 
   useEffect(() => {
@@ -713,81 +880,185 @@ const Login = ({ onLogin, onForceLogout }) => {
       return undefined;
     }
 
-    const scrollFocusedFieldIntoView = () => {
-      const scroller = authFieldsRef.current;
-      const activeElement = document.activeElement;
-
-      if (!scroller || !(activeElement instanceof HTMLElement)) {
-        return;
-      }
-
-      if (!scroller.contains(activeElement)) {
-        return;
-      }
-
-      const scrollerRect = scroller.getBoundingClientRect();
-      const fieldRect = activeElement.getBoundingClientRect();
-      const visibleTop = scrollerRect.top + LOGIN_KEYBOARD_SCROLL_MARGIN;
-      const visibleBottom =
-        scrollerRect.bottom -
-        Math.max(
-          LOGIN_KEYBOARD_SCROLL_MARGIN,
-          keyboardInset + LOGIN_KEYBOARD_SCROLL_MARGIN,
-        );
-
-      if (fieldRect.bottom > visibleBottom) {
-        scroller.scrollTop += fieldRect.bottom - visibleBottom;
-      } else if (fieldRect.top < visibleTop) {
-        scroller.scrollTop -= visibleTop - fieldRect.top;
-      }
-    };
-
-    const updateKeyboardInset = () => {
-      const articleElement = articleRef.current;
-      const activeElement = document.activeElement;
+    const measureKeyboardMetrics = () => {
       const visualViewport = window.visualViewport;
-      const keyboardLoss = Math.max(
-        0,
-        Math.round(
-          (window.innerHeight || 0) -
-            Number(visualViewport?.height || window.innerHeight || 0),
-        ),
-      );
-      const shouldTreatAsKeyboard =
-        Boolean(articleElement) &&
-        articleElement.contains(activeElement) &&
-        isEditableFormElement(activeElement) &&
-        keyboardLoss > LOGIN_KEYBOARD_OPEN_THRESHOLD;
+      const pageElement = pageRef.current;
+      const bodyElement = document.body;
+      const documentElement = document.documentElement;
 
-      setKeyboardInset(shouldTreatAsKeyboard ? keyboardLoss : 0);
-
-      if (shouldTreatAsKeyboard) {
-        window.requestAnimationFrame(() => {
-          scrollFocusedFieldIntoView();
-        });
-      }
-    };
-
-    const handleFocusChange = () => {
-      updateKeyboardInset();
-      window.requestAnimationFrame(() => {
-        scrollFocusedFieldIntoView();
+      setKeyboardDebugMetrics({
+        windowScrollY: Math.round(window.scrollY || window.pageYOffset || 0),
+        bodyScrollHeight: Math.round(bodyElement?.scrollHeight || 0),
+        bodyClientHeight: Math.round(bodyElement?.clientHeight || 0),
+        documentScrollHeight: Math.round(documentElement?.scrollHeight || 0),
+        documentClientHeight: Math.round(documentElement?.clientHeight || 0),
+        pageScrollTop: Math.round(pageElement?.scrollTop || 0),
+        pageScrollHeight: Math.round(pageElement?.scrollHeight || 0),
+        pageClientHeight: Math.round(pageElement?.clientHeight || 0),
+        visualViewportHeight: Math.round(visualViewport?.height || 0),
+        visualViewportOffsetTop: Math.round(visualViewport?.offsetTop || 0),
       });
     };
 
-    window.addEventListener("resize", updateKeyboardInset);
-    window.addEventListener("focusin", handleFocusChange);
-    window.addEventListener("focusout", handleFocusChange);
-    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
-    window.visualViewport?.addEventListener("scroll", updateKeyboardInset);
-    updateKeyboardInset();
+    let animationFrameId = null;
+
+    const scheduleMeasureKeyboardMetrics = () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+        measureKeyboardMetrics();
+      });
+    };
+
+    scheduleMeasureKeyboardMetrics();
+
+    window.addEventListener("resize", scheduleMeasureKeyboardMetrics);
+    window.addEventListener("scroll", scheduleMeasureKeyboardMetrics, {
+      passive: true,
+    });
+    window.visualViewport?.addEventListener("resize", scheduleMeasureKeyboardMetrics);
+    window.visualViewport?.addEventListener("scroll", scheduleMeasureKeyboardMetrics);
+    document.addEventListener("focusin", scheduleMeasureKeyboardMetrics);
+    document.addEventListener("focusout", scheduleMeasureKeyboardMetrics);
+    pageRef.current?.addEventListener("scroll", scheduleMeasureKeyboardMetrics, {
+      passive: true,
+    });
 
     return () => {
-      window.removeEventListener("resize", updateKeyboardInset);
-      window.removeEventListener("focusin", handleFocusChange);
-      window.removeEventListener("focusout", handleFocusChange);
-      window.visualViewport?.removeEventListener("resize", updateKeyboardInset);
-      window.visualViewport?.removeEventListener("scroll", updateKeyboardInset);
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      window.removeEventListener("resize", scheduleMeasureKeyboardMetrics);
+      window.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
+      window.visualViewport?.removeEventListener("resize", scheduleMeasureKeyboardMetrics);
+      window.visualViewport?.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
+      document.removeEventListener("focusin", scheduleMeasureKeyboardMetrics);
+      document.removeEventListener("focusout", scheduleMeasureKeyboardMetrics);
+      pageRef.current?.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const pageElement = pageRef.current;
+    const shellElement = shellRef.current;
+
+    if (!pageElement || !shellElement) {
+      return undefined;
+    }
+
+    let focusScrollTimer = null;
+    let focusScrollFrame = null;
+    let focusStabilizeTimeoutIds = [];
+
+    const clearScheduledFocusScroll = () => {
+      if (focusScrollFrame !== null) {
+        window.cancelAnimationFrame(focusScrollFrame);
+        focusScrollFrame = null;
+      }
+
+      if (focusScrollTimer !== null) {
+        window.clearTimeout(focusScrollTimer);
+        focusScrollTimer = null;
+      }
+
+      focusStabilizeTimeoutIds.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      focusStabilizeTimeoutIds = [];
+    };
+
+    const scrollActiveInputIntoView = () => {
+      const activeElement = document.activeElement;
+
+      if (
+        !(activeElement instanceof HTMLElement) ||
+        !shellElement.contains(activeElement) ||
+        !isEditableFormElement(activeElement)
+      ) {
+        return;
+      }
+
+      activeElement.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "auto",
+      });
+    };
+
+    const stabilizeOuterViewport = () => {
+      const activeElement = document.activeElement;
+      const visualViewport = window.visualViewport;
+      const hasOuterWindowShift =
+        (window.scrollY || window.pageYOffset || 0) > 0 ||
+        (visualViewport?.offsetTop || 0) > 0;
+
+      if (
+        activeElement instanceof HTMLElement &&
+        shellElement.contains(activeElement) &&
+        isEditableFormElement(activeElement) &&
+        hasOuterWindowShift
+      ) {
+        resetOuterShellScroll();
+      }
+    };
+
+    const handleFocusIn = () => {
+      clearScheduledFocusScroll();
+
+      focusScrollFrame = window.requestAnimationFrame(() => {
+        focusScrollFrame = null;
+        scrollActiveInputIntoView();
+        stabilizeOuterViewport();
+      });
+
+      focusScrollTimer = window.setTimeout(() => {
+        focusScrollTimer = null;
+        scrollActiveInputIntoView();
+        stabilizeOuterViewport();
+      }, 180);
+
+      focusStabilizeTimeoutIds = [60, 140, 260, 420].map((delayMs) =>
+        window.setTimeout(() => {
+          stabilizeOuterViewport();
+        }, delayMs),
+      );
+    };
+
+    const handlePageScroll = () => {
+      if (keyboardInset <= LOGIN_KEYBOARD_OPEN_THRESHOLD) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+
+      if (
+        activeElement instanceof HTMLElement &&
+        shellElement.contains(activeElement) &&
+        isEditableFormElement(activeElement) &&
+        typeof activeElement.blur === "function"
+      ) {
+        activeElement.blur();
+        resetOuterShellScroll();
+      }
+    };
+
+    pageElement.addEventListener("scroll", handlePageScroll, {
+      passive: true,
+    });
+    document.addEventListener("focusin", handleFocusIn);
+
+    return () => {
+      clearScheduledFocusScroll();
+      pageElement.removeEventListener("scroll", handlePageScroll);
+      document.removeEventListener("focusin", handleFocusIn);
     };
   }, [keyboardInset]);
 
@@ -833,17 +1104,24 @@ const Login = ({ onLogin, onForceLogout }) => {
   }, []);
 
   useEffect(() => {
-    if (!footerRef.current || !articleRef.current) {
+    if (!footerRef.current || !shellRef.current) {
       return;
     }
 
-    // Keep footer:rest-of-page at 1:6, so footer is 1/7 of total visible height.
-    const visibleFooterHeight = viewportSize.height / 7;
+    // Keep the footer compact so the main login content gets more usable space.
+    const visibleFooterHeight = Math.min(
+      72,
+      Math.max(44, viewportSize.height / 11),
+    );
     const scaledFooterHeight = visibleFooterHeight * zoomScale;
 
-    articleRef.current.style.setProperty(
+    shellRef.current.style.setProperty(
       "--login-footer-height",
       `${scaledFooterHeight}px`,
+    );
+    shellRef.current.style.setProperty(
+      "--login-auth-scale",
+      `${zoomScale > 1 ? 1 / zoomScale : 1}`,
     );
     footerRef.current.style.setProperty(
       "--login-footer-width",
@@ -865,14 +1143,6 @@ const Login = ({ onLogin, onForceLogout }) => {
       return;
     }
 
-    if (loginFormRef.current) {
-      const formRect = loginFormRef.current.getBoundingClientRect();
-      previousAuthFormRectRef.current = {
-        width: formRect.width,
-        height: formRect.height,
-      };
-    }
-
     setAuthMode(text);
     setLogin_ok(null);
     setLoginMessage(null);
@@ -885,14 +1155,6 @@ const Login = ({ onLogin, onForceLogout }) => {
   };
 
   const goBackToSignupFromCompleteProfile = () => {
-    if (loginFormRef.current) {
-      const formRect = loginFormRef.current.getBoundingClientRect();
-      previousAuthFormRectRef.current = {
-        width: formRect.width,
-        height: formRect.height,
-      };
-    }
-
     setAuthMode("signup");
     setLogin_ok(null);
     setLoginMessage(null);
@@ -1033,103 +1295,6 @@ const Login = ({ onLogin, onForceLogout }) => {
       </label>
     );
   };
-
-  useEffect(() => {
-    const formElement = loginFormRef.current;
-    const previousRect = previousAuthFormRectRef.current;
-
-    if (!formElement || !previousRect || typeof window === "undefined") {
-      return;
-    }
-
-    const nextRect = formElement.getBoundingClientRect();
-    previousAuthFormRectRef.current = null;
-
-    if (
-      Math.abs((previousRect.width || 0) - (nextRect.width || 0)) < 1 &&
-      Math.abs((previousRect.height || 0) - (nextRect.height || 0)) < 1
-    ) {
-      setAuthFormInlineStyle({});
-      return;
-    }
-
-    if (authFormAnimationFrameRef.current) {
-      window.cancelAnimationFrame(authFormAnimationFrameRef.current);
-    }
-
-    if (authFormAnimationTimeoutRef.current) {
-      window.clearTimeout(authFormAnimationTimeoutRef.current);
-    }
-
-    setAuthFormInlineStyle({
-      width: `${previousRect.width}px`,
-      height: `${previousRect.height}px`,
-      overflow: "hidden",
-      transition: "none",
-    });
-
-    authFormAnimationFrameRef.current = window.requestAnimationFrame(() => {
-      setAuthFormInlineStyle({
-        width: `${nextRect.width}px`,
-        height: `${nextRect.height}px`,
-        overflow: "hidden",
-        transition: "width 260ms ease, height 260ms ease",
-      });
-
-      authFormAnimationTimeoutRef.current = window.setTimeout(() => {
-        setAuthFormInlineStyle({});
-      }, 280);
-    });
-  }, [authMode]);
-
-  useEffect(() => {
-    const formElement = loginFormRef.current;
-
-    if (!formElement || typeof window === "undefined") {
-      return;
-    }
-
-    const updateAlignedHeight = () => {
-      const nextHeight = Math.ceil(
-        formElement.getBoundingClientRect().height || 0,
-      );
-      setAlignedBlockMinHeight(nextHeight);
-    };
-
-    updateAlignedHeight();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateAlignedHeight);
-      return () => window.removeEventListener("resize", updateAlignedHeight);
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateAlignedHeight();
-    });
-
-    resizeObserver.observe(formElement);
-    window.addEventListener("resize", updateAlignedHeight);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateAlignedHeight);
-    };
-  }, [authMode]);
-
-  useEffect(() => {
-    return () => {
-      if (authFormAnimationFrameRef.current && typeof window !== "undefined") {
-        window.cancelAnimationFrame(authFormAnimationFrameRef.current);
-      }
-
-      if (
-        authFormAnimationTimeoutRef.current &&
-        typeof window !== "undefined"
-      ) {
-        window.clearTimeout(authFormAnimationTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const submitVideoGate = async (e) => {
     e.preventDefault();
@@ -1313,14 +1478,6 @@ const Login = ({ onLogin, onForceLogout }) => {
             token: data.token,
             isLoggedIn: true,
           });
-
-          if (loginFormRef.current) {
-            const formRect = loginFormRef.current.getBoundingClientRect();
-            previousAuthFormRectRef.current = {
-              width: formRect.width,
-              height: formRect.height,
-            };
-          }
 
           runIfMounted(() => {
             setPendingSignupAuthReport(nextPendingAuthReport);
@@ -1620,6 +1777,26 @@ const Login = ({ onLogin, onForceLogout }) => {
 
   const authModeSwitchLabel =
     authMode === "login" ? "Create an account" : "I already have an account";
+  const isTallTabletStackLayout =
+    viewportSize.width >= 768 &&
+    viewportSize.width <= 899 &&
+    viewportSize.height >= 1000;
+  const shouldMoveBrandTextColumn =
+    viewportSize.width >= 768 && !isTallTabletStackLayout;
+
+  const renderBrandTextColumn = () => (
+    <div id="Login_brandTextColumn" className="fc">
+      <h1 id="Login_brandWordmark">
+        <span className="Login_brandWordmarkFlex">
+          <span className="Login_brandName">MCTOS|H</span>
+        </span>
+      </h1>
+      <h2 id="Login_brandProduct">PhenoMed</h2>
+      <h4 id="Login_brandTagline">
+        From Patient Traces to Diagnosis
+      </h4>
+    </div>
+  );
 
   const credentialFields =
     authMode === "login" || authMode === "signup"
@@ -1763,39 +1940,18 @@ const Login = ({ onLogin, onForceLogout }) => {
       : [];
 
   return (
-    <article
-      id="Login_article"
-      className="fc"
-      ref={articleRef}
-    >
-      <InspectionOverlay
-        rootId="Login_article"
-        debugClassName="Login_debugBordersOn"
-        viewportBadgeId="Login_viewportBadge"
-        hoveredBadgeId="Login_hoveredIdBadge"
-        copiedBadgeId="Login_copiedIdBadge"
-      />
+    <div id="app-shell" className="app-shell" ref={shellRef}>
       <main
-        id="Login_main"
-        className={`fc${authMode === "complete-profile" ? " Login_main--post-signup" : ""}`}
-        style={{
-          "--login-aligned-block-min-height": `${Math.max(0, alignedBlockMinHeight)}px`,
-        }}
+        id="page"
+        className={`page Login_page fc${authMode === "complete-profile" ? " Login_page--post-signup" : ""}`}
+        ref={pageRef}
       >
         <section
           id="Login_brandPanel"
           className={authMode === "complete-profile" ? "is-collapsed" : ""}
         >
           <div id="Login_brandContentWrap" className="fc">
-            <h1 id="Login_brandWordmark">
-              <span className="Login_brandWordmarkFlex">
-                <span className="Login_brandName">MCTOS|H</span>
-              </span>
-            </h1>
-            <h2 id="Login_brandProduct">PhenoMed</h2>
-            <h4 id="Login_brandTagline">
-              From Clinical-related Phenomena to Diagnosis
-            </h4>
+            {!shouldMoveBrandTextColumn && renderBrandTextColumn()}
             <div id="Login_brandVideoWrap" className={videoUnlocked ? "Login_brandVideoWrap--unlocked" : ""}>
               <video
                 id="Login_brandVideo"
@@ -1873,17 +2029,37 @@ const Login = ({ onLogin, onForceLogout }) => {
                 </form>
               )}
             </div>
+            <p id="Login_brandStats" aria-label="Login page visit and user counts">
+              <span>
+                Visits:{" "}
+                {loginVisitorStats.totalVisits === null
+                  ? "—"
+                  : loginVisitorStats.totalVisits.toLocaleString()}
+              </span>
+              <span>
+                Users:{" "}
+                {loginVisitorStats.totalUsers === null
+                  ? "—"
+                  : loginVisitorStats.totalUsers.toLocaleString()}
+              </span>
+            </p>
           </div>
         </section>
+        <div id="Login_separator" aria-hidden="true" />
         <section
           id="Login_authPanel"
-          className={keyboardInset > 0 ? "Login_authPanel--keyboardOpen" : ""}
+          className={[
+            keyboardInset > 0 ? "Login_authPanel--keyboardOpen" : "",
+            shouldMoveBrandTextColumn ? "Login_authPanel--withBrandTextColumn" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
+          {shouldMoveBrandTextColumn && renderBrandTextColumn()}
           <section
             id="Login_authCard"
             className="fc"
             ref={loginFormRef}
-            style={authFormInlineStyle}
           >
             {authMode === "complete-profile" && (
               <div id="Login_authCardHeader">
@@ -1984,28 +2160,60 @@ const Login = ({ onLogin, onForceLogout }) => {
                   </button>
                 </nav>
               )}
-              <p id="Login_authDemoNote">
-                If you’d like to try the app right away, you can sign in with
-                the demo account below:
-                <br />
-                <strong>Username:</strong> test
-                <br />
-                <strong>Password:</strong> test
-                <br />
-                You’re also welcome to create your own account anytime and
-                enjoy the full experience with your own saved data.
-              </p>
               {feedbackMessage && authMode !== "complete-profile" && (
                 <h4 id="Login_authFeedback">{feedbackMessage}</h4>
               )}
             </section>
           </section>
         </section>
+        <InspectionOverlay
+          rootId="root"
+          debugClassName="Login_debugBordersOn"
+          viewportBadgeId="Login_viewportBadge"
+          hoveredBadgeId="Login_hoveredIdBadge"
+          copiedBadgeId="Login_copiedIdBadge"
+        />
+        <aside id="Login_keyboardDebugPanel" aria-live="polite">
+          <div className="Login_keyboardDebugRow">
+            <span>kbd</span>
+            <span>{Math.round(keyboardInset)}px</span>
+          </div>
+          <div className="Login_keyboardDebugRow">
+            <span>winY</span>
+            <span>{keyboardDebugMetrics.windowScrollY}px</span>
+          </div>
+          <div className="Login_keyboardDebugRow">
+            <span>body</span>
+            <span>
+              {keyboardDebugMetrics.bodyClientHeight}/{keyboardDebugMetrics.bodyScrollHeight}
+            </span>
+          </div>
+          <div className="Login_keyboardDebugRow">
+            <span>doc</span>
+            <span>
+              {keyboardDebugMetrics.documentClientHeight}/{keyboardDebugMetrics.documentScrollHeight}
+            </span>
+          </div>
+          <div className="Login_keyboardDebugRow">
+            <span>page</span>
+            <span>
+              {keyboardDebugMetrics.pageScrollTop}px | {keyboardDebugMetrics.pageClientHeight}/
+              {keyboardDebugMetrics.pageScrollHeight}
+            </span>
+          </div>
+          <div className="Login_keyboardDebugRow">
+            <span>vv</span>
+            <span>
+              {keyboardDebugMetrics.visualViewportHeight}px @
+              {keyboardDebugMetrics.visualViewportOffsetTop}px
+            </span>
+          </div>
+        </aside>
       </main>
       <footer
-        id="Login_footer"
-        className={keyboardInset > 0 ? "is-hidden" : ""}
+        id="login-footer"
         ref={footerRef}
+        className={keyboardInset > 0 ? "is-hidden" : ""}
       >
         <div id="Login_footer_left">
           <h4 id="Login_copyright_text">©2020 Rudy Hamame</h4>
@@ -2020,12 +2228,7 @@ const Login = ({ onLogin, onForceLogout }) => {
           </p>
         </div>
       </footer>
-      {is_loading === true && (
-        <div id="Login_loaderImg_div" className="loaderImg_div fc">
-          <img src="/img/loader.gif" alt="" width="100px" />
-        </div>
-      )}
-    </article>
+    </div>
   );
 };
 

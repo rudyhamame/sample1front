@@ -1,0 +1,475 @@
+body.is-login-route #root {
+  --login-page-padding: 16px;
+  --login-main-gap: 24px;
+  --login-main-max-width: 100%;
+}
+
+.Login_page {
+  padding: var(--login-page-padding);
+  gap: var(--login-main-gap);
+  width: min(100%, var(--login-main-max-width));
+}
+
+#Login_brandPanel,
+#Login_authPanel {
+  width: 100%;
+  max-width: 100%;
+}
+
+#Login_brandPanel {
+  flex: 0 0 auto;
+}
+
+#Login_authPanel {
+  flex: 0 0 auto;
+  padding: clamp(14px, 1.8vw, 30px);
+}
+
+#Login_authPanel.Login_authPanel--withBrandTextColumn {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: clamp(18px, 2vw, 28px);
+  padding-block: clamp(18px, 2vw, 30px);
+}
+
+#Login_authPanel.Login_authPanel--withBrandTextColumn.Login_authPanel--keyboardOpen {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+#Login_authPanel.Login_authPanel--withBrandTextColumn #Login_brandTextColumn {
+  width: min(100%, 620px);
+  margin-bottom: 4px;
+}
+
+#Login_authPanel.Login_authPanel--withBrandTextColumn #Login_authCard {
+  width: min(100%, 540px);
+}
+
+#Login_brandContentWrap {
+  width: min(100%, 520px);
+}
+
+#Login_authCard {
+  width: min(100%, 560px);
+}
+
+/* 480px+ */
+@media (min-width: 480px) {
+  body.is-login-route #root {
+    --login-page-padding: 20px;
+    --login-main-gap: 20px;
+  }
+
+  #Login_brandContentWrap {
+    width: min(100%, 540px);
+  }
+
+  #Login_authCard {
+    width: min(100%, 560px);
+  }
+
+  #Login_authPanel {
+    padding: clamp(16px, 1.8vw, 32px);
+  }
+}
+
+@media (max-width: 479px) {
+  body.is-login-route #root {
+    --login-page-padding: 10px;
+    --login-main-gap: 10px;
+  }
+
+  .Login_page {
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  #Login_brandPanel {
+    gap: 4px;
+  }
+
+  #Login_brandContentWrap {
+    gap: 10px;
+    width: min(100%, 350px);
+  }
+
+  #Login_brandTextColumn {
+    gap: clamp(0.12rem, 0.55cqi, 0.45rem);
+  }
+
+  #Login_brandWordmark {
+    font-size: clamp(2.35rem, 12vw, 4rem);
+    line-height: 0.95;
+  }
+
+  #Login_brandProduct {
+    font-size: clamp(1.05rem, 4.4vw, 1.45rem);
+    letter-spacing: 0.03em;
+  }
+
+  #Login_brandTagline {
+    font-size: clamp(0.74rem, 2.85vw, 0.98rem);
+    max-width: 28ch;
+  }
+
+  #Login_brandVideoWrap {
+    width: min(100%, 220px);
+    max-height: 124px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  #Login_brandVideo {
+    margin-block: 0;
+  }
+
+  #Login_authCard {
+    width: min(100%, 292px);
+    padding: 10px 8px 8px;
+  }
+
+  #Login_authFields {
+    gap: 6px;
+  }
+
+  #Login_authPanel {
+    padding: 8px;
+  }
+}
+
+/* 768px+ */
+@media (min-width: 768px) {
+  body.is-login-route #root {
+    --login-page-padding: 32px;
+    --login-main-gap: 24px;
+    --login-main-max-width: 1024px;
+  }
+
+  .Login_page {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  #Login_brandPanel,
+  #Login_authPanel {
+    flex: 1 1 calc(50% - 12px);
+    max-width: 640px;
+  }
+
+  #Login_authPanel {
+    padding: clamp(18px, 1.8vw, 34px);
+  }
+
+  #Login_separator {
+    display: block;
+    flex: 0 0 2px;
+    align-self: stretch;
+    margin-inline: clamp(12px, 1.6vw, 24px);
+    margin-block: clamp(32px, 4vw, 56px);
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      rgba(1, 121, 111, 0),
+      rgba(1, 121, 111, 0.2) 12%,
+      rgba(21, 185, 168, 0.58) 50%,
+      rgba(1, 121, 111, 0.2) 88%,
+      rgba(1, 121, 111, 0)
+    );
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.72),
+      0 0 20px rgba(21, 185, 168, 0.12);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 899px) and (min-height: 1000px) {
+  body.is-login-route #root {
+    --login-page-padding: 24px;
+    --login-main-gap: 14px;
+    --login-main-max-width: 100%;
+  }
+
+  .Login_page {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: min(100%, 860px);
+  }
+
+  #Login_brandPanel,
+  #Login_authPanel {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  #Login_separator {
+    display: none;
+  }
+
+  #Login_brandContentWrap {
+    width: min(100%, 700px);
+  }
+
+  #Login_authCard {
+    width: min(100%, 500px);
+    padding: 18px 18px 16px;
+  }
+
+  #Login_brandTextColumn {
+    gap: clamp(0.52rem, 1.35cqi, 1.15rem);
+    width: min(100%, 820px);
+    transform: none;
+  }
+
+  #Login_brandWordmark {
+    font-size: clamp(6.25rem, 11cqi, 11rem);
+    line-height: 0.88;
+  }
+
+  #Login_brandProduct {
+    font-size: clamp(2.6rem, 4.8cqi, 4rem);
+    letter-spacing: 0.055em;
+  }
+
+  #Login_brandTagline {
+    font-size: clamp(1.35rem, 2.8cqi, 1.9rem);
+    max-width: 24ch;
+  }
+
+  #Login_brandVideoWrap {
+    width: min(100%, 620px);
+    margin-top: clamp(10px, 1.8vw, 18px);
+  }
+}
+
+/* 1024px+ */
+@media (min-width: 1024px) {
+  body.is-login-route #root {
+    --login-page-padding: 40px;
+    --login-main-gap: 28px;
+    --login-main-max-width: 1280px;
+  }
+
+  #Login_brandPanel,
+  #Login_authPanel {
+    flex-basis: calc(50% - 14px);
+    max-width: 720px;
+  }
+
+  #Login_separator {
+    margin-inline: clamp(14px, 1.8vw, 28px);
+    margin-block: clamp(40px, 4.2vw, 64px);
+  }
+
+  #Login_authPanel {
+    padding: clamp(20px, 1.8vw, 36px);
+  }
+}
+
+@media (max-width: 1280px) and (max-height: 640px) {
+  body.is-login-route #root {
+    --login-page-padding: 14px;
+    --login-main-gap: 10px;
+  }
+
+  .Login_page {
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  #Login_authPanel {
+    padding: clamp(4px, 0.7vw, 10px);
+  }
+
+  #Login_authCard {
+    gap: 6px;
+    padding: 10px 10px 8px;
+    width: min(100%, clamp(280px, 42vw, 460px));
+    border-radius: 24px;
+    --login-form-text-size: clamp(0.68rem, 1.05cqi, 0.82rem);
+    --login-form-strong-text-size: clamp(0.78rem, 1.15cqi, 0.9rem);
+  }
+
+  #Login_authFields {
+    gap: 4px;
+    padding: 6px 6px 7px;
+    max-height: min(30vh, 240px);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .Login_authField {
+    gap: 1px;
+  }
+
+  .Login_authFieldLabel {
+    font-size: clamp(0.55rem, 0.95cqi, 0.66rem);
+    letter-spacing: 0.06em;
+  }
+
+  .Login_authInput {
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: clamp(0.66rem, 1.05cqi, 0.78rem);
+    border-radius: 9px;
+  }
+
+  .Login_authSubmitRow {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .Login_authSubmitRow #Login_authSubmitButton {
+    width: 100%;
+  }
+
+  #Login_authSubmitButton,
+  #Login_authClearButton,
+  #Login_authEditUsernameButton,
+  #Login_authContinueToPostSignupButton {
+    min-height: 32px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #Login_authFeedback {
+    min-height: 34px;
+    margin-top: 2px;
+    padding: 6px 8px;
+    font-size: clamp(0.6rem, 0.95cqi, 0.74rem);
+    line-height: 1.25;
+  }
+}
+
+/* 1280px+ */
+@media (min-width: 1280px) {
+  body.is-login-route #root {
+    --login-page-padding: 48px;
+    --login-main-gap: 32px;
+    --login-main-max-width: 1440px;
+  }
+
+  .Login_page {
+    margin-inline: auto;
+  }
+
+  #Login_brandContentWrap {
+    width: min(100%, 560px);
+  }
+
+  #Login_authCard {
+    width: min(100%, 580px);
+  }
+
+  #Login_separator {
+    flex-basis: 3px;
+  }
+}
+
+/* 1440px+ */
+@media (min-width: 1440px) {
+  body.is-login-route #root {
+    --login-page-padding: 64px;
+    --login-main-gap: 40px;
+    --login-main-max-width: 1600px;
+  }
+
+  .Login_page {
+    width: min(100%, 1600px);
+  }
+
+  #Login_authPanel {
+    padding: clamp(22px, 1.6vw, 38px);
+  }
+}
+
+/* 1920px+ */
+@media (min-width: 1920px) {
+  body.is-login-route #root {
+    --login-page-padding: 80px;
+    --login-main-gap: 48px;
+    --login-main-max-width: 1760px;
+  }
+
+  .Login_page {
+    width: min(100%, 1760px);
+  }
+
+  #Login_authPanel {
+    padding: clamp(24px, 1.4vw, 42px);
+  }
+}
+
+@container login-brand-content (min-width: 400px) {
+  #Login_brandWordmark {
+    font-size: clamp(3.25rem, 10cqi, 7.5rem);
+  }
+
+  .Login_brandWordmarkFlex {
+    gap: clamp(0.14em, 0.7cqi, 0.2em);
+  }
+
+  #Login_brandTagline {
+    font-size: clamp(0.92rem, 2.4cqi, 1.3rem);
+  }
+}
+
+@container login-brand-content (min-width: 700px) {
+  #Login_brandWordmark {
+    font-size: clamp(3.75rem, 9cqi, 8rem);
+  }
+
+  #Login_brandVideoWrap {
+    width: min(100%, 520px);
+  }
+}
+
+@container login-auth-card (min-width: 400px) {
+  #Login_authCard {
+    gap: 16px;
+  }
+
+  #Login_authFields {
+    gap: clamp(12px, 1.8cqi, 16px);
+  }
+
+  .Login_authFieldLabel {
+    font-size: clamp(0.68rem, 1.2cqi, 0.8rem);
+  }
+}
+
+@container login-auth-card (min-width: 700px) {
+  #Login_authSubmitButton {
+    min-height: clamp(50px, 6.2cqi, 56px);
+  }
+
+  #Login_authCard {
+    padding: clamp(24px, 2.4cqi, 32px);
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  body.is-login-route #root {
+    --login-page-padding: 16px;
+    --login-main-gap: 16px;
+  }
+
+  .Login_page {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  #Login_brandVideoWrap {
+    width: min(100%, 380px);
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  #Login_authPanel {
+    padding: 12px;
+  }
+}

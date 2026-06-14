@@ -13679,7 +13679,7 @@ export default class NogaPlanner extends Component {
       viewportMeta.getAttribute("content") || "";
     viewportMeta.setAttribute(
       "content",
-      "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes",
+      "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes",
     );
   };
   disablePlannerBrowserZoom = () => {
@@ -13690,7 +13690,7 @@ export default class NogaPlanner extends Component {
     viewportMeta.setAttribute(
       "content",
       this.plannerViewportMetaOriginalContent ||
-        "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+        "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no",
     );
     this.plannerViewportMetaElement = null;
     this.plannerViewportMetaOriginalContent = "";

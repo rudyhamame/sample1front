@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   BrowserRouter as Router,
   Redirect,
@@ -7,6 +13,7 @@ import {
 } from "react-router-dom";
 import App from "./App/App";
 import Login from "./Login/Login";
+import KeyboardAvoidingWrapper from "./App/KeyboardAvoidingWrapper";
 import { clearStoredSession, readStoredSession } from "./utils/sessionCleanup";
 
 const SHELL_HEIGHT_SELECTORS = [
@@ -15,7 +22,7 @@ const SHELL_HEIGHT_SELECTORS = [
   "#root",
   "#App_viewportScale",
   "#app_page",
-  "#Main_article",
+  "#page",
 ];
 
 const getStoredAuth = () => {
@@ -37,6 +44,20 @@ const getNormalizedUsername = (authState) => {
 
 const getHomeRouteForUser = (authState) => {
   return "/phenomed/home";
+};
+
+const isIpadChromeBrowser = () => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = String(navigator.userAgent || "");
+  const isIpadDevice =
+    /iPad/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isChromeFamily = /CriOS|Chrome/i.test(userAgent);
+
+  return isIpadDevice && isChromeFamily;
 };
 
 const AppRouter = () => {
@@ -74,6 +95,8 @@ const AppRouter = () => {
     x: 10,
     y: 10,
   });
+  const rootShellEntry =
+    shellHeightEntries.find((entry) => entry.selector === "#root") || null;
   const isAuthenticated =
     authState?.isLoggedIn === true || authState?.isConnected === true;
   const profileIsAllowed = authState?.profileCompleted !== false;
@@ -95,6 +118,52 @@ const AppRouter = () => {
   useEffect(() => {
     shellHeightMonitorPositionRef.current = shellHeightMonitorPosition;
   }, [shellHeightMonitorPosition]);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const rootElement = document.documentElement;
+
+    const setViewportHeightUnit = () => {
+      rootElement.style.setProperty("--vh", `${window.innerHeight * 0.01}px`);
+    };
+
+    setViewportHeightUnit();
+    window.addEventListener("resize", setViewportHeightUnit);
+    window.addEventListener("orientationchange", setViewportHeightUnit);
+
+    return () => {
+      window.removeEventListener("resize", setViewportHeightUnit);
+      window.removeEventListener("orientationchange", setViewportHeightUnit);
+      rootElement.style.removeProperty("--vh");
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const rootElement = document.documentElement;
+    const bodyElement = document.body;
+    const enableIpadChromeMode = isIpadChromeBrowser();
+    const isLoginRoute =
+      window.location.pathname === "/" && !canAccessAuthenticatedRoutes;
+
+    rootElement.classList.toggle("is-ipad-chrome", enableIpadChromeMode);
+    bodyElement.classList.toggle("is-ipad-chrome", enableIpadChromeMode);
+    rootElement.classList.toggle("is-login-route", isLoginRoute);
+    bodyElement.classList.toggle("is-login-route", isLoginRoute);
+
+    return () => {
+      rootElement.classList.remove("is-ipad-chrome");
+      bodyElement.classList.remove("is-ipad-chrome");
+      rootElement.classList.remove("is-login-route");
+      bodyElement.classList.remove("is-login-route");
+    };
+  }, [canAccessAuthenticatedRoutes]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -341,6 +410,7 @@ const AppRouter = () => {
 
   return (
     <>
+      <KeyboardAvoidingWrapper />
       {isShellHeightMonitorMounted ? (
         <div
           id="App_shellHeightMonitor"
@@ -390,6 +460,9 @@ const AppRouter = () => {
                   inner: {shellViewportMetrics.innerWidth} x {shellViewportMetrics.innerHeight}
                 </span>
                 <span className="App_shellHeightMonitor_metric">
+                  root: h {rootShellEntry?.currentHeight || 0}px / sum {rootShellEntry?.accumulatedHeight || 0}px / n {rootShellEntry?.changeCount || 0}
+                </span>
+                <span className="App_shellHeightMonitor_metric">
                   vv: {shellViewportMetrics.visualViewportWidth} x {shellViewportMetrics.visualViewportHeight}
                 </span>
                 <span className="App_shellHeightMonitor_metric">
@@ -428,9 +501,7 @@ const AppRouter = () => {
             {canAccessAuthenticatedRoutes ? (
               <Redirect to={authenticatedHomeRoute} />
             ) : (
-              <div id="App_viewportScale">
-                <Login onLogin={handleLogin} onForceLogout={handleLogout} />
-              </div>
+              <Login onLogin={handleLogin} onForceLogout={handleLogout} />
             )}
           </Route>
           <Route exact path="/phenomed/home">

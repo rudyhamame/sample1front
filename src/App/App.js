@@ -8,16 +8,11 @@ import { Redirect, Route } from "react-router-dom";
 import HomeNoga from "../Home/Home_noga";
 import {
   getPlannerMusicSnapshot,
-  playNextSharedPlannerMusicTrack,
-  playPreviousSharedPlannerMusicTrack,
   stopSharedPlannerMusic,
-  toggleSharedPlannerMusic,
   warmSharedPlannerMusic,
 } from "../music/globalMusicPlayer";
 import VoiceVideoCall from "../voiceVideoCall/VoiceVideoCall";
 import Footer from "./Footer/Footer";
-import SubApps from "../Nav/SubApps/SubApps";
-import { getHomeSubApps } from "../utils/homeSubApps";
 import { apiUrl } from "../config/api";
 import { connectRealtime } from "../realtime/socket";
 import {
@@ -36,7 +31,6 @@ import {
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 const APP_SCALE_STORAGE_KEY = "phenomed.appScale";
 const DEFAULT_APP_SCALE = 0.8;
-const APP_SCALE_STEP = 0.05;
 
 const clampAppScale = (value) => {
   const nextScale = Number(value);
@@ -270,19 +264,9 @@ class App extends React.Component {
       activeChatFriendName: "",
       isChatting: false,
       isSendingMessage: false,
-      searching_on: false,
-      friendsPosts_retrieved: false,
-      retrievingFriendsPosts_DONE: false,
       visitLogRefreshToken: 0,
-      timer: {
-        hours: 0,
-        mins: 0,
-        secs: 0,
-      },
       login_record: [],
       profile: false,
-      friendAddedSuccessfully: null,
-      posts_updated: false,
       posts_deleted: false,
       image: null,
       server_answer: "NO NEW SERVER REPLY",
@@ -1586,7 +1570,6 @@ class App extends React.Component {
           this.state.posts_comments[i] = this.state.posts[i].comments.length;
           this.safeSetState({
             app_is_loading: false,
-            //   posts_updated: true,
           });
         }
       }
@@ -3495,45 +3478,6 @@ class App extends React.Component {
     }).catch(() => undefined);
   };
 
-  ///////////////////////////////////////Counter////////////////////////////////////////////////
-  counter = () => {
-    let secs;
-    let mins;
-    let hours;
-    document.getElementById("Posts_content_container").style.height = "100%";
-    // document.getElementById("Footer_article").style.display = "none";
-    // document.getElementById("SearchPosts_article").style.display = "flex";
-    // document.getElementById("Header_timer_h1").style.display = "inline";
-    if (JSON.parse(sessionStorage.getItem("Header_timer_h1"))) {
-      secs = JSON.parse(sessionStorage.getItem("Header_timer_h1")).secs;
-      mins = JSON.parse(sessionStorage.getItem("Header_timer_h1")).mins;
-      hours = JSON.parse(sessionStorage.getItem("Header_timer_h1")).hours;
-    } else {
-      secs = 0;
-      mins = 0;
-      hours = 0;
-    }
-    setInterval(() => {
-      secs++;
-      if (secs % 60 === 0 && secs !== 0) {
-        mins++;
-        secs = 0;
-      }
-      if (mins % 60 === 0 && mins !== 0) {
-        hours++;
-        mins = 0;
-      }
-
-      this.safeSetState({
-        timer: {
-          hours: hours,
-          mins: mins,
-          secs: secs,
-        },
-      });
-    }, 1000);
-  };
-
   playServerReplySound = () => {
     if (typeof window === "undefined") {
       return;
@@ -3608,28 +3552,6 @@ class App extends React.Component {
     );
   };
 
-  //.....loader function..........
-  loader = () => {
-    return (
-      <div
-        style={{
-          fontSize: "20pt",
-          display: "flex",
-          position: "fixed",
-          top: "0",
-          bottom: "0",
-
-          justifyContent: "center",
-          alignContent: "center",
-          flexDirection: "column",
-          zIndex: "100",
-        }}
-      >
-        <img src="/img/loader.gif" alt="" width="70px" />
-      </div>
-    );
-  };
-
   /////////////////////////Log out//////////////////////
   logOut = () => {
     const finishLogout = () => {
@@ -3673,219 +3595,6 @@ class App extends React.Component {
     );
   };
 
-  friendConnectionColor = (isLoggedIn) => {
-    if (isLoggedIn) {
-      return "#32cd32";
-    }
-
-    return "rgba(240, 242, 245, 0.42)";
-  };
-
-  ///////////////////////Searching in posts////////////////////
-  prepare_searchPosts = (entry1, entry2, entry3) => {
-    let keyword;
-    let subject;
-    let category;
-    if (!entry1) {
-      keyword = "$";
-    } else {
-      keyword = entry1;
-    }
-    if (!entry2) {
-      subject = "$";
-    } else {
-      subject = entry2;
-    }
-    if (!entry3) {
-      category = "$";
-    } else {
-      category = entry3;
-    }
-    this.searchPosts(keyword, subject, category);
-  };
-  searchPosts = (keyword, subject, category) => {
-    let ul = document.getElementById("MountPosts_content_container");
-    let array = [];
-    ul.innerHTML = "";
-    //..................................
-    this.state.posts.forEach((post) => {
-      if (keyword !== "$" && subject === "$" && category === "$") {
-        if (
-          String(post.note).toLowerCase() === keyword.toLowerCase() ||
-          String(post.note).toLowerCase().includes(keyword.toLowerCase())
-        ) {
-          array.push(post);
-        }
-      }
-      if (keyword === "$" && subject !== "$" && category === "$") {
-        if (post.subject === subject) {
-          array.push(post);
-        }
-      }
-      if (keyword === "$" && subject === "$" && category !== "$") {
-        if (post.category === category) {
-          array.push(post);
-        }
-      }
-      if (keyword !== "$" && subject !== "$" && category === "$") {
-        if (
-          String(post.note).toLowerCase() === keyword.toLowerCase() ||
-          String(post.note)
-            .toLowerCase()
-            .includes(keyword.toLowerCase() && post.subject === subject)
-        ) {
-          array.push(post);
-        }
-      }
-      if (keyword !== "$" && subject === "$" && category !== "$") {
-        if (
-          String(post.note).toLowerCase() === keyword.toLowerCase() ||
-          String(post.note)
-            .toLowerCase()
-            .includes(keyword.toLowerCase() && post.category === category)
-        ) {
-          array.push(post);
-        }
-      }
-      if (keyword === "$" && subject !== "$" && category !== "$") {
-        if (post.subject === subject && post.category === category) {
-          array.push(post);
-        }
-      }
-      if (keyword !== "$" && subject !== "$" && category !== "$") {
-        if (
-          String(post.note).toLowerCase() === keyword.toLowerCase() ||
-          String(post.note)
-            .toLowerCase()
-            .includes(
-              keyword.toLowerCase() &&
-                post.subject === subject &&
-                post.category === category,
-            )
-        ) {
-          array.push(post);
-        }
-      }
-    });
-    let array_associate = [];
-    for (var i = 0; i < array.length; i++) {
-      if (array_associate[i] !== array[i]._id) {
-        let date_p = document.createElement("p");
-        let category_p = document.createElement("p");
-        let subject_p = document.createElement("p");
-        let reference_p = document.createElement("p");
-        let page_p = document.createElement("p");
-        let li = document.createElement("li");
-        let details_div = document.createElement("div");
-        let note_options_div = document.createElement("div");
-        //.............................comments.......................
-
-        //............date.................................
-        let date = array[i].date;
-        let date_timezone = new Date(date);
-        let date_string = date_timezone.toDateString();
-        let time_string = date_timezone.toLocaleTimeString();
-        //.............................................
-        //...............................note..................................
-        let note_p = document.createElement("p");
-        note_p.textContent = array[i].note;
-        note_p.setAttribute("class", "note_p");
-        note_options_div.setAttribute("class", "fr note_options_div");
-        note_options_div.setAttribute("id", "note_options_div" + i);
-        note_options_div.appendChild(note_p);
-        //.......................Options....................................
-        let options_div = document.createElement("div");
-        options_div.setAttribute("class", "options_div");
-        //............................Poster name.......................
-        let postername_p = document.createElement("p");
-        postername_p.setAttribute("class", "postername_p");
-        details_div.appendChild(postername_p);
-        //..................................
-        if (array[i].id === this.state.my_id) {
-          postername_p.textContent = "Mine";
-          let p_delete = document.createElement("p");
-          let p_edit = document.createElement("p");
-          p_delete.style.cursor = "pointer";
-          p_edit.style.cursor = "pointer";
-          p_delete.textContent = "Delete";
-          p_edit.textContent = "Edit";
-          options_div.appendChild(p_delete);
-          options_div.appendChild(p_edit);
-          p_delete.addEventListener("click", () => {
-            this.safeSetState({ posts_deleted: true });
-            this.deletePost(options_div.id);
-          });
-          p_edit.addEventListener("click", () => this.editPost(options_div.id));
-          note_options_div.appendChild(options_div);
-          options_div.setAttribute(
-            "class",
-            "fc MountPosts_postOptionsContainer",
-          );
-          options_div.setAttribute("id", array[i]._id);
-        } else {
-          postername_p.textContent =
-            array[i].firstname + " " + array[i].lastname;
-        }
-        //........................................................................
-
-        //.....................................................................
-        li.className = "fc";
-
-        date_p.innerHTML =
-          "<i class='far fa-clock'></i>" +
-          "  " +
-          date_string +
-          ", " +
-          time_string;
-        category_p.textContent = "Category: " + array[i].category;
-        subject_p.textContent = "Subject: " + array[i].subject;
-        reference_p.textContent = "Reference: " + array[i].reference;
-        page_p.textContent = "Page #: " + array[i].page_num;
-        date_p.className = "MountPosts_date";
-        details_div.appendChild(date_p);
-        details_div.appendChild(category_p);
-        details_div.appendChild(subject_p);
-        details_div.setAttribute("class", "fr details_div");
-        //...................comments...............
-        let comments_div = document.createElement("div");
-        let comment_input = document.createElement("input");
-        let commentlist_ul = document.createElement("ul");
-        comments_div.appendChild(comment_input);
-        comments_div.setAttribute("class", "fc comments_div");
-        comments_div.setAttribute("id", "commentDiv" + array[i]._id);
-        comment_input.setAttribute("id", "comment_input" + array[i]._id);
-        comment_input.setAttribute("class", "comment_input");
-        commentlist_ul.setAttribute("id", "commentlist_ul" + array[i]._id);
-        comment_input.setAttribute("placeholder", "Enter a comment");
-        comment_input.addEventListener("keypress", (event) => {
-          this.postComment(event, comments_div.id, comment_input.id);
-        });
-        array[i].comments.forEach((comment) => {
-          let comment_li = document.createElement("li");
-          comment_li.textContent = comment;
-          comment_li.setAttribute("class", "comment_li");
-          commentlist_ul.setAttribute("class", "fc commentlist_ul");
-          commentlist_ul.prepend(comment_li);
-          comments_div.appendChild(commentlist_ul);
-        });
-        //.....................................................
-
-        if (!(array[i].reference === "" && array[i].page_num !== null)) {
-          if (array[i].reference !== "") details_div.appendChild(reference_p);
-          if (array[i].page_num !== null) details_div.appendChild(page_p);
-        }
-        li.setAttribute("id", "li" + array[i]._id);
-        li.appendChild(details_div);
-        li.appendChild(note_options_div);
-        li.appendChild(comments_div);
-        ul.appendChild(li);
-        this.safeSetState({
-          app_is_loading: false,
-        });
-      }
-      array_associate[i] = array[i]._id;
-    }
-  };
   show_profile = (boolean) => {
     this.safeSetState({
       profile: boolean,
@@ -3901,21 +3610,6 @@ class App extends React.Component {
         APP_HIDE_FOOTER_STORAGE_KEY,
         nextValue ? "true" : "false",
       );
-    }
-  };
-
-  setAppScale = (nextScale) => {
-    const resolvedScale = clampAppScale(nextScale);
-    if (resolvedScale === this.state.appScale) {
-      return;
-    }
-
-    this.safeSetState({
-      appScale: resolvedScale,
-    });
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(APP_SCALE_STORAGE_KEY, String(resolvedScale));
     }
   };
 
@@ -3999,18 +3693,14 @@ class App extends React.Component {
     });
   };
 
-  //.....Reander Login HTML..........
+  //.....Render app routes..........
   render() {
-    const isNogaPlanRoute =
-      typeof window !== "undefined" &&
-      (window.location.pathname.includes("/phenomed/schoolplanner/nogaplan") ||
-        window.location.pathname.includes("/phenomed/nogaplan"));
     const normalizedUsername = String(this.state.username || "").toLowerCase();
-    const isNaghamNogaFooter =
-      isNogaPlanRoute && normalizedUsername === "naghamtrkmani";
     const showServerAnswerFooter = !this.state.hide_app_footer;
     const isNaghamTrkMani = normalizedUsername === "naghamtrkmani";
-    const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${isNaghamTrkMani ? " app_page--has-background-pattern" : ""}`;
+    const appPageClassName = `fc${showServerAnswerFooter ? "" : " app_page--footer-hidden"}${
+      isNaghamTrkMani ? " app_page--has-background-pattern" : ""
+    }`;
     const footerProps = {
       appState: this.state,
       onSetSelectedAiProvider: this.setSelectedAiProvider,
@@ -4030,288 +3720,154 @@ class App extends React.Component {
         Loading...
       </section>
     );
+    const isAdminUser = normalizedUsername === "rudyhamame";
+    const renderFooter = () =>
+      showServerAnswerFooter ? <Footer {...footerProps} /> : null;
+    const renderAppPage = (content) => (
+      <div id="app_page" className={appPageClassName}>
+        <main id="page" className="page fr">
+          {content}
+        </main>
+        {renderFooter()}
+      </div>
+    );
+    const homeNogaProps = {
+      state: this.state,
+      logOut: this.logOut,
+      acceptFriend: this.acceptFriend,
+      dismissFriendRequest: this.dismissFriendRequest,
+      cancelSentFriendRequest: this.cancelSentFriendRequest,
+      removeFriend: this.removeFriend,
+      unblockFriend: this.unblockFriend,
+      updateUserInfo: this.updateUserInfo,
+      selectFriendChat: this.get_current_friend_chat_id,
+      closeActiveChat: this.closeActiveChat,
+      sendToThemMessage: this.sendToThemMessage,
+      uploadChatImages: this.uploadChatImages,
+      uploadChatAudio: this.uploadChatAudio,
+      saveChatImageToGallery: this.saveChatImageToGallery,
+      editChatMessage: this.editChatMessage,
+      deleteChatMessage: this.deleteChatMessage,
+      updateMyTypingPresence: this.updateMyTypingPresence,
+      markMessagesRead: this.markMessagesRead,
+      serverReply: this.serverReply,
+      requestGlobalCall: this.requestGlobalCall,
+      setAppFooterHidden: this.setAppFooterHidden,
+      setUserAcademicInfo: this.setUserAcademicInfo,
+      setUserMediaInfo: this.setUserMediaInfo,
+      homeBasePath: "/phenomed/home",
+    };
+    const renderHomePage = () => renderAppPage(<HomeNoga {...homeNogaProps} />);
+    const renderNogaPlanPage = () =>
+      renderAppPage(
+        <LazyNogaPlan
+          locale="ar"
+          state={this.state}
+          onPresenceModeChange={this.handleSubAppPresenceChange}
+          logOut={this.logOut}
+          acceptFriend={this.acceptFriend}
+          show_profile={this.show_profile}
+          memory={this.memory}
+          serverReply={this.serverReply}
+        />,
+      );
+    const renderJamendoPage = () =>
+      renderAppPage(
+        <LazyJamendoPlayer state={this.state} serverReply={this.serverReply} />,
+      );
 
     return (
       <React.Fragment>
         <div id="App_viewportScale" style={appViewportStyle}>
           <React.Suspense fallback={routeFallback}>
-          <Route exact path="/phenomed/home">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <HomeNoga
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  dismissFriendRequest={this.dismissFriendRequest}
-                  cancelSentFriendRequest={this.cancelSentFriendRequest}
-                  removeFriend={this.removeFriend}
-                  unblockFriend={this.unblockFriend}
-                  updateUserInfo={this.updateUserInfo}
-                  selectFriendChat={this.get_current_friend_chat_id}
-                  closeActiveChat={this.closeActiveChat}
-                  sendToThemMessage={this.sendToThemMessage}
-                  uploadChatImages={this.uploadChatImages}
-                  uploadChatAudio={this.uploadChatAudio}
-                  saveChatImageToGallery={this.saveChatImageToGallery}
-                  editChatMessage={this.editChatMessage}
-                  deleteChatMessage={this.deleteChatMessage}
-                  updateMyTypingPresence={this.updateMyTypingPresence}
-                  markMessagesRead={this.markMessagesRead}
-                  serverReply={this.serverReply}
-                  requestGlobalCall={this.requestGlobalCall}
-                  setAppFooterHidden={this.setAppFooterHidden}
-                  setUserAcademicInfo={this.setUserAcademicInfo}
-                  setUserMediaInfo={this.setUserMediaInfo}
-                  homeBasePath="/phenomed/home"
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/home/noga">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <HomeNoga
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  dismissFriendRequest={this.dismissFriendRequest}
-                  cancelSentFriendRequest={this.cancelSentFriendRequest}
-                  removeFriend={this.removeFriend}
-                  unblockFriend={this.unblockFriend}
-                  updateUserInfo={this.updateUserInfo}
-                  selectFriendChat={this.get_current_friend_chat_id}
-                  closeActiveChat={this.closeActiveChat}
-                  sendToThemMessage={this.sendToThemMessage}
-                  uploadChatImages={this.uploadChatImages}
-                  uploadChatAudio={this.uploadChatAudio}
-                  saveChatImageToGallery={this.saveChatImageToGallery}
-                  editChatMessage={this.editChatMessage}
-                  deleteChatMessage={this.deleteChatMessage}
-                  updateMyTypingPresence={this.updateMyTypingPresence}
-                  markMessagesRead={this.markMessagesRead}
-                  serverReply={this.serverReply}
-                  requestGlobalCall={this.requestGlobalCall}
-                  setAppFooterHidden={this.setAppFooterHidden}
-                  setUserAcademicInfo={this.setUserAcademicInfo}
-                  setUserMediaInfo={this.setUserMediaInfo}
-                  homeBasePath="/phenomed/home"
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/schoolplanner/nogaplan">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/nogaplan">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/schoolplanner/ar">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/schoolplanner">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route path="/ecg">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
+            <Route exact path="/phenomed/home">
+              {renderHomePage()}
+            </Route>
+            <Route exact path="/phenomed/home/noga">
+              {renderHomePage()}
+            </Route>
+            <Route exact path="/phenomed/schoolplanner/nogaplan">
+              {renderNogaPlanPage()}
+            </Route>
+            <Route exact path="/phenomed/nogaplan">
+              {renderNogaPlanPage()}
+            </Route>
+            <Route exact path="/phenomed/schoolplanner/ar">
+              {renderNogaPlanPage()}
+            </Route>
+            <Route exact path="/phenomed/schoolplanner">
+              {renderNogaPlanPage()}
+            </Route>
+            <Route path="/ecg">
+              {renderAppPage(
                 <LazyPhenomedECG
                   state={this.state}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
                   serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/pdf-reader">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
+                />,
+              )}
+            </Route>
+            <Route exact path="/phenomed/pdf-reader">
+              {renderAppPage(
                 <LazyPdfReaderPage
                   state={this.state}
                   logOut={this.logOut}
                   acceptFriend={this.acceptFriend}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/telegram-control">
-            {String(this.state?.username || "").trim().toLowerCase() ===
-            "rudyhamame" ? (
-              <article id="app_page" className={appPageClassName}>
-                <main id="Main_article" className="fr">
+                />,
+              )}
+            </Route>
+            <Route exact path="/phenomed/telegram-control">
+              {isAdminUser ? (
+                renderAppPage(
                   <LazyTelegramControlPage
                     state={this.state}
                     memory={this.memory}
                     logOut={this.logOut}
                     acceptFriend={this.acceptFriend}
                     serverReply={this.serverReply}
-                  />
-                </main>
-                {showServerAnswerFooter ? (
-                  <Footer {...footerProps} />
-                ) : null}
-              </article>
-            ) : (
-              <Redirect to="/phenomed/home" />
-            )}
-          </Route>
-          <Route exact path="/phenomed/visit-log">
-            {String(this.state?.username || "").trim().toLowerCase() ===
-            "rudyhamame" ? (
-              <article id="app_page" className={appPageClassName}>
-                <main id="Main_article" className="fr">
+                  />,
+                )
+              ) : (
+                <Redirect to="/phenomed/home" />
+              )}
+            </Route>
+            <Route exact path="/phenomed/visit-log">
+              {isAdminUser ? (
+                renderAppPage(
                   <LazyVisitLogPage
                     state={this.state}
                     serverReply={this.serverReply}
-                  />
-                </main>
-                {showServerAnswerFooter ? (
-                  <Footer {...footerProps} />
-                ) : null}
-              </article>
-            ) : (
-              <Redirect to="/phenomed/home" />
-            )}
-          </Route>
-          <Route exact path="/phenomed/jamendo-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/deezer-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route exact path="/phenomed/soundcloud-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
-          </Route>
-          <Route
-            exact
-            path={["/profile/:username", "/phenomed/:username"]}
-            render={({ match }) => {
-              const username = String(match?.params?.username || "").trim().toLowerCase();
-              if (RESERVED_PROFILE_ROUTE_SEGMENTS.has(username)) {
-                return null;
-              }
-              return (
-                <article id="app_page" className={appPageClassName}>
-                  <main id="Main_article" className="fr">
-                    <LazyProfile viewerState={this.state} logOut={this.logOut} />
-                  </main>
-                  {showServerAnswerFooter ? (
-                    <Footer {...footerProps} />
-                  ) : null}
-                </article>
-              );
-            }}
-          />
+                  />,
+                )
+              ) : (
+                <Redirect to="/phenomed/home" />
+              )}
+            </Route>
+            <Route exact path="/phenomed/jamendo-player">
+              {renderJamendoPage()}
+            </Route>
+            <Route exact path="/phenomed/deezer-player">
+              {renderJamendoPage()}
+            </Route>
+            <Route exact path="/phenomed/soundcloud-player">
+              {renderJamendoPage()}
+            </Route>
+            <Route
+              exact
+              path={["/profile/:username", "/phenomed/:username"]}
+              render={({ match }) => {
+                const username = String(match?.params?.username || "")
+                  .trim()
+                  .toLowerCase();
+                if (RESERVED_PROFILE_ROUTE_SEGMENTS.has(username)) {
+                  return null;
+                }
+                return renderAppPage(
+                  <LazyProfile viewerState={this.state} logOut={this.logOut} />,
+                );
+              }}
+            />
           </React.Suspense>
         </div>
         <div id="App_globalVoiceCallDockLayer">

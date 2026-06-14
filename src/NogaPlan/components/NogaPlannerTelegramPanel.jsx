@@ -349,6 +349,7 @@ const NogaPlannerTelegramPanel = ({
   const [isExtractingCourseNames, setIsExtractingCourseNames] = useState(false);
   const [extractCourseNamesError, setExtractCourseNamesError] = useState("");
   const [isSyncingPinned, setIsSyncingPinned] = useState(false);
+  const isMountedRef = useRef(true);
   const telegramImagePreviewUrlsRef = useRef({});
   const telegramImagePreviewBlobUrlsRef = useRef(new Set());
   const previewObjectUrlRef = useRef("");
@@ -375,6 +376,12 @@ const NogaPlannerTelegramPanel = ({
   const [selectedLanguageLectureId, setSelectedLanguageLectureId] = useState("");
   const plannerToken = String(planner?.props?.state?.token || "").trim();
   const plannerUserId = String(planner?.props?.state?.my_id || "").trim();
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const languageCourses = useMemo(() => {
     const plannerCourses = Array.isArray(planner?.state?.courses)
@@ -650,6 +657,7 @@ const NogaPlannerTelegramPanel = ({
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (!isMountedRef.current) return;
         setFindInstructorsError(String(payload?.error || "Failed to load group messages."));
         return;
       }
@@ -679,6 +687,7 @@ const NogaPlannerTelegramPanel = ({
       });
       const aiPayload = await aiResponse.json().catch(() => ({}));
       if (!aiResponse.ok) {
+        if (!isMountedRef.current) return;
         setFindInstructorsError(String(aiPayload?.error || "AI extraction failed."));
         return;
       }
@@ -699,6 +708,9 @@ const NogaPlannerTelegramPanel = ({
           displayName: String(normalizedRecord?.fullName || "").trim(),
           groupLabel: "",
         });
+      }
+      if (!isMountedRef.current) {
+        return;
       }
       setFindInstructorsResults(results);
       if (results.length > 0 && planner?.persistStudyPlannerMeta) {
@@ -722,14 +734,23 @@ const NogaPlannerTelegramPanel = ({
             },
           ];
           const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
+          if (!isMountedRef.current) {
+            return;
+          }
           if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
             planner.setState({ plannerRoot: nextPlannerRoot });
           }
         } catch (_) {}
       }
     } catch (err) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setFindInstructorsError(err?.message || "Search failed.");
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setIsFindingInstructors(false);
     }
   };
@@ -751,13 +772,20 @@ const NogaPlannerTelegramPanel = ({
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (!isMountedRef.current) return;
         setError(String(payload?.message || "Pinned sync failed."));
         return;
       }
       await searchStoredMessages({ reset: true });
     } catch (err) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setError(String(err?.message || "Pinned sync failed."));
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setIsSyncingPinned(false);
     }
   };
@@ -777,6 +805,9 @@ const NogaPlannerTelegramPanel = ({
     const nextInstructors = [...currentInstructors, nextInstructorEntry];
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: nextInstructors });
+      if (!isMountedRef.current) {
+        return;
+      }
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
@@ -805,6 +836,9 @@ const NogaPlannerTelegramPanel = ({
     );
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: deduped });
+      if (!isMountedRef.current) {
+        return;
+      }
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
@@ -838,6 +872,7 @@ const NogaPlannerTelegramPanel = ({
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (!isMountedRef.current) return;
         setExtractCourseNamesError(String(payload?.error || "Failed to load group messages."));
         return;
       }
@@ -859,6 +894,7 @@ const NogaPlannerTelegramPanel = ({
       });
       const aiPayload = await aiResponse.json().catch(() => ({}));
       if (!aiResponse.ok) {
+        if (!isMountedRef.current) return;
         setExtractCourseNamesError(String(aiPayload?.error || "AI extraction failed."));
         return;
       }
@@ -870,6 +906,9 @@ const NogaPlannerTelegramPanel = ({
         if (!courseName || nameSet.has(courseName)) continue;
         nameSet.add(courseName);
         results.push({ courseName, courseCode: String(entry?.courseCode || "").trim() });
+      }
+      if (!isMountedRef.current) {
+        return;
       }
       setExtractCourseNamesResults(results);
       if (results.length > 0 && planner?.persistStudyPlannerMeta) {
@@ -890,14 +929,23 @@ const NogaPlannerTelegramPanel = ({
             },
           ];
           const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
+          if (!isMountedRef.current) {
+            return;
+          }
           if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
             planner.setState({ plannerRoot: nextPlannerRoot });
           }
         } catch (_) {}
       }
     } catch (err) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setExtractCourseNamesError(String(err?.message || "Extraction failed."));
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setIsExtractingCourseNames(false);
     }
   };
@@ -909,6 +957,9 @@ const NogaPlannerTelegramPanel = ({
     const next = [...current, { courseName, courseCode }];
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: next });
+      if (!isMountedRef.current) {
+        return;
+      }
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
@@ -930,6 +981,9 @@ const NogaPlannerTelegramPanel = ({
     });
     try {
       const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: deduped });
+      if (!isMountedRef.current) {
+        return;
+      }
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
@@ -952,9 +1006,13 @@ const NogaPlannerTelegramPanel = ({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (!isMountedRef.current) return [];
         throw new Error(payload?.message || "Unable to load Telegram groups.");
       }
       const nextGroups = Array.isArray(payload?.groups) ? payload.groups : [];
+      if (!isMountedRef.current) {
+        return nextGroups;
+      }
       setStoredGroups(nextGroups);
       setSelectedGroupReference((currentValue) => {
         const currentRef = String(currentValue || "").trim();
@@ -970,6 +1028,9 @@ const NogaPlannerTelegramPanel = ({
       });
       return nextGroups;
     } catch (nextError) {
+      if (!isMountedRef.current) {
+        return [];
+      }
       setStoredGroups([]);
       setError(nextError?.message || "Unable to load Telegram groups.");
       return [];
@@ -1028,9 +1089,13 @@ const NogaPlannerTelegramPanel = ({
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (!isMountedRef.current) return;
         throw new Error(payload?.message || "Unable to load Telegram messages.");
       }
       const nextMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+      if (!isMountedRef.current) {
+        return;
+      }
       setMessages((currentValue) =>
         reset ? nextMessages : [...currentValue, ...nextMessages],
       );
@@ -1050,6 +1115,9 @@ const NogaPlannerTelegramPanel = ({
         });
       }
     } catch (nextError) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setMessages([]);
       setMessagesOffset(0);
       setMessagesHasMore(false);
@@ -1058,6 +1126,9 @@ const NogaPlannerTelegramPanel = ({
       setMessagesTypeCounts({});
       setError(nextError?.message || "Unable to load Telegram messages.");
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setIsLoading(false);
     }
   };
@@ -1094,6 +1165,9 @@ const NogaPlannerTelegramPanel = ({
         );
       }
       const blob = await response.blob();
+      if (!isMountedRef.current) {
+        return;
+      }
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
@@ -1103,10 +1177,16 @@ const NogaPlannerTelegramPanel = ({
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (nextError) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setError(
         String(nextError?.message || "Unable to download Telegram document."),
       );
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setDownloadingMessageId("");
     }
   };
@@ -1140,19 +1220,31 @@ const NogaPlannerTelegramPanel = ({
         );
       }
       const imageBlob = await response.blob();
+      if (!isMountedRef.current) {
+        return;
+      }
       const worker = await createWorker("ara+eng");
       const {
         data: { text: extractedText },
       } = await worker.recognize(imageBlob);
       await worker.terminate();
+      if (!isMountedRef.current) {
+        return;
+      }
       const normalizedText = String(extractedText || "").trim();
       setOcrExtractedByMessageId((currentValue) => ({
         ...currentValue,
         [messageKey]: normalizedText || "(No text detected)",
       }));
     } catch (nextError) {
+      if (!isMountedRef.current) {
+        return;
+      }
       setError(String(nextError?.message || "Unable to extract OCR text."));
     } finally {
+      if (!isMountedRef.current) {
+        return;
+      }
       setOcrLoadingMessageId("");
     }
   };
@@ -1852,6 +1944,9 @@ const NogaPlannerTelegramPanel = ({
         throw new Error(String(payload?.message || "Failed to add language course."));
       }
       await planner?.retrieveCourses?.();
+      if (!isMountedRef.current) {
+        return;
+      }
       const createdId = String(payload?.course?._id || "").trim();
       if (createdId) {
         setSelectedLanguageCourseId(createdId);
@@ -1892,6 +1987,9 @@ const NogaPlannerTelegramPanel = ({
         throw new Error(String(payload?.message || "Failed to delete language course."));
       }
       await planner?.retrieveCourses?.();
+      if (!isMountedRef.current) {
+        return;
+      }
       setSelectedLanguageCourseId("");
       planner?.props?.serverReply?.(String(payload?.message || "Language course deleted."));
     } catch (nextError) {
@@ -1954,6 +2052,9 @@ const NogaPlannerTelegramPanel = ({
           throw new Error(String(payload?.message || "Failed to edit language course."));
         }
         await planner?.retrieveCourses?.(selectedEntry.id);
+        if (!isMountedRef.current) {
+          return;
+        }
         planner?.props?.serverReply?.(String(payload?.message || "Language course updated."));
         return;
       } catch (nextError) {
