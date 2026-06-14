@@ -9094,7 +9094,6 @@ function HomeNoga(props) {
     </div>
   );
   return (
-    <>
       <article
         id="Home_Noga_article"
         className={[
@@ -11000,7 +10999,6 @@ function HomeNoga(props) {
           }
         />
       </article>
-    </>
   );
 }
 export default HomeNoga;

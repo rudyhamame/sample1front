@@ -60,8 +60,31 @@ const isIpadChromeBrowser = () => {
   return isIpadDevice && isChromeFamily;
 };
 
+const isIOSBrowser = () => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = String(navigator.userAgent || "");
+  return (
+    /iPad|iPhone|iPod/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+};
+
+const isSafariBrowser = () => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const userAgent = String(navigator.userAgent || "");
+  return /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|Chrome/i.test(userAgent);
+};
+
 const AppRouter = () => {
   const [authState, setAuthState] = useState(getStoredAuth);
+  const [iosSafariBannerDismissed, setIosSafariBannerDismissed] =
+    useState(false);
   const [isShellHeightMonitorMounted, setIsShellHeightMonitorMounted] =
     useState(false);
   const [isShellHeightMonitorMinimized, setIsShellHeightMonitorMinimized] =
@@ -105,6 +128,8 @@ const AppRouter = () => {
   const canAccessTelegramControl =
     getNormalizedUsername(authState) === "rudyhamame";
   const canAccessVisitLog = getNormalizedUsername(authState) === "rudyhamame";
+  const shouldShowIosSafariBanner =
+    isIOSBrowser() && !isSafariBrowser() && !iosSafariBannerDismissed;
 
   const handleLogin = useCallback((nextAuthState) => {
     setAuthState(nextAuthState);
@@ -408,9 +433,85 @@ const AppRouter = () => {
     };
   }, []);
 
+  const handleIosSafariCopyLink = useCallback(async () => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
+    const currentUrl = window.location.href;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(currentUrl);
+        return;
+      }
+    } catch {
+      // Fall back to textarea copy below.
+    }
+
+    const tempTextArea = document.createElement("textarea");
+    tempTextArea.value = currentUrl;
+    tempTextArea.setAttribute("readonly", "true");
+    tempTextArea.style.position = "fixed";
+    tempTextArea.style.opacity = "0";
+    tempTextArea.style.left = "-9999px";
+    tempTextArea.style.top = "0";
+    document.body.appendChild(tempTextArea);
+    tempTextArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempTextArea);
+  }, []);
+
+  const handleIosSafariShare = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const currentUrl = window.location.href;
+
+    if (navigator?.share) {
+      try {
+        await navigator.share({
+          title: document.title || "PhenoMed",
+          text: "Open this page in Safari for the best iPhone/iPad experience.",
+          url: currentUrl,
+        });
+        return;
+      } catch {
+        // Fall back to copy when share is cancelled or unavailable.
+      }
+    }
+
+    await handleIosSafariCopyLink();
+  }, [handleIosSafariCopyLink]);
+
   return (
     <>
       <KeyboardAvoidingWrapper />
+      {shouldShowIosSafariBanner ? (
+        <div id="App_iosSafariBanner" role="status" aria-live="polite">
+          <div id="App_iosSafariBanner_text">
+            <strong>Open in Safari</strong>
+            <span>
+              iPhone and iPad behave more reliably in Safari for this app.
+            </span>
+          </div>
+          <div id="App_iosSafariBanner_actions">
+            <button type="button" onClick={handleIosSafariShare}>
+              Share
+            </button>
+            <button type="button" onClick={handleIosSafariCopyLink}>
+              Copy Link
+            </button>
+            <button
+              type="button"
+              onClick={() => setIosSafariBannerDismissed(true)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ) : null}
       {isShellHeightMonitorMounted ? (
         <div
           id="App_shellHeightMonitor"

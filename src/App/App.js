@@ -30,7 +30,8 @@ import {
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 const APP_SCALE_STORAGE_KEY = "phenomed.appScale";
-const DEFAULT_APP_SCALE = 0.8;
+const DEFAULT_APP_SCALE = 1;
+const LEGACY_DEFAULT_APP_SCALE = 0.8;
 
 const clampAppScale = (value) => {
   const nextScale = Number(value);
@@ -92,6 +93,33 @@ const getScaleValueForElement = (scaleEntries, elementId) => {
   );
 
   return scaleEntry ? clampAppScale(scaleEntry.scaleNum) : null;
+};
+
+const getInitialAppScale = (storedSettings) => {
+  const normalizedSettings = normalizeAppSettings(storedSettings);
+  const explicitScale = getScaleValueForElement(
+    normalizedSettings.ui.scale,
+    "app_page",
+  );
+
+  if (explicitScale !== null) {
+    return explicitScale;
+  }
+
+  if (typeof window === "undefined") {
+    return DEFAULT_APP_SCALE;
+  }
+
+  const storedScale = clampAppScale(
+    window.localStorage.getItem(APP_SCALE_STORAGE_KEY),
+  );
+
+  // Migrate the old implicit 0.8 shell shrink to the new full-size default.
+  if (storedScale === LEGACY_DEFAULT_APP_SCALE) {
+    return DEFAULT_APP_SCALE;
+  }
+
+  return storedScale;
 };
 
 const appendMediaVersionParam = (url, version) => {
@@ -217,14 +245,7 @@ class App extends React.Component {
       dob: storedSession.dob || null,
       token: storedSession.token || "",
       settings: normalizeAppSettings(storedSession.settings),
-      appScale:
-        typeof window !== "undefined"
-          ? getScaleValueForElement(
-              normalizeAppSettings(storedSession.settings).ui.scale,
-              "app_page",
-            ) ??
-            clampAppScale(window.localStorage.getItem(APP_SCALE_STORAGE_KEY))
-          : DEFAULT_APP_SCALE,
+      appScale: getInitialAppScale(storedSession.settings),
       isLoggedIn: Boolean(
         storedSession.isLoggedIn ?? storedSession.isConnected ?? true,
       ),
