@@ -127,6 +127,26 @@ body.is-login-route #root {
     margin-block: 0;
   }
 
+  .Login_brandVideoFallback {
+    bottom: 8px;
+    gap: 6px;
+    width: min(calc(100% - 12px), 208px);
+    max-width: calc(100% - 12px);
+    padding: 7px 8px;
+    border-radius: 10px;
+  }
+
+  .Login_brandVideoFallbackText {
+    font-size: 0.66rem;
+    line-height: 1.25;
+  }
+
+  .Login_brandVideoFallbackButton {
+    min-height: 32px;
+    padding: 7px 10px;
+    font-size: 0.7rem;
+  }
+
   #Login_authCard {
     width: min(100%, 292px);
     padding: 10px 8px 8px;

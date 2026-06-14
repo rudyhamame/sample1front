@@ -134,7 +134,12 @@ const Footer = ({
     : [];
   const graphicsScaleByElement = graphicsScaleEntries.reduce(
     (accumulator, entry) => {
-        const element = String(entry?.element || "").trim();
+        const rawElement = String(entry?.element || "").trim();
+        const element =
+          rawElement === "Home_Noga_studysessions_article" ||
+          rawElement === "Home_Noga_article"
+            ? "app_page"
+            : rawElement;
         if (!element) {
           return accumulator;
         }
@@ -150,7 +155,7 @@ const Footer = ({
     scaleEntries: graphicsScaleEntries,
     scaleSettingsKey: graphicsScaleSettingsKey,
     onApply: onApplyGraphicsScale,
-    defaultTarget: "Home_Noga_article",
+    defaultTarget: "app_page",
   };
 
 
@@ -561,4 +566,3 @@ const Footer = ({
 };
 
 export default Footer;
-

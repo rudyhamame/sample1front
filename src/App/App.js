@@ -35,7 +35,8 @@ import {
 
 const APP_HIDE_FOOTER_STORAGE_KEY = "phenomed.hideFooter";
 const APP_SCALE_STORAGE_KEY = "phenomed.appScale";
-const DEFAULT_APP_SCALE = 0.8;
+const DEFAULT_APP_SCALE = 1;
+const LEGACY_DEFAULT_APP_SCALE = 0.8;
 const APP_SCALE_STEP = 0.05;
 
 const clampAppScale = (value) => {
@@ -47,14 +48,49 @@ const clampAppScale = (value) => {
   return Math.round(nextScale * 100) / 100;
 };
 
+const getInitialAppScale = (storedSettings) => {
+  const explicitScale =
+    getScaleValueForElement(
+      normalizeAppSettings(storedSettings).ui.scale,
+      "app_page",
+    ) ?? null;
+
+  if (explicitScale !== null) {
+    return explicitScale;
+  }
+
+  if (typeof window === "undefined") {
+    return DEFAULT_APP_SCALE;
+  }
+
+  const storedScale = clampAppScale(
+    window.localStorage.getItem(APP_SCALE_STORAGE_KEY),
+  );
+
+  if (storedScale === LEGACY_DEFAULT_APP_SCALE) {
+    return DEFAULT_APP_SCALE;
+  }
+
+  return storedScale;
+};
+
+const normalizeScaleTargetElement = (elementId) => {
+  const rawElement = String(elementId || "").trim();
+
+  if (
+    rawElement === "Home_Noga_studysessions_article" ||
+    rawElement === "Home_Noga_article"
+  ) {
+    return "app_page";
+  }
+
+  return rawElement;
+};
+
 const normalizeScaleEntries = (value) =>
   (Array.isArray(value) ? value : [])
     .map((entry) => {
-      const rawElement = String(entry?.element || "").trim();
-      const element =
-        rawElement === "Home_Noga_studysessions_article"
-          ? "Home_Noga_article"
-          : rawElement;
+      const element = normalizeScaleTargetElement(entry?.element);
       const scaleNum = Number(entry?.scaleNum);
 
       if (!element) {
@@ -88,7 +124,7 @@ const normalizeAppSettings = (value) => {
 };
 
 const getScaleValueForElement = (scaleEntries, elementId) => {
-  const normalizedElementId = String(elementId || "").trim();
+  const normalizedElementId = normalizeScaleTargetElement(elementId);
   if (!normalizedElementId) {
     return null;
   }
@@ -225,11 +261,7 @@ class App extends React.Component {
       settings: normalizeAppSettings(storedSession.settings),
       appScale:
         typeof window !== "undefined"
-          ? getScaleValueForElement(
-              normalizeAppSettings(storedSession.settings).ui.scale,
-              "app_page",
-            ) ??
-            clampAppScale(window.localStorage.getItem(APP_SCALE_STORAGE_KEY))
+          ? getInitialAppScale(storedSession.settings)
           : DEFAULT_APP_SCALE,
       isLoggedIn: Boolean(
         storedSession.isLoggedIn ?? storedSession.isConnected ?? true,
@@ -3078,7 +3110,7 @@ class App extends React.Component {
   };
 
   getScaleSettingMap = (scaleEntries = []) =>
-    (Array.isArray(scaleEntries) ? scaleEntries : []).reduce(
+    normalizeScaleEntries(scaleEntries).reduce(
       (accumulator, entry) => {
         const element = String(entry?.element || "").trim();
         if (!element) {
@@ -3920,7 +3952,7 @@ class App extends React.Component {
   };
 
   setGraphicsScaleSetting = (elementId, scaleNum) => {
-    const normalizedElementId = String(elementId || "").trim();
+    const normalizedElementId = normalizeScaleTargetElement(elementId);
     if (!normalizedElementId) {
       return;
     }
@@ -3935,7 +3967,7 @@ class App extends React.Component {
         : [];
       const nextScaleEntries = currentScaleEntries.filter(
         (entry) =>
-          String(entry?.element || "").trim() !== normalizedElementId,
+          normalizeScaleTargetElement(entry?.element) !== normalizedElementId,
       );
 
       nextScaleEntries.push({
@@ -4018,7 +4050,7 @@ class App extends React.Component {
       onApplyGraphicsScale: this.setGraphicsScaleSetting,
     };
     const appViewportStyle = {
-      "--app-scale": this.state.appScale,
+      "--app-page-scale": this.state.appScale,
     };
     const routeFallback = (
       <section
@@ -4030,207 +4062,170 @@ class App extends React.Component {
         Loading...
       </section>
     );
+    const renderAppPage = (mainContent) => (
+      <article id="app_page" className={appPageClassName}>
+        <main id="Main_article" className="fr">
+          {mainContent}
+        </main>
+        {showServerAnswerFooter ? <Footer {...footerProps} /> : null}
+      </article>
+    );
 
     return (
       <React.Fragment>
         <div id="App_viewportScale" style={appViewportStyle}>
           <React.Suspense fallback={routeFallback}>
           <Route exact path="/phenomed/home">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <HomeNoga
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  dismissFriendRequest={this.dismissFriendRequest}
-                  cancelSentFriendRequest={this.cancelSentFriendRequest}
-                  removeFriend={this.removeFriend}
-                  unblockFriend={this.unblockFriend}
-                  updateUserInfo={this.updateUserInfo}
-                  selectFriendChat={this.get_current_friend_chat_id}
-                  closeActiveChat={this.closeActiveChat}
-                  sendToThemMessage={this.sendToThemMessage}
-                  uploadChatImages={this.uploadChatImages}
-                  uploadChatAudio={this.uploadChatAudio}
-                  saveChatImageToGallery={this.saveChatImageToGallery}
-                  editChatMessage={this.editChatMessage}
-                  deleteChatMessage={this.deleteChatMessage}
-                  updateMyTypingPresence={this.updateMyTypingPresence}
-                  markMessagesRead={this.markMessagesRead}
-                  serverReply={this.serverReply}
-                  requestGlobalCall={this.requestGlobalCall}
-                  setAppFooterHidden={this.setAppFooterHidden}
-                  setUserAcademicInfo={this.setUserAcademicInfo}
-                  setUserMediaInfo={this.setUserMediaInfo}
-                  homeBasePath="/phenomed/home"
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <HomeNoga
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                dismissFriendRequest={this.dismissFriendRequest}
+                cancelSentFriendRequest={this.cancelSentFriendRequest}
+                removeFriend={this.removeFriend}
+                unblockFriend={this.unblockFriend}
+                updateUserInfo={this.updateUserInfo}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                sendToThemMessage={this.sendToThemMessage}
+                uploadChatImages={this.uploadChatImages}
+                uploadChatAudio={this.uploadChatAudio}
+                saveChatImageToGallery={this.saveChatImageToGallery}
+                editChatMessage={this.editChatMessage}
+                deleteChatMessage={this.deleteChatMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
+                markMessagesRead={this.markMessagesRead}
+                serverReply={this.serverReply}
+                requestGlobalCall={this.requestGlobalCall}
+                setAppFooterHidden={this.setAppFooterHidden}
+                setUserAcademicInfo={this.setUserAcademicInfo}
+                setUserMediaInfo={this.setUserMediaInfo}
+                homeBasePath="/phenomed/home"
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/home/noga">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <HomeNoga
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  dismissFriendRequest={this.dismissFriendRequest}
-                  cancelSentFriendRequest={this.cancelSentFriendRequest}
-                  removeFriend={this.removeFriend}
-                  unblockFriend={this.unblockFriend}
-                  updateUserInfo={this.updateUserInfo}
-                  selectFriendChat={this.get_current_friend_chat_id}
-                  closeActiveChat={this.closeActiveChat}
-                  sendToThemMessage={this.sendToThemMessage}
-                  uploadChatImages={this.uploadChatImages}
-                  uploadChatAudio={this.uploadChatAudio}
-                  saveChatImageToGallery={this.saveChatImageToGallery}
-                  editChatMessage={this.editChatMessage}
-                  deleteChatMessage={this.deleteChatMessage}
-                  updateMyTypingPresence={this.updateMyTypingPresence}
-                  markMessagesRead={this.markMessagesRead}
-                  serverReply={this.serverReply}
-                  requestGlobalCall={this.requestGlobalCall}
-                  setAppFooterHidden={this.setAppFooterHidden}
-                  setUserAcademicInfo={this.setUserAcademicInfo}
-                  setUserMediaInfo={this.setUserMediaInfo}
-                  homeBasePath="/phenomed/home"
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <HomeNoga
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                dismissFriendRequest={this.dismissFriendRequest}
+                cancelSentFriendRequest={this.cancelSentFriendRequest}
+                removeFriend={this.removeFriend}
+                unblockFriend={this.unblockFriend}
+                updateUserInfo={this.updateUserInfo}
+                selectFriendChat={this.get_current_friend_chat_id}
+                closeActiveChat={this.closeActiveChat}
+                sendToThemMessage={this.sendToThemMessage}
+                uploadChatImages={this.uploadChatImages}
+                uploadChatAudio={this.uploadChatAudio}
+                saveChatImageToGallery={this.saveChatImageToGallery}
+                editChatMessage={this.editChatMessage}
+                deleteChatMessage={this.deleteChatMessage}
+                updateMyTypingPresence={this.updateMyTypingPresence}
+                markMessagesRead={this.markMessagesRead}
+                serverReply={this.serverReply}
+                requestGlobalCall={this.requestGlobalCall}
+                setAppFooterHidden={this.setAppFooterHidden}
+                setUserAcademicInfo={this.setUserAcademicInfo}
+                setUserMediaInfo={this.setUserMediaInfo}
+                homeBasePath="/phenomed/home"
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/schoolplanner/nogaplan">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyNogaPlan
+                locale="ar"
+                state={this.state}
+                onPresenceModeChange={this.handleSubAppPresenceChange}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/nogaplan">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyNogaPlan
+                locale="ar"
+                state={this.state}
+                onPresenceModeChange={this.handleSubAppPresenceChange}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/schoolplanner/ar">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyNogaPlan
+                locale="ar"
+                state={this.state}
+                onPresenceModeChange={this.handleSubAppPresenceChange}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/schoolplanner">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyNogaPlan
-                  locale="ar"
-                  state={this.state}
-                  onPresenceModeChange={this.handleSubAppPresenceChange}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  type={this.type}
-                  show_profile={this.show_profile}
-                  memory={this.memory}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyNogaPlan
+                locale="ar"
+                state={this.state}
+                onPresenceModeChange={this.handleSubAppPresenceChange}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                type={this.type}
+                show_profile={this.show_profile}
+                memory={this.memory}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route path="/ecg">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyPhenomedECG
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyPhenomedECG
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/pdf-reader">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyPdfReaderPage
-                  state={this.state}
-                  logOut={this.logOut}
-                  acceptFriend={this.acceptFriend}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyPdfReaderPage
+                state={this.state}
+                logOut={this.logOut}
+                acceptFriend={this.acceptFriend}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/telegram-control">
             {String(this.state?.username || "").trim().toLowerCase() ===
             "rudyhamame" ? (
-              <article id="app_page" className={appPageClassName}>
-                <main id="Main_article" className="fr">
-                  <LazyTelegramControlPage
-                    state={this.state}
-                    memory={this.memory}
-                    logOut={this.logOut}
-                    acceptFriend={this.acceptFriend}
-                    serverReply={this.serverReply}
-                  />
-                </main>
-                {showServerAnswerFooter ? (
-                  <Footer {...footerProps} />
-                ) : null}
-              </article>
+              renderAppPage(
+                <LazyTelegramControlPage
+                  state={this.state}
+                  memory={this.memory}
+                  logOut={this.logOut}
+                  acceptFriend={this.acceptFriend}
+                  serverReply={this.serverReply}
+                />,
+              )
             ) : (
               <Redirect to="/phenomed/home" />
             )}
@@ -4238,59 +4233,39 @@ class App extends React.Component {
           <Route exact path="/phenomed/visit-log">
             {String(this.state?.username || "").trim().toLowerCase() ===
             "rudyhamame" ? (
-              <article id="app_page" className={appPageClassName}>
-                <main id="Main_article" className="fr">
-                  <LazyVisitLogPage
-                    state={this.state}
-                    serverReply={this.serverReply}
-                  />
-                </main>
-                {showServerAnswerFooter ? (
-                  <Footer {...footerProps} />
-                ) : null}
-              </article>
+              renderAppPage(
+                <LazyVisitLogPage
+                  state={this.state}
+                  serverReply={this.serverReply}
+                />,
+              )
             ) : (
               <Redirect to="/phenomed/home" />
             )}
           </Route>
           <Route exact path="/phenomed/jamendo-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyJamendoPlayer
+                state={this.state}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/deezer-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyJamendoPlayer
+                state={this.state}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route exact path="/phenomed/soundcloud-player">
-            <article id="app_page" className={appPageClassName}>
-              <main id="Main_article" className="fr">
-                <LazyJamendoPlayer
-                  state={this.state}
-                  serverReply={this.serverReply}
-                />
-              </main>
-              {showServerAnswerFooter ? (
-                <Footer {...footerProps} />
-              ) : null}
-            </article>
+            {renderAppPage(
+              <LazyJamendoPlayer
+                state={this.state}
+                serverReply={this.serverReply}
+              />,
+            )}
           </Route>
           <Route
             exact
@@ -4300,15 +4275,8 @@ class App extends React.Component {
               if (RESERVED_PROFILE_ROUTE_SEGMENTS.has(username)) {
                 return null;
               }
-              return (
-                <article id="app_page" className={appPageClassName}>
-                  <main id="Main_article" className="fr">
-                    <LazyProfile viewerState={this.state} logOut={this.logOut} />
-                  </main>
-                  {showServerAnswerFooter ? (
-                    <Footer {...footerProps} />
-                  ) : null}
-                </article>
+              return renderAppPage(
+                <LazyProfile viewerState={this.state} logOut={this.logOut} />,
               );
             }}
           />
@@ -4363,4 +4331,3 @@ class App extends React.Component {
   }
 }
 export default App;
-

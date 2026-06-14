@@ -81,6 +81,97 @@ body {
   overflow: hidden;
 }
 
+#App_iosSafariBanner {
+  position: fixed;
+  top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
+  left: 50%;
+  z-index: 45000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(760px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border: 1px solid rgba(104, 198, 213, 0.26);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(16, 36, 46, 0.96), rgba(10, 22, 30, 0.98));
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+}
+
+#App_iosSafariBanner_text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+#App_iosSafariBanner_text strong {
+  color: #f5fdff;
+  font-size: clamp(0.92rem, 0.84rem + 0.22vw, 1.05rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+#App_iosSafariBanner_text span {
+  color: rgba(214, 234, 239, 0.92);
+  font-size: clamp(0.73rem, 0.69rem + 0.18vw, 0.86rem);
+  line-height: 1.45;
+}
+
+#App_iosSafariBanner_actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+#App_iosSafariBanner_actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(111, 207, 221, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7fcfd;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+#App_iosSafariBanner_actions button:hover {
+  background: rgba(103, 208, 223, 0.18);
+  border-color: rgba(122, 225, 239, 0.4);
+}
+
+#App_iosSafariBanner_actions button:focus-visible {
+  outline: 2px solid rgba(149, 231, 242, 0.82);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  #App_iosSafariBanner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    width: min(100vw - 20px, 520px);
+    padding: 12px;
+  }
+
+  #App_iosSafariBanner_actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  #App_iosSafariBanner_actions button {
+    flex: 1 1 110px;
+  }
+}
+
 :root {
   --app-visual-viewport-height: 100dvh;
   --app-visual-viewport-width: 100vw;
@@ -243,16 +334,18 @@ body {
 }
 
 #App_viewportScale {
+  --app-page-scale: 1;
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  max-height: 100%;
+  width: calc(var(--app-visual-viewport-width, 100vw) / var(--app-page-scale, 1));
+  height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-page-scale, 1));
+  min-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-page-scale, 1));
+  max-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-page-scale, 1));
   overflow: hidden;
   overscroll-behavior: none;
-  --app-scale: 0.8;
+  transform: scale(var(--app-page-scale, 1));
+  transform-origin: top left;
 }
 
 #App_viewportScale > * {
@@ -261,19 +354,14 @@ body {
 }
 
 #app_page {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
-  width: calc(var(--app-visual-viewport-width, 100vw) / var(--app-scale, 0.8));
-  height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  min-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  max-height: calc(var(--app-visual-viewport-height, 100dvh) / var(--app-scale, 0.8));
-  transform: scale(var(--app-scale, 0.8));
-  transform-origin: top left;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  max-height: 100%;
 }
 
 @keyframes zoomOut {
@@ -286,14 +374,17 @@ body {
 }
 
 #Main_article {
-    /* Main color for dynamic server_answer background */
-    --main-article-color1: rgba(234, 147, 128, 0.95);
-    --main-article-color2: rgba(237, 159, 146, 0.92);
-    --main-article-color3: rgba(235, 148, 129, 0.95);
-  flex: 1 1 0;
-  height: 0;
-  max-height: 100%;
+  /* Main color for dynamic server_answer background */
+  --main-article-color1: rgba(234, 147, 128, 0.95);
+  --main-article-color2: rgba(237, 159, 146, 0.92);
+  --main-article-color3: rgba(235, 148, 129, 0.95);
+  grid-row: 1;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
   min-height: 0;
+  max-height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -301,6 +392,8 @@ body {
 
 #Main_article > * {
   flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   max-height: 100%;
 }
