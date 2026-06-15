@@ -105,6 +105,15 @@
     padding-bottom: 52px;
   }
 
+  #App_globalVoiceCallDockLayer {
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 12px);
+    z-index: 260;
+  }
+
+  #Home_voiceCallNotificationDock {
+    width: 100%;
+  }
+
   /* Chat view: hide left content, show right column full-width */
   .Home_Noga_mainWrapperShell--chatView .Home_Noga_main_leftColumn_wrapper {
     display: none;

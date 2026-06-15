@@ -7505,13 +7505,11 @@ function HomeNoga(props) {
       ? "repeat"
       : "no-repeat",
   };
-  const globalCallRequest = props.state?.global_call_request || null;
   const globalCallSession = props.state?.global_call_session || null;
   const hasHomeNogaCallDockMounted = Boolean(
-    globalCallRequest?.mode === "video" &&
-      (globalCallSession &&
-        globalCallSession.callMode === "video" &&
-        globalCallSession.callState === "connected"),
+    globalCallSession &&
+      globalCallSession.callMode === "video" &&
+      globalCallSession.callState !== "idle",
   );
   return (
       <article
@@ -8289,9 +8287,6 @@ function HomeNoga(props) {
                   </div>
 	                </div>
 	              </div>
-                {hasHomeNogaCallDockMounted ? (
-                  <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
-                ) : null}
 	            </div>
 	              <section
 	                id="Home_Noga_rightColumn_wrapper"
@@ -9395,6 +9390,9 @@ function HomeNoga(props) {
               : "Video player"
           }
         />
+      {hasHomeNogaCallDockMounted ? (
+        <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
+      ) : null}
       <nav className="Home_Noga_mobileNavBar" aria-label="Mobile navigation">
         <button
           type="button"

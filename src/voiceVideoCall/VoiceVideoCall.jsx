@@ -587,6 +587,7 @@ function VoiceVideoCall({
       setCallError("");
       setCallMode(incomingCall.callType);
       setCallState("requesting-media");
+      updateFooterMinimizedState(false);
       setCallDeliveryStatus("delivered");
       setActiveCallDisplayName(
         getFriendDisplayName(
