@@ -123,6 +123,7 @@ function VoiceVideoCall({
       ? window.localStorage.getItem(VOICE_CALL_MINIMIZED_STORAGE_KEY) === "true"
       : false,
   );
+  const [isTouchGuardEnabled, setIsTouchGuardEnabled] = React.useState(false);
   const [callPanelPosition, setCallPanelPosition] = React.useState(() => ({
     x: DEFAULT_CALL_PANEL_LAYOUT.x,
     y:
@@ -137,6 +138,7 @@ function VoiceVideoCall({
         : DEFAULT_CALL_PANEL_LAYOUT.y,
   }));
   const [isCallPanelFullscreen, setIsCallPanelFullscreen] = React.useState(false);
+  const shouldAutoEnableTouchGuardRef = React.useRef(false);
 
   const friends = appState?.friends;
   const currentUserId = String(appState?.my_id || "").trim();
@@ -1123,6 +1125,24 @@ function VoiceVideoCall({
     };
   }, [callStartedAt, callState]);
 
+  const shouldAutoEnableTouchGuard =
+    callState === "connected" && callMode === "audio";
+
+  React.useEffect(() => {
+    if (
+      shouldAutoEnableTouchGuard &&
+      !shouldAutoEnableTouchGuardRef.current
+    ) {
+      setIsTouchGuardEnabled(true);
+    }
+
+    if (!shouldAutoEnableTouchGuard) {
+      setIsTouchGuardEnabled(false);
+    }
+
+    shouldAutoEnableTouchGuardRef.current = shouldAutoEnableTouchGuard;
+  }, [shouldAutoEnableTouchGuard]);
+
   const portalTarget =
     typeof document !== "undefined"
       ? document.getElementById("Home_Noga_callDock") ||
@@ -1157,7 +1177,9 @@ function VoiceVideoCall({
       ? document.getElementById("Home_voiceCallNotificationDock")
       : null;
   const shouldRenderFooterCallBar = Boolean(
-    footerControlsPortalTarget && (incomingCall || callMode || callError),
+    footerControlsPortalTarget &&
+      !isTouchGuardEnabled &&
+      (incomingCall || callMode || callError),
   );
   const shouldRenderFooterMiniPanel = false;
   const hasLocalMediaControls = Boolean(
@@ -1244,6 +1266,17 @@ function VoiceVideoCall({
               className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
             ></i>
           </button>
+          {callMode === "audio" ? (
+            <button
+              type="button"
+              className="Chat_callControlButton"
+              onClick={() => setIsTouchGuardEnabled(true)}
+              title="Lock screen touches"
+              aria-label="Lock screen touches"
+            >
+              <i className="fas fa-lock"></i>
+            </button>
+          ) : null}
           {callMode === "video" ? (
             <button
               type="button"
@@ -1461,12 +1494,65 @@ function VoiceVideoCall({
     portalTarget,
   );
 
+  const touchGuardPortal =
+    typeof document !== "undefined" && isTouchGuardEnabled
+      ? createPortal(
+          <section
+            id="Chat_touchGuard"
+            className="Chat_touchGuard"
+            aria-label="Voice call touch guard"
+          >
+            <div className="Chat_touchGuardBackdrop" aria-hidden="true" />
+            <div className="Chat_touchGuardDock fc">
+              <span className="Chat_touchGuardLabel">
+                Touch guard is on
+              </span>
+              <span className="Chat_touchGuardSubcopy">
+                The screen stays dim while your voice call continues.
+              </span>
+              <div className="Chat_touchGuardActions fr">
+                <button
+                  type="button"
+                  className={`Chat_callControlButton${isAudioMuted ? " is-muted" : ""}`}
+                  onClick={handleToggleMute}
+                  title={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+                  aria-label={isAudioMuted ? "Enable microphone" : "Disable microphone"}
+                  disabled={!hasLocalMediaControls}
+                >
+                  <i
+                    className={`fas ${isAudioMuted ? "fa-microphone-slash" : "fa-microphone"}`}
+                  ></i>
+                </button>
+                <button
+                  type="button"
+                  className="Chat_touchGuardButton"
+                  onClick={() => setIsTouchGuardEnabled(false)}
+                >
+                  Unlock
+                </button>
+                <button
+                  type="button"
+                  className="Chat_callControlButton Chat_callControlButton--end"
+                  onClick={() => handleEndCall("hangup")}
+                  title="End call"
+                  aria-label="End call"
+                >
+                  <i className="fas fa-phone-slash"></i>
+                </button>
+              </div>
+            </div>
+          </section>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
       {mainPortal}
       {footerCallBar && footerControlsPortalTarget
         ? createPortal(footerCallBar, footerControlsPortalTarget)
         : null}
+      {touchGuardPortal}
     </>
   );
 }

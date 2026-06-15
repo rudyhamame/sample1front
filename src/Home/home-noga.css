@@ -1470,12 +1470,20 @@ display: grid;
   grid-template-columns: minmax(210px, 0.95fr) minmax(0, 1.05fr);
   align-items: stretch;
   width: 100%;
+  min-width: 0;
+  min-height: 0;
   gap: 0;
   padding: 0;
   border: 1px solid rgba(176, 111, 126, 0.24);
   background: var(--home-bio-start, rgba(251, 233, 225, 0.61));
   overflow: hidden;
   border-radius: inherit;
+}
+
+.Home_Noga_compactBioCard--editing {
+display: grid;
+  align-items: start;
+  overflow: visible;
 }
 
 .Home_Noga_compactBioIdentity {
@@ -1491,10 +1499,18 @@ display: flex;
 .Home_Noga_compactBioSummary {
 display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  align-self: stretch;
   min-width: 0;
+  min-height: 0;
   border-left: 1px solid rgba(176, 111, 126, 0.2);
   background: transparent;
 padding: 14px 14px 14px 16px;
+}
+
+.Home_Noga_compactBioSummary--editing {
+flex: 1 1 auto;
+  min-height: fit-content;
 }
 
 .Home_Noga_compactBioName {
@@ -1571,12 +1587,15 @@ width: 24px;
 
 .Home_Noga_compactBioEditor {
 width: 100%;
+  min-width: 0;
+  min-height: 0;
   gap: 8px;
 }
 
 .Home_Noga_compactBioTextarea {
 width: 100%;
   min-height: 104px;
+  max-width: 100%;
   resize: vertical;
   font-size: 0.72rem;
   line-height: 1.5;
@@ -1585,6 +1604,7 @@ width: 100%;
 .Home_Noga_compactBioEditorActions {
 gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .Home_Noga_compactBioAiButton {
@@ -1595,6 +1615,10 @@ white-space: nowrap;
   justify-content: center;
   display: inline-flex;
   align-items: center;
+}
+
+.Home_Noga_preStart_personalBio--editing {
+min-height: fit-content;
 }
 
 .Home_Noga_profileInfoColumn {

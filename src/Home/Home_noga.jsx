@@ -7642,12 +7642,25 @@ function HomeNoga(props) {
                         </button>
                       ) : null}
                     </div>
-                    <div id="Home_Noga_preStart_personalBio" className="fc">
+                    <div
+                      id="Home_Noga_preStart_personalBio"
+                      className={`fc${
+                        isEditingCompactBio
+                          ? " Home_Noga_preStart_personalBio--editing"
+                          : ""
+                      }`}
+                    >
                       <div
                         id="Home_Noga_preStart_personalInfoGrid"
                         className="Home_Noga_preStart_personalInfoGrid--compact"
                       >
-                          <div className="Home_Noga_compactBioCard">
+                          <div
+                            className={`Home_Noga_compactBioCard${
+                              isEditingCompactBio
+                                ? " Home_Noga_compactBioCard--editing"
+                                : ""
+                            }`}
+                          >
                             <div className="Home_Noga_compactBioIdentity">
                               <h3 className="Home_Noga_compactBioName">
                                 {compactDisplayName}
@@ -7656,7 +7669,13 @@ function HomeNoga(props) {
                                 {compactUsername}
                               </p>
                             </div>
-                            <div className="Home_Noga_compactBioSummary">
+                            <div
+                              className={`Home_Noga_compactBioSummary${
+                                isEditingCompactBio
+                                  ? " Home_Noga_compactBioSummary--editing"
+                                  : ""
+                              }`}
+                            >
                               <div className="Home_Noga_compactBioHeadingRow">
                                 <p className="Home_Noga_compactBioEyebrow">
                                   Bio

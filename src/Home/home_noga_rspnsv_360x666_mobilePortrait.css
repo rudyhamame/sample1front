@@ -70,6 +70,12 @@
     overflow-wrap: break-word;
   }
 
+  #Home_Noga_preStart_personalBio.Home_Noga_preStart_personalBio--editing {
+    min-height: fit-content;
+    max-height: none;
+    overflow: visible;
+  }
+
   #Home_Noga_preStart_profileWrapper {
     align-self: center;
     flex-shrink: 0;
@@ -81,9 +87,17 @@
     flex-direction: column;
   }
 
+  .Home_Noga_compactBioCard--editing {
+    overflow: visible;
+  }
+
   .Home_Noga_compactBioSummary {
     border-left: none;
     border-top: 1px solid rgba(176, 111, 126, 0.2);
+  }
+
+  .Home_Noga_compactBioSummary--editing {
+    min-height: fit-content;
   }
 
   .Home_Noga_socialFriendsPanel {

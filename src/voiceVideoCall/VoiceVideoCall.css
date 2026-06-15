@@ -16,6 +16,124 @@
   pointer-events: auto;
 }
 
+.Chat_touchGuard {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px) + 8px)
+    max(16px, env(safe-area-inset-right, 0px) + 8px)
+    max(20px, env(safe-area-inset-bottom, 0px) + 14px)
+    max(16px, env(safe-area-inset-left, 0px) + 8px);
+  pointer-events: auto;
+}
+
+.Chat_touchGuardBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(24, 31, 34, 0.18), rgba(4, 7, 9, 0.96)),
+    rgba(3, 5, 7, 0.94);
+}
+
+.Chat_touchGuardDock {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(199, 222, 227, 0.18);
+  background: rgba(10, 17, 20, 0.92);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  color: rgba(244, 250, 251, 0.94);
+}
+
+.Chat_touchGuardLabel {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.Chat_touchGuardSubcopy {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(221, 236, 239, 0.84);
+}
+
+.Chat_touchGuardActions {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+}
+
+.Chat_touchGuardButton {
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(188, 216, 222, 0.18);
+  border-radius: 999px;
+  background: rgba(235, 246, 248, 0.1);
+  color: rgba(244, 250, 251, 0.96);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.Chat_touchGuardButton:hover {
+  background: rgba(235, 246, 248, 0.16);
+  border-color: rgba(188, 216, 222, 0.28);
+  transform: translateY(-1px);
+}
+
+.Chat_touchGuard .Chat_callControlButton {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+  .Chat_touchGuard {
+    padding-inline: max(12px, env(safe-area-inset-left, 0px) + 6px);
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  .Chat_touchGuardDock {
+    width: 100%;
+    padding: 12px 13px;
+    border-radius: 18px;
+  }
+
+  .Chat_touchGuardActions {
+    gap: 10px;
+  }
+
+  .Chat_touchGuardButton {
+    min-height: 40px;
+    font-size: 0.76rem;
+  }
+
+  .Chat_touchGuard .Chat_callControlButton {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
 .Chat_callControls,
 .Chat_callBannerActions,
 .Chat_callStatusRow {
