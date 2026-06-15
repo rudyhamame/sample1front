@@ -596,8 +596,9 @@ order: 2;
   flex-direction: row;
   min-width: 0;
   min-height: 0;
-  overflow-y: hidden;
+  overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background-color: var(--home-main-wrapper-soft);
   color: var(--home-main-wrapper-text);
   margin: 0;
@@ -655,19 +656,7 @@ box-shadow:
     0 0 12px var(--home-drawing-palette-glow);
 }
 
-.Home_Noga_mainWrapperShell::before {
-content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.12),
-    rgba(255, 255, 255, 0.04)
-  );
-  opacity: 0.9;
-  pointer-events: none;
-  z-index: 0;
-}
+
 
 .Home_Noga_mainDrawingOverlay {
 position: absolute;
@@ -1023,10 +1012,7 @@ width: 100%;
 }
 
 #Home_Noga_article .Home_Noga_mainWrapperShell > .Home_Noga_socialFriendsPanel {
-width: min-content;
-  flex: 0 0 auto;
-  max-width: 100%;
-  min-width: var(--home-right-column-min-width);
+  flex: 0 0 30%;
 }
 
 .Home_Noga_preStart_reports.Home_Noga_preStart_reports--closed {
@@ -1137,7 +1123,8 @@ display: flex;
   position: relative;
   color: var(--home-main-wrapper-text);
   isolation: isolate;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   z-index: 1;
 }
 
@@ -2482,7 +2469,11 @@ border-color: rgba(110, 168, 180, 0.18);
   position: relative;
   flex-wrap: nowrap;
   overflow: hidden;
-  backdrop-filter: blur(3px); 
+  backdrop-filter: blur(3px);
+}
+
+.Home_Noga_friendsEventsTabBar {
+  display: none;
 }
 
 .Home_Noga_friendsEventsWrapper > .Home_Noga_friendsEvents {
@@ -2494,7 +2485,7 @@ border-color: rgba(110, 168, 180, 0.18);
 }
 
 .Home_Noga_friendsEventsWrapper > .Home_Noga_socialFriendsPanel {
-min-width: 0;
+  min-width: 0;
   min-height: 0;
   height: 100%;
   max-height: 100%;
@@ -2946,14 +2937,17 @@ display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .Home_Noga_galleryVisibilityTabs {
-display: inline-flex;
+display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  flex: 0 0 auto;
+  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   padding: 4px;
   border: 1px solid rgba(205, 107, 106, 0.18);
@@ -3060,6 +3054,10 @@ margin: 0;
 display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
   gap: 4px;
   min-width: 32px;
   padding: 3px 7px;
@@ -3120,7 +3118,8 @@ background:
 display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
+  width: 100%;
+  min-width: 0;
   padding: 3px 9px;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -3684,18 +3683,18 @@ display: flex;
 }
 
 .Home_Noga_socialFriendsPanel {
-width: min-content;
+width: 100%;
   color: var(--home-main-wrapper-text);
   flex: 0 0 auto;
   min-width: var(--home-right-column-min-width);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-self: stretch;
   min-height: 0;
   height: 100%;
   max-height: 100%;
   padding: 0;
-  overflow-x: visible;
+  overflow-x: hidden;
   overflow-y: hidden;
   position: relative;
   z-index: var(--home-drawing-blocked-z);
@@ -3998,11 +3997,41 @@ display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 18px clamp(14px, 2vw, 20px) 0;
+  width: 100%;
   min-width: 0;
   box-sizing: border-box;
   background: transparent;
   border: 0;
   box-shadow: none;
+  position: relative;
+  overflow: visible;
+}
+
+.Home_Noga_mobileChatToggle {
+  display: none;
+}
+
+.Home_Noga_friendsPanelHomeBtn {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: clamp(14px, 2vw, 20px);
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(160, 60, 40, 0.1);
+  color: rgba(140, 50, 30, 0.85);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.Home_Noga_friendsPanelHomeBtn:hover {
+  background: rgba(160, 60, 40, 0.18);
+  color: rgba(120, 40, 20, 0.95);
 }
 
 .Home_Noga_friendsPanelTitleRow {
@@ -4010,18 +4039,21 @@ position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   gap: clamp(3px, 0.4vw, 4px);
   padding: clamp(3px, 0.4vw, 4px);
   min-width: 0;
-  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
   border-radius: 999px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 8px 18px rgba(97, 49, 39, 0.1);
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   padding: 4px;
+  box-sizing: border-box;
 }
 
 .Home_Noga_friendsPanelTitleRowSelector {
@@ -4065,7 +4097,8 @@ margin: 0;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .Home_Noga_friendsPanelTitleButton {
@@ -4076,16 +4109,18 @@ position: relative;
   justify-content: center;
   gap: 0;
   flex: 1 1 0;
-  min-width: 0;
+  min-width: 84px;
+  max-width: 100%;
   padding: clamp(6px, 0.7vw, 8px) clamp(6px, 0.7vw, 8px);
   border: 0;
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
   color: inherit;
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
+  text-align: center;
   font-size: clamp(0.72rem, 0.8vw, 0.82rem);
 }
 
@@ -4178,15 +4213,12 @@ list-style: none;
   flex-direction: column;
   flex: 1 1 0%;
   align-self: stretch;
-  width: max-content;
   min-width: 100%;
   height: 100%;
   min-height: 0;
-  box-sizing: border-box;
   gap: 12px;
   overflow-y: auto;
   overflow-x: auto;
-  scrollbar-gutter: stable;
   border-radius: 0 0 inherit inherit;
   border-bottom-left-radius: inherit;
   border-bottom-right-radius: inherit;
@@ -4702,45 +4734,54 @@ min-height: 0;
 
 #Home_Noga_rightColumn_wrapper {
 display: flex;
-  width: min-content;
+  width: 100%;
   max-width: 100%;
-  flex: 0 0 var(--home-right-column-min-width);
+  flex: 1 1 auto;
   flex-direction: column;
-  min-width: var(--home-right-column-min-width);
+  min-width: 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
   max-height: 100%;
-  overflow-x: visible;
+  overflow-x: hidden;
   overflow-y: hidden;
   overscroll-behavior: contain;
   position: relative;
   z-index: 2;
   border-radius: inherit;
+  box-sizing: border-box;
   backdrop-filter: blur(12px) saturate(1.05);
   -webkit-backdrop-filter: blur(12px) saturate(1.05);
   border-left: 1px dashed rgba(205, 107, 106, 0.24);
 }
 
+#Home_Noga_rightColumn_wrapper > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 #Home_Noga_rightColumn_wrapper #Chat_article {
 display: flex;
   flex: 1 1 0;
-  width: max-content;
-  min-width: clamp(320px, 34vw, 460px);
-  max-width: min(100vw - 48px, 100%);
-  height: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
   min-height: 0;
   max-height: 100%;
   flex-direction: column;
 position: relative;
+  overflow: hidden;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_title_container {
-display: flex;
+  display: flex;
   position: relative;
   align-items: center;
   gap: 12px;
   padding: 10px;
   border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_messageActionBar {
@@ -4792,6 +4833,7 @@ flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
@@ -4816,11 +4858,14 @@ margin: 0;
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: rgba(24, 79, 88, 0.95);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_title_identityCopy {
 display: flex;
   flex-direction: column;
+  flex: 1 1 160px;
   min-width: 0;
   gap: 4px;
 }
@@ -4887,8 +4932,10 @@ flex: 0 0 auto;
 display: flex;
   position: relative;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_moreActionsMenu {
@@ -5463,24 +5510,29 @@ position: relative;
   gap: 8px;
   align-items: stretch;
   overflow: visible;
-  padding: 8px; 
+  padding: 8px;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_formControls {
-display: flex;
+  display: flex;
+  flex-direction: row;
   align-items: flex-end;
   gap: 8px;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_editingBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid rgba(124, 157, 165, 0.18);
   background: rgba(252, 254, 254, 0.96);
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_editingBannerCopy {
@@ -5489,6 +5541,9 @@ display: flex;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_editingBannerCancel {
@@ -5509,6 +5564,7 @@ display: flex;
 display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_attachmentSecretToggle {
@@ -5588,7 +5644,9 @@ display: inline-flex;
 #Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructGroup {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_attachmentSelfDestructToggle:disabled {
@@ -5646,17 +5704,21 @@ position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 220px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 12px 14px 12px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(124, 157, 165, 0.18);
+  box-sizing: border-box;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftMeta,
 #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard {
 display: flex;
   align-items: center;
+  min-width: 0;
   gap: 10px;
 }
 
@@ -5666,7 +5728,9 @@ display: flex;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  width: min(100%, 260px);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_voiceNotePlayerShell {
@@ -5675,14 +5739,16 @@ display: grid;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-width: 220px;
-  max-width: 260px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftMeta {
   color: rgba(24, 79, 88, 0.94);
   font-size: 0.62rem;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_voiceNoteAudio {
@@ -5714,10 +5780,13 @@ display: inline-flex;
   font-size: 0.54rem;
   font-family: "IBM Plex Mono", monospace;
   white-space: nowrap;
+  min-width: 0;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input {
 flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
   font-family:
     "Inter",
     "Segoe UI",
@@ -5763,6 +5832,7 @@ display: inline-flex;
   justify-content: center;
   align-self: stretch;
   flex: 0 0 44px;
+  min-width: 44px;
   border: 1px solid rgba(20, 105, 99, 0.18);
   padding: 0;
   color: rgba(247, 251, 252, 0.96);
@@ -5777,6 +5847,7 @@ display: inline-flex;
   justify-content: center;
   align-self: stretch;
   flex: 0 0 44px;
+  min-width: 44px;
   padding: 0;
   cursor: pointer;
   border-radius: 0px;
@@ -5790,6 +5861,8 @@ display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
+  flex: 0 0 44px;
+  min-width: 44px;
   padding: 0;
   color: #eb796e;
   cursor: pointer;
@@ -8561,4 +8634,24 @@ color: rgba(228, 243, 246, 0.9);
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_bioWallpaperControlCheck span {
 color: rgba(228, 243, 246, 0.9);
+}
+
+@media (min-width: 1100px) and (max-width: 1220px) and (min-height: 720px) and (max-height: 820px) {
+  #Home_Noga_article .Home_Noga_mainWrapperShell {
+    --home-right-column-min-width: clamp(300px, 31vw, 360px);
+    --home-right-column-width: var(--home-right-column-min-width);
+    --home-left-column-width: calc(100% - var(--home-right-column-min-width));
+  }
+
+  #Home_Noga_article .Home_Noga_mainWrapperShell > .Home_Noga_socialFriendsPanel {
+    width: var(--home-right-column-min-width);
+    flex: 0 0 var(--home-right-column-min-width);
+    min-width: var(--home-right-column-min-width);
+    max-width: 380px;
+  }
+
+  #Home_Noga_rightColumn_wrapper {
+    min-width: 0;
+    width: 100%;
+  }
 }

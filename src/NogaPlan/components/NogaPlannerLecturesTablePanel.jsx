@@ -167,9 +167,10 @@ const NogaPlannerLecturesTablePanel = ({
   );
   if (renderMode === "lecture-tab") {
     const plannerRoot = planner.getResolvedPlannerRoot();
-    const plannerIntervals = Array.isArray(plannerRoot?.programIntervals)
-      ? plannerRoot.programIntervals
-      : [];
+    const plannerIntervals =
+      typeof planner.getPlannerIntervalsWithComponents === "function"
+        ? planner.getPlannerIntervalsWithComponents(plannerRoot)
+        : [];
     const programInstructors = Array.isArray(plannerRoot?.programInstructors)
       ? plannerRoot.programInstructors.map((entry) => formatInstructorName(entry)).filter(Boolean)
       : [];
@@ -202,24 +203,15 @@ const NogaPlannerLecturesTablePanel = ({
       const intervalId = String(
         intervalEntry?.intervalID || intervalEntry?.intervalId || "",
       ).trim();
-      const subIntervals = (Array.isArray(intervalEntry?.intervalTry)
-        ? intervalEntry.intervalTry
-        : []
-      ).flatMap((tryEntry) =>
-        Array.isArray(tryEntry?.intervalTrysubIntervals)
-          ? tryEntry.intervalTrysubIntervals
-          : [],
-      );
-      subIntervals.forEach((subIntervalEntry) => {
-        const subIntervalId = String(
-          subIntervalEntry?.subIntervalID ||
-            subIntervalEntry?.subIntervalId ||
-            "",
-        ).trim();
-        const intervalCourses = Array.isArray(subIntervalEntry?.subIntervalCourses)
-          ? subIntervalEntry.subIntervalCourses
-          : [];
-        intervalCourses.forEach((courseEntry) => {
+      const subIntervalId = String(
+        intervalEntry?.subIntervalID ||
+          intervalEntry?.subIntervalId ||
+          "",
+      ).trim();
+      const intervalCourses = Array.isArray(intervalEntry?.intervalCourses)
+        ? intervalEntry.intervalCourses
+        : [];
+      intervalCourses.forEach((courseEntry) => {
           const courseName = String(courseEntry?.courseName || "").trim();
           const courseCode = String(courseEntry?.courseCode || "").trim();
           const courseComponents = Array.isArray(courseEntry?.courseComponents)
@@ -300,7 +292,6 @@ const NogaPlannerLecturesTablePanel = ({
               });
             });
           });
-        });
       });
     });
     const [lectureDraft, setLectureDraft] = React.useState({
@@ -363,7 +354,7 @@ const NogaPlannerLecturesTablePanel = ({
       lectureContent: [],
     });
     const updateAllLectures = async (transform) => {
-      const nextIntervals = plannerIntervals.flatMap((intervalEntry) => {
+      const nextIntervals = plannerIntervals.map((intervalEntry) => {
         const intervalId = String(
           intervalEntry?.intervalID || intervalEntry?.intervalId || "",
         ).trim();
@@ -371,24 +362,15 @@ const NogaPlannerLecturesTablePanel = ({
           ? Number.parseInt(String(intervalEntry?.intervalNum || "").trim(), 10)
           : null;
         const intervalStatus = String(intervalEntry?.intervalStatus || "Normal").trim() || "Normal";
-        const subIntervals = (Array.isArray(intervalEntry?.intervalTry)
-          ? intervalEntry.intervalTry
+        const subIntervalId = String(
+          intervalEntry?.subIntervalID ||
+            intervalEntry?.subIntervalId ||
+            "",
+        ).trim();
+        const nextSubIntervalCourses = (Array.isArray(intervalEntry?.intervalCourses)
+          ? intervalEntry.intervalCourses
           : []
-        ).flatMap((tryEntry) =>
-          Array.isArray(tryEntry?.intervalTrysubIntervals)
-            ? tryEntry.intervalTrysubIntervals
-            : [],
-        );
-        return subIntervals.map((subIntervalEntry) => {
-          const subIntervalId = String(
-            subIntervalEntry?.subIntervalID ||
-              subIntervalEntry?.subIntervalId ||
-              "",
-          ).trim();
-          const nextSubIntervalCourses = (Array.isArray(subIntervalEntry?.subIntervalCourses)
-            ? subIntervalEntry.subIntervalCourses
-            : []
-          ).map((courseEntry) => ({
+        ).map((courseEntry) => ({
             ...courseEntry,
             courseComponents: (Array.isArray(courseEntry?.courseComponents)
               ? courseEntry.courseComponents
@@ -420,15 +402,14 @@ const NogaPlannerLecturesTablePanel = ({
               ),
             })),
           }));
-          return {
-            intervalId,
-            intervalNum,
-            intervalStatus,
-            subIntervalID: subIntervalId,
-            subIntervalNum: subIntervalId,
-            subIntervalCourses: nextSubIntervalCourses,
-          };
-        });
+        return {
+          intervalId,
+          intervalNum,
+          intervalStatus,
+          subIntervalID: subIntervalId,
+          subIntervalNum: intervalEntry?.subIntervalNum ?? subIntervalId,
+          subIntervalCourses: nextSubIntervalCourses,
+        };
       });
       const nextPlannerRoot = await planner.persistStudyPlannerIntervals(nextIntervals);
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {

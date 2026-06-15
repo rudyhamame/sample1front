@@ -786,6 +786,9 @@
   font-size: 11px;
   line-height: 0.2;
   vertical-align: middle;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .nogaPlanner_tabTable th[colspan] {
@@ -2286,6 +2289,9 @@ color: #fff;
 .nogaPlanner_tableHead th {
   border-bottom: 1px solid #eae2e3 !important;
   border-right: 1px solid #eae2e3 !important;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 
@@ -2768,6 +2774,13 @@ color: #fff;
 
 .nogaPlanner_homePanelGrid {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.nogaPlanner_homePanelRest {
+  display: flex;
   flex-direction: row;
   gap: 12px;
   width: 100%;
@@ -3045,7 +3058,7 @@ color: #fff;
 }
 
 @media (max-width: 980px) {
-  .nogaPlanner_homePanelGrid {
+  .nogaPlanner_homePanelRest {
     flex-direction: column;
   }
 
@@ -3060,11 +3073,23 @@ color: #fff;
   }
 }
 
+.nogaPlanner_homeIntervalsTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 .nogaPlanner_homeIntervalsMiniTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 11px;
   border: 1px solid rgba(132, 27, 45, 0.12);
+}
+
+#nogaPlanner_homeIntervalsMiniTable_2 {
+  width: max-content;
+  min-width: 100%;
 }
 
 .nogaPlanner_homeIntervalsMiniTable th,
@@ -3076,10 +3101,20 @@ color: #fff;
   border-right: 1px solid rgba(132, 27, 45, 0.12);
 }
 
+#nogaPlanner_homeIntervalsMiniTable_2 th,
+#nogaPlanner_homeIntervalsMiniTable_2 td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .nogaPlanner_homeIntervalsMiniTable thead th {
   color: #ffffff;
   font-weight: 700;
   background: #dd2d4a;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .nogaPlanner_homeIntervalsMiniTable thead .nogaPlanner_homeIntervalsYearIndexCell {
@@ -3503,6 +3538,102 @@ color: #fff;
 
 .nogaPlanner_homeIntervalsMiniTable tbody tr:last-child td {
   padding-top: 6px;
+}
+
+/* -------------------------------------------------------
+   Intervals table: scroll wrapper + responsive behaviour
+   ------------------------------------------------------- */
+
+.nogaPlanner_homeIntervalsTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ID columns: allow long strings to wrap at any character */
+#nogaPlanner_homeIntervalsMiniTable_2 th,
+#nogaPlanner_homeIntervalsMiniTable_2 td {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  white-space: normal;
+  min-width: 0;
+}
+
+/* Numeric / short columns: lock them narrow so ID columns get the remaining space */
+#nogaPlanner_homeIntervalsMiniTable_2_th_TryNum,
+#nogaPlanner_homeIntervalsMiniTable_2_th_IntervalNum,
+#nogaPlanner_homeIntervalsMiniTable_2_th_SubIntervalNum {
+  white-space: nowrap;
+  width: 74px;
+}
+
+#nogaPlanner_homeIntervalsMiniTable_2_th_IntervalStatus {
+  width: 88px;
+}
+
+#nogaPlanner_homeIntervalsMiniTable_2_th_Start,
+#nogaPlanner_homeIntervalsMiniTable_2_th_End {
+  width: 138px;
+}
+
+#nogaPlanner_homeIntervalsMiniTable_2_th_StartDay,
+#nogaPlanner_homeIntervalsMiniTable_2_th_StartMonth,
+#nogaPlanner_homeIntervalsMiniTable_2_th_StartYear,
+#nogaPlanner_homeIntervalsMiniTable_2_th_EndDay,
+#nogaPlanner_homeIntervalsMiniTable_2_th_EndMonth,
+#nogaPlanner_homeIntervalsMiniTable_2_th_EndYear {
+  width: 46px;
+}
+
+#nogaPlanner_homeIntervalsMiniTable_2_th_Actions {
+  width: 100px;
+  white-space: nowrap;
+}
+
+/* Medium viewports: tighten padding + reduce font */
+@media (max-width: 1200px) {
+  #nogaPlanner_homeIntervalsMiniTable_2 th,
+  #nogaPlanner_homeIntervalsMiniTable_2 td {
+    padding: 3px 5px;
+    font-size: 10.5px;
+  }
+}
+
+/* Small viewports: further reduce — scroll wrapper handles the rest */
+@media (max-width: 900px) {
+  #nogaPlanner_homeIntervalsMiniTable_2 th,
+  #nogaPlanner_homeIntervalsMiniTable_2 td {
+    padding: 3px 4px;
+    font-size: 10px;
+  }
+
+  #nogaPlanner_homeIntervalsMiniTable_2_th_IntervalStatus {
+    width: 76px;
+  }
+
+  #nogaPlanner_homeIntervalsMiniTable_2_th_Start,
+  #nogaPlanner_homeIntervalsMiniTable_2_th_End {
+    width: 120px;
+  }
+
+  #nogaPlanner_homeIntervalsMiniTable_2_th_Actions {
+    width: 82px;
+  }
+}
+
+/* Very narrow: enforce a hard minimum so scroll kicks in cleanly */
+@media (max-width: 600px) {
+  #nogaPlanner_homeIntervalsMiniTable_2 {
+    min-width: 560px;
+  }
+
+  #nogaPlanner_homeIntervalsMiniTable_2 th,
+  #nogaPlanner_homeIntervalsMiniTable_2 td {
+    padding: 2px 3px;
+    font-size: 9.5px;
+  }
 }
 
 .nogaPlanner_coursesTabMount {
@@ -4289,8 +4420,8 @@ color: #fff;
 .nogaPlanner_savedCoursesTable th,
 .nogaPlanner_lecturesTable th {
   line-height: 1.2;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
   text-align: center;
   vertical-align: middle;
 }
@@ -4313,9 +4444,9 @@ color: #fff;
   max-width: none;
   text-overflow: clip;
   line-height: 1.25;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .nogaPlanner_savedCoursesTable .nogaPlanner_tabTableRow,

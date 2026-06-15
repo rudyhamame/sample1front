@@ -555,3 +555,37 @@ button:hover {
     transform: translateY(0px);
   }
 }
+
+#App_viewportBadge {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background: rgba(16, 25, 30, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  user-select: none;
+}
+
+#App_hoveredIdBadge {
+  position: fixed;
+  z-index: 10000;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(1, 121, 111, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}

@@ -321,20 +321,6 @@ const Footer = ({
   };
 
   const footerStartActions = [
-    ...(isHomeNogaFooterRoute
-      ? [
-          {
-            id: "nogaDrawing",
-            label: "Drawing",
-            icon: "fas fa-pen-nib",
-            onClick: () => {
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("home-noga-toggle-drawing"));
-              }
-            },
-          },
-        ]
-      : []),
     {
       id: "darkMode",
       label: isDarkMode ? "Light Mode" : "Dark Mode",

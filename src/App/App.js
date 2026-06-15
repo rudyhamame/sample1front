@@ -15,6 +15,7 @@ import {
   warmSharedPlannerMusic,
 } from "../music/globalMusicPlayer";
 import VoiceVideoCall from "../voiceVideoCall/VoiceVideoCall";
+import InspectionOverlay from "../debug/InspectionOverlay";
 import Footer from "./Footer/Footer";
 import SubApps from "../Nav/SubApps/SubApps";
 import { getHomeSubApps } from "../utils/homeSubApps";
@@ -4325,6 +4326,12 @@ class App extends React.Component {
           callRequest={this.state.global_call_request}
           onCallRequestHandled={this.handleGlobalCallRequestHandled}
           onSessionChange={this.handleGlobalCallSessionChange}
+        />
+        <InspectionOverlay
+          rootId="root"
+          debugClassName="App_debugBordersOn"
+          viewportBadgeId="App_viewportBadge"
+          hoveredBadgeId="App_hoveredIdBadge"
         />
       </React.Fragment>
     );

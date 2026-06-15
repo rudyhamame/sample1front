@@ -1,15 +1,9 @@
 import { Link, useHistory } from "react-router-dom";
 import "./home-noga.css";
+import "./home_noga_rspnsv_360x666_mobilePortrait.css";
 import Nav from "../Nav/Nav";
 import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../config/api";
-import {
-  drawHomeLedRopePath,
-  drawHomeSketchPath,
-  HOME_DRAWING_PALETTES,
-  mergeNearbyHomeDrawingPaths,
-  smoothHomeDrawingPoints,
-} from "../utils/homeDrawingRope";
 import { getHomeSubApps } from "../utils/homeSubApps";
 import compressImageUpload, {
   canCompressImageUpload,
@@ -36,7 +30,6 @@ const PHENOMEDSOCIAL_CHAT_BG_STORAGE_KEY =
 const HOME_PROFILE_PIC_VIEWPORT_STORAGE_KEY =
   "home_profile_pic_viewport_transform";
 const DEFAULT_HOME_BIO_WALLPAPER_SIZE = 520;
-const PLANNER_MUSIC_SESSION_EVENT = "planner-music-session-change";
 const DEFAULT_NAGHAM_COURSE_LETTER =
   "For dear naghamtrkmani: keep going, keep glowing, and let every page carry you a little closer to your beautiful goal.";
 const DEFAULT_ARCHIVE_MUSIC_IDENTIFIERS = [
@@ -180,63 +173,6 @@ const formatProgramTermScheduleRowDisplay = (entry) => {
   }
   return dateRange || "-";
 };
-
-const HOME_DRAWING_ALLOWLIST_ZONES = [
-  { id: "canvas", label: "Canvas", selector: ".Home_Noga_mainWrapperShell" },
-  {
-    id: "leftColumn",
-    label: "Left column",
-    selector: "#Home_Noga_main_leftColumn_wrapper",
-  },
-  {
-    id: "rightColumn",
-    label: "Right column",
-    selector: "#Home_Noga_rightColumn_wrapper",
-  },
-  {
-    id: "bio",
-    label: "Bio",
-    selector: "#Home_Noga_bioWrapper",
-  },
-  {
-    id: "reports",
-    label: "Reports",
-    selector: ".Home_Noga_preStart_reports",
-  },
-];
-
-const HOME_DRAWING_VISIBILITY_WRAPPERS = [
-  {
-    id: "leftColumn",
-    label: "Left column",
-    selector: "#Home_Noga_main_leftColumn_wrapper",
-  },
-  {
-    id: "bio",
-    label: "Bio wrapper",
-    selector: "#Home_Noga_bioWrapper",
-  },
-  {
-    id: "profile",
-    label: "Profile picture",
-    selector: "#Home_Noga_preStart_profileWrapper",
-  },
-  {
-    id: "bioText",
-    label: "Bio text",
-    selector: "#Home_Noga_preStart_personalBio",
-  },
-  {
-    id: "rightColumn",
-    label: "Right column",
-    selector: "#Home_Noga_rightColumn_wrapper",
-  },
-  {
-    id: "reports",
-    label: "Reports",
-    selector: ".Home_Noga_preStart_reports",
-  },
-];
 
 const HOME_ABOUT_PROFILE_REQUIRED_FIELDS = new Set(["firstname", "lastname"]);
 const HOME_INLINE_REQUIRED_FIELDS = new Set([
@@ -613,105 +549,6 @@ const normalizeProfilePictureViewport = (nextViewport) => {
     scale: Number.isFinite(rawScale) ? Math.min(Math.max(rawScale, 1), 4) : 1,
     offsetX: Number.isFinite(rawOffsetX) ? rawOffsetX : 0,
     offsetY: Number.isFinite(rawOffsetY) ? rawOffsetY : 0,
-  };
-};
-
-const normalizeHomeDrawingPaletteSnapshot = (
-  paletteLike,
-  fallbackId = "aurora",
-) => {
-  const fallbackPalette =
-    HOME_DRAWING_PALETTES.find(
-      (paletteOption) => paletteOption.id === fallbackId,
-    ) || HOME_DRAWING_PALETTES[0];
-
-  return {
-    paletteId:
-      String(
-        paletteLike?.paletteId || fallbackPalette?.id || "aurora",
-      ).trim() ||
-      fallbackPalette?.id ||
-      "aurora",
-    stroke:
-      String(paletteLike?.stroke || "").trim() ||
-      String(fallbackPalette?.stroke || "").trim(),
-    glow:
-      String(paletteLike?.glow || "").trim() ||
-      String(fallbackPalette?.glow || "").trim(),
-    bulb:
-      String(paletteLike?.bulb || "").trim() ||
-      String(fallbackPalette?.bulb || "").trim(),
-  };
-};
-
-const resolveHomeDrawingPalette = (paletteLike) => {
-  const paletteId =
-    String(paletteLike?.paletteId || "aurora").trim() || "aurora";
-  const fallbackPalette =
-    HOME_DRAWING_PALETTES.find(
-      (paletteOption) => paletteOption.id === paletteId,
-    ) || HOME_DRAWING_PALETTES[0];
-
-  return normalizeHomeDrawingPaletteSnapshot(paletteLike, fallbackPalette?.id);
-};
-
-const normalizeHomeDrawingPayload = (nextDrawingPayload) => {
-  const normalizePaths = (rawPaths) =>
-    (Array.isArray(rawPaths) ? rawPaths : [])
-      .map((path) => {
-        const paletteSnapshot = normalizeHomeDrawingPaletteSnapshot(
-          path,
-          String(path?.paletteId || "aurora").trim() || "aurora",
-        );
-        const points = Array.isArray(path?.points)
-          ? path.points
-              .map((point) => ({
-                x: Number(point?.x),
-                y: Number(point?.y),
-              }))
-              .filter(
-                (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
-              )
-          : [];
-
-        return {
-          paletteId: paletteSnapshot.paletteId,
-          stroke: paletteSnapshot.stroke,
-          glow: paletteSnapshot.glow,
-          bulb: paletteSnapshot.bulb,
-          points,
-        };
-      })
-      .filter((path) => path.points.length >= 2);
-
-  const legacyAppliedPaths =
-    !Array.isArray(nextDrawingPayload?.appliedPaths) &&
-    Array.isArray(nextDrawingPayload?.paths)
-      ? nextDrawingPayload.paths
-      : [];
-
-  const normalizeTextItems = (rawItems) =>
-    (Array.isArray(rawItems) ? rawItems : [])
-      .map((item, index) => ({
-        id: String(item?.id || "").trim() || `home-text-${Date.now()}-${index}`,
-        paletteId: String(item?.paletteId || "aurora").trim() || "aurora",
-        text: String(item?.text || "").trim(),
-        x: Number(item?.x),
-        y: Number(item?.y),
-      }))
-      .filter(
-        (item) =>
-          item.text && Number.isFinite(item.x) && Number.isFinite(item.y),
-      );
-
-  return {
-    draftPaths: normalizePaths(nextDrawingPayload?.draftPaths),
-    appliedPaths: normalizePaths(
-      Array.isArray(nextDrawingPayload?.appliedPaths)
-        ? nextDrawingPayload.appliedPaths
-        : legacyAppliedPaths,
-    ),
-    textItems: normalizeTextItems(nextDrawingPayload?.textItems),
   };
 };
 
@@ -1724,14 +1561,6 @@ function HomeNoga(props) {
   const hasRecoveredPendingUploadsRef = React.useRef(false);
   const mainWrapperRef = React.useRef(null);
   const homeNogaSplitDragRef = React.useRef(null);
-  const drawingCanvasRef = React.useRef(null);
-  const drawingCanvasHostRef = React.useRef(null);
-  const appliedDrawingCanvasRef = React.useRef(null);
-  const appliedDrawingCanvasHostRef = React.useRef(null);
-  const drawingVisibilityCanvasRefs = React.useRef(new Map());
-  const drawingPathsRef = React.useRef([]);
-  const drawingCurrentPathRef = React.useRef(null);
-  const isDrawingPointerActiveRef = React.useRef(false);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
   const newMessageAudioRef = React.useRef(null);
@@ -1758,6 +1587,10 @@ function HomeNoga(props) {
   const [isImageGalleryUploading, setIsImageGalleryUploading] = useState(false);
   // Gallery tab state: 'images' | 'videos'
   const [galleryTab, setGalleryTab] = useState("images");
+  // Mobile portrait tab: 'gallery' | 'events'
+  const [friendsEventsTab, setFriendsEventsTab] = useState("gallery");
+  // Mobile portrait chat toggle
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
     useState("public");
   const activeGalleryUploadConfig =
@@ -2034,31 +1867,6 @@ function HomeNoga(props) {
 
   // (Insert all memoized selectors, effects, callbacks, and renderers for friends, search, requests, blocked, and chat from Home.jsx here)
   // ...existing code...
-  const [isHomeDrawingModeEnabled, setIsHomeDrawingModeEnabled] =
-    useState(false);
-  const [isHomeDrawingAllowListEnabled, setIsHomeDrawingAllowListEnabled] =
-    useState(false);
-  const [activeHomeDrawingAllowZoneId, setActiveHomeDrawingAllowZoneId] =
-    useState(HOME_DRAWING_ALLOWLIST_ZONES[0]?.id || "canvas");
-  const [isHomeDrawingAllowZoneMenuOpen, setIsHomeDrawingAllowZoneMenuOpen] =
-    useState(false);
-  const [isHomeDrawingVisibilityMenuOpen, setIsHomeDrawingVisibilityMenuOpen] =
-    useState(false);
-  const [homeDrawingVisibleWrapperIds, setHomeDrawingVisibleWrapperIds] =
-    useState(() => ["bio"]);
-  const [isHomeDrawingAutoGlueEnabled, setIsHomeDrawingAutoGlueEnabled] =
-    useState(true);
-  const [isHomeDrawingStartingFresh, setIsHomeDrawingStartingFresh] =
-    useState(false);
-  const [activeHomeDrawingPaletteId, setActiveHomeDrawingPaletteId] = useState(
-    HOME_DRAWING_PALETTES[0]?.id || "aurora",
-  );
-  const [homeDrawing, setHomeDrawing] = useState(() =>
-    normalizeHomeDrawingPayload(props.state?.homeDrawing),
-  );
-  const [homeDrawingCanvasVersion, setHomeDrawingCanvasVersion] = useState(0);
-  const latestHomeDrawingSaveRequestIdRef = React.useRef(0);
-  const pendingHomeDrawingSyncRef = React.useRef(false);
   const [isGalleryTopRowVisible, setIsGalleryTopRowVisible] = useState(false);
   const [isBioWallpaperControlsOpen, setIsBioWallpaperControlsOpen] =
     useState(false);
@@ -2123,1141 +1931,6 @@ function HomeNoga(props) {
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const HOME_DRAWING_PATH_FILL = "rgba(118, 233, 247, 0.08)";
-  const HOME_DRAWING_PATH_GLOW = "rgba(118, 233, 247, 0.16)";
-
-  const getNavChildForbiddenRects = React.useCallback(() => {
-    if (!mainWrapperRef.current) {
-      return [];
-    }
-
-    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
-    const navChildSelectors = [
-      "#Home_Noga_navWrap .Nav_actionButton",
-      "#Home_Noga_navWrap #SubApps_icon_container",
-      "#Home_Noga_navWrap #Notification_icons_container",
-      "#Home_Noga_navWrap #Dim_article",
-      "#Home_Noga_navWrap #Logout_article",
-      "#Home_Noga_navWrap #Refresh_article",
-    ];
-
-    return navChildSelectors
-      .flatMap((selector) =>
-        Array.from(mainWrapperRef.current.querySelectorAll(selector)),
-      )
-      .filter((element) => {
-        if (!(element instanceof HTMLElement)) {
-          return false;
-        }
-
-        const elementRect = element.getBoundingClientRect();
-        return elementRect.width > 0 && elementRect.height > 0;
-      })
-      .map((element) => {
-        const elementRect = element.getBoundingClientRect();
-
-        return {
-          left: elementRect.left - wrapperRect.left,
-          top: elementRect.top - wrapperRect.top,
-          right: elementRect.right - wrapperRect.left,
-          bottom: elementRect.bottom - wrapperRect.top,
-        };
-      });
-  }, []);
-
-  const getHomeDrawingMaskedRects = React.useCallback(() => {
-    if (!mainWrapperRef.current) {
-      return [];
-    }
-
-    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
-    const maskedSelectors = [
-      "#Home_Noga_main_leftColumn_wrapper",
-      "#Home_Noga_rightColumn_wrapper",
-      ".Home_Noga_preStart_reports",
-      "#Home_Noga_userMenuCluster",
-      "#Home_Noga_navWrap .Nav_actionButton",
-      "#Home_Noga_navWrap #SubApps_icon_container",
-      "#Home_Noga_navWrap #Notification_icons_container",
-      "#Home_Noga_navWrap #Dim_article",
-      "#Home_Noga_navWrap #Logout_article",
-      "#Home_Noga_navWrap #Refresh_article",
-    ];
-
-    return maskedSelectors
-      .flatMap((selector) =>
-        Array.from(mainWrapperRef.current.querySelectorAll(selector)),
-      )
-      .filter((element) => {
-        if (!(element instanceof HTMLElement)) {
-          return false;
-        }
-
-        const elementRect = element.getBoundingClientRect();
-        return elementRect.width > 0 && elementRect.height > 0;
-      })
-      .map((element) => {
-        const elementRect = element.getBoundingClientRect();
-        const computedStyle = window.getComputedStyle(element);
-        const topLeftRadius = Number.parseFloat(
-          computedStyle.borderTopLeftRadius || "0",
-        );
-        const topRightRadius = Number.parseFloat(
-          computedStyle.borderTopRightRadius || "0",
-        );
-        const bottomRightRadius = Number.parseFloat(
-          computedStyle.borderBottomRightRadius || "0",
-        );
-        const bottomLeftRadius = Number.parseFloat(
-          computedStyle.borderBottomLeftRadius || "0",
-        );
-
-        return {
-          left: elementRect.left - wrapperRect.left,
-          top: elementRect.top - wrapperRect.top,
-          right: elementRect.right - wrapperRect.left,
-          bottom: elementRect.bottom - wrapperRect.top,
-          radii: {
-            topLeft: Number.isFinite(topLeftRadius) ? topLeftRadius : 0,
-            topRight: Number.isFinite(topRightRadius) ? topRightRadius : 0,
-            bottomRight: Number.isFinite(bottomRightRadius)
-              ? bottomRightRadius
-              : 0,
-            bottomLeft: Number.isFinite(bottomLeftRadius)
-              ? bottomLeftRadius
-              : 0,
-          },
-        };
-      });
-  }, []);
-
-  const getHomeDrawingAllowListRects = React.useCallback(() => {
-    if (!mainWrapperRef.current) {
-      return [];
-    }
-
-    const activeZone = HOME_DRAWING_ALLOWLIST_ZONES.find(
-      (zone) => zone.id === activeHomeDrawingAllowZoneId,
-    );
-
-    if (!activeZone?.selector) {
-      return [];
-    }
-
-    const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
-
-    return Array.from(
-      mainWrapperRef.current.querySelectorAll(activeZone.selector),
-    )
-      .filter((element) => {
-        if (!(element instanceof HTMLElement)) {
-          return false;
-        }
-
-        const elementRect = element.getBoundingClientRect();
-        return elementRect.width > 0 && elementRect.height > 0;
-      })
-      .map((element) => {
-        const elementRect = element.getBoundingClientRect();
-        const computedStyle = window.getComputedStyle(element);
-        const topLeftRadius = Number.parseFloat(
-          computedStyle.borderTopLeftRadius || "0",
-        );
-        const topRightRadius = Number.parseFloat(
-          computedStyle.borderTopRightRadius || "0",
-        );
-        const bottomRightRadius = Number.parseFloat(
-          computedStyle.borderBottomRightRadius || "0",
-        );
-        const bottomLeftRadius = Number.parseFloat(
-          computedStyle.borderBottomLeftRadius || "0",
-        );
-
-        return {
-          left: elementRect.left - wrapperRect.left,
-          top: elementRect.top - wrapperRect.top,
-          right: elementRect.right - wrapperRect.left,
-          bottom: elementRect.bottom - wrapperRect.top,
-          radii: {
-            topLeft: Number.isFinite(topLeftRadius) ? topLeftRadius : 0,
-            topRight: Number.isFinite(topRightRadius) ? topRightRadius : 0,
-            bottomRight: Number.isFinite(bottomRightRadius)
-              ? bottomRightRadius
-              : 0,
-            bottomLeft: Number.isFinite(bottomLeftRadius)
-              ? bottomLeftRadius
-              : 0,
-          },
-        };
-      });
-  }, [activeHomeDrawingAllowZoneId]);
-
-  const isPointInsideAllowedZone = React.useCallback(
-    (point) => {
-      if (!isHomeDrawingAllowListEnabled) {
-        return true;
-      }
-
-      const allowListRects = getHomeDrawingAllowListRects();
-
-      if (!Array.isArray(allowListRects) || allowListRects.length === 0) {
-        return false;
-      }
-
-      return allowListRects.some(
-        (rect) =>
-          point.x >= rect.left &&
-          point.x <= rect.right &&
-          point.y >= rect.top &&
-          point.y <= rect.bottom,
-      );
-    },
-    [getHomeDrawingAllowListRects, isHomeDrawingAllowListEnabled],
-  );
-
-  const setHomeDrawingVisibilityCanvasRef = React.useCallback(
-    (wrapperId, canvasNode) => {
-      if (canvasNode) {
-        drawingVisibilityCanvasRefs.current.set(wrapperId, canvasNode);
-        return;
-      }
-
-      drawingVisibilityCanvasRefs.current.delete(wrapperId);
-    },
-    [],
-  );
-
-  const toggleHomeDrawingVisibleWrapper = React.useCallback((wrapperId) => {
-    setHomeDrawingVisibleWrapperIds((currentIds) => {
-      const normalizedIds = Array.isArray(currentIds) ? currentIds : [];
-
-      if (normalizedIds.includes(wrapperId)) {
-        return normalizedIds.filter((currentId) => currentId !== wrapperId);
-      }
-
-      return [...normalizedIds, wrapperId];
-    });
-  }, []);
-
-  const renderHomeDrawingVisibilityCanvas = React.useCallback(
-    (wrapperId) =>
-      homeDrawingVisibleWrapperIds.includes(wrapperId) ? (
-        <canvas
-          ref={(canvasNode) =>
-            setHomeDrawingVisibilityCanvasRef(wrapperId, canvasNode)
-          }
-          className="Home_Noga_drawingVisibilityCanvas"
-          aria-hidden="true"
-        />
-      ) : null,
-    [homeDrawingVisibleWrapperIds, setHomeDrawingVisibilityCanvasRef],
-  );
-
-  const redrawHomeDrawingCanvas = React.useCallback(() => {
-    const appliedCanvas = appliedDrawingCanvasRef.current;
-    const appliedHost = appliedDrawingCanvasHostRef.current;
-    const draftCanvas = drawingCanvasRef.current;
-    const draftHost = drawingCanvasHostRef.current;
-
-    if (
-      !appliedCanvas ||
-      !appliedHost ||
-      !draftCanvas ||
-      !draftHost ||
-      !mainWrapperRef.current
-    ) {
-      return;
-    }
-
-    const appliedContext = appliedCanvas.getContext("2d");
-    const draftContext = draftCanvas.getContext("2d");
-
-    if (!appliedContext || !draftContext) {
-      return;
-    }
-
-    const bounds = appliedHost.getBoundingClientRect();
-    const devicePixelRatio =
-      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const width = Math.max(1, Math.round(bounds.width));
-    const height = Math.max(1, Math.round(bounds.height));
-
-    [appliedCanvas, draftCanvas].forEach((canvasNode) => {
-      if (
-        canvasNode.width !== Math.round(width * devicePixelRatio) ||
-        canvasNode.height !== Math.round(height * devicePixelRatio)
-      ) {
-        canvasNode.width = Math.round(width * devicePixelRatio);
-        canvasNode.height = Math.round(height * devicePixelRatio);
-        canvasNode.style.width = `${width}px`;
-        canvasNode.style.height = `${height}px`;
-      }
-    });
-
-    [appliedContext, draftContext].forEach((context) => {
-      context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      context.clearRect(0, 0, width, height);
-    });
-
-    if (isHomeDrawingModeEnabled) {
-      const drawingGlow = draftContext.createLinearGradient(
-        0,
-        0,
-        width,
-        height,
-      );
-      drawingGlow.addColorStop(0, "rgba(173, 245, 255, 0.05)");
-      drawingGlow.addColorStop(0.45, HOME_DRAWING_PATH_FILL);
-      drawingGlow.addColorStop(1, "rgba(118, 233, 247, 0.02)");
-      draftContext.fillStyle = drawingGlow;
-      draftContext.fillRect(0, 0, width, height);
-    }
-
-    const nowSeconds =
-      typeof performance !== "undefined"
-        ? performance.now() / 1000
-        : Date.now() / 1000;
-    const homeMusicSignal = homeMusicSignalRef.current || {};
-    const signalUpdatedAt = Number(homeMusicSignal.updatedAt) || 0;
-    const signalAgeMs =
-      signalUpdatedAt > 0
-        ? Math.max(0, Date.now() - signalUpdatedAt)
-        : Number.POSITIVE_INFINITY;
-    const hasFreshSignal = signalAgeMs < 1400;
-    const fallbackBeat = (Math.sin(nowSeconds * 2.8) + 1) / 2;
-    const isHomeMusicPlaying =
-      Boolean(props.state?.planner_music?.isPlaying) ||
-      Boolean(homeMusicIsPlayingRef.current);
-    const effectiveMusicSignal = isHomeMusicPlaying
-      ? {
-          energy: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.energy) || 0 : 0,
-            0.2 + fallbackBeat * 0.18,
-          ),
-          bass: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.bass) || 0 : 0,
-            0.24 + fallbackBeat * 0.22,
-          ),
-          mid: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.mid) || 0 : 0,
-            0.16 + fallbackBeat * 0.14,
-          ),
-          treble: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.treble) || 0 : 0,
-            0.12 + fallbackBeat * 0.12,
-          ),
-          pitch: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.pitch) || 0 : 0,
-            0.18 + fallbackBeat * 0.16,
-          ),
-          tempo: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.tempo) || 0 : 0,
-            0.24 + fallbackBeat * 0.12,
-          ),
-          pulse: Math.max(
-            hasFreshSignal ? Number(homeMusicSignal.pulse) || 0 : 0,
-            0.3 + fallbackBeat * 0.32,
-          ),
-          fallbackTime:
-            hasFreshSignal &&
-            Number.isFinite(Number(homeMusicSignal.fallbackTime))
-              ? Number(homeMusicSignal.fallbackTime)
-              : nowSeconds,
-          updatedAt: signalUpdatedAt || Date.now(),
-        }
-      : null;
-
-    homeDrawing.appliedPaths.forEach((segment) => {
-      const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
-      if (rawPoints.length < 2) {
-        return;
-      }
-
-      const palette = resolveHomeDrawingPalette(segment);
-      const smoothedPoints = smoothHomeDrawingPoints(rawPoints);
-
-      drawHomeLedRopePath(appliedContext, smoothedPoints, palette, {
-        musicSignal: effectiveMusicSignal,
-        animateBulbs: Boolean(effectiveMusicSignal),
-      });
-    });
-
-    homeDrawing.draftPaths.forEach((segment) => {
-      const rawPoints = Array.isArray(segment?.points) ? segment.points : [];
-      if (rawPoints.length < 2) {
-        return;
-      }
-
-      const palette = resolveHomeDrawingPalette(segment);
-
-      drawHomeSketchPath(draftContext, rawPoints, palette);
-    });
-
-    const appendRoundedRectPath = (context, rect) => {
-      const bleed = 0;
-      const left = Math.max(0, rect.left - bleed);
-      const top = Math.max(0, rect.top - bleed);
-      const rectWidth = Math.max(0, rect.right - rect.left + bleed * 2);
-      const rectHeight = Math.max(0, rect.bottom - rect.top + bleed * 2);
-      const safeRadius = {
-        topLeft: Math.max(0, Number(rect?.radii?.topLeft || 0)),
-        topRight: Math.max(0, Number(rect?.radii?.topRight || 0)),
-        bottomRight: Math.max(0, Number(rect?.radii?.bottomRight || 0)),
-        bottomLeft: Math.max(0, Number(rect?.radii?.bottomLeft || 0)),
-      };
-
-      if (rectWidth <= 0 || rectHeight <= 0) {
-        return;
-      }
-
-      if (typeof context.roundRect === "function") {
-        context.roundRect(left, top, rectWidth, rectHeight, [
-          safeRadius.topLeft,
-          safeRadius.topRight,
-          safeRadius.bottomRight,
-          safeRadius.bottomLeft,
-        ]);
-        return;
-      }
-
-      const maxRadius = Math.min(rectWidth, rectHeight) / 2;
-      const topLeft = Math.min(safeRadius.topLeft, maxRadius);
-      const topRight = Math.min(safeRadius.topRight, maxRadius);
-      const bottomRight = Math.min(safeRadius.bottomRight, maxRadius);
-      const bottomLeft = Math.min(safeRadius.bottomLeft, maxRadius);
-
-      context.moveTo(left + topLeft, top);
-      context.lineTo(left + rectWidth - topRight, top);
-      context.quadraticCurveTo(
-        left + rectWidth,
-        top,
-        left + rectWidth,
-        top + topRight,
-      );
-      context.lineTo(left + rectWidth, top + rectHeight - bottomRight);
-      context.quadraticCurveTo(
-        left + rectWidth,
-        top + rectHeight,
-        left + rectWidth - bottomRight,
-        top + rectHeight,
-      );
-      context.lineTo(left + bottomLeft, top + rectHeight);
-      context.quadraticCurveTo(
-        left,
-        top + rectHeight,
-        left,
-        top + rectHeight - bottomLeft,
-      );
-      context.lineTo(left, top + topLeft);
-      context.quadraticCurveTo(left, top, left + topLeft, top);
-      context.closePath();
-    };
-
-    const applyCanvasRectMask = (context, rects, operation) => {
-      if (!Array.isArray(rects) || rects.length === 0) {
-        return;
-      }
-
-      context.save();
-      context.globalCompositeOperation = operation;
-      context.beginPath();
-      rects.forEach((rect) => appendRoundedRectPath(context, rect));
-      context.fill();
-      context.restore();
-    };
-
-    const getElementCanvasRect = (element) => {
-      if (!(element instanceof HTMLElement)) {
-        return null;
-      }
-
-      const wrapperRect = mainWrapperRef.current.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-
-      if (elementRect.width <= 0 || elementRect.height <= 0) {
-        return null;
-      }
-
-      const computedStyle = window.getComputedStyle(element);
-
-      return {
-        left: elementRect.left - wrapperRect.left,
-        top: elementRect.top - wrapperRect.top,
-        right: elementRect.right - wrapperRect.left,
-        bottom: elementRect.bottom - wrapperRect.top,
-        radii: {
-          topLeft: Number.parseFloat(computedStyle.borderTopLeftRadius || "0"),
-          topRight: Number.parseFloat(
-            computedStyle.borderTopRightRadius || "0",
-          ),
-          bottomRight: Number.parseFloat(
-            computedStyle.borderBottomRightRadius || "0",
-          ),
-          bottomLeft: Number.parseFloat(
-            computedStyle.borderBottomLeftRadius || "0",
-          ),
-        },
-      };
-    };
-
-    const visibleWrapperRects = HOME_DRAWING_VISIBILITY_WRAPPERS.map(
-      (wrapper) => {
-        const wrapperElement = mainWrapperRef.current.querySelector(
-          wrapper.selector,
-        );
-        const wrapperCanvas = drawingVisibilityCanvasRefs.current.get(
-          wrapper.id,
-        );
-        const wrapperRect = getElementCanvasRect(wrapperElement);
-
-        if (!wrapperCanvas || !wrapperElement || !wrapperRect) {
-          return null;
-        }
-
-        const wrapperContext = wrapperCanvas.getContext("2d");
-        const wrapperWidth = Math.max(
-          1,
-          Math.round(wrapperRect.right - wrapperRect.left),
-        );
-        const wrapperHeight = Math.max(
-          1,
-          Math.round(wrapperRect.bottom - wrapperRect.top),
-        );
-
-        if (!wrapperContext) {
-          return wrapperRect;
-        }
-
-        if (
-          wrapperCanvas.width !== Math.round(wrapperWidth * devicePixelRatio) ||
-          wrapperCanvas.height !== Math.round(wrapperHeight * devicePixelRatio)
-        ) {
-          wrapperCanvas.width = Math.round(wrapperWidth * devicePixelRatio);
-          wrapperCanvas.height = Math.round(wrapperHeight * devicePixelRatio);
-          wrapperCanvas.style.width = `${wrapperWidth}px`;
-          wrapperCanvas.style.height = `${wrapperHeight}px`;
-        }
-
-        wrapperContext.setTransform(
-          devicePixelRatio,
-          0,
-          0,
-          devicePixelRatio,
-          0,
-          0,
-        );
-        wrapperContext.clearRect(0, 0, wrapperWidth, wrapperHeight);
-
-        homeDrawing.appliedPaths.forEach((segment) => {
-          const rawPoints = Array.isArray(segment?.points)
-            ? segment.points
-            : [];
-
-          if (rawPoints.length < 2) {
-            return;
-          }
-
-          const shiftedPoints = smoothHomeDrawingPoints(rawPoints).map(
-            (point) => ({
-              x: point.x - wrapperRect.left,
-              y: point.y - wrapperRect.top,
-            }),
-          );
-
-          drawHomeLedRopePath(
-            wrapperContext,
-            shiftedPoints,
-            resolveHomeDrawingPalette(segment),
-            {
-              musicSignal: effectiveMusicSignal,
-              animateBulbs: Boolean(effectiveMusicSignal),
-            },
-          );
-        });
-
-        homeDrawing.draftPaths.forEach((segment) => {
-          const rawPoints = Array.isArray(segment?.points)
-            ? segment.points
-            : [];
-
-          if (rawPoints.length < 2) {
-            return;
-          }
-
-          drawHomeSketchPath(
-            wrapperContext,
-            rawPoints.map((point) => ({
-              x: point.x - wrapperRect.left,
-              y: point.y - wrapperRect.top,
-            })),
-            resolveHomeDrawingPalette(segment),
-          );
-        });
-
-        return wrapperRect;
-      },
-    ).filter(Boolean);
-
-    if (isHomeDrawingAllowListEnabled) {
-      const allowListRects = getHomeDrawingAllowListRects();
-
-      if (allowListRects.length === 0) {
-        draftContext.clearRect(0, 0, width, height);
-      } else {
-        applyCanvasRectMask(draftContext, allowListRects, "destination-in");
-      }
-
-      applyCanvasRectMask(
-        draftContext,
-        getNavChildForbiddenRects(),
-        "destination-out",
-      );
-
-      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
-    } else {
-      applyCanvasRectMask(
-        draftContext,
-        getHomeDrawingMaskedRects(),
-        "destination-out",
-      );
-      applyCanvasRectMask(draftContext, visibleWrapperRects, "destination-out");
-    }
-  }, [
-    HOME_DRAWING_PATH_FILL,
-    getHomeDrawingAllowListRects,
-    getHomeDrawingMaskedRects,
-    getNavChildForbiddenRects,
-    homeDrawingVisibleWrapperIds,
-    homeDrawing.appliedPaths,
-    homeDrawing.draftPaths,
-    isHomeDrawingAllowListEnabled,
-    isHomeDrawingModeEnabled,
-    props.state?.planner_music?.isPlaying,
-  ]);
-
-  const getCanvasPointFromEvent = React.useCallback((event) => {
-    const canvas = drawingCanvasRef.current;
-
-    if (!canvas) {
-      return null;
-    }
-
-    const canvasRect = canvas.getBoundingClientRect();
-
-    return {
-      x: event.clientX - canvasRect.left,
-      y: event.clientY - canvasRect.top,
-    };
-  }, []);
-
-  const isPointInsideNavChildCard = React.useCallback(
-    (point) =>
-      getNavChildForbiddenRects().some(
-        (rect) =>
-          point.x >= rect.left &&
-          point.x <= rect.right &&
-          point.y >= rect.top &&
-          point.y <= rect.bottom,
-      ),
-    [getNavChildForbiddenRects],
-  );
-
-  React.useEffect(() => {
-    drawingPathsRef.current = homeDrawing.draftPaths;
-  }, [homeDrawing.draftPaths]);
-
-  React.useEffect(() => {
-    homeMusicIsPlayingRef.current = Boolean(
-      props.state?.planner_music?.isPlaying,
-    );
-  }, [props.state?.planner_music?.isPlaying]);
-
-  React.useEffect(() => {
-    if (!isHomeDrawingAllowListEnabled || !isHomeDrawingModeEnabled) {
-      setIsHomeDrawingAllowZoneMenuOpen(false);
-    }
-
-    if (!isHomeDrawingModeEnabled) {
-      setIsHomeDrawingVisibilityMenuOpen(false);
-    }
-  }, [isHomeDrawingAllowListEnabled, isHomeDrawingModeEnabled]);
-
-  const beginHomeDrawingStroke = React.useCallback(
-    (event) => {
-      if (!isHomeDrawingModeEnabled) {
-        return;
-      }
-
-      const point = getCanvasPointFromEvent(event);
-
-      if (
-        !point ||
-        isPointInsideNavChildCard(point) ||
-        !isPointInsideAllowedZone(point)
-      ) {
-        drawingCurrentPathRef.current = null;
-        isDrawingPointerActiveRef.current = true;
-        return;
-      }
-
-      event.preventDefault();
-
-      isDrawingPointerActiveRef.current = true;
-      const selectedPalette = resolveHomeDrawingPalette({
-        paletteId: activeHomeDrawingPaletteId,
-      });
-      const nextPath = {
-        paletteId: selectedPalette.paletteId,
-        stroke: selectedPalette.stroke,
-        glow: selectedPalette.glow,
-        bulb: selectedPalette.bulb,
-        points: [point],
-      };
-      drawingCurrentPathRef.current = nextPath;
-      setHomeDrawing((currentDrawing) => ({
-        draftPaths: [...currentDrawing.draftPaths, nextPath],
-        appliedPaths: currentDrawing.appliedPaths,
-        textItems: currentDrawing.textItems,
-      }));
-    },
-    [
-      activeHomeDrawingPaletteId,
-      getCanvasPointFromEvent,
-      isHomeDrawingModeEnabled,
-      isPointInsideAllowedZone,
-      isPointInsideNavChildCard,
-    ],
-  );
-
-  const continueHomeDrawingStroke = React.useCallback(
-    (event) => {
-      if (!isHomeDrawingModeEnabled || !isDrawingPointerActiveRef.current) {
-        return;
-      }
-
-      const point = getCanvasPointFromEvent(event);
-
-      if (!point) {
-        return;
-      }
-
-      event.preventDefault();
-
-      if (
-        isPointInsideNavChildCard(point) ||
-        !isPointInsideAllowedZone(point)
-      ) {
-        drawingCurrentPathRef.current = null;
-        return;
-      }
-
-      if (!drawingCurrentPathRef.current) {
-        const selectedPalette = resolveHomeDrawingPalette({
-          paletteId: activeHomeDrawingPaletteId,
-        });
-        const nextPath = {
-          paletteId: selectedPalette.paletteId,
-          stroke: selectedPalette.stroke,
-          glow: selectedPalette.glow,
-          bulb: selectedPalette.bulb,
-          points: [point],
-        };
-        drawingCurrentPathRef.current = nextPath;
-        setHomeDrawing((currentDrawing) => ({
-          draftPaths: [...currentDrawing.draftPaths, nextPath],
-          appliedPaths: currentDrawing.appliedPaths,
-          textItems: currentDrawing.textItems,
-        }));
-      } else {
-        drawingCurrentPathRef.current.points.push(point);
-        setHomeDrawing((currentDrawing) => ({
-          draftPaths: [...currentDrawing.draftPaths],
-          appliedPaths: currentDrawing.appliedPaths,
-          textItems: currentDrawing.textItems,
-        }));
-      }
-    },
-    [
-      activeHomeDrawingPaletteId,
-      getCanvasPointFromEvent,
-      isHomeDrawingModeEnabled,
-      isPointInsideAllowedZone,
-      isPointInsideNavChildCard,
-    ],
-  );
-
-  const endHomeDrawingStroke = React.useCallback(() => {
-    isDrawingPointerActiveRef.current = false;
-    drawingCurrentPathRef.current = null;
-  }, []);
-
-  const clearHomeDrawingCanvas = React.useCallback(() => {
-    drawingCurrentPathRef.current = null;
-    pendingHomeDrawingSyncRef.current = true;
-    const nextDrawing = {
-      draftPaths: [],
-      appliedPaths: [],
-      textItems: [],
-    };
-    setHomeDrawing(nextDrawing);
-    props.setUserMediaInfo?.({
-      profilePicture: String(props.state?.profilePicture || "").trim(),
-      profilePictureViewport: props.state?.profilePictureViewport || {
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0,
-      },
-      homeDrawing: nextDrawing,
-      imageGallery: Array.isArray(props.state?.imageGallery)
-        ? props.state.imageGallery
-        : [],
-    });
-  }, [
-    props.setUserMediaInfo,
-    props.state?.imageGallery,
-    props.state?.profilePicture,
-    props.state?.profilePictureViewport,
-  ]);
-
-  const persistHomeDrawing = React.useCallback(
-    async (drawingPayload, { requestId, keepalive = false } = {}) => {
-      if (!props.state?.token) {
-        return null;
-      }
-
-      const response = await fetch(apiUrl("/api/user/profile"), {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${props.state.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          homeDrawing: drawingPayload,
-        }),
-        keepalive,
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload?.message || "Unable to save home drawing.");
-      }
-
-      const nextHomeDrawing = normalizeHomeDrawingPayload(
-        payload?.media?.homeDrawing || drawingPayload,
-      );
-
-      if (
-        Number.isFinite(requestId) &&
-        latestHomeDrawingSaveRequestIdRef.current !== requestId
-      ) {
-        return nextHomeDrawing;
-      }
-
-      pendingHomeDrawingSyncRef.current = false;
-
-      props.setUserMediaInfo?.({
-        profilePicture: String(props.state?.profilePicture || "").trim(),
-        profilePictureViewport: props.state?.profilePictureViewport || {
-          scale: 1,
-          offsetX: 0,
-          offsetY: 0,
-        },
-        homeDrawing: nextHomeDrawing,
-        imageGallery: Array.isArray(props.state?.imageGallery)
-          ? props.state.imageGallery
-          : [],
-      });
-
-      return nextHomeDrawing;
-    },
-    [
-      props.setUserMediaInfo,
-      props.state?.imageGallery,
-      props.state?.profilePicture,
-      props.state?.profilePictureViewport,
-      props.state?.token,
-    ],
-  );
-
-  const applyHomeDrawingRope = React.useCallback(() => {
-    const sourcePaths = [
-      ...(Array.isArray(homeDrawing?.appliedPaths)
-        ? homeDrawing.appliedPaths
-        : []),
-      ...(Array.isArray(homeDrawing?.draftPaths) ? homeDrawing.draftPaths : []),
-    ];
-
-    if (!sourcePaths.length) {
-      const persistedDrawing = {
-        draftPaths: [],
-        appliedPaths: Array.isArray(homeDrawing?.appliedPaths)
-          ? homeDrawing.appliedPaths
-          : [],
-        textItems: Array.isArray(homeDrawing?.textItems)
-          ? homeDrawing.textItems
-          : [],
-      };
-
-      setHomeDrawing(persistedDrawing);
-      props.setUserMediaInfo?.({
-        profilePicture: String(props.state?.profilePicture || "").trim(),
-        profilePictureViewport: props.state?.profilePictureViewport || {
-          scale: 1,
-          offsetX: 0,
-          offsetY: 0,
-        },
-        homeDrawing: persistedDrawing,
-        imageGallery: Array.isArray(props.state?.imageGallery)
-          ? props.state.imageGallery
-          : [],
-      });
-      pendingHomeDrawingSyncRef.current = true;
-      setIsHomeDrawingModeEnabled(false);
-      drawingCurrentPathRef.current = null;
-      isDrawingPointerActiveRef.current = false;
-
-      if (props.state?.token) {
-        const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
-        latestHomeDrawingSaveRequestIdRef.current = requestId;
-
-        persistHomeDrawing(persistedDrawing, {
-          requestId,
-          keepalive: true,
-        }).catch(() => {
-          pendingHomeDrawingSyncRef.current = false;
-        });
-      }
-      return;
-    }
-
-    const existingAppliedPaths = Array.isArray(homeDrawing?.appliedPaths)
-      ? homeDrawing.appliedPaths
-      : [];
-    const draftPaths = Array.isArray(homeDrawing?.draftPaths)
-      ? homeDrawing.draftPaths
-      : [];
-    const mergeSourcePaths = isHomeDrawingStartingFresh
-      ? draftPaths
-      : sourcePaths;
-    const mergedPaths = isHomeDrawingAutoGlueEnabled
-      ? mergeNearbyHomeDrawingPaths(mergeSourcePaths)
-      : mergeSourcePaths;
-    const mergedResultPaths = mergedPaths.length
-      ? mergedPaths
-      : mergeSourcePaths;
-    const nextAppliedPaths = isHomeDrawingStartingFresh
-      ? [...existingAppliedPaths, ...mergedResultPaths]
-      : mergedResultPaths;
-    const persistedDrawing = {
-      draftPaths: [],
-      appliedPaths: nextAppliedPaths,
-      textItems: Array.isArray(homeDrawing?.textItems)
-        ? homeDrawing.textItems
-        : [],
-    };
-
-    setHomeDrawing(persistedDrawing);
-    props.setUserMediaInfo?.({
-      profilePicture: String(props.state?.profilePicture || "").trim(),
-      profilePictureViewport: props.state?.profilePictureViewport || {
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0,
-      },
-      homeDrawing: persistedDrawing,
-      imageGallery: Array.isArray(props.state?.imageGallery)
-        ? props.state.imageGallery
-        : [],
-    });
-    pendingHomeDrawingSyncRef.current = true;
-    drawingCurrentPathRef.current = null;
-    isDrawingPointerActiveRef.current = false;
-    setIsHomeDrawingModeEnabled(false);
-    setIsHomeDrawingStartingFresh(false);
-    setHomeDrawingCanvasVersion((currentVersion) => currentVersion + 1);
-
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          redrawHomeDrawingCanvas();
-        });
-      });
-    }
-
-    if (props.state?.token) {
-      const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
-      latestHomeDrawingSaveRequestIdRef.current = requestId;
-
-      persistHomeDrawing(persistedDrawing, {
-        requestId,
-        keepalive: true,
-      }).catch(() => {
-        pendingHomeDrawingSyncRef.current = false;
-      });
-    }
-  }, [
-    homeDrawing?.appliedPaths,
-    homeDrawing?.draftPaths,
-    homeDrawing?.textItems,
-    isHomeDrawingAutoGlueEnabled,
-    isHomeDrawingStartingFresh,
-    persistHomeDrawing,
-    props.setUserMediaInfo,
-    props.state?.imageGallery,
-    props.state?.profilePicture,
-    props.state?.profilePictureViewport,
-    props.state?.token,
-    redrawHomeDrawingCanvas,
-  ]);
-
-  const handleToggleHomeDrawingMode = React.useCallback(() => {
-    if (isHomeDrawingModeEnabled) {
-      endHomeDrawingStroke();
-      applyHomeDrawingRope();
-      return;
-    }
-
-    setIsHomeDrawingModeEnabled(true);
-  }, [applyHomeDrawingRope, endHomeDrawingStroke, isHomeDrawingModeEnabled]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    window.addEventListener(
-      "home-noga-toggle-drawing",
-      handleToggleHomeDrawingMode,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "home-noga-toggle-drawing",
-        handleToggleHomeDrawingMode,
-      );
-    };
-  }, [handleToggleHomeDrawingMode]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const handlePlannerMusicSignalChange = (event) => {
-      const nextAudioSignal = event?.detail?.audioSignal;
-      if (typeof event?.detail?.isPlaying === "boolean") {
-        homeMusicIsPlayingRef.current = event.detail.isPlaying;
-      }
-
-      if (!nextAudioSignal) {
-        redrawHomeDrawingCanvas();
-        return;
-      }
-
-      const currentSignal = homeMusicSignalRef.current || {};
-
-      if (
-        currentSignal.updatedAt === nextAudioSignal.updatedAt &&
-        currentSignal.energy === nextAudioSignal.energy &&
-        currentSignal.pitch === nextAudioSignal.pitch &&
-        currentSignal.tempo === nextAudioSignal.tempo &&
-        currentSignal.pulse === nextAudioSignal.pulse
-      ) {
-        return;
-      }
-
-      homeMusicSignalRef.current = nextAudioSignal;
-      redrawHomeDrawingCanvas();
-    };
-
-    window.addEventListener(
-      PLANNER_MUSIC_SESSION_EVENT,
-      handlePlannerMusicSignalChange,
-    );
-
-    return () => {
-      window.removeEventListener(
-        PLANNER_MUSIC_SESSION_EVENT,
-        handlePlannerMusicSignalChange,
-      );
-    };
-  }, [redrawHomeDrawingCanvas]);
-
-  React.useEffect(() => {
-    redrawHomeDrawingCanvas();
-  }, [
-    activeFriendsMiniTab,
-    isReportsWrapperOpen,
-    openChatFriendId,
-    redrawHomeDrawingCanvas,
-    showGalleryInRightColumn,
-  ]);
-
-  React.useEffect(() => {
-    if (isHomeDrawingModeEnabled) {
-      return undefined;
-    }
-
-    if (typeof window === "undefined") {
-      redrawHomeDrawingCanvas();
-      return undefined;
-    }
-
-    const frameRequest = window.requestAnimationFrame(() => {
-      redrawHomeDrawingCanvas();
-    });
-    const timeoutId = window.setTimeout(() => {
-      redrawHomeDrawingCanvas();
-    }, 60);
-
-    return () => {
-      window.cancelAnimationFrame(frameRequest);
-      window.clearTimeout(timeoutId);
-    };
-  }, [
-    homeDrawing.appliedPaths,
-    isHomeDrawingModeEnabled,
-    redrawHomeDrawingCanvas,
-  ]);
-
-  React.useEffect(() => {
-    if (isHomeDrawingModeEnabled) {
-      return;
-    }
-
-    isDrawingPointerActiveRef.current = false;
-    drawingCurrentPathRef.current = null;
-  }, [isHomeDrawingModeEnabled]);
-
-  React.useEffect(() => {
-    const wrapperNode = mainWrapperRef.current;
-
-    if (!wrapperNode) {
-      return undefined;
-    }
-
-    const handleResize = () => {
-      redrawHomeDrawingCanvas();
-    };
-
-    handleResize();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", handleResize);
-      return () => {
-        window.removeEventListener("resize", handleResize);
-      };
-    }
-
-    const observer = new ResizeObserver(handleResize);
-    observer.observe(wrapperNode);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [redrawHomeDrawingCanvas]);
-
   React.useEffect(() => {
     if (isReportsWrapperOpen || showGalleryInRightColumn) {
       if (openChatFriendId) {
@@ -5694,11 +4367,6 @@ function HomeNoga(props) {
           offsetX: 0,
           offsetY: 0,
         },
-        homeDrawing:
-          props.state?.homeDrawing &&
-          typeof props.state.homeDrawing === "object"
-            ? props.state.homeDrawing
-            : { draftPaths: [], appliedPaths: [], textItems: [] },
         imageGallery: Array.isArray(props.state?.imageGallery)
           ? props.state.imageGallery
           : [],
@@ -5721,7 +4389,6 @@ function HomeNoga(props) {
       currentBioWallpaperSize,
       currentBioWallpaperUrl,
       props.setUserMediaInfo,
-      props.state?.homeDrawing,
       props.state?.imageGallery,
       props.state?.profilePicture,
       props.state?.profilePictureViewport,
@@ -6338,6 +5005,26 @@ function HomeNoga(props) {
   }, [activeGalleryActionsPublicId, imageGallery]);
 
   React.useEffect(() => {
+    if (!activeGalleryActionsPublicId) {
+      return;
+    }
+
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest(".Home_Noga_galleryThumbWrap")) {
+        setActiveGalleryActionsPublicId("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [activeGalleryActionsPublicId]);
+
+  React.useEffect(() => {
     if (!isVideoViewerOpen || !activeGalleryVideo) {
       return;
     }
@@ -6556,41 +5243,6 @@ function HomeNoga(props) {
   ]);
 
   React.useEffect(() => {
-    const normalizedDrawing = normalizeHomeDrawingPayload(
-      props.state?.homeDrawing,
-    );
-
-    if (isHomeDrawingModeEnabled || homeDrawing.draftPaths.length > 0) {
-      return;
-    }
-
-    if (pendingHomeDrawingSyncRef.current) {
-      const currentSerialized = JSON.stringify(homeDrawing);
-      const nextSerialized = JSON.stringify(normalizedDrawing);
-
-      if (currentSerialized !== nextSerialized) {
-        return;
-      }
-
-      pendingHomeDrawingSyncRef.current = false;
-    }
-
-    setHomeDrawing((currentDrawing) => {
-      const currentSerialized = JSON.stringify(currentDrawing);
-      const nextSerialized = JSON.stringify(normalizedDrawing);
-      return currentSerialized === nextSerialized
-        ? currentDrawing
-        : normalizedDrawing;
-    });
-  }, [
-    homeDrawing.draftPaths.length,
-    isHomeDrawingModeEnabled,
-    props.state?.homeDrawing?.draftPaths,
-    props.state?.homeDrawing?.appliedPaths,
-    props.state?.homeDrawing?.textItems,
-  ]);
-
-  React.useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -6720,56 +5372,6 @@ function HomeNoga(props) {
     props.setUserMediaInfo,
     props.state?.imageGallery,
     props.state?.profilePicture,
-    props.state?.token,
-  ]);
-
-  React.useEffect(() => {
-    if (!props.state?.token) {
-      return;
-    }
-
-    if (isHomeDrawingModeEnabled || homeDrawing.draftPaths.length > 0) {
-      return;
-    }
-
-    const persistedDrawing = {
-      draftPaths: [],
-      appliedPaths: homeDrawing.appliedPaths,
-      textItems: homeDrawing.textItems,
-    };
-    const persistedSerialized = JSON.stringify(persistedDrawing);
-    const stateSerialized = JSON.stringify(
-      normalizeHomeDrawingPayload(props.state?.homeDrawing),
-    );
-
-    if (persistedSerialized === stateSerialized) {
-      return;
-    }
-
-    const saveTimeout = window.setTimeout(async () => {
-      const requestId = latestHomeDrawingSaveRequestIdRef.current + 1;
-      latestHomeDrawingSaveRequestIdRef.current = requestId;
-
-      try {
-        await persistHomeDrawing(persistedDrawing, { requestId });
-      } catch (error) {
-        // Keep local drawing state even if persistence fails.
-        pendingHomeDrawingSyncRef.current = false;
-      }
-    }, 700);
-
-    return () => {
-      window.clearTimeout(saveTimeout);
-    };
-  }, [
-    isHomeDrawingModeEnabled,
-    homeDrawing.appliedPaths,
-    homeDrawing.draftPaths.length,
-    homeDrawing.textItems,
-    persistHomeDrawing,
-    props.state?.homeDrawing?.draftPaths,
-    props.state?.homeDrawing?.appliedPaths,
-    props.state?.homeDrawing?.textItems,
     props.state?.token,
   ]);
 
@@ -8911,188 +7513,6 @@ function HomeNoga(props) {
         globalCallSession.callMode === "video" &&
         globalCallSession.callState === "connected"),
   );
-  const drawingControlsPanel = (
-    <div className="Home_Noga_mainDrawingControls Home_Noga_mainDrawingControls--open">
-      <button
-        type="button"
-        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
-          isHomeDrawingStartingFresh ? " isActive" : ""
-        }`}
-        onClick={() =>
-          setIsHomeDrawingStartingFresh((currentValue) => !currentValue)
-        }
-        aria-pressed={isHomeDrawingStartingFresh}
-        aria-label="Start a fresh unlinked line"
-        title="Start a fresh unlinked line"
-      >
-        <i className="fas fa-plus"></i>
-      </button>
-      <button
-        type="button"
-        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
-          isHomeDrawingAutoGlueEnabled ? " isActive" : ""
-        }`}
-        onClick={() =>
-          setIsHomeDrawingAutoGlueEnabled((currentValue) => !currentValue)
-        }
-        aria-pressed={isHomeDrawingAutoGlueEnabled}
-        aria-label={
-          isHomeDrawingAutoGlueEnabled
-            ? "Disable auto-gluing the line"
-            : "Enable auto-gluing the line"
-        }
-        title={isHomeDrawingAutoGlueEnabled ? "Auto-glue on" : "Auto-glue off"}
-      >
-        <i className="fas fa-link"></i>
-      </button>
-      <button
-        type="button"
-        className={`Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem${
-          isHomeDrawingAllowListEnabled ? " isActive" : ""
-        }`}
-        onClick={() =>
-          setIsHomeDrawingAllowListEnabled((currentValue) => !currentValue)
-        }
-        aria-pressed={isHomeDrawingAllowListEnabled}
-        aria-label="Toggle allow-list drawing zones"
-        title={
-          isHomeDrawingAllowListEnabled
-            ? "Allow-list zones on"
-            : "Allow-list zones off"
-        }
-      >
-        <i className="fas fa-filter"></i>
-      </button>
-      {isHomeDrawingAllowListEnabled ? (
-        <div className="Home_Noga_mainDrawingAllowList Home_Noga_mainDrawingControls_panelItem">
-          <button
-            type="button"
-            className="Home_Noga_mainDrawingAllowSelect"
-            onClick={() =>
-              setIsHomeDrawingAllowZoneMenuOpen((currentValue) => !currentValue)
-            }
-            aria-haspopup="listbox"
-            aria-expanded={isHomeDrawingAllowZoneMenuOpen}
-            title="Select allow-list zone"
-          >
-            {HOME_DRAWING_ALLOWLIST_ZONES.find(
-              (zone) => zone.id === activeHomeDrawingAllowZoneId,
-            )?.label || "Canvas"}
-            <i className="fas fa-chevron-down" aria-hidden="true"></i>
-          </button>
-          {isHomeDrawingAllowZoneMenuOpen ? (
-            <div
-              className="Home_Noga_mainDrawingAllowMenu"
-              role="listbox"
-              aria-label="Allowed drawing zones"
-            >
-              {HOME_DRAWING_ALLOWLIST_ZONES.map((zone) => (
-                <button
-                  key={zone.id}
-                  type="button"
-                  className={`Home_Noga_mainDrawingAllowOption${
-                    activeHomeDrawingAllowZoneId === zone.id ? " isActive" : ""
-                  }`}
-                  onClick={() => {
-                    setActiveHomeDrawingAllowZoneId(zone.id);
-                    setIsHomeDrawingAllowZoneMenuOpen(false);
-                  }}
-                  role="option"
-                  aria-selected={activeHomeDrawingAllowZoneId === zone.id}
-                >
-                  {zone.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="Home_Noga_mainDrawingAllowList Home_Noga_mainDrawingControls_panelItem">
-        <button
-          type="button"
-          className="Home_Noga_mainDrawingAllowSelect"
-          onClick={() =>
-            setIsHomeDrawingVisibilityMenuOpen((currentValue) => !currentValue)
-          }
-          aria-haspopup="listbox"
-          aria-expanded={isHomeDrawingVisibilityMenuOpen}
-          title="Choose wrappers where drawing stays visible under children"
-        >
-          Visible ({homeDrawingVisibleWrapperIds.length})
-          <i className="fas fa-eye" aria-hidden="true"></i>
-        </button>
-        {isHomeDrawingVisibilityMenuOpen ? (
-          <div
-            className="Home_Noga_mainDrawingAllowMenu Home_Noga_mainDrawingVisibilityMenu"
-            role="listbox"
-            aria-label="Drawing visibility wrappers"
-          >
-            {HOME_DRAWING_VISIBILITY_WRAPPERS.map((wrapper) => {
-              const isChecked = homeDrawingVisibleWrapperIds.includes(
-                wrapper.id,
-              );
-
-              return (
-                <button
-                  key={wrapper.id}
-                  type="button"
-                  className={`Home_Noga_mainDrawingAllowOption${
-                    isChecked ? " isActive" : ""
-                  }`}
-                  onClick={() => toggleHomeDrawingVisibleWrapper(wrapper.id)}
-                  role="option"
-                  aria-selected={isChecked}
-                >
-                  <span className="Home_Noga_mainDrawingVisibilityCheck">
-                    {isChecked ? "✓" : ""}
-                  </span>
-                  <span>{wrapper.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-      <div className="Home_Noga_mainDrawingPalette fr Home_Noga_mainDrawingControls_panelItem">
-        {HOME_DRAWING_PALETTES.map((palette) => (
-          <button
-            key={palette.id}
-            type="button"
-            className={`Home_Noga_mainDrawingPaletteButton${
-              activeHomeDrawingPaletteId === palette.id ? " isActive" : ""
-            }`}
-            onClick={() => setActiveHomeDrawingPaletteId(palette.id)}
-            aria-label={`Use ${palette.label} rope light color`}
-            title={palette.label}
-            style={{
-              "--home-drawing-palette-stroke": palette.stroke,
-              "--home-drawing-palette-glow": palette.glow,
-            }}
-          >
-            <span aria-hidden="true"></span>
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        className="Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem"
-        onClick={clearHomeDrawingCanvas}
-        aria-label="Clear glow lines"
-        title="Clear glow lines"
-      >
-        <i className="fas fa-eraser"></i>
-      </button>
-      <button
-        type="button"
-        className="Home_Noga_mainDrawingButton Home_Noga_mainDrawingControls_panelItem"
-        onClick={handleToggleHomeDrawingMode}
-        aria-label="Finish glow line drawing"
-        title="Finish glow line drawing"
-      >
-        <i className="fas fa-check"></i>
-      </button>
-    </div>
-  );
   return (
       <article
         id="Home_Noga_article"
@@ -9104,39 +7524,8 @@ function HomeNoga(props) {
           .filter(Boolean)
           .join(" ")}
       >
-        <div className="Home_Noga_mainDrawingOverlay">
-          <div
-            ref={appliedDrawingCanvasHostRef}
-            className="Home_Noga_mainDrawingCanvasHost Home_Noga_mainDrawingCanvasHost--display"
-          >
-            <canvas
-              ref={appliedDrawingCanvasRef}
-              className="Home_Noga_mainDrawingCanvas"
-            />
-          </div>
-          <div
-            key={`home-drawing-canvas-${homeDrawingCanvasVersion}`}
-            ref={drawingCanvasHostRef}
-            className={`Home_Noga_mainDrawingCanvasHost${
-              isHomeDrawingModeEnabled
-                ? " Home_Noga_mainDrawingCanvasHost--active"
-                : ""
-            }`}
-          >
-            <canvas
-              ref={drawingCanvasRef}
-              className="Home_Noga_mainDrawingCanvas"
-              onPointerDown={beginHomeDrawingStroke}
-              onPointerMove={continueHomeDrawingStroke}
-              onPointerUp={endHomeDrawingStroke}
-              onPointerLeave={endHomeDrawingStroke}
-              onPointerCancel={endHomeDrawingStroke}
-            />
-          </div>
-          {isHomeDrawingModeEnabled ? drawingControlsPanel : null}
-        </div>
         <section
-          className="fc slide-top Home_Noga_mainWrapperShell"
+          className={`fc slide-top Home_Noga_mainWrapperShell${isMobileChatOpen ? " Home_Noga_mainWrapperShell--chatView" : ""}`}
           ref={mainWrapperRef}
           style={
             homeNogaLeftColumnWidth
@@ -9151,10 +7540,6 @@ function HomeNoga(props) {
                 id="Home_Noga_main_leftColumn_wrapper"
                 className="Home_Noga_main_leftColumn_wrapper"
               >
-                {hasHomeNogaCallDockMounted ? (
-                  <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
-                ) : null}
-                {renderHomeDrawingVisibilityCanvas("leftColumn")}
                 <div
                   id="Home_Noga_bioProfileWrapper"
                   className="Home_Noga_bioProfileWrapper"
@@ -9164,14 +7549,12 @@ function HomeNoga(props) {
                     className="Home_Noga_bioWrapper"
                     style={bioWrapperStyle}
                   >
-                    {renderHomeDrawingVisibilityCanvas("bio")}
                     <div
                       id="Home_Noga_preStart_profileWrapper"
                       ref={profilePictureWrapperRef}
                       style={{ position: "relative" }}
                     >
                       <div className="Home_Noga_preStart_profileViewportFrame">
-                        {renderHomeDrawingVisibilityCanvas("profile")}
                         {displayedProfilePictureSrc ? (
                           <img
                             id="Home_Noga_preStart_profilePic"
@@ -9262,7 +7645,6 @@ function HomeNoga(props) {
                       ) : null}
                     </div>
                     <div id="Home_Noga_preStart_personalBio" className="fc">
-                      {renderHomeDrawingVisibilityCanvas("bioText")}
                       <div
                         id="Home_Noga_preStart_personalInfoGrid"
                         className="Home_Noga_preStart_personalInfoGrid--compact"
@@ -9443,7 +7825,23 @@ function HomeNoga(props) {
                     </div>
                   </div>
                 </div>
-                <div className="Home_Noga_friendsEventsWrapper">
+                <div className={`Home_Noga_friendsEventsWrapper Home_Noga_friendsEventsWrapper--${friendsEventsTab}`}>
+                  <div className="Home_Noga_friendsEventsTabBar">
+                    <button
+                      type="button"
+                      className={`Home_Noga_friendsEventsTab${friendsEventsTab === "gallery" ? " isActive" : ""}`}
+                      onClick={() => setFriendsEventsTab("gallery")}
+                    >
+                      Gallery
+                    </button>
+                    <button
+                      type="button"
+                      className={`Home_Noga_friendsEventsTab${friendsEventsTab === "events" ? " isActive" : ""}`}
+                      onClick={() => setFriendsEventsTab("events")}
+                    >
+                      Events
+                    </button>
+                  </div>
                   <div className="Home_Noga_friendsGallery">
                     <div className="Home_Noga_friendsGalleryHeader">
                       <div className="Home_Noga_friendsGalleryHeaderTitleRow">
@@ -9491,7 +7889,6 @@ function HomeNoga(props) {
                               className="fi fi-rr-copy-image"
                               aria-hidden="true"
                             ></i>
-                            <span>Images</span>
                           </button>
                           <button
                             type="button"
@@ -9502,7 +7899,6 @@ function HomeNoga(props) {
                             aria-pressed={galleryTab === "videos"}
                           >
                             <i className="fi fi-rr-film" aria-hidden="true"></i>
-                            <span>Videos</span>
                           </button>
                         </div>
                         {galleryTab === "images" ? (
@@ -9893,12 +8289,14 @@ function HomeNoga(props) {
                   </div>
 	                </div>
 	              </div>
+                {hasHomeNogaCallDockMounted ? (
+                  <div id="Home_Noga_callDock" className="Home_Noga_callDock" />
+                ) : null}
 	            </div>
 	              <section
 	                id="Home_Noga_rightColumn_wrapper"
 	                className="Home_Noga_socialFriendsPanel"
 	              >
-                {renderHomeDrawingVisibilityCanvas("rightColumn")}
 	                {isReportsWrapperOpen ? null : (
 	                  <>
 	                    {activeFriendCard?.chatId ? (
@@ -10031,7 +8429,6 @@ function HomeNoga(props) {
           <section
             className={`fc Home_Noga_preStart_reports${isReportsWrapperOpen ? "" : " Home_Noga_preStart_reports--closed"}`}
           >
-            {renderHomeDrawingVisibilityCanvas("reports")}
             <div className="Home_Noga_settingsBackRow">
               <button
                 type="button"
@@ -10998,8 +9395,33 @@ function HomeNoga(props) {
               : "Video player"
           }
         />
+      <nav className="Home_Noga_mobileNavBar" aria-label="Mobile navigation">
+        <button
+          type="button"
+          className="Home_Noga_mobileNavBtn"
+          onClick={() => props.logOut?.()}
+          aria-label="Log out"
+        >
+          <i className="fi fi-rr-sign-out-alt" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="Home_Noga_mobileNavBtn"
+          onClick={() => history.push("/phenomed/home")}
+          aria-label="Home"
+        >
+          <i className="fi fi-rr-home" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="Home_Noga_mobileNavBtn"
+          onClick={() => setIsMobileChatOpen((v) => !v)}
+          aria-label={isMobileChatOpen ? "Back to profile" : "Open chat"}
+        >
+          <i className={`fi ${isMobileChatOpen ? "fi-rr-arrow-left" : "fi-rr-comments"}`} aria-hidden="true" />
+        </button>
+      </nav>
       </article>
   );
 }
 export default HomeNoga;
-

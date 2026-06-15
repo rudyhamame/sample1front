@@ -2409,15 +2409,31 @@ export const normalizePlannerSelectSettings = (value) => {
         ? nextValue.voiceCommandEntries
         : []
   )
-    .map((entry) => ({
-      idTree: Array.isArray(entry?.idTree)
+    .map((entry) => {
+      const idTree = Array.isArray(entry?.idTree)
         ? entry.idTree
             .map((treeEntry) => String(treeEntry || "").trim())
             .filter(Boolean)
-        : [],
-      elementID: String(entry?.elementID || entry?.button || "").trim(),
-      voiceCommand: String(entry?.voiceCommand || entry?.command || "").trim(),
-    }))
+        : [];
+      const elementID = String(entry?.elementID || entry?.button || "").trim();
+      const voiceCommand = String(
+        entry?.voiceCommand || entry?.command || "",
+      ).trim();
+      const derivedTab =
+        String(entry?.tab || "").trim() || String(idTree?.[0] || "").trim();
+      const derivedButton =
+        String(entry?.button || "").trim() ||
+        String(idTree?.[idTree.length - 1] || "").trim() ||
+        elementID;
+      return {
+        idTree,
+        elementID,
+        voiceCommand,
+        tab: derivedTab,
+        button: derivedButton,
+        command: voiceCommand,
+      };
+    })
     .filter((entry) => entry.elementID && entry.voiceCommand)
     .reduce((accumulator, entry) => {
       const exists = accumulator.some(

@@ -8,10 +8,9 @@ const InspectionOverlay = ({
   debugClassName,
   viewportBadgeId,
   hoveredBadgeId,
-  copiedBadgeId,
 }) => {
   const [isEnabled, setIsEnabled] = React.useState(false);
-  const [copiedBadgeText, setCopiedBadgeText] = React.useState("copied");
+  const [isBadgeDismissed, setIsBadgeDismissed] = React.useState(false);
   const [viewportDraft, setViewportDraft] = React.useState(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -85,7 +84,7 @@ const InspectionOverlay = ({
       window.visualViewport?.removeEventListener("resize", handleViewportChange);
       window.visualViewport?.removeEventListener("scroll", handleViewportChange);
     };
-  }, [isEnabled, syncViewportDraft]);
+  }, [syncViewportDraft]);
 
   React.useEffect(() => {
     const rootElement = document.getElementById(rootId);
@@ -152,14 +151,12 @@ const InspectionOverlay = ({
     }
 
     if (didCopy) {
-      setCopiedBadgeText(`copied ${textToCopy}`);
-
       if (copiedBadgeTimeoutRef.current) {
         window.clearTimeout(copiedBadgeTimeoutRef.current);
       }
 
       copiedBadgeTimeoutRef.current = window.setTimeout(() => {
-        setCopiedBadgeText("copied");
+        copiedBadgeTimeoutRef.current = null;
       }, 1500);
     }
   }, [viewportBadgeText]);
@@ -174,29 +171,26 @@ const InspectionOverlay = ({
 
   return (
     <React.Fragment>
-      <div
-        id={viewportBadgeId}
-        role="button"
-        tabIndex={0}
-        onClick={copyViewportBadge}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            copyViewportBadge();
-          }
-        }}
-        aria-label={`Copy viewport size ${viewportBadgeText}`}
-        title="Click to copy viewport size"
-      >
-        <span>{viewportDraft.width} x {viewportDraft.height}</span>
-        <span>vv {viewportDraft.visualWidth} x {viewportDraft.visualHeight}</span>
-      </div>
-      {isEnabled && (
-        <>
-          <div id={hoveredBadgeId}>inspect</div>
-          <div id={copiedBadgeId}>{copiedBadgeText}</div>
-        </>
+      {viewportBadgeId && !isBadgeDismissed && (
+        <div
+          id={viewportBadgeId}
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsBadgeDismissed(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setIsBadgeDismissed(true);
+            }
+          }}
+          aria-label={`Dismiss viewport badge (${viewportBadgeText})`}
+          title="Click to dismiss"
+        >
+          <span>{viewportDraft.width} x {viewportDraft.height}</span>
+          <span>vv {viewportDraft.visualWidth} x {viewportDraft.visualHeight}</span>
+        </div>
       )}
+      {isEnabled && <div id={hoveredBadgeId}>inspect</div>}
     </React.Fragment>
   );
 };

@@ -1,0 +1,268 @@
+/* Hide nav bar outside mobile portrait */
+.Home_Noga_mobileNavBar {
+  display: none;
+}
+
+/* Responsive overrides for ~360×666 mobile portrait viewports */
+@media (min-width: 340px) and (max-width: 390px) and (min-height: 620px) and (max-height: 700px) and (orientation: portrait) {
+  #App_viewportScale {
+    width: 100% !important;
+    transform: none !important;
+  }
+
+  #server_answer {
+    display: none !important;
+  }
+
+  #Main_article,
+  #Home_Noga_article {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .Home_Noga_mainWrapperShell {
+    flex-direction: column;
+  }
+
+  .Home_Noga_bioProfileWrapper > .Home_Noga_bioWrapper {
+    flex: 0 0 30%;
+    min-height: 0;
+  }
+
+  .Home_Noga_bioProfileWrapper > .Home_Noga_friendsEventsWrapper {
+    flex: 0 0 70%;
+    min-height: 0;
+  }
+
+  .Home_Noga_friendsGalleryHeaderControls {
+    flex-direction: row;
+  }
+
+  #Home_Noga_article .Home_Noga_mainWrapperShell > .Home_Noga_socialFriendsPanel {
+    flex: 0 0 100%;
+  }
+
+  .Home_Noga_bioWrapper {
+    position: relative;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 20px;
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .Home_Noga_bioWrapper > * {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+
+  #Home_Noga_preStart_personalBio {
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    font-size: clamp(0.68rem, 3.2vw, 0.88rem);
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  #Home_Noga_preStart_profileWrapper {
+    align-self: center;
+    flex-shrink: 0;
+    --home-profile-size: 120px;
+  }
+
+  .Home_Noga_compactBioCard {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .Home_Noga_compactBioSummary {
+    border-left: none;
+    border-top: 1px solid rgba(176, 111, 126, 0.2);
+  }
+
+  .Home_Noga_socialFriendsPanel {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .Home_Noga_friendsPanelHeader {
+    width: 100%;
+  }
+
+  .Home_Noga_friendsPanelTitleRow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #Home_Noga_rightColumn_wrapper .Chat_formControls {
+    padding-bottom: 52px;
+  }
+
+  /* Chat view: hide left content, show right column full-width */
+  .Home_Noga_mainWrapperShell--chatView .Home_Noga_main_leftColumn_wrapper {
+    display: none;
+  }
+
+  .Home_Noga_mainWrapperShell--chatView #Home_Noga_rightColumn_wrapper {
+    display: flex;
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    height: calc(100% - 52px);
+  }
+
+  /* Hide right column by default on mobile (non-chat view) */
+  #Home_Noga_rightColumn_wrapper {
+    display: none;
+  }
+
+  .Home_Noga_friendsGallery {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  /* Mobile bottom nav bar */
+  .Home_Noga_mobileNavBar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    padding: 0 24px;
+    background: rgba(255, 248, 245, 0.96);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(174, 101, 88, 0.15);
+    z-index: 200;
+  }
+
+  .Home_Noga_mobileNavBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: rgba(120, 50, 35, 0.75);
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .Home_Noga_mobileNavBtn:active {
+    background: rgba(160, 60, 40, 0.12);
+    color: rgba(140, 50, 30, 0.95);
+  }
+
+  /* Icon-only visibility buttons */
+  .Home_Noga_galleryVisibilityButton span {
+    display: none !important;
+    width: 0;
+    overflow: hidden;
+  }
+
+  .Home_Noga_galleryVisibilityButton {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .Home_Noga_galleryVisibilityButton i {
+    font-size: 0.55rem;
+  }
+
+  .Home_Noga_galleryItemActions .Home_Noga_editPicButton {
+    width: 28px;
+    height: 28px;
+  }
+
+  .Home_Noga_galleryItemActions .Home_Noga_editPicButton i {
+    font-size: 0.7rem;
+  }
+
+  /* Minibar overlays the selected image instead of growing to the right */
+  .Home_Noga_galleryThumbWrap {
+    overflow: hidden;
+  }
+
+  .Home_Noga_galleryItemActions {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, calc(-50% + 6px)) scale(0.94);
+    transform-origin: center center;
+    min-width: unset;
+    max-width: calc(100% - 12px);
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: 12px;
+    padding: 8px;
+    gap: 6px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .Home_Noga_galleryItemActions.Home_Noga_galleryItemActions--open {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .Home_Noga_galleryItemActions::after {
+    display: none;
+  }
+
+  /* friendsEventsWrapper tab layout */
+  .Home_Noga_friendsEventsWrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .Home_Noga_friendsEventsTabBar {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(174, 101, 88, 0.2);
+  }
+
+  .Home_Noga_friendsEventsTab {
+    flex: 1 1 50%;
+    padding: 8px 0;
+    background: none;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(80, 40, 30, 0.6);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .Home_Noga_friendsEventsTab.isActive {
+    color: rgba(160, 60, 40, 0.9);
+    border-bottom-color: rgba(160, 60, 40, 0.7);
+  }
+
+  /* hide the inactive panel */
+  .Home_Noga_friendsEventsWrapper--gallery .Home_Noga_friendsEvents {
+    display: none;
+  }
+
+  .Home_Noga_friendsEventsWrapper--events .Home_Noga_friendsGallery {
+    display: none;
+  }
+}

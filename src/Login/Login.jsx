@@ -531,18 +531,6 @@ const Login = ({ onLogin, onForceLogout }) => {
   });
   const { keyboardInset } = useVisualViewportKeyboard();
   const [zoomScale, setZoomScale] = useState(window.visualViewport?.scale || 1);
-  const [keyboardDebugMetrics, setKeyboardDebugMetrics] = useState({
-    windowScrollY: 0,
-    bodyScrollHeight: 0,
-    bodyClientHeight: 0,
-    documentScrollHeight: 0,
-    documentClientHeight: 0,
-    pageScrollTop: 0,
-    pageScrollHeight: 0,
-    pageClientHeight: 0,
-    visualViewportHeight: 0,
-    visualViewportOffsetTop: 0,
-  });
   const [loginAppLastUpdatedLabel, setLoginAppLastUpdatedLabel] = useState(
     loginAppLastUpdatedFallbackLabel,
   );
@@ -875,72 +863,6 @@ const Login = ({ onLogin, onForceLogout }) => {
     };
   }, [keyboardInset]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof document === "undefined") {
-      return undefined;
-    }
-
-    const measureKeyboardMetrics = () => {
-      const visualViewport = window.visualViewport;
-      const pageElement = pageRef.current;
-      const bodyElement = document.body;
-      const documentElement = document.documentElement;
-
-      setKeyboardDebugMetrics({
-        windowScrollY: Math.round(window.scrollY || window.pageYOffset || 0),
-        bodyScrollHeight: Math.round(bodyElement?.scrollHeight || 0),
-        bodyClientHeight: Math.round(bodyElement?.clientHeight || 0),
-        documentScrollHeight: Math.round(documentElement?.scrollHeight || 0),
-        documentClientHeight: Math.round(documentElement?.clientHeight || 0),
-        pageScrollTop: Math.round(pageElement?.scrollTop || 0),
-        pageScrollHeight: Math.round(pageElement?.scrollHeight || 0),
-        pageClientHeight: Math.round(pageElement?.clientHeight || 0),
-        visualViewportHeight: Math.round(visualViewport?.height || 0),
-        visualViewportOffsetTop: Math.round(visualViewport?.offsetTop || 0),
-      });
-    };
-
-    let animationFrameId = null;
-
-    const scheduleMeasureKeyboardMetrics = () => {
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-
-      animationFrameId = window.requestAnimationFrame(() => {
-        animationFrameId = null;
-        measureKeyboardMetrics();
-      });
-    };
-
-    scheduleMeasureKeyboardMetrics();
-
-    window.addEventListener("resize", scheduleMeasureKeyboardMetrics);
-    window.addEventListener("scroll", scheduleMeasureKeyboardMetrics, {
-      passive: true,
-    });
-    window.visualViewport?.addEventListener("resize", scheduleMeasureKeyboardMetrics);
-    window.visualViewport?.addEventListener("scroll", scheduleMeasureKeyboardMetrics);
-    document.addEventListener("focusin", scheduleMeasureKeyboardMetrics);
-    document.addEventListener("focusout", scheduleMeasureKeyboardMetrics);
-    pageRef.current?.addEventListener("scroll", scheduleMeasureKeyboardMetrics, {
-      passive: true,
-    });
-
-    return () => {
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-
-      window.removeEventListener("resize", scheduleMeasureKeyboardMetrics);
-      window.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
-      window.visualViewport?.removeEventListener("resize", scheduleMeasureKeyboardMetrics);
-      window.visualViewport?.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
-      document.removeEventListener("focusin", scheduleMeasureKeyboardMetrics);
-      document.removeEventListener("focusout", scheduleMeasureKeyboardMetrics);
-      pageRef.current?.removeEventListener("scroll", scheduleMeasureKeyboardMetrics);
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -2169,46 +2091,9 @@ const Login = ({ onLogin, onForceLogout }) => {
         <InspectionOverlay
           rootId="root"
           debugClassName="Login_debugBordersOn"
-          viewportBadgeId="Login_viewportBadge"
           hoveredBadgeId="Login_hoveredIdBadge"
-          copiedBadgeId="Login_copiedIdBadge"
         />
-        <aside id="Login_keyboardDebugPanel" aria-live="polite">
-          <div className="Login_keyboardDebugRow">
-            <span>kbd</span>
-            <span>{Math.round(keyboardInset)}px</span>
-          </div>
-          <div className="Login_keyboardDebugRow">
-            <span>winY</span>
-            <span>{keyboardDebugMetrics.windowScrollY}px</span>
-          </div>
-          <div className="Login_keyboardDebugRow">
-            <span>body</span>
-            <span>
-              {keyboardDebugMetrics.bodyClientHeight}/{keyboardDebugMetrics.bodyScrollHeight}
-            </span>
-          </div>
-          <div className="Login_keyboardDebugRow">
-            <span>doc</span>
-            <span>
-              {keyboardDebugMetrics.documentClientHeight}/{keyboardDebugMetrics.documentScrollHeight}
-            </span>
-          </div>
-          <div className="Login_keyboardDebugRow">
-            <span>page</span>
-            <span>
-              {keyboardDebugMetrics.pageScrollTop}px | {keyboardDebugMetrics.pageClientHeight}/
-              {keyboardDebugMetrics.pageScrollHeight}
-            </span>
-          </div>
-          <div className="Login_keyboardDebugRow">
-            <span>vv</span>
-            <span>
-              {keyboardDebugMetrics.visualViewportHeight}px @
-              {keyboardDebugMetrics.visualViewportOffsetTop}px
-            </span>
-          </div>
-        </aside>
+
       </main>
       <footer
         id="login-footer"
