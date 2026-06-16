@@ -12,8 +12,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const [coursesMiniBarActionsLeft, setCoursesMiniBarActionsLeft] =
     useState("50%");
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
-  const [logoClockPosition, setLogoClockPosition] = useState("9");
-  const [logoAssetsReady, setLogoAssetsReady] = useState(false);
   const [noAttendanceForComponent, setNoAttendanceForComponent] = useState(false);
   const [hoveredCourseGroupKey, setHoveredCourseGroupKey] = useState("");
   const [telegramChatOpen, setTelegramChatOpen] = useState(false);
@@ -60,18 +58,8 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const telegramChatDragRef = useRef(null);
   const telegramChatResizeRef = useRef(null);
   const telegramChatZCounterRef = useRef(28);
-  const logoImageRef = useRef(null);
   const coursesMiniBarTabsRef = useRef(null);
   const previousWrapperTabRef = useRef(String(planner.state?.wrapperTab || ""));
-  const savedCoursesWorkspacePointerRafRef = useRef(0);
-  const logoClockPositionRef = useRef("9");
-  const savedCoursesWorkspacePointerStateRef = useRef({
-    active: false,
-    targetX: 0.5,
-    targetY: 0.5,
-    currentX: 0.5,
-    currentY: 0.5,
-  });
   const {
     formatPlannerStatusLabel,
     formatSavedCourseTitle,
@@ -85,6 +73,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     ACADEMIC_YEAR_OPTIONS,
     buildDefaultPlannerWeekdayOptions,
     getPlannerDefaultFieldsForForm,
+    getPlannerFieldDefaultValue,
     NOGAPLANNER_TEXT,
   } = runtime;
   const SAVED_TEXT = NOGAPLANNER_TEXT.savedCourses;
@@ -98,6 +87,16 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       key: "traces",
       label: "Study Materials",
       icon: "fi fi-rr-folder",
+    },
+    {
+      key: "documents",
+      label: "Documents",
+      icon: "fi fi-rr-document",
+    },
+    {
+      key: "youtube-text",
+      label: "YouTube to Text",
+      icon: "fi fi-rr-play-alt",
     },
     {
       key: "plan",
@@ -115,36 +114,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     label: SAVED_TEXT.plannerSettings,
     icon: "fi fi-rr-holding-hand-gear",
   };
-  const LOGO_BY_CLOCK_POSITION = {
-    "12": "/img/NP12.png",
-    "1": "/img/NP1.png",
-    "2": "/img/NP2.png",
-    "3": "/img/NP3.png",
-    "4": "/img/NP4.png",
-    "5": "/img/NP5.png",
-    "6": "/img/NP6.png",
-    "7": "/img/NP7.png",
-    "8": "/img/NP8.png",
-    "9": "/img/NP9.png",
-    "11": "/img/NP11.png",
-    "10": "/img/NP10.png",
-  };
-  const setLogoClockPositionImmediate = (nextClockBucket) => {
-    const normalizedClockBucket = String(nextClockBucket || "").trim();
-    const nextLogoSource =
-      LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
-    if (
-      logoAssetsReady &&
-      logoImageRef.current?.getAttribute("src") !== nextLogoSource
-    ) {
-      logoImageRef.current?.setAttribute("src", nextLogoSource);
-    }
-    if (logoClockPositionRef.current !== normalizedClockBucket) {
-      logoClockPositionRef.current = normalizedClockBucket;
-      setLogoClockPosition(normalizedClockBucket);
-    }
-  };
-
   const savedCourses = Array.isArray(planner.state?.courses)
     ? planner.state.courses
     : [];
@@ -165,8 +134,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     savedCourseSortKey,
     savedCourseSortDirection,
     savedCoursesColumnHeaderWidth,
-    plannerSettingsLogoMotionEnabled,
-    plannerSettingsLogoFixedClock,
     inlineLectureRowVisible,
   } = planner.state;
 
@@ -269,8 +236,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     return String(messageFriendSettings?.from?.message || "").trim();
   })();
   const showCourseEditor = savedCourseEditorVisible;
-  const isLogoMotionListenerEnabled = Boolean(plannerSettingsLogoMotionEnabled);
-  const fixedLogoClockPosition = String(plannerSettingsLogoFixedClock || "9").trim();
   const scheduleDisabledForComponent =
     noAttendanceForComponent || !hasSelectedComponentType;
   const componentFieldsIdle = !Boolean(savedCourseComponentDraftActive);
@@ -487,188 +452,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       previousWrapperTabRef.current = currentWrapperTab;
     }
   }, [planner.state?.wrapperTab]);
-  const updateSavedCoursesWorkspacePointerTarget = (clientX, clientY) => {
-    if (!isLogoMotionListenerEnabled) {
-      return;
-    }
-    const articleElement = document.getElementById("nogaPlanner_article");
-    if (!articleElement) {
-      return;
-    }
-    const articleRect = articleElement.getBoundingClientRect();
-    if (articleRect.width <= 0 || articleRect.height <= 0) {
-      return;
-    }
-    const rawX = clientX - articleRect.left;
-    const rawY = clientY - articleRect.top;
-    const clampedX = Math.max(0, Math.min(articleRect.width, rawX));
-    const clampedY = Math.max(0, Math.min(articleRect.height, rawY));
-    const normalizedX = clampedX / articleRect.width;
-    const normalizedY = clampedY / articleRect.height;
-    const pointerState = savedCoursesWorkspacePointerStateRef.current;
-    pointerState.active = true;
-    pointerState.targetX = normalizedX;
-    pointerState.targetY = normalizedY;
-    articleElement.dataset.pointerActive = "true";
-  };
-  const getPointerClockBucket = (normalizedX, normalizedY) => {
-    // 12 o'clock is top-center of #nogaPlanner_article.
-    // 3 o'clock is right-center, 6 o'clock is bottom-center, 9 o'clock is left-center.
-    const dx = normalizedX - 0.5;
-    const dy = normalizedY - 0.5;
-    const clockwiseFromTop =
-      ((Math.atan2(dy, dx) * 180) / Math.PI + 90 + 360) % 360;
-    const nearestClockIndex = Math.round(clockwiseFromTop / 30) % 12;
-    return nearestClockIndex === 0 ? "12" : String(nearestClockIndex);
-  };
-  const applySmoothedSavedCoursesWorkspacePointer = () => {
-    const articleElement = document.getElementById("nogaPlanner_article");
-    if (!articleElement) {
-      return false;
-    }
-    if (!isLogoMotionListenerEnabled) {
-      const normalizedFixedClock =
-        fixedLogoClockPosition && LOGO_BY_CLOCK_POSITION[fixedLogoClockPosition]
-          ? fixedLogoClockPosition
-          : "9";
-      articleElement.dataset.pointerClock = normalizedFixedClock;
-      setLogoClockPositionImmediate(normalizedFixedClock);
-      return false;
-    }
-    const pointerState = savedCoursesWorkspacePointerStateRef.current;
-    const smoothingFactor = 0.16;
-    pointerState.currentX +=
-      (pointerState.targetX - pointerState.currentX) * smoothingFactor;
-    pointerState.currentY +=
-      (pointerState.targetY - pointerState.currentY) * smoothingFactor;
-
-    const deltaX = pointerState.targetX - pointerState.currentX;
-    const deltaY = pointerState.targetY - pointerState.currentY;
-    const distance = Math.hypot(deltaX, deltaY);
-    const vectorX = pointerState.currentX - 0.5;
-    const vectorY = pointerState.currentY - 0.5;
-    const angleDeg = (Math.atan2(vectorY, vectorX) * 180) / Math.PI;
-    const clockBucket = getPointerClockBucket(
-      pointerState.currentX,
-      pointerState.currentY,
-    );
-
-    articleElement.dataset.pointerX = pointerState.currentX.toFixed(4);
-    articleElement.dataset.pointerY = pointerState.currentY.toFixed(4);
-    articleElement.dataset.pointerAngle = angleDeg.toFixed(2);
-    articleElement.dataset.pointerClock = clockBucket;
-    articleElement.style.setProperty(
-      "--nogaPlanner-workspace-pointer-x",
-      pointerState.currentX.toFixed(4),
-    );
-    articleElement.style.setProperty(
-      "--nogaPlanner-workspace-pointer-y",
-      pointerState.currentY.toFixed(4),
-    );
-    articleElement.style.setProperty(
-      "--nogaPlanner-workspace-pointer-angle",
-      `${angleDeg.toFixed(2)}deg`,
-    );
-    setLogoClockPositionImmediate(clockBucket);
-
-    const shouldContinue = pointerState.active || distance > 0.0015;
-    if (!shouldContinue) {
-      pointerState.currentX = pointerState.targetX;
-      pointerState.currentY = pointerState.targetY;
-    }
-    return shouldContinue;
-  };
-  const ensureSavedCoursesWorkspacePointerLoop = () => {
-    if (savedCoursesWorkspacePointerRafRef.current) {
-      return;
-    }
-    const step = () => {
-      const shouldContinue = applySmoothedSavedCoursesWorkspacePointer();
-      if (shouldContinue) {
-        savedCoursesWorkspacePointerRafRef.current = requestAnimationFrame(step);
-        return;
-      }
-      savedCoursesWorkspacePointerRafRef.current = 0;
-    };
-    savedCoursesWorkspacePointerRafRef.current = requestAnimationFrame(step);
-  };
-  const queueSavedCoursesWorkspacePointerUpdate = (
-    clientX,
-    clientY,
-    options = {},
-  ) => {
-    if (!isLogoMotionListenerEnabled) {
-      return;
-    }
-    updateSavedCoursesWorkspacePointerTarget(clientX, clientY);
-    if (options?.snapToTarget) {
-      const pointerState = savedCoursesWorkspacePointerStateRef.current;
-      pointerState.currentX = pointerState.targetX;
-      pointerState.currentY = pointerState.targetY;
-      const articleElement = document.getElementById("nogaPlanner_article");
-      if (articleElement) {
-        const vectorX = pointerState.currentX - 0.5;
-        const vectorY = pointerState.currentY - 0.5;
-        const angleDeg = (Math.atan2(vectorY, vectorX) * 180) / Math.PI;
-        const clockBucket = getPointerClockBucket(
-          pointerState.currentX,
-          pointerState.currentY,
-        );
-        articleElement.dataset.pointerX = pointerState.currentX.toFixed(4);
-        articleElement.dataset.pointerY = pointerState.currentY.toFixed(4);
-        articleElement.dataset.pointerAngle = angleDeg.toFixed(2);
-        articleElement.dataset.pointerClock = clockBucket;
-        articleElement.style.setProperty(
-          "--nogaPlanner-workspace-pointer-x",
-          pointerState.currentX.toFixed(4),
-        );
-        articleElement.style.setProperty(
-          "--nogaPlanner-workspace-pointer-y",
-          pointerState.currentY.toFixed(4),
-        );
-        articleElement.style.setProperty(
-          "--nogaPlanner-workspace-pointer-angle",
-          `${angleDeg.toFixed(2)}deg`,
-        );
-        setLogoClockPositionImmediate(clockBucket);
-      }
-    }
-    ensureSavedCoursesWorkspacePointerLoop();
-  };
-  const handleSavedCoursesWorkspacePointerClick = (event) => {
-    if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
-      return;
-    }
-    queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY, {
-      snapToTarget: true,
-    });
-  };
-  const handleSavedCoursesWorkspaceTouchStart = (event) => {
-    const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
-    if (!touchPoint) {
-      return;
-    }
-    queueSavedCoursesWorkspacePointerUpdate(
-      touchPoint.clientX,
-      touchPoint.clientY,
-      {
-        snapToTarget: true,
-      },
-    );
-  };
-  const clearSavedCoursesWorkspacePointer = () => {
-    if (!isLogoMotionListenerEnabled) {
-      return;
-    }
-    const articleElement = document.getElementById("nogaPlanner_article");
-    if (!articleElement) {
-      return;
-    }
-    const pointerState = savedCoursesWorkspacePointerStateRef.current;
-    pointerState.active = false;
-    articleElement.dataset.pointerActive = "false";
-    ensureSavedCoursesWorkspacePointerLoop();
-  };
   useEffect(() => {
     const updateCoursesMiniBarActionsPosition = () => {
       const tabsContainer = coursesMiniBarTabsRef.current;
@@ -702,111 +485,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     isLecturesTab,
     savedCourseSelectionMode,
   ]);
-  useEffect(
-    () => () => {
-      if (savedCoursesWorkspacePointerRafRef.current) {
-        cancelAnimationFrame(savedCoursesWorkspacePointerRafRef.current);
-        savedCoursesWorkspacePointerRafRef.current = 0;
-      }
-    },
-    [],
-  );
-  useEffect(() => {
-    let isCancelled = false;
-    const preloadFallbackTimeout = window.setTimeout(() => {
-      if (!isCancelled) {
-        setLogoAssetsReady(true);
-      }
-    }, 1500);
-    const imageSources = Object.values(LOGO_BY_CLOCK_POSITION);
-    Promise.all(
-      imageSources.map(
-        (imageSource) =>
-          new Promise((resolve) => {
-            const image = new Image();
-            image.decoding = "async";
-            image.onload = resolve;
-            image.onerror = resolve;
-            image.src = imageSource;
-          }),
-      ),
-    ).then(() => {
-      if (!isCancelled) {
-        window.clearTimeout(preloadFallbackTimeout);
-        setLogoAssetsReady(true);
-      }
-    });
-    return () => {
-      isCancelled = true;
-      window.clearTimeout(preloadFallbackTimeout);
-    };
-  }, []);
-  useEffect(() => {
-    if (!logoAssetsReady) {
-      return;
-    }
-    const normalizedClockBucket = String(
-      logoClockPositionRef.current || "9",
-    ).trim();
-    const nextLogoSource =
-      LOGO_BY_CLOCK_POSITION[normalizedClockBucket] || "/img/NP9.png";
-    if (logoImageRef.current?.getAttribute("src") !== nextLogoSource) {
-      logoImageRef.current?.setAttribute("src", nextLogoSource);
-    }
-  }, [logoAssetsReady]);
-  useEffect(() => {
-    const articleElement = document.getElementById("nogaPlanner_article");
-    if (!articleElement) {
-      return undefined;
-    }
-    const handleArticleClick = (event) => {
-      if (typeof event?.clientX !== "number" || typeof event?.clientY !== "number") {
-        return;
-      }
-      queueSavedCoursesWorkspacePointerUpdate(event.clientX, event.clientY, {
-        snapToTarget: true,
-      });
-    };
-    const handleArticleTouchStart = (event) => {
-      const touchPoint = event?.touches?.[0] || event?.changedTouches?.[0];
-      if (!touchPoint) {
-        return;
-      }
-      queueSavedCoursesWorkspacePointerUpdate(
-        touchPoint.clientX,
-        touchPoint.clientY,
-        {
-          snapToTarget: true,
-        },
-      );
-    };
-    articleElement.addEventListener("click", handleArticleClick);
-    articleElement.addEventListener("touchstart", handleArticleTouchStart, {
-      passive: true,
-    });
-    return () => {
-      articleElement.removeEventListener("click", handleArticleClick);
-      articleElement.removeEventListener("touchstart", handleArticleTouchStart);
-    };
-  }, [isLogoMotionListenerEnabled]);
-  useEffect(() => {
-    if (isLogoMotionListenerEnabled) {
-      return;
-    }
-    const normalizedFixedClock =
-      fixedLogoClockPosition && LOGO_BY_CLOCK_POSITION[fixedLogoClockPosition]
-        ? fixedLogoClockPosition
-        : "9";
-    logoClockPositionRef.current = normalizedFixedClock;
-    setLogoClockPosition(normalizedFixedClock);
-    const pointerState = savedCoursesWorkspacePointerStateRef.current;
-    pointerState.active = false;
-    const articleElement = document.getElementById("nogaPlanner_article");
-    if (articleElement) {
-      articleElement.dataset.pointerActive = "false";
-      articleElement.dataset.pointerClock = normalizedFixedClock;
-    }
-  }, [isLogoMotionListenerEnabled, fixedLogoClockPosition]);
 
   const courseUi = NOGAPLANNER_TEXT.savedCourses || {};
   const courseFieldLabel = (fieldName) => courseUi.fields[fieldName] || "";
@@ -826,7 +504,11 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       return;
     }
     const defaultValue = String(
-      plannerSelectSettings?.fieldDefaults?.[fieldKey] || "",
+      getPlannerFieldDefaultValue(
+        plannerSelectSettings?.fieldDefaults,
+        "course",
+        fieldKey,
+      ) || "",
     ).trim();
     planner.handleSavedCourseDraftChange(fieldName, defaultValue);
   };
@@ -839,7 +521,13 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       normalizedFieldName,
     );
     const defaultValue = String(
-      fieldKey ? plannerSelectSettings?.fieldDefaults?.[fieldKey] || "" : "",
+      fieldKey
+        ? getPlannerFieldDefaultValue(
+            plannerSelectSettings?.fieldDefaults,
+            "course",
+            fieldKey,
+          )
+        : "",
     ).trim();
     const hasDefaultValue = Boolean(defaultValue);
     const fieldClassLabel = readOnly || isRelationshipLockedField
@@ -1246,49 +934,16 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
               {renderSavedCourseFieldEyebrow("Name", {
                 fieldName: "course_name",
               })}
-              {(() => {
-                const courseNameOptions = Array.isArray(
-                  planner.state?.plannerRoot?.programCoursesNamesCodes,
-                )
-                  ? planner.state.plannerRoot.programCoursesNamesCodes
-                  : [];
-                const handleCourseNameChange = (selectedName) => {
-                  const match = courseNameOptions.find(
-                    (c) => String(c?.courseName || "").trim() === selectedName,
-                  );
-                  planner.handleSavedCourseDraftChange("course_name", selectedName);
-                  planner.handleSavedCourseDraftChange(
-                    "course_code",
-                    String(match?.courseCode || "").trim(),
-                  );
-                };
-                return courseNameOptions.length > 0 ? (
-                  <select
-                    id="nogaPlanner_savedCourseInput_course_name"
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    value={savedCourseDraft.course_name}
-                    onChange={(event) => handleCourseNameChange(event.target.value)}
-                  >
-                    <option value="">Name</option>
-                    {courseNameOptions.map((c, i) => (
-                      <option key={i} value={String(c?.courseName || "").trim()}>
-                        {String(c?.courseName || "").trim()}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id="nogaPlanner_savedCourseInput_course_name"
-                    className="nogaPlanner_savedCoursesDetailsInput"
-                    type="text"
-                    value={savedCourseDraft.course_name}
-                    onChange={(event) =>
-                      planner.handleSavedCourseDraftChange("course_name", event.target.value)
-                    }
-                    placeholder="Name"
-                  />
-                );
-              })()}
+              <input
+                id="nogaPlanner_savedCourseInput_course_name"
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={savedCourseDraft.course_name}
+                onChange={(event) =>
+                  planner.handleSavedCourseDraftChange("course_name", event.target.value)
+                }
+                placeholder="Name"
+              />
             </div>
             <div className="nogaPlanner_savedCourseEditorFieldCluster">
               {renderSavedCourseFieldEyebrow(courseFieldLabel("course_code"), {

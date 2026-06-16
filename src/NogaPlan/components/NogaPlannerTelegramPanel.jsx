@@ -35,71 +35,6 @@ const TELEGRAM_DOCUMENT_TYPE_TABS = [
 
 const TELEGRAM_STORED_MESSAGES_PAGE_SIZE = 40;
 
-const normalizeInstructorSchemaEntry = (entry) => {
-  if (!entry || typeof entry !== "object") {
-    return null;
-  }
-  const firstName = String(entry?.firstName || "").trim();
-  const lastName = String(entry?.lastName || "").trim();
-  if (!firstName && !lastName) {
-    return null;
-  }
-  return { firstName, lastName };
-};
-
-const buildInstructorSchemaEntry = (value = "") => {
-  const normalizedValue = String(value || "").trim();
-  if (!normalizedValue) {
-    return null;
-  }
-  const separatorIndex = normalizedValue.indexOf(" ");
-  return separatorIndex === -1
-    ? { firstName: normalizedValue, lastName: "" }
-    : {
-        firstName: normalizedValue.slice(0, separatorIndex).trim(),
-        lastName: normalizedValue.slice(separatorIndex + 1).trim(),
-      };
-};
-
-const serializeInstructorSchemaEntry = (entry) => {
-  const normalizedEntry = normalizeInstructorSchemaEntry(entry);
-  if (!normalizedEntry) {
-    return "";
-  }
-  return [normalizedEntry.firstName, normalizedEntry.lastName].filter(Boolean).join(" ");
-};
-
-const normalizeAiInstructorRecord = (entry) => {
-  if (!entry || typeof entry !== "object") {
-    return null;
-  }
-
-  const firstName = String(entry?.firstName || "").trim() || null;
-  const lastName = String(entry?.lastName || "").trim() || null;
-  const fullName = String(
-    entry?.fullName || [firstName, lastName].filter(Boolean).join(" "),
-  ).trim();
-
-  if (!fullName) {
-    return null;
-  }
-
-  return {
-    firstName,
-    lastName,
-    fullName,
-    personality: String(entry?.personality || "").trim() || null,
-    evidence: Array.isArray(entry?.evidence)
-      ? entry.evidence.map((value) => String(value || "").trim()).filter(Boolean)
-      : [],
-    confidence: ["high", "medium", "low"].includes(
-      String(entry?.confidence || "").trim().toLowerCase(),
-    )
-      ? String(entry.confidence).trim().toLowerCase()
-      : "low",
-  };
-};
-
 const formatFileSize = (size = 0) => {
   const nextSize = Number(size || 0);
   if (!Number.isFinite(nextSize) || nextSize <= 0) {
@@ -342,12 +277,6 @@ const NogaPlannerTelegramPanel = ({
   const [previewPageNumber, setPreviewPageNumber] = useState(1);
   const [pdfPaneMode, setPdfPaneMode] = useState("pdf");
   const [selectedTextPreviewMessage, setSelectedTextPreviewMessage] = useState(null);
-  const [findInstructorsResults, setFindInstructorsResults] = useState([]);
-  const [isFindingInstructors, setIsFindingInstructors] = useState(false);
-  const [findInstructorsError, setFindInstructorsError] = useState("");
-  const [extractCourseNamesResults, setExtractCourseNamesResults] = useState([]);
-  const [isExtractingCourseNames, setIsExtractingCourseNames] = useState(false);
-  const [extractCourseNamesError, setExtractCourseNamesError] = useState("");
   const [isSyncingPinned, setIsSyncingPinned] = useState(false);
   const isMountedRef = useRef(true);
   const telegramImagePreviewUrlsRef = useRef({});
@@ -614,147 +543,6 @@ const NogaPlannerTelegramPanel = ({
       : targetRef;
   };
 
-  const normalizeArabicName = (name) =>
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((word) =>
-        word
-          .replace(/^[أإآٱ]/u, "ا")
-          .replace(/ة$/u, "ه")
-          .replace(/ى$/u, "ي"),
-      )
-      .join(" ");
-
-  // Matches instructor keyword as a whole word; slices message text at the keyword
-  // so any sender name preceding it is excluded from the AI input.
-  const INSTRUCTOR_KW_RE =
-    /(?:^|(?<=\s))(الدكتورة|الدكتوره|الدكتور|دكتورة|دكتوره|دكتور|الأستاذة|الأستاذه|الأستاذ|الاستاذة|الاستاذه|الاستاذ|أستاذة|أستاذه|أستاذ|استاذة|استاذه|استاذ|د\.?)(?=\s|$)/u;
-
-  const findInstructors = async () => {
-    setPdfPaneMode("instructors");
-    setFindInstructorsResults([]);
-    setFindInstructorsError("");
-    if (!plannerToken) {
-      setFindInstructorsError("Login token is missing.");
-      return;
-    }
-    const groupReference = String(selectedGroupReference || "").trim();
-    if (!groupReference) {
-      setFindInstructorsError("Select a group first.");
-      return;
-    }
-    setIsFindingInstructors(true);
-    try {
-      // Step 1: fetch messages from the selected group only
-      const searchParams = new URLSearchParams();
-      searchParams.set("group", groupReference);
-      searchParams.set("limit", "all");
-      searchParams.set("offset", "0");
-      const response = await fetch(
-        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
-        { headers: { Authorization: `Bearer ${plannerToken}` } },
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (!isMountedRef.current) return;
-        setFindInstructorsError(String(payload?.error || "Failed to load group messages."));
-        return;
-      }
-      const groupMessages = Array.isArray(payload?.messages) ? payload.messages : [];
-      const allTexts = [];
-      for (const message of groupMessages) {
-        const rawText = String(message?.text || "").trim();
-        if (!rawText) continue;
-        const match = INSTRUCTOR_KW_RE.exec(rawText);
-        if (!match) continue;
-        allTexts.push(rawText.slice(match.index).trim());
-      }
-
-      if (allTexts.length === 0) {
-        setFindInstructorsResults([]);
-        return;
-      }
-
-      // Step 2: send all texts to the AI endpoint in one call
-      const aiResponse = await fetch(apiUrl("/api/telegram/ai/extract-instructors"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${plannerToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ texts: allTexts }),
-      });
-      const aiPayload = await aiResponse.json().catch(() => ({}));
-      if (!aiResponse.ok) {
-        if (!isMountedRef.current) return;
-        setFindInstructorsError(String(aiPayload?.error || "AI extraction failed."));
-        return;
-      }
-
-      const programInstructorNames = Array.isArray(aiPayload?.programInstructorNames)
-        ? aiPayload.programInstructorNames
-        : [];
-      const nameSet = new Set();
-      const results = [];
-      for (const raw of programInstructorNames) {
-        const normalizedRecord = normalizeAiInstructorRecord(raw);
-        const name = normalizeArabicName(String(normalizedRecord?.fullName || "").trim());
-        if (!name || nameSet.has(name)) continue;
-        nameSet.add(name);
-        results.push({
-          ...normalizedRecord,
-          fullName: String(normalizedRecord?.fullName || "").trim(),
-          displayName: String(normalizedRecord?.fullName || "").trim(),
-          groupLabel: "",
-        });
-      }
-      if (!isMountedRef.current) {
-        return;
-      }
-      setFindInstructorsResults(results);
-      if (results.length > 0 && planner?.persistStudyPlannerMeta) {
-        try {
-          const currentExtractions = Array.isArray(planner?.state?.plannerRoot?.programAIExtractions)
-            ? planner.state.plannerRoot.programAIExtractions
-            : [];
-          const nextExtractions = [
-            ...currentExtractions,
-            {
-              extractionGoal: "instructors",
-              programInstructorNames: results.map((result) => ({
-                firstName: result?.firstName || null,
-                lastName: result?.lastName || null,
-                fullName: String(result?.fullName || "").trim(),
-                personality: result?.personality || null,
-                evidence: Array.isArray(result?.evidence) ? result.evidence : [],
-                confidence: result?.confidence || "low",
-              })),
-              extractionTimestamp: new Date().toISOString(),
-            },
-          ];
-          const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
-          if (!isMountedRef.current) {
-            return;
-          }
-          if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-            planner.setState({ plannerRoot: nextPlannerRoot });
-          }
-        } catch (_) {}
-      }
-    } catch (err) {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setFindInstructorsError(err?.message || "Search failed.");
-    } finally {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setIsFindingInstructors(false);
-    }
-  };
-
   const syncPinnedMessages = async () => {
     const groupReference = String(selectedGroupReference || "").trim();
     if (!plannerToken || !groupReference) return;
@@ -787,208 +575,6 @@ const NogaPlannerTelegramPanel = ({
         return;
       }
       setIsSyncingPinned(false);
-    }
-  };
-
-  const addInstructorToPlanner = async (result) => {
-    const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
-      ? planner.state.plannerRoot.programInstructors
-      : [];
-    const nextInstructorEntry =
-      normalizeInstructorSchemaEntry({
-        firstName: String(result?.firstName || "").trim(),
-        lastName: String(result?.lastName || "").trim(),
-      }) || buildInstructorSchemaEntry(String(result?.fullName || "").trim());
-    if (!nextInstructorEntry) {
-      return;
-    }
-    const nextInstructors = [...currentInstructors, nextInstructorEntry];
-    try {
-      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: nextInstructors });
-      if (!isMountedRef.current) {
-        return;
-      }
-      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-        planner.setState({ plannerRoot: nextPlannerRoot });
-      }
-    } catch (err) {
-      planner.props?.serverReply?.(String(err?.message || "Failed to add instructor."));
-    }
-  };
-
-  const deleteDuplicateInstructors = async () => {
-    const currentInstructors = Array.isArray(planner?.state?.plannerRoot?.programInstructors)
-      ? planner.state.plannerRoot.programInstructors
-      : [];
-    const deduped = Array.from(
-      new Map(
-        currentInstructors
-          .map((entry) => {
-            const normalizedEntry = normalizeInstructorSchemaEntry(entry);
-            if (!normalizedEntry) {
-              return null;
-            }
-            const key = serializeInstructorSchemaEntry(normalizedEntry);
-            return key ? [key, normalizedEntry] : null;
-          })
-          .filter(Boolean),
-      ).values(),
-    );
-    try {
-      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programInstructors: deduped });
-      if (!isMountedRef.current) {
-        return;
-      }
-      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-        planner.setState({ plannerRoot: nextPlannerRoot });
-      }
-    } catch (err) {
-      planner.props?.serverReply?.(String(err?.message || "Failed to deduplicate instructors."));
-    }
-  };
-
-  const extractCourseNames = async () => {
-    setPdfPaneMode("courses");
-    setExtractCourseNamesResults([]);
-    setExtractCourseNamesError("");
-    if (!plannerToken) {
-      setExtractCourseNamesError("Login token is missing.");
-      return;
-    }
-    const groupReference = String(selectedGroupReference || "").trim();
-    if (!groupReference) {
-      setExtractCourseNamesError("Select a group first.");
-      return;
-    }
-    setIsExtractingCourseNames(true);
-    try {
-      const searchParams = new URLSearchParams();
-      searchParams.set("group", groupReference);
-      searchParams.set("limit", "all");
-      searchParams.set("offset", "0");
-      const response = await fetch(
-        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
-        { headers: { Authorization: `Bearer ${plannerToken}` } },
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (!isMountedRef.current) return;
-        setExtractCourseNamesError(String(payload?.error || "Failed to load group messages."));
-        return;
-      }
-      const groupMessages = Array.isArray(payload?.messages) ? payload.messages : [];
-      const allTexts = groupMessages
-        .map((m) => String(m?.text || "").trim())
-        .filter(Boolean);
-      if (allTexts.length === 0) {
-        setExtractCourseNamesResults([]);
-        return;
-      }
-      const aiResponse = await fetch(apiUrl("/api/telegram/ai/extract-courses"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${plannerToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ texts: allTexts }),
-      });
-      const aiPayload = await aiResponse.json().catch(() => ({}));
-      if (!aiResponse.ok) {
-        if (!isMountedRef.current) return;
-        setExtractCourseNamesError(String(aiPayload?.error || "AI extraction failed."));
-        return;
-      }
-      const courses = Array.isArray(aiPayload?.courses) ? aiPayload.courses : [];
-      const nameSet = new Set();
-      const results = [];
-      for (const entry of courses) {
-        const courseName = String(entry?.courseName || "").trim();
-        if (!courseName || nameSet.has(courseName)) continue;
-        nameSet.add(courseName);
-        results.push({ courseName, courseCode: String(entry?.courseCode || "").trim() });
-      }
-      if (!isMountedRef.current) {
-        return;
-      }
-      setExtractCourseNamesResults(results);
-      if (results.length > 0 && planner?.persistStudyPlannerMeta) {
-        try {
-          const currentExtractions = Array.isArray(planner?.state?.plannerRoot?.programAIExtractions)
-            ? planner.state.plannerRoot.programAIExtractions
-            : [];
-          const nextExtractions = [
-            ...currentExtractions,
-            {
-              extractionGoal: "courses",
-              extractionItems: results.map((r) =>
-                [String(r?.courseName || "").trim(), String(r?.courseCode || "").trim()]
-                  .filter(Boolean)
-                  .join(" — ")
-              ),
-              extractionTimestamp: new Date().toISOString(),
-            },
-          ];
-          const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programAIExtractions: nextExtractions });
-          if (!isMountedRef.current) {
-            return;
-          }
-          if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-            planner.setState({ plannerRoot: nextPlannerRoot });
-          }
-        } catch (_) {}
-      }
-    } catch (err) {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setExtractCourseNamesError(String(err?.message || "Extraction failed."));
-    } finally {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setIsExtractingCourseNames(false);
-    }
-  };
-
-  const addCourseToPlanner = async ({ courseName, courseCode }) => {
-    const current = Array.isArray(planner?.state?.plannerRoot?.programCoursesNamesCodes)
-      ? planner.state.plannerRoot.programCoursesNamesCodes
-      : [];
-    const next = [...current, { courseName, courseCode }];
-    try {
-      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: next });
-      if (!isMountedRef.current) {
-        return;
-      }
-      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-        planner.setState({ plannerRoot: nextPlannerRoot });
-      }
-    } catch (err) {
-      planner.props?.serverReply?.(String(err?.message || "Failed to add course."));
-    }
-  };
-
-  const deleteDuplicateCourseNames = async () => {
-    const current = Array.isArray(planner?.state?.plannerRoot?.programCoursesNamesCodes)
-      ? planner.state.plannerRoot.programCoursesNamesCodes
-      : [];
-    const seen = new Set();
-    const deduped = current.filter((entry) => {
-      const key = `${String(entry?.courseName || "").trim()}|${String(entry?.courseCode || "").trim()}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    try {
-      const nextPlannerRoot = await planner.persistStudyPlannerMeta({ programCoursesNamesCodes: deduped });
-      if (!isMountedRef.current) {
-        return;
-      }
-      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
-        planner.setState({ plannerRoot: nextPlannerRoot });
-      }
-    } catch (err) {
-      planner.props?.serverReply?.(String(err?.message || "Failed to deduplicate course names."));
     }
   };
 
@@ -1498,7 +1084,7 @@ const NogaPlannerTelegramPanel = ({
         <div className="nogaPlanner_tracesPdfPaneCopy">
           <span className="nogaPlanner_tracesPdfPaneEyebrow">Read-only</span>
           <strong className="nogaPlanner_tracesPdfPaneTitle">
-            {pdfPaneMode === "instructors" ? "Found Instructors" : pdfPaneMode === "courses" ? "Extracted Course Names" : pdfPaneMode === "text" ? "Text Preview" : "PDF Reader"}
+            {pdfPaneMode === "text" ? "Text Preview" : "PDF Reader"}
           </strong>
         </div>
         {pdfPaneMode === "text" ? (
@@ -1509,40 +1095,6 @@ const NogaPlannerTelegramPanel = ({
           >
             Close
           </button>
-        ) : pdfPaneMode === "instructors" ? (
-          <>
-            <button
-              type="button"
-              className="nogaPlanner_tracesDeleteBtn"
-              onClick={deleteDuplicateInstructors}
-            >
-              Delete duplicated items
-            </button>
-            <button
-              type="button"
-              className="nogaPlanner_tracesMiniTabBtn"
-              onClick={() => setPdfPaneMode("pdf")}
-            >
-              PDF Reader
-            </button>
-          </>
-        ) : pdfPaneMode === "courses" ? (
-          <>
-            <button
-              type="button"
-              className="nogaPlanner_tracesDeleteBtn"
-              onClick={deleteDuplicateCourseNames}
-            >
-              Delete duplicated items
-            </button>
-            <button
-              type="button"
-              className="nogaPlanner_tracesMiniTabBtn"
-              onClick={() => setPdfPaneMode("pdf")}
-            >
-              PDF Reader
-            </button>
-          </>
         ) : previewPageCount > 0 ? (
           <div className="nogaPlanner_tracesPdfPager">
             <button
@@ -1587,75 +1139,6 @@ const NogaPlannerTelegramPanel = ({
             </div>
           ) : (
             <p className="nogaPlanner_tracesStatus">Select a text message to preview.</p>
-          )
-        ) : pdfPaneMode === "instructors" ? (
-          isFindingInstructors ? (
-            <p className="nogaPlanner_tracesStatus">Searching all groups...</p>
-          ) : findInstructorsError ? (
-            <p className="nogaPlanner_tracesStatus">{findInstructorsError}</p>
-          ) : findInstructorsResults.length === 0 ? (
-            <p className="nogaPlanner_tracesStatus">No instructor mentions found.</p>
-          ) : (
-            <div className="nogaPlanner_tracesPdfStageWrap">
-              <p className="nogaPlanner_tracesStatus--summary">
-                {findInstructorsResults.length} instructors found
-              </p>
-              {findInstructorsResults.map((result, idx) => (
-                <div
-                  key={`instructor-result-${idx}`}
-                  className="nogaPlanner_tracesMessage"
-                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span style={{ fontSize: "0.82rem", color: "#3f2b22" }}>
-                    {result.fullName}
-                    {result.confidence ? ` (${result.confidence})` : ""}
-                  </span>
-                  <button
-                    type="button"
-                    className="nogaPlanner_tracesActionBtn"
-                    style={{ minWidth: "auto", padding: "6px 10px" }}
-                    onClick={() => addInstructorToPlanner(result)}
-                  >
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          )
-        ) : pdfPaneMode === "courses" ? (
-          isExtractingCourseNames ? (
-            <p className="nogaPlanner_tracesStatus">Extracting course names...</p>
-          ) : extractCourseNamesError ? (
-            <p className="nogaPlanner_tracesStatus">{extractCourseNamesError}</p>
-          ) : extractCourseNamesResults.length === 0 ? (
-            <p className="nogaPlanner_tracesStatus">No course names found.</p>
-          ) : (
-            <div className="nogaPlanner_tracesPdfStageWrap">
-              <p className="nogaPlanner_tracesStatus--summary">
-                {extractCourseNamesResults.length} courses found
-              </p>
-              {extractCourseNamesResults.map((entry, idx) => (
-                <div
-                  key={`course-result-${idx}`}
-                  className="nogaPlanner_tracesMessage nogaPlanner_tracesCourseResult"
-                >
-                  <div className="nogaPlanner_tracesCourseResultInfo">
-                    <span className="nogaPlanner_tracesCourseResultName">{entry.courseName}</span>
-                    {entry.courseCode ? (
-                      <span className="nogaPlanner_tracesCourseResultCode">{entry.courseCode}</span>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="nogaPlanner_tracesActionBtn"
-                    style={{ minWidth: "auto", padding: "6px 10px", flexShrink: 0 }}
-                    onClick={() => addCourseToPlanner(entry)}
-                  >
-                    Save
-                  </button>
-                </div>
-              ))}
-            </div>
           )
         ) : traceMainTab !== "material" || materialSourceTab !== "telegram" ? (
           <p className="nogaPlanner_tracesStatus">
@@ -2216,15 +1699,6 @@ const NogaPlannerTelegramPanel = ({
           >
             Search
           </button>
-          <button
-            id="nogaPlanner_tracesFindInstructorsBtn"
-            type="button"
-            className="nogaPlanner_tracesActionBtn"
-            onClick={findInstructors}
-            disabled={isFindingInstructors || storedGroups.length === 0}
-          >
-            {isFindingInstructors ? "Searching..." : "Find Instructors"}
-          </button>
         </div>
       </div>
       <div className="nogaPlanner_tracesMiniTabsAndViewer">
@@ -2376,6 +1850,48 @@ const NogaPlannerTelegramPanel = ({
                                 ? "Downloading..."
                                 : "Download"}
                             </button>
+                            {isTelegramPdfDocument(message) ? (
+                              <button
+                                id={`nogaPlanner_tracesTelegramSaveDoc_${index}`}
+                                type="button"
+                                className="nogaPlanner_tracesActionBtn nogaPlanner_tracesActionBtn--highlight"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  const fileName = buildTelegramDocumentFilename(message);
+                                  const fileNameNoExt = getFileNameWithoutExtension(fileName);
+                                  const groupRef = String(message?.groupReference || "").trim();
+                                  const msgId = Number(message?.id || 0);
+                                  let pageCount = null;
+                                  try {
+                                    const params = new URLSearchParams({ groupReference: groupRef, messageId: String(msgId) });
+                                    const resp = await fetch(
+                                      apiUrl(`/api/telegram/stored-media?${params.toString()}`),
+                                      { headers: { Authorization: `Bearer ${plannerToken}` } },
+                                    );
+                                    if (resp.ok) {
+                                      const arrayBuffer = await resp.arrayBuffer();
+                                      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+                                      pageCount = pdf.numPages;
+                                    }
+                                  } catch (_) {}
+                                  planner.stageDocumentFromTelegram({
+                                    documentInfo: {
+                                      documentName: fileNameNoExt || fileName,
+                                      documentType: "PDF",
+                                      documentVolumeUnit: "page",
+                                      documentVolume: pageCount,
+                                      documentByteSize: 0,
+                                      documentEditors: [],
+                                      documentConcepts: [],
+                                    },
+                                    documentURL: "",
+                                    _telegramSource: { groupReference: groupRef, messageId: msgId, fileName },
+                                  });
+                                }}
+                              >
+                                Save as Document
+                              </button>
+                            ) : null}
                           </div>
                         ) : null}
                       </td>

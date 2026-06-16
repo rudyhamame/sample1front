@@ -1,0 +1,64 @@
+/* Responsive overrides for ~820×1048 tablet portrait viewports */
+@media (min-width: 790px) and (max-width: 860px) and (min-height: 980px) and (max-height: 1120px) {
+
+  /* Bio header: reduce side padding for narrower tablet width */
+  .Home_Noga_bioWrapper {
+    padding: 22px 32px 14px 32px;
+    gap: 14px;
+  }
+
+  /* Column sizing: loosen min-widths so both columns fit comfortably at 820px */
+  #Home_Noga_article .Home_Noga_mainWrapperShell {
+    --home-left-column-min-width: clamp(280px, 55vw, 460px);
+    --home-right-column-min-width: clamp(180px, 26vw, 230px);
+    --home-left-column-width: calc(100% - var(--home-right-column-min-width));
+    --home-right-column-width: var(--home-right-column-min-width);
+  }
+
+  /* Friends / chat panel: fixed width so left content gets the rest */
+  #Home_Noga_article .Home_Noga_mainWrapperShell > .Home_Noga_socialFriendsPanel {
+    flex: 0 0 230px;
+    width: 230px;
+    min-width: 200px;
+    max-width: 250px;
+  }
+
+  #Home_Noga_rightColumn_wrapper {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Profile picture: slightly smaller to save header space */
+  .Home_Noga_bioWrapper {
+    --home-profile-size: clamp(68px, 7vw, 88px);
+  }
+
+  /* Personal info grid: 3 columns instead of 4 */
+  #Home_Noga_preStart_personalInfoGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Compact bio card: ensure it doesn't overflow at this width */
+  .Home_Noga_compactBioCard {
+    grid-template-columns: minmax(180px, 0.95fr) minmax(0, 1.05fr);
+  }
+
+  /* Prevent nav column from over-shrinking */
+  #Home_Noga_preStart_navColumn {
+    flex: 0.6 1 180px;
+  }
+
+  /* Events column: add a width floor so it doesn't collapse against its left border */
+  .Home_Noga_friendsEventsWrapper {
+    grid-template-columns: minmax(200px, max-content) minmax(0, 1fr);
+  }
+
+  .Home_Noga_friendsEventsWrapper > .Home_Noga_friendsEvents {
+    min-width: 200px;
+  }
+
+  /* Drawing controls: tuck in a bit */
+  .Home_Noga_mainDrawingControls {
+    right: 10px;
+  }
+}

@@ -1,18 +1,194 @@
 ﻿import React from "react";
 
+const WORD_PAGE_SIZE = 20;
+const MSG_PAGE_SIZE = 20;
+
+const WordOccurrencePanel = ({ items, messages }) => {
+  const [query, setQuery] = React.useState("");
+  const [visibleCount, setVisibleCount] = React.useState(WORD_PAGE_SIZE);
+  const [selectedWords, setSelectedWords] = React.useState(new Set());
+  const [visibleMsgCount, setVisibleMsgCount] = React.useState(MSG_PAGE_SIZE);
+
+  const lowerQuery = query.trim().toLowerCase();
+  const filtered = lowerQuery
+    ? items.filter((e) => e.word.toLowerCase().includes(lowerQuery))
+    : items;
+
+  React.useEffect(() => {
+    setVisibleCount(WORD_PAGE_SIZE);
+  }, [lowerQuery]);
+
+  const toggleWord = (word) => {
+    setSelectedWords((prev) => {
+      const next = new Set(prev);
+      if (next.has(word)) {
+        next.delete(word);
+      } else {
+        next.add(word);
+      }
+      return next;
+    });
+    setVisibleMsgCount(MSG_PAGE_SIZE);
+  };
+
+  const filteredMessages = React.useMemo(() => {
+    if (selectedWords.size === 0 || !Array.isArray(messages)) return [];
+    const selectedArr = Array.from(selectedWords);
+    return messages.filter((text) => {
+      const lower = text.toLowerCase();
+      return selectedArr.every((w) => lower.includes(w));
+    });
+  }, [selectedWords, messages]);
+
+  const visibleItems = filtered.slice(0, visibleCount);
+  const hasMoreWords = visibleCount < filtered.length;
+  const visibleMessages = filteredMessages.slice(0, visibleMsgCount);
+  const hasMoreMessages = visibleMsgCount < filteredMessages.length;
+
+  return (
+    <div className="nogaPlanner_wordOccurrencesPanelWrap">
+      <div
+        id="nogaPlanner_selectSettingsFields_wordOccurrences"
+        className="nogaPlanner_selectSettingsFields"
+      >
+        <span className="nogaPlanner_selectSettingsRelationshipText">
+          {`All words by occurrence (${items.length})`}
+        </span>
+        <input
+          id="nogaPlanner_wordOccurrencesSearch"
+          className="nogaPlanner_wordOccurrencesSearch"
+          type="search"
+          placeholder={`Search ${items.length} words…`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <ul
+          id="nogaPlanner_selectSettingsList_wordOccurrences"
+          className="nogaPlanner_selectSettingsRelationshipsList"
+        >
+          {visibleItems.map((entry) => {
+            const isActive = selectedWords.has(entry.word.toLowerCase());
+            return (
+              <li
+                key={entry.word}
+                className={
+                  "nogaPlanner_selectSettingsRelationshipItem" +
+                  (isActive
+                    ? " nogaPlanner_selectSettingsRelationshipItem--active"
+                    : "")
+                }
+                onClick={() => toggleWord(entry.word.toLowerCase())}
+              >
+                <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--row">
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {entry.word}
+                  </span>
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {entry.count}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+          {filtered.length === 0 ? (
+            <li className="nogaPlanner_selectSettingsRelationshipItem">
+              <span className="nogaPlanner_selectSettingsRelationshipText">
+                No matches
+              </span>
+            </li>
+          ) : null}
+        </ul>
+        {hasMoreWords ? (
+          <button
+            type="button"
+            className="nogaPlanner_coursesMiniBarBtn"
+            onClick={() =>
+              setVisibleCount((prev) =>
+                Math.min(prev + WORD_PAGE_SIZE, filtered.length),
+              )
+            }
+          >
+            {`See more (${filtered.length - visibleCount} remaining)`}
+          </button>
+        ) : null}
+      </div>
+      {selectedWords.size > 0 ? (
+        <div
+          id="nogaPlanner_wordOccurrencesMessagesPanel"
+          className="nogaPlanner_wordOccurrencesMessagesPanel"
+        >
+          <div className="nogaPlanner_wordOccurrencesSelectedChips">
+            {Array.from(selectedWords).map((w) => (
+              <button
+                key={w}
+                type="button"
+                className="nogaPlanner_wordOccurrencesChip"
+                onClick={() => toggleWord(w)}
+              >
+                {w}
+                <span className="nogaPlanner_wordOccurrencesChipX">×</span>
+              </button>
+            ))}
+          </div>
+          <span className="nogaPlanner_selectSettingsRelationshipText">
+            {`Messages (${filteredMessages.length})`}
+          </span>
+          <ul className="nogaPlanner_wordOccurrencesMessagesList">
+            {visibleMessages.map((text, i) => (
+              <li key={i} className="nogaPlanner_wordOccurrencesMessageItem">
+                {text}
+              </li>
+            ))}
+            {filteredMessages.length === 0 ? (
+              <li className="nogaPlanner_wordOccurrencesMessageItem nogaPlanner_wordOccurrencesMessageItem--empty">
+                No messages found.
+              </li>
+            ) : null}
+          </ul>
+          {hasMoreMessages ? (
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn"
+              onClick={() =>
+                setVisibleMsgCount((prev) =>
+                  Math.min(prev + MSG_PAGE_SIZE, filteredMessages.length),
+                )
+              }
+            >
+              {`See more (${filteredMessages.length - visibleMsgCount} remaining)`}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const NogaPlannerSettings = ({ planner, runtime }) => {
   const {
     getPlannerDefaultFieldsForForm,
+    getPlannerFieldDefaultValue,
+    getPlannerFieldDefaultsForProgramMode,
     getPlannerRegistrySelectOptionsBySettingsKey,
     buildDefaultPlannerWeekdayOptions,
+    PLANNER_MATERIAL_METADATA_PROGRAM_MODES,
+    PLANNER_DEFAULT_CARD_REGISTRY,
     NOGAPLANNER_WRAPPER_TABS,
     NOGAPLANNER_TEXT,
   } = runtime;
   const SETTINGS_TEXT = NOGAPLANNER_TEXT.settings;
+  const hasArabicText = (value = "") => /[\u0600-\u06FF]/.test(String(value || ""));
+  const formatVoiceCommandEnglishFallbackLabel = (value = "") =>
+    String(value || "")
+      .replace(/^server_answer_/, "")
+      .replace(/^nogaPlanner_/, "")
+      .replace(/^home_/, "")
+      .replace(/^btn_/, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   const SAVED_COURSE_FIELD_TEXT = NOGAPLANNER_TEXT.savedCourses.fields || {};
   const STUDY_PLAN_LABELS = NOGAPLANNER_TEXT.registryLabels.studyPlanAid || {};
-  const [activeSettingsSection, setActiveSettingsSection] =
-    React.useState("general");
   const [isListAddActionLoading, setIsListAddActionLoading] =
     React.useState(false);
   const [planSettingsDraft, setPlanSettingsDraft] = React.useState({
@@ -20,6 +196,13 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     selectedDayDailyHoursCap: "",
   });
   const [isPlanSettingsSaving, setIsPlanSettingsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof planner?.loadPlannerSelectSettings !== "function") {
+      return;
+    }
+    planner.loadPlannerSelectSettings();
+  }, [planner]);
 
   const {
     plannerSelectSettings,
@@ -63,10 +246,8 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsRelationshipDraft,
     plannerSettingsEditingRelationshipId,
     plannerSettingsSelectedRelationshipId,
-    plannerSettingsLogoMotionEnabled,
     plannerSettingsVoiceControlEnabled,
     plannerSettingsVoiceDictationEnabled,
-    plannerSettingsLogoFixedClock,
     plannerSettingsMessageFromFriendFromId,
     plannerSettingsMessageFromFriendToId,
     plannerSettingsMessageFromFriendToMessage,
@@ -75,6 +256,12 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     plannerSettingsPredictionToolEnabled,
     plannerSettingsSelectedPredictionFieldId,
     plannerSettingsSelectedPredictionTab,
+    plannerTelegramWordPoolLoading,
+    plannerTelegramWordPoolCount,
+    plannerTelegramWordPoolError,
+    plannerTelegramMessageCount,
+    plannerTelegramWordOccurrences,
+    plannerTelegramMessages,
     plannerSettingsVoiceCommandTab,
     plannerSettingsVoiceCommandButton,
     plannerSettingsVoiceCommandInput,
@@ -123,11 +310,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
         sensitivity: "base",
       }),
     );
-  const logoClockOptions = Array.from({ length: 12 }, (_, index) => {
-    const value = String(index + 1);
-    return { value, label: `${value}` };
-  });
-
   const componentClassOptions = Array.isArray(
     plannerSelectSettings?.componentClassOptions,
   )
@@ -312,80 +494,39 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           "",
       ).trim()} - day ${Number(selectedStudyPlanDay?.dayNumber || 0)}`
     : "";
-  const settingsSectionEntries = [
-    { key: "general", label: "General" },
-    { key: "plan", label: "Plan" },
-    { key: "lists", label: SETTINGS_TEXT.lists },
-    { key: "defaults", label: SETTINGS_TEXT.defaults },
-    { key: "relationships", label: SETTINGS_TEXT.relationships },
-    { key: "voice", label: "Voice Commands" },
-    { key: "friend", label: SETTINGS_TEXT.messageFromFriend },
-    { key: "prediction", label: "Prediction Tool" },
-  ];
-
   const settingsSectionLabel = String(
     NOGAPLANNER_TEXT?.savedCourses?.plannerSettings || "Settings",
   ).trim();
-  const plannerDefaultSectionOptions = Array.from(
-    new Set([
-      ...(Array.isArray(NOGAPLANNER_WRAPPER_TABS)
-        ? NOGAPLANNER_WRAPPER_TABS.map((tabEntry) =>
-            String(tabEntry?.label || "").trim(),
-          ).filter(Boolean)
-        : []),
-      settingsSectionLabel,
-    ]),
+  const plannerMetadataDefaultModes = Array.isArray(
+    PLANNER_DEFAULT_CARD_REGISTRY,
+  )
+    ? PLANNER_DEFAULT_CARD_REGISTRY
+    : [];
+  const plannerDefaultSectionOptions = plannerMetadataDefaultModes.map(
+    (modeEntry) => ({
+      value: String(modeEntry?.key || "").trim(),
+      label: String(modeEntry?.label || "").trim(),
+    }),
   );
-  const plannerDefaultSectionFormKeyMap = {
-    Plan: "studyPlanAid",
-    Courses: "savedCourse",
-    Exams: "exam",
-    Lectures: "inlineLecture",
-    [settingsSectionLabel]: "settings",
-  };
+  const selectedDefaultProgramMode =
+    plannerMetadataDefaultModes.find(
+      (modeEntry) =>
+        String(modeEntry?.key || "").trim() ===
+        String(plannerSettingsDefaultSection || "").trim(),
+    ) ||
+    plannerMetadataDefaultModes[0] ||
+    null;
   const selectedDefaultFormKey =
-    plannerDefaultSectionFormKeyMap[plannerSettingsDefaultSection] ||
-    "savedCourse";
-
-  const plannerDefaultFieldRegistry =
-    selectedDefaultFormKey === "settings"
-      ? []
-      : getPlannerDefaultFieldsForForm(selectedDefaultFormKey);
-  const plannerSectionSelectRegistry = [
-    ...getPlannerDefaultFieldsForForm("savedCourse"),
-    ...getPlannerDefaultFieldsForForm("exam"),
-    ...getPlannerDefaultFieldsForForm("inlineLecture"),
-    ...getPlannerDefaultFieldsForForm("shared"),
-  ].filter(
-    (fieldConfig) =>
-      String(fieldConfig?.element || "").trim() === "select" &&
-      !Boolean(fieldConfig?.read_only),
-  );
-  const plannerSectionListOptions = plannerSectionSelectRegistry.reduce(
-    (accumulator, fieldConfig) => {
-      const fieldKey = String(fieldConfig?.key || "").trim();
-      if (!fieldKey) {
-        return accumulator;
-      }
-      if (accumulator.some((entry) => entry.key === fieldKey)) {
-        return accumulator;
-      }
-      const selectSettingsKey = String(
-        fieldConfig?.selectSettingsKey || "",
-      ).trim();
-      accumulator.push({
-        key: fieldKey,
-        label: String(fieldConfig?.label || fieldKey).trim(),
-        selectSettingsKey,
-        selectID:
-          String(fieldConfig?.ID || fieldConfig?.selectID || fieldKey).trim() ||
-          fieldKey,
-        options: Array.isArray(fieldConfig?.options) ? fieldConfig.options : [],
-      });
-      return accumulator;
-    },
-    [],
-  );
+    String(selectedDefaultProgramMode?.key || "").trim() || "course";
+  const plannerDefaultFieldRegistry = Array.isArray(
+    selectedDefaultProgramMode?.fields,
+  )
+    ? selectedDefaultProgramMode.fields
+    : [];
+  const plannerSectionListOptions = plannerDefaultFieldRegistry.map((fieldConfig) => ({
+    key: String(fieldConfig?.key || "").trim(),
+    label: String(fieldConfig?.label || fieldConfig?.key || "").trim(),
+  }));
   const plannerOptionsSelectsEntries = Array.isArray(
     plannerSelectSettings?.optionsSelects,
   )
@@ -582,58 +723,35 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
     hardcodedOptionValues.has(selectedOptionValue);
 
   const plannerDefaultFieldsSource =
-    selectedDefaultFormKey === "savedCourse"
-      ? Object.entries(SAVED_COURSE_FIELD_TEXT).map(([fieldName, label]) => {
-          const matchedFieldConfig = plannerDefaultFieldRegistry.find(
-            (fieldConfig) => fieldConfig.fieldName === fieldName,
-          );
-          return (
-            matchedFieldConfig || {
-              key: `savedCourse.${fieldName}`,
-              formKey: "savedCourse",
-              fieldName,
-              label,
-              element: "input",
-              inputType: "text",
-            }
-          );
-        })
-      : plannerDefaultFieldRegistry;
+    plannerDefaultFieldRegistry;
 
   const plannerDefaultFields = plannerDefaultFieldsSource.map(
     (fieldConfig) => ({
       ...fieldConfig,
-      label:
-        selectedDefaultFormKey === "savedCourse"
-          ? SAVED_COURSE_FIELD_TEXT?.[fieldConfig.fieldName] ||
-            fieldConfig.label
-          : fieldConfig.label,
-      value: String(
-        plannerSelectSettings?.fieldDefaults?.[fieldConfig.key] || "",
-      ).trim(),
-      options: fieldConfig.selectSettingsKey
-        ? plannerOptionsByKey[fieldConfig.selectSettingsKey] || []
-        : Array.isArray(fieldConfig.options)
-          ? fieldConfig.options
-          : [],
+      value: getPlannerFieldDefaultValue(
+        plannerSelectSettings?.fieldDefaults,
+        selectedDefaultFormKey,
+        fieldConfig.key,
+      ),
     }),
   );
 
   const selectedPlannerDefaultField =
     plannerDefaultFields.find(
-      (fieldConfig) => fieldConfig.key === plannerSettingsDefaultFieldKey,
+      (fieldConfig) =>
+        fieldConfig.key ===
+        String(plannerSettingsDefaultFieldKey || "").trim(),
+    ) || null;
+  const selectedPlannerDefaultFieldKey = String(
+    plannerSettingsDefaultFieldKey || "",
+  ).trim();
+  const selectedPlannerDefaultListEntry =
+    plannerDefaultFields.find(
+      (fieldConfig) =>
+        fieldConfig.key ===
+        String(plannerSettingsSelectedDefaultFieldKey || "").trim(),
     ) ||
-    plannerDefaultFields[0] ||
     null;
-  const selectedPlannerDefaultFieldKey = selectedPlannerDefaultField?.key || "";
-  const plannerDefaultsWithValues = plannerDefaultFields.filter((fieldConfig) =>
-    Boolean(String(fieldConfig?.value || "").trim()),
-  );
-  const selectedPlannerDefaultListEntry = plannerDefaultsWithValues.find(
-    (fieldConfig) =>
-      fieldConfig.key ===
-      String(plannerSettingsSelectedDefaultFieldKey || "").trim(),
-  );
   const plannerDefaultInputValue = String(
     plannerSettingsDefaultValueInput || "",
   );
@@ -814,17 +932,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
       className="nogaPlanner_selectSettingsPanel"
     >
       <div
-        id="nogaPlanner_selectSettingsHeader"
-        className="nogaPlanner_selectSettingsHeader"
-      >
-        <span
-          id="nogaPlanner_selectSettingsTitle"
-          className="nogaPlanner_selectSettingsTitle"
-        >
-          {SETTINGS_TEXT.title}
-        </span>
-      </div>
-      <div
         id="nogaPlanner_selectSettingsContent"
         className="nogaPlanner_selectSettingsContent"
       >
@@ -832,600 +939,134 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           id="nogaPlanner_selectSettingsMain"
           className="nogaPlanner_selectSettingsMain"
         >
-          {activeSettingsSection === "general" ? (
-            <div
-              id="nogaPlanner_selectSettingsFields_general"
-              className="nogaPlanner_selectSettingsFields"
+          <div
+            id="nogaPlanner_selectSettingsFields_general"
+            className="nogaPlanner_selectSettingsFields"
+          >
+            <span className="nogaPlanner_selectSettingsSectionTitle">
+              General
+            </span>
+            <label
+              id="nogaPlanner_selectSettingsRow_voiceControl"
+              className="nogaPlanner_selectSettingsCheckboxRow"
             >
-              <label
-                id="nogaPlanner_selectSettingsRow_logoMotion"
-                className="nogaPlanner_selectSettingsCheckboxRow"
-              >
-                <input
-                  id="nogaPlanner_selectSettingsInput_logoMotion"
-                  type="checkbox"
-                  checked={Boolean(plannerSettingsLogoMotionEnabled)}
-                  onChange={(event) =>
-                    planner.handlePlannerSettingsInputChange(
-                      "plannerSettingsLogoMotionEnabled",
-                      event.target.checked,
-                    )
-                  }
-                />
-                <span>
-                  {SETTINGS_TEXT.logoMotionListener}:{" "}
-                  {plannerSettingsLogoMotionEnabled
-                    ? SETTINGS_TEXT.motionOn
-                    : SETTINGS_TEXT.motionOff}
-                </span>
-              </label>
-              <label
-                id="nogaPlanner_selectSettingsRow_voiceControl"
-                className="nogaPlanner_selectSettingsCheckboxRow"
-              >
-                <input
-                  id="nogaPlanner_selectSettingsInput_voiceControl"
-                  type="checkbox"
-                  checked={Boolean(plannerSettingsVoiceControlEnabled)}
-                  onChange={(event) =>
-                    planner.handlePlannerSettingsInputChange(
-                      "plannerSettingsVoiceControlEnabled",
-                      event.target.checked,
-                    )
-                  }
-                />
-                <span>
-                  {SETTINGS_TEXT.voiceControlListener}:{" "}
-                  {plannerSettingsVoiceControlEnabled
-                    ? SETTINGS_TEXT.motionOn
-                    : SETTINGS_TEXT.motionOff}
-                </span>
-              </label>
-              <select
-                id="nogaPlanner_selectSettingsSelect_logoFixedClock"
-                className="nogaPlanner_savedCoursesDetailsInput"
-                value={String(plannerSettingsLogoFixedClock || "9")}
+              <input
+                id="nogaPlanner_selectSettingsInput_voiceControl"
+                type="checkbox"
+                checked={Boolean(plannerSettingsVoiceControlEnabled)}
                 onChange={(event) =>
                   planner.handlePlannerSettingsInputChange(
-                    "plannerSettingsLogoFixedClock",
-                    event.target.value,
+                    "plannerSettingsVoiceControlEnabled",
+                    event.target.checked,
                   )
                 }
-              >
-                {logoClockOptions.map((entry) => (
-                  <option
-                    key={`planner-logo-clock-${entry.value}`}
-                    value={entry.value}
-                  >
-                    {SETTINGS_TEXT.fixedLogoClock} {entry.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-          {activeSettingsSection === "plan" ? (
-            <div
-              id="nogaPlanner_selectSettingsFields_plan"
-              className="nogaPlanner_selectSettingsFields"
+              />
+              <span>
+                {SETTINGS_TEXT.voiceControlListener}:{" "}
+                {plannerSettingsVoiceControlEnabled
+                  ? SETTINGS_TEXT.motionOn
+                  : SETTINGS_TEXT.motionOff}
+              </span>
+            </label>
+            <label
+              id="nogaPlanner_selectSettingsRow_voiceDictation"
+              className="nogaPlanner_selectSettingsCheckboxRow"
             >
-              <label className="nogaPlanner_selectSettingsField">
-                <span>
-                  {STUDY_PLAN_LABELS.defaultDailyHours ||
-                    "Default Daily Hours"}
-                </span>
-                <input
-                  id="nogaPlanner_selectSettingsInput_defaultDailyHours"
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={String(planSettingsDraft.defaultDailyHours || "")}
-                  onChange={(event) =>
-                    setPlanSettingsDraft((previousDraft) => ({
-                      ...previousDraft,
-                      defaultDailyHours: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="nogaPlanner_selectSettingsField">
-                <span>
-                  {selectedStudyPlanDay
-                    ? `Daily cap for the selected day (${selectedDaySettingsLabel})`
-                    : "Daily cap for the selected day"}
-                </span>
-                <input
-                  id="nogaPlanner_selectSettingsInput_selectedDayDailyHoursCap"
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={String(planSettingsDraft.selectedDayDailyHoursCap || "")}
-                  disabled={!selectedStudyPlanDay}
-                  placeholder={
-                    selectedStudyPlanDay
-                      ? selectedDaySettingsLabel
-                      : "Choose a day from the plan column first"
-                  }
-                  onChange={(event) =>
-                    setPlanSettingsDraft((previousDraft) => ({
-                      ...previousDraft,
-                      selectedDayDailyHoursCap: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <div
-                id="nogaPlanner_selectSettingsActions_plan"
-                className="nogaPlanner_selectSettingsActions"
-              >
-                <button
-                  type="button"
-                  className={
-                    "nogaPlanner_coursesMiniBarBtn" +
-                    (isPlanSettingsSaving
-                      ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
-                      : "")
-                  }
-                  onClick={savePlanSettings}
-                  disabled={isPlanSettingsSaving}
-                >
-                  {isPlanSettingsSaving ? "..." : "Save"}
-                </button>
-              </div>
-            </div>
-          ) : null}
+              <input
+                id="nogaPlanner_selectSettingsInput_voiceDictation"
+                type="checkbox"
+                checked={Boolean(plannerSettingsVoiceDictationEnabled)}
+                onChange={(event) =>
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsVoiceDictationEnabled",
+                    event.target.checked,
+                  )
+                }
+              />
+              <span>
+                Voice dictation:{" "}
+                {plannerSettingsVoiceDictationEnabled
+                  ? SETTINGS_TEXT.motionOn
+                  : SETTINGS_TEXT.motionOff}
+              </span>
+            </label>
+          </div>
 
           <div
             id="nogaPlanner_selectSettingsColumns"
             className="nogaPlanner_selectSettingsColumns"
           >
-            {activeSettingsSection === "lists" ? (
-              <>
-                <div
-                  id="nogaPlanner_selectSettingsFields_lists"
-                  className="nogaPlanner_selectOptionsFields"
-                >
-                  <div className="nogaPlanner_selectOptionsFieldGroup">
-                    <label className="nogaPlanner_selectOptionsField">
-                      <span>{SETTINGS_TEXT.listFieldLabel}</span>
-                      <select
-                        id="nogaPlanner_selectSettingsSelect_activeListKey"
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={activePlannerSettingsSelectField?.key || ""}
-                        disabled={plannerSectionListOptions.length === 0}
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            "plannerSettingsActiveListKey",
-                            event.target.value,
-                          )
-                        }
-                      >
-                        {plannerSectionListOptions.length === 0 ? (
-                          <option value="">
-                            {SETTINGS_TEXT.noListsForTab}
-                          </option>
-                        ) : (
-                          <>
-                            <option value="" disabled>
-                              {SETTINGS_TEXT.chooseListField}
-                            </option>
-                            {plannerSectionListOptions.map((optionGroup) => (
-                              <option
-                                key={optionGroup.key}
-                                value={optionGroup.key}
-                              >
-                                {`${optionGroup.label} (${optionGroup.selectID || optionGroup.key})`}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
-                    </label>
-                    <label className="nogaPlanner_selectOptionsField">
-                      <span>{SETTINGS_TEXT.listModeLabel}</span>
-                      <select
-                        id="nogaPlanner_selectSettingsSelect_listMode"
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        value={activeListMode}
-                        disabled={hasExistingSelectConfig}
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            "plannerSettingsActiveListMode",
-                            event.target.value,
-                          )
-                        }
-                      >
-                        <option value="" disabled>
-                          {SETTINGS_TEXT.chooseMode}
-                        </option>
-                        <option value="independent">
-                          {SETTINGS_TEXT.modeIndependent}
-                        </option>
-                        <option value="dependent">
-                          {SETTINGS_TEXT.modeDependent}
-                        </option>
-                      </select>
-                    </label>
-                    {activeListMode === "dependent" ? (
-                      <>
-                        <label className="nogaPlanner_selectOptionsField">
-                          <span>{SETTINGS_TEXT.dependentSelectLabel}</span>
-                          <select
-                            id="nogaPlanner_selectSettingsSelect_dependencySelectID"
-                            className="nogaPlanner_savedCoursesDetailsInput"
-                            value={selectedDependencySelectID}
-                            disabled={hasExistingSelectConfig}
-                            onChange={(event) =>
-                              planner.handlePlannerSettingsInputChange(
-                                "plannerSettingsDependencySelectID",
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <option value="" disabled>
-                              {SETTINGS_TEXT.chooseIndependentSelect}
-                            </option>
-                            {dependencySelectChoicesUnique.map((entry) => (
-                              <option
-                                key={`dep-${entry.value}`}
-                                value={entry.value}
-                              >
-                                {entry.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="nogaPlanner_selectOptionsField">
-                          <span>{SETTINGS_TEXT.dependentOptionLabel}</span>
-                          <select
-                            id="nogaPlanner_selectSettingsSelect_dependencyIndependentOption"
-                            className="nogaPlanner_savedCoursesDetailsInput"
-                            value={selectedDependencyIndependentOption}
-                            disabled={!selectedDependencySelectID}
-                            onChange={(event) =>
-                              planner.handlePlannerSettingsInputChange(
-                                "plannerSettingsDependencyIndependentOption",
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <option value="" disabled>
-                              {SETTINGS_TEXT.chooseIndependentOption}
-                            </option>
-                            {dependencyIndependentOptionChoices.map((entry) => (
-                              <option key={`dep-opt-${entry}`} value={entry}>
-                                {entry}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </>
-                    ) : null}
-                    <label className="nogaPlanner_selectOptionsField">
-                      <span>{SETTINGS_TEXT.listValueLabel}</span>
-                      <input
-                        id="nogaPlanner_selectSettingsInput_listValue"
-                        className="nogaPlanner_savedCoursesDetailsInput"
-                        type="text"
-                        value={
-                          activePlannerSettingsOptionGroup?.inputValue || ""
-                        }
-                        onChange={(event) =>
-                          planner.handlePlannerSettingsInputChange(
-                            activePlannerSettingsOptionGroup.selectSettingsKey ===
-                              "componentClassOptions"
-                              ? "plannerSettingsComponentClassInput"
-                              : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                  "weekdayOptions"
-                                ? "plannerSettingsWeekdayInput"
-                                : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                    "hourOptions"
-                                  ? "plannerSettingsHourInput"
-                                  : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                      "termOptions"
-                                    ? "plannerSettingsTermInput"
-                                    : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                        "academicYearOptions"
-                                      ? "plannerSettingsAcademicYearInput"
-                                      : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                          "locationBuildingOptions"
-                                        ? "plannerSettingsLocationBuildingInput"
-                                        : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                            "lectureInstructorOptions"
-                                          ? "plannerSettingsLectureInstructorInput"
-                                          : activePlannerSettingsOptionGroup.selectSettingsKey ===
-                                              "lectureWriterOptions"
-                                            ? "plannerSettingsLectureWriterInput"
-                                            : "plannerSettingsLocationRoomInput",
-                            event.target.value,
-                          )
-                        }
-                        placeholder={
-                          activePlannerSettingsOptionGroup?.placeholder || ""
-                        }
-                        disabled={
-                          !isActiveListEditable ||
-                          (activeListMode === "dependent" &&
-                            !hasCompleteDependentSelection)
-                        }
-                      />
-                    </label>
-                  </div>
-                  <div
-                    id="nogaPlanner_selectSettingsActions_lists"
-                    className="nogaPlanner_selectOptionsActions"
-                  >
-                    {(() => {
-                      const isAddDisabled =
-                        !isActiveListEditable ||
-                        (activeListMode === "dependent" &&
-                          !hasCompleteDependentSelection) ||
-                        isListAddActionLoading;
-                      const isDeleteSelectedDisabled =
-                        activePlannerSettingsOptionGroup?.selectedIndex < 0 ||
-                        selectedOptionIsHardcoded ||
-                        !isActiveListEditable;
-                      const isDeleteAllDisabled =
-                        activeRenderedOptions.length === 0 ||
-                        !isActiveListEditable;
-                      const isEditDisabled =
-                        activePlannerSettingsOptionGroup?.selectedIndex < 0 ||
-                        selectedOptionIsHardcoded ||
-                        !isActiveListEditable;
-                      return (
-                        <>
-                          <button
-                            id="nogaPlanner_selectSettingsBtn_listsAddOrUpdate"
-                            type="button"
-                            className={
-                              "nogaPlanner_coursesMiniBarBtn" +
-                              (isAddDisabled
-                                ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
-                                : "")
-                            }
-                            onClick={async () => {
-                              if (isListAddActionLoading) {
-                                return;
-                              }
-                              setIsListAddActionLoading(true);
-                              try {
-                                if (useLegacyRoomOptionsFlow) {
-                                  await planner.addOrUpdatePlannerRoomOption();
-                                } else {
-                                  await planner.addOrUpdatePlannerSettingsListItem(
-                                    activePlannerSettingsOptionGroup.selectSettingsKey,
-                                    activePlannerSettingsOptionGroup.selectID,
-                                  );
-                                }
-                              } finally {
-                                setIsListAddActionLoading(false);
-                              }
-                            }}
-                            disabled={isAddDisabled}
-                          >
-                            {isListAddActionLoading
-                              ? "..."
-                              : activePlannerSettingsOptionGroup?.editingIndex >=
-                                  0
-                                ? SETTINGS_TEXT.update
-                                : SETTINGS_TEXT.add}
-                          </button>
-                          <button
-                            id="nogaPlanner_selectSettingsBtn_listsDeleteSelected"
-                            type="button"
-                            className={
-                              "nogaPlanner_coursesMiniBarBtn" +
-                              (isDeleteSelectedDisabled
-                                ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
-                                : "")
-                            }
-                            onClick={() =>
-                              useLegacyRoomOptionsFlow
-                                ? planner.deleteSelectedPlannerRoomOption()
-                                : planner.deleteSelectedPlannerSettingsListItem(
-                                    activePlannerSettingsOptionGroup.selectSettingsKey,
-                                  )
-                            }
-                            disabled={isDeleteSelectedDisabled}
-                          >
-                            {SETTINGS_TEXT.deleteSelected}
-                          </button>
-                          <button
-                            id="nogaPlanner_selectSettingsBtn_listsDeleteAll"
-                            type="button"
-                            className={
-                              "nogaPlanner_coursesMiniBarBtn" +
-                              (isDeleteAllDisabled
-                                ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
-                                : "")
-                            }
-                            onClick={() =>
-                              useLegacyRoomOptionsFlow
-                                ? planner.clearPlannerRoomOptions()
-                                : planner.clearPlannerSettingsList(
-                                    activePlannerSettingsOptionGroup.selectSettingsKey,
-                                  )
-                            }
-                            disabled={isDeleteAllDisabled}
-                          >
-                            {SETTINGS_TEXT.deleteAll}
-                          </button>
-                          <button
-                            id="nogaPlanner_selectSettingsBtn_listsEdit"
-                            type="button"
-                            className={
-                              "nogaPlanner_coursesMiniBarBtn" +
-                              (isEditDisabled
-                                ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
-                                : "")
-                            }
-                            onClick={() =>
-                              useLegacyRoomOptionsFlow
-                                ? planner.editSelectedPlannerRoomOption()
-                                : planner.editSelectedPlannerSettingsListItem(
-                                    activePlannerSettingsOptionGroup.selectSettingsKey,
-                                  )
-                            }
-                            disabled={isEditDisabled}
-                          >
-                            {SETTINGS_TEXT.edit}
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                <div className="nogaPlanner_selectOptionsListWrap">
-                  <ul
-                    id="nogaPlanner_selectSettingsList_lists"
-                    className="nogaPlanner_selectOptionsList"
-                  >
-                    {activeRenderedOptions.length === 0 ? (
-                      <li className="nogaPlanner_selectOptionsItem">
-                        <span className="nogaPlanner_selectOptionsItemLabel">
-                          {SETTINGS_TEXT.noSavedItems}
-                        </span>
-                      </li>
-                    ) : (
-                      activeRenderedOptions.map((optionValue, optionIndex) => {
-                        const normalizedOptionValue = String(
-                          optionValue || "",
-                        ).trim();
-                        const isHardcodedOption = hardcodedOptionValues.has(
-                          normalizedOptionValue,
-                        );
-                        return (
-                          <li
-                            key={`planner-option-${activePlannerSettingsOptionGroup.key}-${optionValue}-${optionIndex}`}
-                            className={
-                              "nogaPlanner_selectOptionsItem" +
-                              (activePlannerSettingsOptionGroup?.selectedIndex ===
-                              optionIndex
-                                ? " nogaPlanner_selectOptionsItem--selected"
-                                : "")
-                            }
-                            onClick={() =>
-                              isActiveListEditable && !isHardcodedOption
-                                ? planner.togglePlannerSettingsListItemSelection(
-                                    activePlannerSettingsOptionGroup.selectSettingsKey,
-                                    optionIndex,
-                                  )
-                                : null
-                            }
-                          >
-                            <span className="nogaPlanner_selectOptionsItemLabel">
-                              {optionValue}
-                              {isHardcodedOption
-                                ? " (hardcoded - unselectable)"
-                                : ""}
-                            </span>
-                          </li>
-                        );
-                      })
-                    )}
-                  </ul>
-                </div>
-              </>
-            ) : null}
-            {activeSettingsSection === "defaults" ? (
-              <div
-                id="nogaPlanner_selectSettingsFields_defaults"
-                className="nogaPlanner_selectSettingsFields"
-              >
-                <select
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  value={plannerSettingsDefaultSection}
-                  onChange={(event) =>
-                    planner.handlePlannerSettingsDefaultSectionChange(
-                      event.target.value,
-                    )
-                  }
-                >
-                  {plannerDefaultSectionOptions.map((optionValue) => (
-                    <option
-                      key={`planner-default-section-${optionValue}`}
-                      value={optionValue}
-                    >
-                      {optionValue}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  value={selectedPlannerDefaultFieldKey}
-                  onChange={(event) => {
-                    const nextFieldKey = event.target.value;
-                    const nextFieldConfig =
-                      plannerDefaultFields.find(
-                        (fieldConfig) => fieldConfig.key === nextFieldKey,
-                      ) || null;
-                    planner.handlePlannerSettingsInputChange(
-                      "plannerSettingsDefaultFieldKey",
-                      nextFieldKey,
-                    );
-                    planner.handlePlannerSettingsInputChange(
-                      "plannerSettingsDefaultValueInput",
-                      "",
-                    );
-                    planner.handlePlannerSettingsInputChange(
-                      "plannerSettingsEditingDefaultFieldKey",
-                      "",
-                    );
-                  }}
-                  disabled={!selectedPlannerDefaultField}
-                >
-                  {plannerDefaultFields.map((fieldConfig) => (
-                    <option
-                      key={`planner-default-field-${fieldConfig.key}`}
-                      value={fieldConfig.key}
-                    >
-                      {fieldConfig.label}
-                    </option>
-                  ))}
-                </select>
-
-                {selectedPlannerDefaultField ? (
-                  selectedPlannerDefaultField.element === "select" ? (
-                    <select
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      value={plannerDefaultInputValue}
-                      onChange={(event) =>
-                        planner.handlePlannerSettingsInputChange(
-                          "plannerSettingsDefaultValueInput",
-                          event.target.value,
-                        )
-                      }
-                    >
-                      <option value="">None</option>
-                      {selectedPlannerDefaultField.options.map(
-                        (optionValue) => (
-                          <option
-                            key={`planner-default-option-${selectedPlannerDefaultField.key}-${optionValue}`}
-                            value={optionValue}
-                          >
-                            {optionValue}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  ) : (
-                    <input
-                      className="nogaPlanner_savedCoursesDetailsInput"
-                      type={selectedPlannerDefaultField.inputType || "text"}
-                      value={plannerDefaultInputValue}
-                      onChange={(event) =>
-                        planner.handlePlannerSettingsInputChange(
-                          "plannerSettingsDefaultValueInput",
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Value"
-                    />
+            <div
+              id="nogaPlanner_selectSettingsFields_defaults"
+              className="nogaPlanner_selectSettingsFields"
+            >
+              <span className="nogaPlanner_selectSettingsSectionTitle">
+                {SETTINGS_TEXT.defaults}
+              </span>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={selectedDefaultFormKey}
+                onChange={(event) =>
+                  planner.handlePlannerSettingsDefaultSectionChange(
+                    event.target.value,
                   )
-                ) : null}
+                }
+              >
+                {plannerDefaultSectionOptions.map((cardOption) => (
+                  <option
+                    key={`planner-default-card-${cardOption.value}`}
+                    value={cardOption.value}
+                  >
+                    {cardOption.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={selectedPlannerDefaultFieldKey}
+                onChange={(event) => {
+                  const nextFieldKey = event.target.value;
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsDefaultFieldKey",
+                    nextFieldKey,
+                  );
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsDefaultValueInput",
+                    "",
+                  );
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsEditingDefaultFieldKey",
+                    "",
+                  );
+                }}
+                disabled={plannerDefaultFields.length === 0}
+              >
+                <option value="" disabled>
+                  Choose field
+                </option>
+                {plannerDefaultFields.map((fieldConfig) => (
+                  <option
+                    key={`planner-default-field-${selectedDefaultFormKey}-${fieldConfig.key}`}
+                    value={fieldConfig.key}
+                  >
+                    {fieldConfig.label}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                className="nogaPlanner_savedCoursesDetailsInput"
+                type="text"
+                value={plannerDefaultInputValue}
+                onChange={(event) =>
+                  planner.handlePlannerSettingsInputChange(
+                    "plannerSettingsDefaultValueInput",
+                    event.target.value,
+                  )
+                }
+                placeholder="Default value"
+                disabled={!selectedPlannerDefaultField}
+              />
 
                 <div
                   id="nogaPlanner_selectSettingsActions_defaults"
@@ -1440,7 +1081,10 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     const isDefaultsDeleteDisabled =
                       !selectedPlannerDefaultListEntry;
                     const isDefaultsDeleteAllDisabled =
-                      plannerDefaultsWithValues.length === 0;
+                      plannerDefaultFields.every(
+                        (fieldConfig) =>
+                          !String(fieldConfig?.value || "").trim(),
+                      );
                     return (
                       <>
                         <button
@@ -1507,8 +1151,8 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                 </div>
 
                 <ul className="nogaPlanner_selectSettingsList">
-                  {plannerDefaultsWithValues.length > 0 ? (
-                    plannerDefaultsWithValues.map((fieldConfig) => (
+                  {plannerDefaultFields.length > 0 ? (
+                    plannerDefaultFields.map((fieldConfig) => (
                       <li
                         key={`planner-default-entry-${fieldConfig.key}`}
                         className={
@@ -1529,7 +1173,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                           {fieldConfig.label}
                         </span>
                         <span className="nogaPlanner_selectSettingsItemLabel">
-                          {fieldConfig.value}
+                          {String(fieldConfig.value || "").trim() || "—"}
                         </span>
                       </li>
                     ))
@@ -1542,30 +1186,31 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   )}
                 </ul>
               </div>
-            ) : null}
-            {activeSettingsSection === "relationships" ? (
-              <div
-                id="nogaPlanner_selectSettingsFields_relationships"
-                className="nogaPlanner_selectSettingsFields"
-              >
-                <select
-                  className="nogaPlanner_savedCoursesDetailsInput"
-                  value={
-                    plannerSettingsRelationshipDraft.relationScope ||
-                    "innerComponent"
-                  }
-                  onChange={(event) =>
+            <div
+              id="nogaPlanner_selectSettingsFields_relationships"
+              className="nogaPlanner_selectSettingsFields"
+            >
+              <span className="nogaPlanner_selectSettingsSectionTitle">
+                {SETTINGS_TEXT.relationships}
+              </span>
+              <select
+                className="nogaPlanner_savedCoursesDetailsInput"
+                value={
+                  plannerSettingsRelationshipDraft.relationScope ||
+                  "innerComponent"
+                }
+                onChange={(event) =>
                     planner.handlePlannerSettingsRelationshipDraftChange(
                       "relationScope",
                       event.target.value,
                     )
-                  }
-                >
-                  <option value="innerComponent">Inside component</option>
-                  <option value="intercomponent">
-                    Between components of the same course (later)
-                  </option>
-                </select>
+                }
+              >
+                <option value="innerComponent">Inside component</option>
+                <option value="intercomponent">
+                  Between components of the same course (later)
+                </option>
+              </select>
                 {(plannerSettingsRelationshipDraft.relationScope ||
                   "innerComponent") === "innerComponent" ? (
                   <>
@@ -1780,66 +1425,43 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   )}
                 </ul>
               </div>
-            ) : null}
-            {activeSettingsSection === "voice" ? (
-              <div
-                id="nogaPlanner_selectSettingsFields_voice"
-                className="nogaPlanner_selectSettingsFields"
-              >
-                {(() => {
-                  const selectedVoiceIndex = Number(
-                    plannerSettingsSelectedVoiceCommandIndex ?? -1,
-                  );
-                  const voiceEntriesFromState = Array.isArray(
-                    plannerSettingsVoiceCommandEntries,
-                  )
-                    ? plannerSettingsVoiceCommandEntries
+            <div
+              id="nogaPlanner_selectSettingsFields_voice"
+              className="nogaPlanner_selectSettingsFields"
+            >
+              <span className="nogaPlanner_selectSettingsSectionTitle">
+                Voice Commands
+              </span>
+              {(() => {
+                const selectedVoiceIndex = Number(
+                  plannerSettingsSelectedVoiceCommandIndex ?? -1,
+                );
+                const voiceEntriesFromState = Array.isArray(
+                  plannerSettingsVoiceCommandEntries,
+                )
+                  ? plannerSettingsVoiceCommandEntries
+                  : [];
+                const voiceEntriesFromSettings = Array.isArray(
+                  plannerSelectSettings?.voiceCommands,
+                )
+                  ? plannerSelectSettings.voiceCommands
+                  : Array.isArray(plannerSelectSettings?.voiceCommandEntries)
+                    ? plannerSelectSettings.voiceCommandEntries
                     : [];
-                  const voiceEntriesFromSettings = Array.isArray(
-                    plannerSelectSettings?.voiceCommands,
-                  )
-                    ? plannerSelectSettings.voiceCommands
-                    : Array.isArray(plannerSelectSettings?.voiceCommandEntries)
-                      ? plannerSelectSettings.voiceCommandEntries
-                      : [];
-                  const voiceEntries =
-                    voiceEntriesFromState.length > 0
-                      ? voiceEntriesFromState
-                      : voiceEntriesFromSettings;
-                  const voiceDictationNormalizations = Array.isArray(
-                    plannerSelectSettings?.voiceDictationNormalizations,
-                  )
-                    ? plannerSelectSettings.voiceDictationNormalizations
-                    : [];
-                  return (
-                    <div
-                      id="nogaPlanner_selectSettingsVoiceCommandsCard"
-                      className="nogaPlanner_selectSettingsVoiceCommandsCard"
-                    >
-                      <label
-                        id="nogaPlanner_selectSettingsRow_voiceDictation"
-                        className="nogaPlanner_selectSettingsCheckboxRow"
-                      >
-                        <input
-                          id="nogaPlanner_selectSettingsInput_voiceDictation"
-                          type="checkbox"
-                          checked={Boolean(
-                            plannerSettingsVoiceDictationEnabled,
-                          )}
-                          onChange={(event) =>
-                            planner.handlePlannerSettingsInputChange(
-                              "plannerSettingsVoiceDictationEnabled",
-                              event.target.checked,
-                            )
-                          }
-                        />
-                        <span>
-                          Voice dictation:{" "}
-                          {plannerSettingsVoiceDictationEnabled
-                            ? SETTINGS_TEXT.motionOn
-                            : SETTINGS_TEXT.motionOff}
-                        </span>
-                      </label>
+                const voiceEntries =
+                  voiceEntriesFromState.length > 0
+                    ? voiceEntriesFromState
+                    : voiceEntriesFromSettings;
+                const voiceDictationNormalizations = Array.isArray(
+                  plannerSelectSettings?.voiceDictationNormalizations,
+                )
+                  ? plannerSelectSettings.voiceDictationNormalizations
+                  : [];
+                return (
+                  <div
+                    id="nogaPlanner_selectSettingsVoiceCommandsCard"
+                    className="nogaPlanner_selectSettingsVoiceCommandsCard"
+                  >
                       <div
                         id="nogaPlanner_selectSettingsActions_voice"
                         className="nogaPlanner_selectSettingsActions"
@@ -1908,12 +1530,21 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                             const elementName =
                               typeof document !== "undefined" &&
                               elementID !== "-"
-                                ? String(
-                                    document.getElementById(elementID)
-                                      ?.textContent || "",
-                                  )
-                                    .replace(/\s+/g, " ")
-                                    .trim()
+                                ? (() => {
+                                    const elementNode = document.getElementById(elementID);
+                                    const candidateLabel = String(
+                                      elementNode?.getAttribute?.("aria-label") ||
+                                        elementNode?.getAttribute?.("title") ||
+                                        elementNode?.textContent ||
+                                        "",
+                                    )
+                                      .replace(/\s+/g, " ")
+                                      .trim();
+                                    if (candidateLabel && !hasArabicText(candidateLabel)) {
+                                      return candidateLabel;
+                                    }
+                                    return formatVoiceCommandEnglishFallbackLabel(elementID);
+                                  })()
                                 : "";
                             const voiceCommand =
                               String(
@@ -2083,63 +1714,64 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                         </ul>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            ) : null}
-            {activeSettingsSection === "friend" ? (
-              <div
-                id="nogaPlanner_selectSettingsFields_friend"
-                className="nogaPlanner_selectSettingsFields"
-              >
-                {(() => {
-                  const normalizeFriendId = (value) => {
-                    if (!value) {
-                      return "";
-                    }
-                    if (typeof value === "object") {
-                      return String(value?._id || value?.id || "").trim();
-                    }
-                    return String(value || "").trim();
-                  };
-                  const friendOptions = (
-                    Array.isArray(planner?.props?.state?.friends)
-                      ? planner.props.state.friends
-                      : []
-                  )
-                    .map((entry, index) => {
-                      const info =
-                        entry?.info ||
-                        entry?.identity?.personal ||
-                        entry?.user?.info ||
-                        entry?.user ||
-                        {};
-                      const friendId = normalizeFriendId(
-                        entry?._id ||
-                          entry?.id ||
-                          entry?.user?._id ||
-                          entry?.user?.id,
-                      );
-                      const firstName = String(info?.firstname || "").trim();
-                      const lastName = String(info?.lastname || "").trim();
-                      const username = String(info?.username || "").trim();
-                      const fullName = `${firstName} ${lastName}`.trim();
-                      const label =
-                        fullName ||
-                        (username ? `@${username}` : `Friend ${index + 1}`);
-                      return {
-                        id: friendId,
-                        label,
-                        raw: entry,
-                      };
-                    })
-                    .filter((entry) => Boolean(entry.id));
-                  const myUserId = String(
-                    planner?.props?.state?.my_id || "",
-                  ).trim();
-                  const messageFriendSettings =
-                    planner.state?.plannerSelectSettings?.messageFriend;
-                  const listeningFriendMessage = (() => {
+                );
+              })()}
+            </div>
+            <div
+              id="nogaPlanner_selectSettingsFields_friend"
+              className="nogaPlanner_selectSettingsFields"
+            >
+              <span className="nogaPlanner_selectSettingsSectionTitle">
+                {SETTINGS_TEXT.messageFromFriend}
+              </span>
+              {(() => {
+                const normalizeFriendId = (value) => {
+                  if (!value) {
+                    return "";
+                  }
+                  if (typeof value === "object") {
+                    return String(value?._id || value?.id || "").trim();
+                  }
+                  return String(value || "").trim();
+                };
+                const friendOptions = (
+                  Array.isArray(planner?.props?.state?.friends)
+                    ? planner.props.state.friends
+                    : []
+                )
+                  .map((entry, index) => {
+                    const info =
+                      entry?.info ||
+                      entry?.identity?.personal ||
+                      entry?.user?.info ||
+                      entry?.user ||
+                      {};
+                    const friendId = normalizeFriendId(
+                      entry?._id ||
+                        entry?.id ||
+                        entry?.user?._id ||
+                        entry?.user?.id,
+                    );
+                    const firstName = String(info?.firstname || "").trim();
+                    const lastName = String(info?.lastname || "").trim();
+                    const username = String(info?.username || "").trim();
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    const label =
+                      fullName ||
+                      (username ? `@${username}` : `Friend ${index + 1}`);
+                    return {
+                      id: friendId,
+                      label,
+                      raw: entry,
+                    };
+                  })
+                  .filter((entry) => Boolean(entry.id));
+                const myUserId = String(
+                  planner?.props?.state?.my_id || "",
+                ).trim();
+                const messageFriendSettings =
+                  planner.state?.plannerSelectSettings?.messageFriend;
+                const listeningFriendMessage = (() => {
                     const selectedFromId = String(
                       plannerSettingsMessageFromFriendFromId || "",
                     ).trim();
@@ -2393,32 +2025,70 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   );
                 })()}
               </div>
-            ) : null}
-            {activeSettingsSection === "prediction" ? (
-              <div
-                id="nogaPlanner_selectSettingsFields_prediction"
-                className="nogaPlanner_selectSettingsFields"
+            <div
+              id="nogaPlanner_selectSettingsFields_prediction"
+              className="nogaPlanner_selectSettingsFields"
+            >
+              <span className="nogaPlanner_selectSettingsSectionTitle">
+                Prediction Tool
+              </span>
+              <label
+                id="nogaPlanner_selectSettingsRow_predictionEnabled"
+                className="nogaPlanner_selectSettingsCheckboxRow"
               >
-                <label
-                  id="nogaPlanner_selectSettingsRow_predictionEnabled"
-                  className="nogaPlanner_selectSettingsCheckboxRow"
-                >
-                  <input
-                    id="nogaPlanner_selectSettingsInput_predictionEnabled"
-                    type="checkbox"
-                    checked={Boolean(plannerSettingsPredictionToolEnabled)}
-                    onChange={(event) =>
+                <input
+                  id="nogaPlanner_selectSettingsInput_predictionEnabled"
+                  type="checkbox"
+                  checked={Boolean(plannerSettingsPredictionToolEnabled)}
+                  onChange={(event) =>
                       planner.handlePlannerSettingsInputChange(
                         "plannerSettingsPredictionToolEnabled",
                         event.target.checked,
                       )
+                  }
+                />
+                <span>
+                  Enable prediction tool:{" "}
+                  {plannerSettingsPredictionToolEnabled ? "Enabled" : "Disabled"}
+                </span>
+              </label>
+              <div
+                id="nogaPlanner_selectSettingsActions_predictionTelegram"
+                className="nogaPlanner_selectSettingsActions"
+              >
+                  <button
+                    type="button"
+                    className={
+                      "nogaPlanner_coursesMiniBarBtn" +
+                      (plannerTelegramWordPoolLoading
+                        ? " nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                        : "")
                     }
+                    onClick={planner.loadTelegramPredictionWordPool}
+                    disabled={Boolean(plannerTelegramWordPoolLoading)}
+                  >
+                    {plannerTelegramWordPoolLoading
+                      ? "Loading..."
+                      : "Load Telegram words"}
+                  </button>
+                  {plannerTelegramWordPoolCount > 0 && !plannerTelegramWordPoolLoading ? (
+                    <span className="nogaPlanner_selectSettingsRelationshipText">
+                      {`${plannerTelegramWordPoolCount} unique words from ${plannerTelegramMessageCount} messages`}
+                    </span>
+                  ) : null}
+                  {plannerTelegramWordPoolError ? (
+                    <span className="nogaPlanner_selectSettingsRelationshipText">
+                      {plannerTelegramWordPoolError}
+                    </span>
+                  ) : null}
+                </div>
+                {Array.isArray(plannerTelegramWordOccurrences) &&
+                plannerTelegramWordOccurrences.length > 0 ? (
+                  <WordOccurrencePanel
+                    items={plannerTelegramWordOccurrences}
+                    messages={plannerTelegramMessages || []}
                   />
-                  <span>
-                    Enable prediction tool:{" "}
-                    {plannerSettingsPredictionToolEnabled ? "Enabled" : "Disabled"}
-                  </span>
-                </label>
+                ) : null}
                 <div
                   id="nogaPlanner_selectSettingsActions_prediction"
                   className="nogaPlanner_selectSettingsActions"
@@ -2478,25 +2148,6 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     Delete all fields
                   </button>
                 </div>
-                <label className="nogaPlanner_selectSettingsField">
-                  <span>Tab</span>
-                  <select
-                    id="nogaPlanner_selectSettingsSelect_predictionTab"
-                    value={String(
-                      plannerSettingsSelectedPredictionTab || "",
-                    ).trim()}
-                    onChange={(event) =>
-                      planner.selectPlannerPredictionTab(event.target.value)
-                    }
-                  >
-                    <option value="">Choose a tab</option>
-                    {predictionTabs.map((tabName) => (
-                      <option key={`prediction-tab-${tabName}`} value={tabName}>
-                        {tabName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <ul
                   id="nogaPlanner_selectSettingsList_prediction"
                   className="nogaPlanner_selectSettingsRelationshipsList"
@@ -2517,7 +2168,7 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                           planner.selectPlannerPredictionField(entry.fieldId)
                         }
                       >
-                        <div className="nogaPlanner_selectSettingsRelationshipBody">
+                        <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--row">
                           <span className="nogaPlanner_selectSettingsRelationshipText">
                             {entry.fieldId}
                           </span>
@@ -2538,44 +2189,11 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                   )}
                 </ul>
               </div>
-            ) : null}
           </div>
         </div>
-        <aside
-          id="nogaPlanner_selectSettingsAside"
-          className="nogaPlanner_selectSettingsAside"
-        >
-          <ul
-            id="nogaPlanner_selectSettingsAsideList"
-            className="nogaPlanner_selectSettingsAsideList"
-          >
-            {settingsSectionEntries.map((section) => (
-              <li
-                id={`nogaPlanner_selectSettingsAsideItem_${section.key}`}
-                key={`settings-aside-${section.key}`}
-              >
-                <button
-                  id={`nogaPlanner_selectSettingsAsideBtn_${section.key}`}
-                  type="button"
-                  className={
-                    "nogaPlanner_selectSettingsAsideBtn" +
-                    (activeSettingsSection === section.key
-                      ? " nogaPlanner_selectSettingsAsideBtn--active"
-                      : "")
-                  }
-                  onClick={() => setActiveSettingsSection(section.key)}
-                >
-                  {section.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
       </div>
     </div>
   );
 };
 
 export default NogaPlannerSettings;
-
-

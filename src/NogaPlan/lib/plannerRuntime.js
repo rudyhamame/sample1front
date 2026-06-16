@@ -299,9 +299,7 @@ export const NOGAPLANNER_TEXT = {
     deleteSelected: "Delete selected",
     deleteAll: "Delete all",
     edit: "Edit",
-    logoMotionListener: "Pointer motion listener",
     voiceControlListener: "Voice control",
-    fixedLogoClock: "Lock logo direction",
     messageFromFriend: "Message from a friend",
     messageFromFriendChoose: "Choose a friend",
     messageFromFriendInput: "Write an encouraging message",
@@ -1891,6 +1889,317 @@ export const getPlannerFieldConfigByKey = (fieldKey) => {
   );
 };
 
+export const resolvePlannerFieldDefaultProgramMode = (formKey = "") => {
+  const normalizedFormKey = String(formKey || "").trim().toLowerCase();
+  if (
+    normalizedFormKey === "savedcourse" ||
+    normalizedFormKey === "inlinecourse" ||
+    normalizedFormKey === "course"
+  ) {
+    return "course";
+  }
+  if (
+    normalizedFormKey === "inlinecomponent" ||
+    normalizedFormKey === "component" ||
+    normalizedFormKey === "components"
+  ) {
+    return "components";
+  }
+  if (normalizedFormKey === "exam" || normalizedFormKey === "exams") {
+    return "exams";
+  }
+  if (
+    normalizedFormKey === "inlinelecture" ||
+    normalizedFormKey === "lecture" ||
+    normalizedFormKey === "lectures"
+  ) {
+    return "lectures";
+  }
+  return "";
+};
+
+export const resolvePlannerFieldDefaultCard = (cardKey = "") =>
+  resolvePlannerFieldDefaultProgramMode(cardKey) ||
+  String(cardKey || "").trim().toLowerCase();
+
+export const getPlannerFieldDefaultValue = (
+  fieldDefaults = {},
+  card = "",
+  fieldKey = "",
+) => {
+  const normalizedCard =
+    resolvePlannerFieldDefaultCard(card) || String(card || "").trim();
+  const normalizedFieldKey = String(fieldKey || "").trim();
+  if (!normalizedCard || !normalizedFieldKey) {
+    return "";
+  }
+  const normalizedFieldDefaults =
+    fieldDefaults && typeof fieldDefaults === "object" ? fieldDefaults : {};
+  if (Array.isArray(normalizedFieldDefaults)) {
+    const match = normalizedFieldDefaults.find(
+      (entry) =>
+        (resolvePlannerFieldDefaultCard(entry?.card || entry?.programMode) ||
+          String(entry?.card || entry?.programMode || "").trim()) ===
+          normalizedCard &&
+        String(entry?.field || entry?.fieldKey || "").trim() ===
+          normalizedFieldKey,
+    );
+    return String(match?.value || "").trim();
+  }
+  const directCardValues = normalizedFieldDefaults[normalizedCard];
+  if (directCardValues && typeof directCardValues === "object") {
+    return String(directCardValues?.[normalizedFieldKey] || "").trim();
+  }
+  const compositeValue =
+    normalizedFieldDefaults[
+      `${normalizedCard}.${normalizedFieldKey}`
+    ] ||
+    normalizedFieldDefaults[
+      `${normalizedCard}_${normalizedFieldKey}`
+    ] ||
+    normalizedFieldDefaults[normalizedFieldKey] ||
+    "";
+  return String(compositeValue || "").trim();
+};
+
+export const getPlannerFieldDefaultsForProgramMode = (
+  fieldDefaults = {},
+  card = "",
+) => {
+  const normalizedCard =
+    resolvePlannerFieldDefaultCard(card) || String(card || "").trim();
+  if (!normalizedCard) {
+    return [];
+  }
+  const normalizedFieldDefaults =
+    fieldDefaults && typeof fieldDefaults === "object" ? fieldDefaults : {};
+  if (Array.isArray(normalizedFieldDefaults)) {
+    return normalizedFieldDefaults.filter(
+      (entry) =>
+        (resolvePlannerFieldDefaultCard(entry?.card || entry?.programMode) ||
+          String(entry?.card || entry?.programMode || "").trim()) ===
+          normalizedCard &&
+        Boolean(String(entry?.field || entry?.fieldKey || "").trim()),
+    );
+  }
+  const directCardValues = normalizedFieldDefaults[normalizedCard];
+  if (directCardValues && typeof directCardValues === "object") {
+    return Object.entries(directCardValues).map(([field, value]) => ({
+      card: normalizedCard,
+      field,
+      value,
+    }));
+  }
+  return Object.entries(normalizedFieldDefaults)
+    .filter(([key]) => key.startsWith(`${normalizedCard}.`))
+    .map(([key, value]) => ({
+      card: normalizedCard,
+      field: key.slice(normalizedCard.length + 1),
+      value,
+    }));
+};
+
+export const buildEmptyPlannerFieldDefaults = () => ({});
+
+export const normalizePlannerFieldDefaultsToMap = (value) => {
+  const emptyDefaults = buildEmptyPlannerFieldDefaults();
+  if (!value || typeof value !== "object") {
+    return emptyDefaults;
+  }
+
+  if (Array.isArray(value)) {
+    return value.reduce((accumulator, entry) => {
+      const card =
+        resolvePlannerFieldDefaultCard(entry?.card || entry?.programMode) ||
+        String(entry?.card || entry?.programMode || "").trim();
+      const fieldKey = String(entry?.field || entry?.fieldKey || "").trim();
+      if (!card || !fieldKey) {
+        return accumulator;
+      }
+      if (!accumulator[card] || typeof accumulator[card] !== "object") {
+        accumulator[card] = {};
+      }
+      accumulator[card][fieldKey] = String(entry?.value ?? "");
+      return accumulator;
+    }, emptyDefaults);
+  }
+
+  const normalizedDefaults = {
+    ...emptyDefaults,
+  };
+
+  for (const [key, entryValue] of Object.entries(value)) {
+    const card = resolvePlannerFieldDefaultCard(key) || String(key || "").trim();
+    if (card && entryValue && typeof entryValue === "object" && !Array.isArray(entryValue)) {
+      const modeValues =
+        entryValue && typeof entryValue === "object" ? entryValue : {};
+      normalizedDefaults[card] = Object.entries(modeValues).reduce(
+        (accumulator, [fieldKey, fieldValue]) => {
+          const normalizedFieldKey = String(fieldKey || "").trim();
+          if (!normalizedFieldKey) {
+            return accumulator;
+          }
+          accumulator[normalizedFieldKey] = String(fieldValue ?? "");
+          return accumulator;
+        },
+        {},
+      );
+      continue;
+    }
+
+    const compositeMatch = String(key || "").match(/^([^._]+)[._](.+)$/);
+    if (!compositeMatch) {
+      continue;
+    }
+
+    const compositeProgramMode =
+      resolvePlannerFieldDefaultCard(compositeMatch[1]) || compositeMatch[1];
+    const compositeFieldKey = String(compositeMatch[2] || "").trim();
+    if (!compositeFieldKey) {
+      continue;
+    }
+    if (
+      !normalizedDefaults[compositeProgramMode] ||
+      typeof normalizedDefaults[compositeProgramMode] !== "object"
+    ) {
+      normalizedDefaults[compositeProgramMode] = {};
+    }
+    normalizedDefaults[compositeProgramMode][compositeFieldKey] = String(
+      entryValue ?? "",
+    );
+  }
+
+  return normalizedDefaults;
+};
+
+export const PLANNER_DEFAULT_CARD_REGISTRY = [
+  {
+    key: "program",
+    label: "Program",
+    fields: [{ key: "homeProgramIdDraft", label: "Program ID" }],
+  },
+  {
+    key: "programname",
+    label: "Program Name",
+    fields: [{ key: "homeProgramNameDraft", label: "Program name" }],
+  },
+  {
+    key: "language",
+    label: "Language",
+    fields: [{ key: "homeLanguageDraft", label: "Program language" }],
+  },
+  {
+    key: "university",
+    label: "University",
+    fields: [{ key: "homeUniversityDraft", label: "University" }],
+  },
+  {
+    key: "faculty",
+    label: "Faculty",
+    fields: [{ key: "homeFacultyDraft", label: "Faculty" }],
+  },
+  {
+    key: "programstartyear",
+    label: "Program Start Year",
+    fields: [{ key: "homeProgramStartYearDraft", label: "Program start year" }],
+  },
+  {
+    key: "programtotalyears",
+    label: "Program Total Years",
+    fields: [{ key: "homeProgramTotalYearsDraft", label: "Program total years" }],
+  },
+  {
+    key: "programtermsperyear",
+    label: "Program Terms Per Year",
+    fields: [{ key: "homeProgramTermsPerYearDraft", label: "Program terms per year" }],
+  },
+  {
+    key: "programinstructors",
+    label: "Program Instructors",
+    fields: [
+      { key: "homeProgramInstructorFirstNameInput", label: "First name" },
+      { key: "homeProgramInstructorLastNameInput", label: "Last name" },
+      { key: "homeProgramInstructorFullNameInput", label: "Full name" },
+      { key: "homeProgramInstructorPersonalityInput", label: "Personality" },
+      { key: "homeProgramInstructorLectureIDsInput", label: "Lecture IDs" },
+    ],
+  },
+  {
+    key: "programcoursesnamescodes",
+    label: "Program Courses Names & Codes",
+    fields: [
+      { key: "homeProgramCoursesNamesInput", label: "Course name" },
+      { key: "homeProgramCoursesCodesInput", label: "Course code" },
+      { key: "homeProgramCoursesWeightInput", label: "Course weight" },
+      { key: "homeProgramCoursesIntervalNumInput", label: "Interval" },
+      { key: "homeProgramCoursesSubIntervalNumInput", label: "sub-Interval" },
+    ],
+  },
+  {
+    key: "currentsubinterval",
+    label: "Current sub-Interval",
+    fields: [{ key: "homeProgramCurrentSubIntervalIDDraft", label: "sub-Interval ID" }],
+  },
+  {
+    key: "programeditors",
+    label: "Program Editors",
+    fields: [{ key: "homeProgramEditorInput", label: "Program editor" }],
+  },
+  {
+    key: "programlocations",
+    label: "Program Locations",
+    fields: [{ key: "homeProgramLocationBuildingInput", label: "Building" }],
+  },
+  {
+    key: "course",
+    label: "Course Info",
+    fields: [
+      { key: "homeCourseIntervalIdDraft", label: "sub-Interval ID" },
+      { key: "homeCourseNameDraft", label: "Course name" },
+      { key: "homeCourseCodeDraft", label: "Course code" },
+    ],
+  },
+  {
+    key: "components",
+    label: "Component Info",
+    fields: [
+      { key: "homeCourseComponentIdDraft", label: "Course component" },
+      { key: "homeCourseComponentPartialWeightDraft", label: "Component weight %" },
+      { key: "homeCourseComponentStartDateDayDraft", label: "Start date day" },
+      { key: "homeCourseComponentStartDateMonthDraft", label: "Start date month" },
+      { key: "homeCourseComponentStartDateYearDraft", label: "Start date year" },
+      { key: "homeCourseComponentEndDateDayDraft", label: "End date day" },
+      { key: "homeCourseComponentEndDateMonthDraft", label: "End date month" },
+      { key: "homeCourseComponentEndDateYearDraft", label: "End date year" },
+    ],
+  },
+  {
+    key: "exams",
+    label: "Exam Info",
+    fields: [
+      { key: "homeCourseExamComponentIdDraft", label: "Component ID" },
+      { key: "homeCourseExamClassDraft", label: "Exam class" },
+      { key: "homeCourseExamDateDraft", label: "Exam date" },
+      { key: "homeCourseExamTimeDraft", label: "Exam time" },
+      { key: "homeCourseExamLocationBuildingDraft", label: "Building" },
+      { key: "homeCourseExamLocationRoomDraft", label: "Room" },
+      { key: "homeCourseExamWeightDraft", label: "Exam weight" },
+      { key: "homeCourseExamGradeDraft", label: "Exam grade" },
+    ],
+  },
+  {
+    key: "lectures",
+    label: "Lecture Info",
+    fields: [
+      { key: "homeCourseLectureCourseContextDraft", label: "Component ID" },
+      { key: "homeCourseLectureCourseNameDraft", label: "Course name" },
+      { key: "homeCourseLectureNameDraft", label: "Lecture name" },
+      { key: "homeCourseLectureInstructorsDraft", label: "Lecture instructor" },
+      { key: "homeCourseLectureInstructionDateDraft", label: "Lecture date" },
+    ],
+  },
+];
+
 // Read default select options for a settings key from the central field registry.
 export const getPlannerRegistrySelectOptionsBySettingsKey = (settingsKey) => {
   const normalizedSettingsKey = String(settingsKey || "").trim();
@@ -1936,10 +2245,8 @@ export const buildDefaultPlannerSelectSettings = () => ({
   lectureWriterOptions: [
     ...getPlannerRegistrySelectOptionsBySettingsKey("lectureWriterOptions"),
   ],
-  logoMotionEnabled: true,
   voiceControlEnabled: false,
   voiceDictationEnabled: false,
-  logoFixedClock: "9",
   messageFriend: {
     from: {
       friendID: "",
@@ -1947,12 +2254,93 @@ export const buildDefaultPlannerSelectSettings = () => ({
     },
     to: [],
   },
-  fieldDefaults: {},
+  fieldDefaults: buildEmptyPlannerFieldDefaults(),
   relationships: [],
   predictionTool: [],
   voiceCommands: [],
   voiceDictationNormalizations: [],
 });
+
+export const PLANNER_MATERIAL_METADATA_PROGRAM_MODES = [
+  {
+    key: "course",
+    label: "Course Info",
+    fields: [
+      { key: "homeCourseIntervalIdDraft", label: "sub-Interval ID" },
+      { key: "homeCourseNameDraft", label: "Course name" },
+      { key: "homeCourseCodeDraft", label: "Course code" },
+    ],
+  },
+  {
+    key: "components",
+    label: "Component Info",
+    fields: [
+      { key: "homeCourseComponentIdDraft", label: "Course component" },
+      {
+        key: "homeCourseComponentPartialWeightDraft",
+        label: "Component weight %",
+      },
+      {
+        key: "homeCourseComponentStartDateDayDraft",
+        label: "Start date day",
+      },
+      {
+        key: "homeCourseComponentStartDateMonthDraft",
+        label: "Start date month",
+      },
+      {
+        key: "homeCourseComponentStartDateYearDraft",
+        label: "Start date year",
+      },
+      {
+        key: "homeCourseComponentEndDateDayDraft",
+        label: "End date day",
+      },
+      {
+        key: "homeCourseComponentEndDateMonthDraft",
+        label: "End date month",
+      },
+      {
+        key: "homeCourseComponentEndDateYearDraft",
+        label: "End date year",
+      },
+    ],
+  },
+  {
+    key: "exams",
+    label: "Exam Info",
+    fields: [
+      { key: "homeCourseExamComponentIdDraft", label: "Component ID" },
+      { key: "homeCourseExamClassDraft", label: "Exam class" },
+      { key: "homeCourseExamDateDraft", label: "Exam date" },
+      { key: "homeCourseExamTimeDraft", label: "Exam time" },
+      {
+        key: "homeCourseExamLocationBuildingDraft",
+        label: "Building",
+      },
+      { key: "homeCourseExamLocationRoomDraft", label: "Room" },
+      { key: "homeCourseExamWeightDraft", label: "Exam weight" },
+      { key: "homeCourseExamGradeDraft", label: "Exam grade" },
+    ],
+  },
+  {
+    key: "lectures",
+    label: "Lectures Info",
+    fields: [
+      { key: "homeCourseLectureCourseContextDraft", label: "Component ID" },
+      { key: "homeCourseLectureCourseNameDraft", label: "Course name" },
+      { key: "homeCourseLectureNameDraft", label: "Lecture name" },
+      {
+        key: "homeCourseLectureInstructorsDraft",
+        label: "Lecture instructor",
+      },
+      {
+        key: "homeCourseLectureInstructionDateDraft",
+        label: "Lecture date",
+      },
+    ],
+  },
+];
 
 // Build the empty persisted planning-input payload for the main planner tab.
 export const getDefaultStudyPlanAid = () => ({
@@ -2367,12 +2755,6 @@ export const normalizePlannerSelectSettings = (value) => {
   const locationRoomOptionsByBuilding = normalizePlannerRoomOptionsByBuilding(
     nextValue.locationRoomOptionsByBuilding,
   );
-  const normalizedLogoFixedClock = String(nextValue?.logoFixedClock || "9")
-    .trim()
-    .replace(/[^\d]/g, "");
-  const logoFixedClock = /^[1-9]$|^1[0-2]$/.test(normalizedLogoFixedClock)
-    ? normalizedLogoFixedClock
-    : "9";
   const rawMessageFriend =
     nextValue?.messageFriend && typeof nextValue.messageFriend === "object"
       ? nextValue.messageFriend
@@ -2515,10 +2897,6 @@ export const normalizePlannerSelectSettings = (value) => {
       nextValue.lectureWriterOptions,
       fallbackSettings.lectureWriterOptions,
     ),
-    logoMotionEnabled:
-      typeof nextValue?.logoMotionEnabled === "boolean"
-        ? nextValue.logoMotionEnabled
-        : true,
     voiceControlEnabled:
       typeof nextValue?.voiceControlEnabled === "boolean"
         ? nextValue.voiceControlEnabled
@@ -2527,33 +2905,13 @@ export const normalizePlannerSelectSettings = (value) => {
       typeof nextValue?.voiceDictationEnabled === "boolean"
         ? nextValue.voiceDictationEnabled
         : false,
-    logoFixedClock,
     messageFriend: {
       from: normalizedMessageFrom,
       to: normalizedMessageTo,
     },
-    fieldDefaults: {
-      ...(Array.isArray(nextValue?.fieldDefaults)
-        ? Object.fromEntries(
-            nextValue.fieldDefaults
-              .map((entry) => [
-                String(entry?.fieldKey || "").trim(),
-                String(entry?.value || "").trim(),
-              ])
-              .filter(([fieldKey]) => Boolean(fieldKey)),
-          )
-        : nextValue?.fieldDefaults &&
-            typeof nextValue.fieldDefaults === "object"
-          ? Object.fromEntries(
-              Object.entries(nextValue.fieldDefaults)
-                .map(([fieldKey, fieldValue]) => [
-                  String(fieldKey || "").trim(),
-                  String(fieldValue || "").trim(),
-                ])
-                .filter(([fieldKey]) => Boolean(fieldKey)),
-            )
-          : {}),
-    },
+    fieldDefaults: normalizePlannerFieldDefaultsToMap(
+      nextValue?.fieldDefaults,
+    ),
     predictionTool: normalizedPredictionTool,
     voiceCommands: normalizedVoiceCommands,
     voiceDictationNormalizations: normalizedVoiceDictationNormalizations,

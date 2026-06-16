@@ -1,6 +1,7 @@
 import { Link, useHistory } from "react-router-dom";
 import "./home-noga.css";
 import "./home_noga_rspnsv_360x666_mobilePortrait.css";
+import "./home_noga_rspnsv_820x1048.css";
 import Nav from "../Nav/Nav";
 import React, { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../config/api";

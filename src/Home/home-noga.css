@@ -2477,8 +2477,8 @@ border-color: rgba(110, 168, 180, 0.18);
 
 .Home_Noga_friendsEventsWrapper {
   width: 100%;
-  display: grid;
-  grid-template-columns: minmax(min-content, max-content) minmax(0, 1fr);
+  display: flex;
+  flex-direction: row;
   align-items: stretch;
   flex: 1 1 auto;
   min-width: 0;

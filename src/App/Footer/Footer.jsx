@@ -431,7 +431,7 @@ const Footer = ({
                       submitVoicePrompt();
                     }
                   }}
-                  placeholder="Type the voice command"
+                  placeholder="Type the voice command in English"
                 />
                 <button
                   id="server_answer_voicePromptSubmit"

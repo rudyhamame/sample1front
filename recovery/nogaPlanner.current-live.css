@@ -1826,7 +1826,7 @@
   flex-direction: column;
   gap: 8px;
   align-items: start;
-
+  padding: 10px;
 }
 
 .nogaPlanner_selectSettingsColumn {
