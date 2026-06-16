@@ -1966,9 +1966,8 @@ const FriendChat = ({
           setSelectedImages([]);
           selectedImagesRef.current = [];
           handleClearRecordedVoiceNote();
-          setLocalMessages((prev) =>
-            prev.filter((pendingMessage) => pendingMessage.id !== tempId),
-          );
+          // Pending message is removed by the useEffect when the socket
+          // delivers the confirmed message into normalizedRemoteMessages.
         }
       }
     } catch (error) {

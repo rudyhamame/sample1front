@@ -3018,16 +3018,19 @@ function HomeNoga(props) {
       {
         id: "friends",
         label: "Friends",
+        icon: "fi fi-rr-high-five-celebration-yes",
         count: chatFriends.length,
       },
       {
         id: "requests",
         label: "Requests",
+        icon: "fi fi-br-followers",
         count: requestsPanelEntries.length,
       },
       {
         id: "blocked",
         label: "Blocklist",
+        icon: "fi fi-rr-user-forbidden",
         count: blocklistPanelEntries.length,
       },
     ],
@@ -8361,7 +8364,11 @@ function HomeNoga(props) {
                                 aria-pressed={activeFriendsPanelTab === tab.id}
                                 title={tab.label}
                               >
-                                {tab.label}{" "}
+                                {tab.icon ? (
+                                  <i className={tab.icon} />
+                                ) : (
+                                  tab.label
+                                )}{" "}
                                 <span className="Home_Noga_friendsPanelCount">
                                   ({tab.count})
                                 </span>

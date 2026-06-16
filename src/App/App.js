@@ -2359,30 +2359,6 @@ class App extends React.Component {
         .then(async (result) => {
           const payload = await result.json().catch(() => ({}));
           if (result.status === 201) {
-            if (textarea) {
-              textarea.value = "";
-              textarea.style.height = "42px";
-              textarea.focus();
-            }
-            this.safeSetState((prevState) => ({
-              chat: [
-                ...(Array.isArray(prevState.chat) ? prevState.chat : []),
-                {
-                  id: String(payload?.chatMessage?.id || "").trim(),
-                  _id: selectedFriendId,
-                  from: "me",
-                  message: normalizedMessage,
-                  audio: normalizedAudio,
-                  images: normalizedImages,
-                  date: optimisticTimestamp,
-                  status: String(payload?.chatMessage?.status || "sent")
-                    .trim()
-                    .toLowerCase(),
-                  edited: false,
-                  deleted: false,
-                },
-              ],
-            }));
             this.updateMyTypingPresence(selectedFriendId, false);
             return true;
           } else {
