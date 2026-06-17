@@ -2152,33 +2152,28 @@ export const PLANNER_DEFAULT_CARD_REGISTRY = [
   },
   {
     key: "course",
-    label: "Course Info",
+    label: "Program Courses",
     fields: [
-      { key: "homeCourseIntervalIdDraft", label: "sub-Interval ID" },
-      { key: "homeCourseNameDraft", label: "Course name" },
-      { key: "homeCourseCodeDraft", label: "Course code" },
-    ],
-  },
-  {
-    key: "components",
-    label: "Component Info",
-    fields: [
-      { key: "homeCourseComponentIdDraft", label: "Course component" },
-      { key: "homeCourseComponentPartialWeightDraft", label: "Component weight %" },
-      { key: "homeCourseComponentStartDateDayDraft", label: "Start date day" },
-      { key: "homeCourseComponentStartDateMonthDraft", label: "Start date month" },
-      { key: "homeCourseComponentStartDateYearDraft", label: "Start date year" },
-      { key: "homeCourseComponentEndDateDayDraft", label: "End date day" },
-      { key: "homeCourseComponentEndDateMonthDraft", label: "End date month" },
-      { key: "homeCourseComponentEndDateYearDraft", label: "End date year" },
+      { key: "homeCourseNameDraft", label: "Course Name" },
+      { key: "homeCourseCodeDraft", label: "Course Code" },
+      { key: "homeCourseSubIntervalYearDraft", label: "Course Interval" },
+      { key: "homeCourseSubIntervalTermDraft", label: "Course sub-Interval" },
+      { key: "homeCourseComponentIdDraft", label: "Course Component" },
+      { key: "homeCourseComponentPartialWeightDraft", label: "Course Component Weight" },
+      { key: "homeCourseComponentStartDateDayDraft", label: "Course Component Start Date day" },
+      { key: "homeCourseComponentStartDateMonthDraft", label: "Course Component Start Date month" },
+      { key: "homeCourseComponentStartDateYearDraft", label: "Course Component Start Date year" },
+      { key: "homeCourseComponentEndDateDayDraft", label: "Course Component End Date day" },
+      { key: "homeCourseComponentEndDateMonthDraft", label: "Course Component End Date month" },
+      { key: "homeCourseComponentEndDateYearDraft", label: "Course Component End Date year" },
     ],
   },
   {
     key: "exams",
-    label: "Exam Info",
+    label: "Program Tasks",
     fields: [
       { key: "homeCourseExamComponentIdDraft", label: "Component ID" },
-      { key: "homeCourseExamClassDraft", label: "Exam class" },
+      { key: "homeCourseExamClassDraft", label: "Task" },
       { key: "homeCourseExamDateDraft", label: "Exam date" },
       { key: "homeCourseExamTimeDraft", label: "Exam time" },
       { key: "homeCourseExamLocationBuildingDraft", label: "Building" },
@@ -2189,7 +2184,7 @@ export const PLANNER_DEFAULT_CARD_REGISTRY = [
   },
   {
     key: "lectures",
-    label: "Lecture Info",
+    label: "Program Lectures",
     fields: [
       { key: "homeCourseLectureCourseContextDraft", label: "Component ID" },
       { key: "homeCourseLectureCourseNameDraft", label: "Course name" },
@@ -2308,10 +2303,10 @@ export const PLANNER_MATERIAL_METADATA_PROGRAM_MODES = [
   },
   {
     key: "exams",
-    label: "Exam Info",
+    label: "Task Info",
     fields: [
       { key: "homeCourseExamComponentIdDraft", label: "Component ID" },
-      { key: "homeCourseExamClassDraft", label: "Exam class" },
+      { key: "homeCourseExamClassDraft", label: "Task" },
       { key: "homeCourseExamDateDraft", label: "Exam date" },
       { key: "homeCourseExamTimeDraft", label: "Exam time" },
       {

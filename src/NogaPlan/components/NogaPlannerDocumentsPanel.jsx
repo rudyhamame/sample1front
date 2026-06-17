@@ -327,7 +327,7 @@ const StagedDocumentForm = ({ planner }) => {
   );
 };
 
-const NogaPlannerDocumentsPanel = ({ planner }) => {
+export const StoredDocumentsCard = ({ planner }) => {
   const documentRows = useMemo(() => {
     const plannerRoot =
       typeof planner?.getResolvedPlannerRoot === "function"
@@ -487,7 +487,6 @@ const NogaPlannerDocumentsPanel = ({ planner }) => {
       id="nogaPlanner_documentsPanel"
       className="nogaPlanner_documentsPanel"
     >
-      <StagedDocumentForm planner={planner} />
       <div
         id="nogaPlanner_documentsPanelSummary"
         className="nogaPlanner_documentsPanelSummary"
@@ -574,5 +573,11 @@ const NogaPlannerDocumentsPanel = ({ planner }) => {
     </div>
   );
 };
+
+const NogaPlannerDocumentsPanel = ({ planner }) => (
+  <div id="nogaPlanner_documentsPanel" className="nogaPlanner_documentsPanel">
+    <StagedDocumentForm planner={planner} />
+  </div>
+);
 
 export default NogaPlannerDocumentsPanel;

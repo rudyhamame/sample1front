@@ -3030,7 +3030,7 @@ function HomeNoga(props) {
       {
         id: "blocked",
         label: "Blocklist",
-        icon: "fi fi-rr-user-forbidden",
+        icon: "fi fi-br-users-slash",
         count: blocklistPanelEntries.length,
       },
     ],
@@ -8370,7 +8370,7 @@ function HomeNoga(props) {
                                   tab.label
                                 )}{" "}
                                 <span className="Home_Noga_friendsPanelCount">
-                                  ({tab.count})
+                                  {tab.count}
                                 </span>
                               </button>
                             ))}
