@@ -33,7 +33,6 @@ const TELEGRAM_DOCUMENT_TYPE_TABS = [
   { key: "other", label: "Other" },
 ];
 
-const TELEGRAM_STORED_MESSAGES_PAGE_SIZE = 40;
 
 const formatFileSize = (size = 0) => {
   const nextSize = Number(size || 0);
@@ -254,13 +253,7 @@ const NogaPlannerTelegramPanel = ({
   const [selectedLectureKey, setSelectedLectureKey] = useState("");
   const [selectedCourseName, setSelectedCourseName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [messagesMode, setMessagesMode] = useState("stored");
   const [messages, setMessages] = useState([]);
-  const [messagesOffset, setMessagesOffset] = useState(0);
-  const [messagesHasMore, setMessagesHasMore] = useState(false);
-  const [messagesFilteredTotalCount, setMessagesFilteredTotalCount] = useState(0);
-  const [messagesRawCount, setMessagesRawCount] = useState(0);
-  const [messagesTypeCounts, setMessagesTypeCounts] = useState({});
   const [liveOffsetId, setLiveOffsetId] = useState(null);
   const [liveHasMore, setLiveHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -280,7 +273,6 @@ const NogaPlannerTelegramPanel = ({
   const [previewPageNumber, setPreviewPageNumber] = useState(1);
   const [pdfPaneMode, setPdfPaneMode] = useState("pdf");
   const [selectedTextPreviewMessage, setSelectedTextPreviewMessage] = useState(null);
-  const [isSyncingPinned, setIsSyncingPinned] = useState(false);
   const isMountedRef = useRef(true);
   const telegramImagePreviewUrlsRef = useRef({});
   const telegramImagePreviewBlobUrlsRef = useRef(new Set());
@@ -443,13 +435,22 @@ const NogaPlannerTelegramPanel = ({
     return counts;
   }, [telegramDocumentMessages]);
   const filteredTelegramDocumentMessages = useMemo(() => {
-    const base = documentTypeTab === "all"
+    const typeFiltered = documentTypeTab === "all"
       ? telegramDocumentMessages
       : documentTypeTab === "pinned"
         ? telegramDocumentMessages.filter((message) => Boolean(message?.pinned))
         : telegramDocumentMessages.filter(
             (message) => classifyTelegramDocumentType(message) === documentTypeTab,
           );
+    const searchWords = String(searchQuery || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const base = searchWords.length === 0 ? typeFiltered : typeFiltered.filter((message) => {
+      const searchableText = [
+        message?.text || "",
+        message?.sender || "",
+        buildTelegramDocumentFilename(message),
+      ].join(" ").toLowerCase();
+      return searchWords.every((word) => searchableText.includes(word));
+    });
     const groupedIdCounts = new Map();
     base.forEach((message) => {
       const gid = String(message?.groupedId || "").trim();
@@ -468,7 +469,7 @@ const NogaPlannerTelegramPanel = ({
         _groupIsFirst: isFirst,
       };
     });
-  }, [documentTypeTab, telegramDocumentMessages]);
+  }, [documentTypeTab, searchQuery, telegramDocumentMessages]);
 
   useEffect(() => {
     telegramImagePreviewUrlsRef.current = telegramImagePreviewUrls;
@@ -546,41 +547,6 @@ const NogaPlannerTelegramPanel = ({
       : targetRef;
   };
 
-  const syncPinnedMessages = async () => {
-    const groupReference = String(selectedGroupReference || "").trim();
-    if (!plannerToken || !groupReference) return;
-    setIsSyncingPinned(true);
-    try {
-      const response = await fetch(
-        apiUrl(`/api/telegram/stored-groups/${encodeURIComponent(groupReference)}/sync-pinned`),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${plannerToken}`,
-          },
-        },
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (!isMountedRef.current) return;
-        setError(String(payload?.message || "Pinned sync failed."));
-        return;
-      }
-      await searchStoredMessages({ reset: true });
-    } catch (err) {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setError(String(err?.message || "Pinned sync failed."));
-    } finally {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setIsSyncingPinned(false);
-    }
-  };
-
   const fetchStoredGroups = async () => {
     if (!plannerToken) {
       setError("Telegram login token is missing.");
@@ -626,102 +592,6 @@ const NogaPlannerTelegramPanel = ({
     }
   };
 
-  const searchStoredMessages = async ({
-    groupReferenceOverride = "",
-    reset = true,
-  } = {}) => {
-    const groupReference = String(
-      groupReferenceOverride || selectedGroupReference || "",
-    ).trim();
-    if (!plannerToken) {
-      setError("Telegram login token is missing.");
-      return;
-    }
-    if (!groupReference) {
-      setMessages([]);
-      setMessagesTypeCounts({});
-      setError("Choose a stored group first.");
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      const searchParams = new URLSearchParams();
-      const nextOffset = reset ? 0 : Math.max(0, Number(messagesOffset || 0));
-      searchParams.set("limit", String(TELEGRAM_STORED_MESSAGES_PAGE_SIZE));
-      searchParams.set("offset", String(nextOffset));
-      searchParams.set("group", groupReference);
-      const selectedLecture = selectedLectureKey
-        ? plannerLectureRows.find((l) => String(l?.key || "").trim() === selectedLectureKey) || null
-        : null;
-      const lectureTerm = selectedLecture
-        ? String(selectedLecture.lectureName || "").trim()
-        : "";
-      const courseTerm = String(selectedCourseName || "").trim();
-      const combinedQuery = [String(searchQuery || "").trim(), courseTerm, lectureTerm]
-        .filter(Boolean)
-        .join(" ");
-      if (combinedQuery) {
-        searchParams.set("q", combinedQuery);
-      }
-      if (documentTypeTab && documentTypeTab !== "all") {
-        searchParams.set("attachmentType", documentTypeTab);
-        searchParams.set("limit", "all");
-      }
-      const response = await fetch(
-        apiUrl(`/api/telegram/stored-group-messages?${searchParams.toString()}`),
-        {
-          headers: {
-            Authorization: `Bearer ${plannerToken}`,
-          },
-        },
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (!isMountedRef.current) return;
-        throw new Error(payload?.message || "Unable to load Telegram messages.");
-      }
-      const nextMessages = Array.isArray(payload?.messages) ? payload.messages : [];
-      if (!isMountedRef.current) {
-        return;
-      }
-      setMessages((currentValue) =>
-        reset ? nextMessages : [...currentValue, ...nextMessages],
-      );
-      setMessagesOffset(Number(payload?.nextOffset || 0));
-      setMessagesHasMore(Boolean(payload?.hasMore));
-      setMessagesFilteredTotalCount(
-        Number(payload?.filteredTotalCount || nextMessages.length || 0),
-      );
-      setMessagesRawCount(Number(payload?.rawCount || 0));
-      if (payload?.typeCounts && typeof payload.typeCounts === "object") {
-        setMessagesTypeCounts(reset ? payload.typeCounts : (prev) => {
-          const merged = { ...prev };
-          Object.entries(payload.typeCounts).forEach(([k, v]) => {
-            merged[k] = Number(v || 0);
-          });
-          return merged;
-        });
-      }
-    } catch (nextError) {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setMessages([]);
-      setMessagesOffset(0);
-      setMessagesHasMore(false);
-      setMessagesFilteredTotalCount(0);
-      setMessagesRawCount(0);
-      setMessagesTypeCounts({});
-      setError(nextError?.message || "Unable to load Telegram messages.");
-    } finally {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setIsLoading(false);
-    }
-  };
-
   const fetchLiveMessages = async ({ reset = true } = {}) => {
     const groupReference = String(selectedGroupReference || "").trim();
     if (!plannerToken) {
@@ -738,24 +608,24 @@ const NogaPlannerTelegramPanel = ({
     try {
       const searchParams = new URLSearchParams();
       searchParams.set("group", groupReference);
-      const currentOffsetId = reset ? null : liveOffsetId;
-      if (currentOffsetId) {
-        searchParams.set("offsetId", String(currentOffsetId));
-      }
+      searchParams.set("limit", "all");
+      searchParams.set("offset", "0");
       const response = await fetch(
-        apiUrl(`/api/telegram/live-group-messages?${searchParams.toString()}`),
+        apiUrl(
+          `/api/telegram/stored-group-messages?${searchParams.toString()}`,
+        ),
         { headers: { Authorization: `Bearer ${plannerToken}` } },
       );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (!isMountedRef.current) return;
-        throw new Error(payload?.message || "Unable to load live Telegram messages.");
+        throw new Error(payload?.message || "Unable to load Telegram messages.");
       }
       const nextMessages = Array.isArray(payload?.messages) ? payload.messages : [];
       if (!isMountedRef.current) return;
-      setMessages((prev) => (reset ? nextMessages : [...prev, ...nextMessages]));
-      setLiveOffsetId(payload?.nextOffsetId ?? null);
-      setLiveHasMore(Boolean(payload?.hasMore));
+      setMessages(nextMessages);
+      setLiveOffsetId(null);
+      setLiveHasMore(false);
     } catch (nextError) {
       if (!isMountedRef.current) return;
       setMessages([]);
@@ -1661,17 +1531,12 @@ const NogaPlannerTelegramPanel = ({
     }
     if (!String(selectedGroupReference || "").trim()) {
       setMessages([]);
-      setMessagesOffset(0);
-      setMessagesHasMore(false);
-      setMessagesFilteredTotalCount(0);
-      setMessagesRawCount(0);
+      setLiveOffsetId(null);
+      setLiveHasMore(false);
       return;
     }
-    searchStoredMessages({
-      groupReferenceOverride: selectedGroupReference,
-      reset: true,
-    });
-  }, [materialSourceTab, selectedCourseName, selectedGroupReference, selectedLectureKey, traceMainTab, documentTypeTab]);
+    fetchLiveMessages({ reset: true });
+  }, [materialSourceTab, selectedGroupReference, traceMainTab]);
   useEffect(() => {
     if (
       (traceMainTab !== "material" || materialSourceTab !== "telegram") &&
@@ -1714,7 +1579,7 @@ const NogaPlannerTelegramPanel = ({
           value={selectedGroupReference}
           onChange={(event) => setSelectedGroupReference(event.target.value)}
         >
-          <option value="">Select stored group</option>
+          <option value="">Select Telegram group</option>
           {storedGroups.map((group) => {
             const reference = String(group?.groupReference || "").trim();
             if (!reference) {
@@ -1737,41 +1602,16 @@ const NogaPlannerTelegramPanel = ({
             type="text"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search stored messages"
+            placeholder="Filter messages"
           />
           <button
             id="nogaPlanner_tracesTelegramSearchBtn"
             type="button"
             className="nogaPlanner_tracesActionBtn"
-            onClick={() =>
-              messagesMode === "live"
-                ? fetchLiveMessages({ reset: true })
-                : searchStoredMessages({ reset: true })
-            }
+            onClick={() => fetchLiveMessages({ reset: true })}
             disabled={isLoading}
           >
-            {messagesMode === "live" ? "Fetch Live" : "Search"}
-          </button>
-          <button
-            id="nogaPlanner_tracesTelegramModeBtn"
-            type="button"
-            className={
-              "nogaPlanner_tracesActionBtn" +
-              (messagesMode === "live" ? " nogaPlanner_tracesActionBtn--active" : "")
-            }
-            onClick={() => {
-              const nextMode = messagesMode === "live" ? "stored" : "live";
-              setMessagesMode(nextMode);
-              setMessages([]);
-              setError("");
-              setLiveOffsetId(null);
-              setLiveHasMore(false);
-              setMessagesOffset(0);
-              setMessagesHasMore(false);
-            }}
-            disabled={isLoading}
-          >
-            {messagesMode === "live" ? "Stored" : "Live"}
+            Fetch
           </button>
         </div>
       </div>
@@ -1789,19 +1629,9 @@ const NogaPlannerTelegramPanel = ({
               }
               onClick={() => setDocumentTypeTab(entry.key)}
             >
-              {`${entry.label} (${Object.keys(messagesTypeCounts).length > 0 ? Number(messagesTypeCounts[entry.key] || 0) : Number(telegramDocumentTypeCounts[entry.key] || 0)})`}
+              {`${entry.label} (${Number(telegramDocumentTypeCounts[entry.key] || 0)})`}
             </button>
           ))}
-          {documentTypeTab === "pinned" && selectedGroupReference && (
-            <button
-              type="button"
-              className="nogaPlanner_tracesActionBtn"
-              onClick={syncPinnedMessages}
-              disabled={isSyncingPinned}
-            >
-              {isSyncingPinned ? "Syncing..." : "Sync Pinned"}
-            </button>
-          )}
         </div>
         <div id="nogaPlanner_tracesViewer" className="nogaPlanner_tracesViewer">
           {isLoading ? (
@@ -1975,35 +1805,20 @@ const NogaPlannerTelegramPanel = ({
               </tbody>
             </table>
           )}
-          {!isLoading &&
-          !error &&
-          filteredTelegramDocumentMessages.length > 0 &&
-          (messagesMode === "live" ? liveHasMore : messagesHasMore && (!documentTypeTab || documentTypeTab === "all")) ? (
+          {!isLoading && !error && filteredTelegramDocumentMessages.length > 0 && liveHasMore ? (
             <div className="nogaPlanner_tracesLoadMoreRow">
               <button
                 type="button"
                 className="nogaPlanner_tracesActionBtn"
-                onClick={() =>
-                  messagesMode === "live"
-                    ? fetchLiveMessages({ reset: false })
-                    : searchStoredMessages({ reset: false })
-                }
+                onClick={() => fetchLiveMessages({ reset: false })}
               >
                 Load more
               </button>
             </div>
           ) : null}
-          {!isLoading &&
-          !error &&
-          (messagesFilteredTotalCount > 0 || messagesRawCount > 0) ? (
+          {!isLoading && !error && messages.length > 0 ? (
             <p className="nogaPlanner_tracesStatus nogaPlanner_tracesStatus--summary">
-              {`Showing ${filteredTelegramDocumentMessages.length} of ${
-                Number(
-                  Object.keys(messagesTypeCounts).length > 0
-                    ? (messagesTypeCounts[documentTypeTab] ?? messagesTypeCounts.all)
-                    : (telegramDocumentTypeCounts[documentTypeTab] ?? telegramDocumentTypeCounts.all),
-                ) || filteredTelegramDocumentMessages.length
-              } ${documentTypeTab === "all" ? "items" : documentTypeTab === "text" ? "text messages" : "documents"} from ${messagesRawCount || 0} stored messages.`}
+              {`Showing ${filteredTelegramDocumentMessages.length} of ${messages.length} fetched messages.`}
             </p>
           ) : null}
         </div>

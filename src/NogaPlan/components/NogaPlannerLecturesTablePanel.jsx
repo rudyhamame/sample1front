@@ -132,8 +132,17 @@ const NogaPlannerLecturesTablePanel = ({
     planner.getLectureComponentOptionsByCourseName(
       inlineLectureDraft?.lecture_courseId,
     );
-  const lectureInstructorOptions =
-    planner.getLectureSettingsOptions("instructor");
+  const lectureInstructorOptions = (
+    planner.getLectureInstructorOptionsByCourseAndComponentId(
+      inlineLectureDraft?.lecture_courseId,
+      inlineLectureDraft?.lecture_componentId,
+    ) || []
+  ).filter(Boolean);
+  const lectureFallbackInstructorOptions = planner.getLectureSettingsOptions("instructor");
+  const resolvedLectureInstructorOptions =
+    lectureInstructorOptions.length > 0
+      ? lectureInstructorOptions
+      : lectureFallbackInstructorOptions;
   const lectureWriterOptions = planner.getLectureSettingsOptions("writer");
   const lectureContentUploads = Array.isArray(
     inlineLectureDraft?.lecture_contentUploads,
@@ -706,7 +715,7 @@ const NogaPlannerLecturesTablePanel = ({
                   >
                     {NOGAPLANNER_TEXT.lectures.chooseInstructor}
                   </option>
-                  {lectureInstructorOptions.map((entry, entryIndex) => (
+                  {resolvedLectureInstructorOptions.map((entry, entryIndex) => (
                     <option
                       id={`nogaPlanner_lecturesSelect_instructors_option_${entryIndex}`}
                       key={entry}

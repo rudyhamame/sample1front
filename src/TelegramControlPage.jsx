@@ -838,6 +838,35 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     .toLowerCase();
   const isTelegramControlOwner =
     normalizedUsername === TELEGRAM_CONTROL_OWNER_USERNAME;
+  const studyMaterialsTelegramGroupReferences = React.useMemo(() => {
+    const candidateGroups = [
+      memory?.MOA?.telegram?.groups,
+      memory?.telegram?.groups,
+    ].find((entry) => Array.isArray(entry));
+    return Array.from(
+      new Set(
+        (Array.isArray(candidateGroups) ? candidateGroups : [])
+          .flatMap((groupEntry) => {
+            if (!groupEntry || typeof groupEntry !== "object") {
+              return [];
+            }
+            return [
+              groupEntry?.groupReference,
+              groupEntry?.info?.groupReference,
+              groupEntry?.reference,
+            ];
+          })
+          .map((value) => String(value || "").trim())
+          .filter(Boolean),
+      ),
+    );
+  }, [memory]);
+  const studyMaterialsTelegramGroupReferenceSet = React.useMemo(
+    () => new Set(studyMaterialsTelegramGroupReferences),
+    [studyMaterialsTelegramGroupReferences],
+  );
+  const canAccessTelegramControl =
+    isTelegramControlOwner || studyMaterialsTelegramGroupReferenceSet.size > 0;
   const [groupInput, setGroupInput] = React.useState("");
   const [groupReference, setGroupReference] = React.useState("");
   const [migrationGroupTitle, setMigrationGroupTitle] =
@@ -912,6 +941,56 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
   const [storageSearchQuery, setStorageSearchQuery] = React.useState("");
   const [selectedStoredGroupReference, setSelectedStoredGroupReference] =
     React.useState(ALL_GROUPS_VALUE);
+  const pushedGroupSelectOptions = React.useMemo(() => {
+    const liveGroups = Array.isArray(groupOptions) ? groupOptions : [];
+    const storedGroups = Array.isArray(storedGroupOptions)
+      ? storedGroupOptions
+      : [];
+    const groups = liveGroups.length > 0 ? liveGroups : storedGroups;
+    if (isTelegramControlOwner) {
+      return groups;
+    }
+    if (studyMaterialsTelegramGroupReferenceSet.size === 0) {
+      return [];
+    }
+    return groups.filter((group) =>
+      studyMaterialsTelegramGroupReferenceSet.has(
+        String(group?.groupReference || "").trim(),
+      ),
+    );
+  }, [
+    isTelegramControlOwner,
+    groupOptions,
+    storedGroupOptions,
+    studyMaterialsTelegramGroupReferenceSet,
+  ]);
+  const allowedTelegramGroups = React.useMemo(() => {
+    const groups = Array.isArray(storedGroupOptions) ? storedGroupOptions : [];
+    if (isTelegramControlOwner) {
+      return groups;
+    }
+    if (studyMaterialsTelegramGroupReferenceSet.size === 0) {
+      return [];
+    }
+    return groups.filter((group) =>
+      studyMaterialsTelegramGroupReferenceSet.has(
+        String(group?.groupReference || "").trim(),
+      ),
+    );
+  }, [
+    isTelegramControlOwner,
+    storedGroupOptions,
+    studyMaterialsTelegramGroupReferenceSet,
+  ]);
+  const allowedGroupReferenceSet = React.useMemo(
+    () =>
+      new Set(
+        allowedTelegramGroups
+          .map((group) => String(group?.groupReference || "").trim())
+          .filter(Boolean),
+      ),
+    [allowedTelegramGroups],
+  );
   React.useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -4688,6 +4767,95 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     [fetchStorageContext, fetchTelegramSyncStatus, token],
   );
 
+  const handlePushAllowedTelegramGroup = React.useCallback(async () => {
+    const targetReference = String(groupInput || "").trim();
+    if (!token || !targetReference || isSaving) {
+      return;
+    }
+
+    const matchedLiveGroup = (
+      Array.isArray(groupOptions) ? groupOptions : []
+    ).find(
+      (group) => String(group?.groupReference || "").trim() === targetReference,
+    );
+
+    setIsSaving(true);
+    setFeedback("");
+    try {
+      const response = await fetch(
+        apiUrl("/api/telegram/allowed-groups/push"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            groupReference: targetReference,
+            title: String(matchedLiveGroup?.title || "").trim(),
+            username: String(matchedLiveGroup?.username || "").trim(),
+            type: String(matchedLiveGroup?.type || "").trim(),
+            memberCount: Number(matchedLiveGroup?.memberCount || 0),
+            description: String(matchedLiveGroup?.description || "").trim(),
+            pageUrl: String(matchedLiveGroup?.pageUrl || "").trim(),
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to push Telegram group.");
+      }
+      if (Array.isArray(payload?.groups)) {
+        setStoredGroupOptions(payload.groups);
+      }
+      publishFeedback(payload?.message || "Telegram group added to allowed list.");
+      await fetchStorageContext();
+    } catch (nextError) {
+      publishFeedback(nextError?.message || "Unable to push Telegram group.");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [fetchStorageContext, groupInput, groupOptions, isSaving, publishFeedback, token]);
+
+  const handleDeleteAllowedTelegramGroup = React.useCallback(
+    async (groupReference) => {
+      const targetReference = String(groupReference || "").trim();
+      if (!token || !targetReference || isSaving) {
+        return;
+      }
+
+      setIsSaving(true);
+      setFeedback("");
+      try {
+        const response = await fetch(
+          apiUrl(
+            `/api/telegram/allowed-groups/${encodeURIComponent(targetReference)}`,
+          ),
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.message || "Unable to remove Telegram group.");
+        }
+        if (Array.isArray(payload?.groups)) {
+          setStoredGroupOptions(payload.groups);
+        }
+        publishFeedback(payload?.message || "Telegram group removed from allowed list.");
+        await fetchStorageContext();
+      } catch (nextError) {
+        publishFeedback(nextError?.message || "Unable to remove Telegram group.");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [fetchStorageContext, isSaving, publishFeedback, token],
+  );
+
   const renderTelegramConnectionCard = () => (
     <div className="telegramControlPage_connectionCard">
       <div className="telegramControlPage_connectionHeader">
@@ -4813,12 +4981,12 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
     </div>
   );
 
-  if (!isTelegramControlOwner) {
+  if (!canAccessTelegramControl) {
     return (
       <section id="telegramControlPage" className="telegramControlPage">
         <header className="telegramControlPage_header">
           <h1>Telegram Control</h1>
-          <p>This page is restricted to the admin account.</p>
+          <p>This page is available only when you have Telegram groups in Study Materials.</p>
         </header>
       </section>
     );
@@ -4836,6 +5004,40 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
             Manage Telegram migration, storage search, and focused AI helpers in
             one compact standalone page.
           </p>
+          <div className="telegramControlPage_headerSelectRow">
+            <label
+              htmlFor="telegramControlPage_pushedGroupsSelect"
+              className="telegramControlPage_label"
+            >
+              Pushed groups
+            </label>
+            <select
+              id="telegramControlPage_pushedGroupsSelect"
+              className="telegramControlPage_input"
+              value={selectedStoredGroupReference}
+              onChange={(event) =>
+                setSelectedStoredGroupReference(
+                  String(event.target.value || ""),
+                )
+              }
+            >
+              <option value={ALL_GROUPS_VALUE}>All pushed groups</option>
+              {pushedGroupSelectOptions.map((group) => {
+                const reference = String(group?.groupReference || "").trim();
+                if (!reference) {
+                  return null;
+                }
+                return (
+                  <option
+                    key={`telegram-control-pushed-group-${reference}`}
+                    value={reference}
+                  >
+                    {formatTelegramGroupOptionLabel(group)}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </header>
         <section
           className="telegramControlPage_grid"
@@ -4846,464 +5048,166 @@ const TelegramControlPage = ({ state, memory, serverReply }) => {
             className="telegramControlPage_leftColumn telegramControlPage_gridColumn telegramControlPage_gridColumn--left telegramControlPage_card telegramControlPage_card--control"
             ref={leftColumnRef}
           >
-            {/* Removed telegramControlPage_mountBar */}
-            {activeLeftPanel === "migration" ? (
-              <>
-                <div className="telegramControlPage_cardHeader">
-                  <h2>Migration</h2>
-                  <span>{token ? "Signed in" : "No token"}</span>
-                </div>
-                <div className="telegramControlPage_leftPool" id="left-pool">
-                  <div
-                    className={`telegramControlPage_controlCardBody${isTelegramConfigChecking ? " is-blurred" : ""}`}
-                    aria-busy={isTelegramConfigChecking}
-                  >
-                    <label
-                      className="telegramControlPage_label"
-                      htmlFor="telegramControlPage_groupInput"
-                    >
-                      Source group
-                    </label>
-                    <select
-                      id="telegramControlPage_groupInput"
-                      value={groupInput}
-                      disabled={isMigrationGroupsLoading}
-                      onChange={(event) => {
-                        const nextGroupReference = String(event.target.value || "");
-                        setGroupInput(nextGroupReference);
-                        setFeedback("");
-                        setTelegramImportSummary(null);
-                      }}
-                      className="telegramControlPage_input"
-                    >
-                      {migrationOptionGroups.groups.length === 0 &&
-                      migrationOptionGroups.supergroups.length === 0 &&
-                      migrationOptionGroups.channels.length === 0 ? (
-                        <option value="">
-                          {isMigrationGroupsLoading
-                            ? "Loading live Telegram groups..."
-                            : "No new Telegram groups available for migration"}
-                        </option>
-                      ) : (
-                        <>
-                          {migrationOptionGroups.groups.length > 0 ? (
-                            <optgroup label="Groups">
-                              {migrationOptionGroups.groups.map((group) => (
-                                <option
-                                  key={String(
-                                    group?.groupReference || group?.title || "",
-                                  )}
-                                  value={String(group?.groupReference || "")}
-                                >
-                                  {formatTelegramGroupOptionLabel(group)}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ) : null}
-                          {migrationOptionGroups.supergroups.length > 0 ? (
-                            <optgroup label="Supergroups">
-                              {migrationOptionGroups.supergroups.map(
-                                (group) => (
-                                  <option
-                                    key={String(
-                                      group?.groupReference ||
-                                        group?.title ||
-                                        "",
-                                    )}
-                                    value={String(group?.groupReference || "")}
-                                  >
-                                    {formatTelegramGroupOptionLabel(group)}
-                                  </option>
-                                ),
+            <div className="telegramControlPage_cardHeader">
+              <h2>Allowed Telegram Groups</h2>
+              <span>{token ? "Signed in" : "No token"}</span>
+            </div>
+            <div className="telegramControlPage_leftPool" id="left-pool">
+              <div className="telegramControlPage_controlCardBody">
+                <label
+                  className="telegramControlPage_label"
+                  htmlFor="telegramControlPage_groupInput"
+                >
+                  Telegram group
+                </label>
+                <select
+                  id="telegramControlPage_groupInput"
+                  value={groupInput}
+                  disabled={isMigrationGroupsLoading}
+                  onChange={(event) => {
+                    const nextGroupReference = String(
+                      event.target.value || "",
+                    );
+                    setGroupInput(nextGroupReference);
+                    setFeedback("");
+                  }}
+                  className="telegramControlPage_input"
+                >
+                  {migrationOptionGroups.groups.length === 0 &&
+                  migrationOptionGroups.supergroups.length === 0 &&
+                  migrationOptionGroups.channels.length === 0 ? (
+                    <option value="">
+                      {isMigrationGroupsLoading
+                        ? "Loading live Telegram groups..."
+                        : "No live Telegram groups available"}
+                    </option>
+                  ) : (
+                    <>
+                      {migrationOptionGroups.groups.length > 0 ? (
+                        <optgroup label="Groups">
+                          {migrationOptionGroups.groups.map((group) => (
+                            <option
+                              key={String(
+                                group?.groupReference || group?.title || "",
                               )}
-                            </optgroup>
-                          ) : null}
-                          {migrationOptionGroups.channels.length > 0 ? (
-                            <optgroup label="Channels">
-                              {migrationOptionGroups.channels.map((group) => (
-                                <option
-                                  key={String(
-                                    group?.groupReference || group?.title || "",
-                                  )}
-                                  value={String(group?.groupReference || "")}
-                                >
-                                  {formatTelegramGroupOptionLabel(group)}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ) : null}
-                        </>
-                      )}
-                    </select>
-
-                    <div className="telegramControlPage_migrationModeRow">
-                      <div className="telegramControlPage_migrationModeBlock">
-                        <span className="telegramControlPage_label">
-                          Migration mode
-                        </span>
-                        <div className="telegramControlPage_storeModeTabs">
-                          <button
-                            type="button"
-                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "all" ? " is-active" : ""}`}
-                            onClick={() => {
-                              setStoreMessagesMode("all");
-                              setFeedback("");
-                              setTelegramImportSummary(null);
-                            }}
-                          >
-                            All messages
-                          </button>
-                          <button
-                            type="button"
-                            className={`telegramControlPage_migrationModeButton${storeMessagesMode === "interval" ? " is-active" : ""}`}
-                            onClick={() => {
-                              setStoreMessagesMode("interval");
-                              setFeedback("");
-                              setTelegramImportSummary(null);
-                            }}
-                          >
-                            Messages within interval
-                          </button>
-                        </div>
-                        <p className="telegramControlPage_hint">
-                          Save this group's messages within the selected scope.
-                        </p>
-                      </div>
-                      <div className="telegramControlPage_migrationModeBlock">
-                        <span className="telegramControlPage_label">
-                          Sync mode
-                        </span>
-                        <div className="telegramControlPage_storeModeTabs">
-                          <button
-                            type="button"
-                            className={`telegramControlPage_migrationModeButton${migrationRunMode === "one-time" ? " is-active" : ""}`}
-                            onClick={() => {
-                              setMigrationRunMode("one-time");
-                              setFeedback("");
-                              setTelegramImportSummary(null);
-                            }}
-                          >
-                            One-time
-                          </button>
-                          <button
-                            type="button"
-                            className={`telegramControlPage_migrationModeButton${migrationRunMode === "sync" ? " is-active" : ""}`}
-                            onClick={() => {
-                              setMigrationRunMode("sync");
-                              setFeedback("");
-                              setTelegramImportSummary(null);
-                            }}
-                          >
-                            Sync
-                          </button>
-                        </div>
-                        <p className="telegramControlPage_hint">
-                          Sync keeps this group updated after migration.
-                        </p>
-                      </div>
-                      <div className="telegramControlPage_migrationModeBlock">
-                        <span className="telegramControlPage_label">
-                          Content filter
-                        </span>
-                        <div className="telegramControlPage_migrationContentLabels">
-                          <label className="telegramControlPage_checkboxRow">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(storeContentSelection.pinnedOnly)}
-                              onChange={(event) =>
-                                setStoreContentSelection((currentValue) => ({
-                                  ...currentValue,
-                                  pinnedOnly: Boolean(event.target.checked),
-                                }))
-                              }
-                            />
-                            Pinned only
-                          </label>
-                          <p className="telegramControlPage_helperText">
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="telegramControlPage_dateGrid">
-                      {storeMessagesMode === "interval" ? (
-                        <>
-                          <label className="telegramControlPage_dateField">
-                            <span className="telegramControlPage_label">
-                              From date
-                            </span>
-                            <input
-                              type="date"
-                              value={migrationFromDate}
-                              onChange={(event) =>
-                                setMigrationFromDate(event.target.value)
-                              }
-                              className="telegramControlPage_input"
-                            />
-                          </label>
-                          <label className="telegramControlPage_dateField">
-                            <span className="telegramControlPage_label">
-                              To date
-                            </span>
-                            <div className="telegramControlPage_dateFieldRow">
-                              <input
-                                type="date"
-                                value={migrationToDate}
-                                onChange={(event) => {
-                                  setMigrationToDate(event.target.value);
-                                  if (event.target.value) {
-                                    setIsMigrationToPresent(false);
-                                  }
-                                }}
-                                className="telegramControlPage_input"
-                                disabled={isMigrationToPresent}
-                              />
+                              value={String(group?.groupReference || "")}
+                            >
+                              {formatTelegramGroupOptionLabel(group)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {migrationOptionGroups.supergroups.length > 0 ? (
+                        <optgroup label="Supergroups">
+                          {migrationOptionGroups.supergroups.map((group) => (
+                            <option
+                              key={String(
+                                group?.groupReference || group?.title || "",
+                              )}
+                              value={String(group?.groupReference || "")}
+                            >
+                              {formatTelegramGroupOptionLabel(group)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                      {migrationOptionGroups.channels.length > 0 ? (
+                        <optgroup label="Channels">
+                          {migrationOptionGroups.channels.map((group) => (
+                            <option
+                              key={String(
+                                group?.groupReference || group?.title || "",
+                              )}
+                              value={String(group?.groupReference || "")}
+                            >
+                              {formatTelegramGroupOptionLabel(group)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null}
+                    </>
+                  )}
+                </select>
+                <div className="telegramControlPage_actions telegramControlPage_actions--dateGrid">
+                  <button
+                    type="button"
+                    className="telegramControlPage_button telegramControlPage_button--primary"
+                    onClick={handlePushAllowedTelegramGroup}
+                    disabled={
+                      isSaving ||
+                      !token ||
+                      !groupInput ||
+                      isMigrationGroupsLoading ||
+                      Boolean(
+                        allowedGroupReferenceSet.has(
+                          String(groupInput || "").trim(),
+                        ),
+                      )
+                    }
+                  >
+                    {isSaving
+                      ? "Pushing..."
+                      : allowedGroupReferenceSet.has(
+                            String(groupInput || "").trim(),
+                          )
+                        ? "Already allowed"
+                        : "Push"}
+                  </button>
+                </div>
+              </div>
+              <div className="telegramControlPage_scopeTableWrap">
+                <table className="telegramControlPage_scopeTable">
+                  <thead>
+                    <tr>
+                      <th>Allowed Telegram Groups List</th>
+                      <th>Reference</th>
+                      <th>Members</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allowedTelegramGroups.length > 0 ? (
+                      allowedTelegramGroups.map((group, groupIndex) => {
+                        const rowKey = String(
+                          group?.rowKey ||
+                            group?.groupReference ||
+                            group?.id ||
+                            `allowed-group-row-${groupIndex + 1}`,
+                        );
+                        return (
+                          <tr key={rowKey}>
+                            <td>{group?.title || group?.groupReference || "-"}</td>
+                            <td>{group?.groupReference || "-"}</td>
+                            <td>{Number(group?.memberCount || 0)}</td>
+                            <td>
                               <button
                                 type="button"
-                                className={`telegramControlPage_toggleButton${isMigrationToPresent ? " is-active" : ""}`}
-                                onClick={() => {
-                                  setIsMigrationToPresent(
-                                    (currentValue) => !currentValue,
-                                  );
-                                  setFeedback("");
-                                }}
+                                className="telegramControlPage_button"
+                                onClick={() =>
+                                  handleDeleteAllowedTelegramGroup(
+                                    group?.groupReference,
+                                  )
+                                }
+                                disabled={
+                                  isSaving ||
+                                  !String(group?.groupReference || "").trim()
+                                }
                               >
-                                {storageCopy.present}
+                                Delete
                               </button>
-                            </div>
-                          </label>
-                        </>
-                      ) : (
-                        <div className="telegramControlPage_syncModeNote">
-                          <span className="telegramControlPage_label">
-                            Store scope
-                          </span>
-                          <p className="telegramControlPage_status">
-                            All available messages from this group will be stored.
-                          </p>
-                        </div>
-                      )}
-                    <div className="telegramControlPage_actions telegramControlPage_actions--dateGrid">
-                        <button
-                          type="button"
-                          className="telegramControlPage_button telegramControlPage_button--primary"
-                          onClick={handleSaveTelegramConfig}
-                          disabled={isSaving || !token || !groupInput || isMigrationGroupsLoading}
-                        >
-                          {isSaving ? "Migrating..." : "Migrate this group"}
-                        </button>
-                      </div>
-                      </div>
-                    </div>
-                    {feedback ? (
-                      <p className="telegramControlPage_feedback">{feedback}</p>
-                    ) : null}
-                    {isTelegramConfigChecking ? (
-                      <div className="telegramControlPage_controlCardOverlay">
-                        <span className="telegramControlPage_controlCardLoader" />
-                        <p className="telegramControlPage_controlCardOverlayText">
-                          Telegram is getting ready...
-                        </p>
-                      </div>
-                    ) : null}
-                    {telegramImportSummary?.started ? (
-                      <p className="telegramControlPage_status">
-                        {telegramImportSummary.reason === "running" ? (
-                          <>
-                            Import is running.
-                            {telegramSyncLiveStatus?.running ? (
-                              <>
-                                {" "}
-                                Scanned {Number(telegramSyncLiveStatus?.scannedCount || 0)} message(s),
-                                imported {Number(telegramSyncLiveStatus?.importedCount || 0)}.
-                              </>
-                            ) : (
-                              <> Waiting for completion...</>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            Import {telegramImportSummary.succeeded ? "succeeded" : "failed"}.
-                            {" "}
-                            Imported {telegramImportSummary.importedCount} message(s)
-                            after scanning {telegramImportSummary.scannedCount}.
-                            {" "}
-                            Stored total: {telegramImportSummary.storedCount}.
-                            {telegramImportSummary.reason
-                              ? ` Reason: ${telegramImportSummary.reason}.`
-                              : ""}
-                          </>
-                        )}
-                      </p>
-                    ) : null}
-                    <div className="telegramControlPage_scopeTableWrap">
-                      <table className="telegramControlPage_scopeTable">
-                        <thead>
-                          <tr>
-                            <th>{storageCopy.storedGroup}</th>
-                            <th>Contents</th>
-                            <th>{storageCopy.interval}</th>
-                            <th>{storageCopy.storedMessagesNumber}</th>
-                            <th>Status</th>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {storedGroupOptions.length > 0 ? (
-                            storedGroupOptions.map((group, groupIndex) => {
-                              const groupReference = String(
-                                group?.groupReference || "",
-                              );
-                              const liveSyncGroupReference = String(
-                                telegramSyncLiveStatus?.groupReference || "",
-                              ).trim();
-                              const isRowSyncPendingRequest =
-                                String(activeMigrationGroupReference || "").trim() ===
-                                groupReference.trim();
-                              const isRowSyncTarget =
-                                liveSyncGroupReference &&
-                                liveSyncGroupReference === groupReference.trim();
-                              const isRowSyncRunning =
-                                isRowSyncPendingRequest ||
-                                (isRowSyncTarget && Boolean(telegramSyncLiveStatus?.running));
-                              const isRowSyncDisrupted =
-                                isRowSyncTarget &&
-                                !telegramSyncLiveStatus?.running &&
-                                ["error", "stopped"].includes(
-                                  String(telegramSyncLiveStatus?.reason || "").trim(),
-                                );
-                              const rowKey = String(
-                                group?.rowKey ||
-                                  group?.groupReference ||
-                                  group?.id ||
-                                  `stored-group-row-${groupIndex + 1}`,
-                              );
-                              const groupLabel = formatTelegramGroupOptionLabel(
-                                group,
-                              );
-                              const isMenuOpen =
-                                activeScopeTableGroupReference ===
-                                groupReference;
-
-                              return (
-                                <React.Fragment key={rowKey}>
-                                  <tr
-                                    className={`telegramControlPage_scopeTableRow${isMenuOpen ? " is-active" : ""}`}
-                                    onClick={(event) =>
-                                      handleScopeTableRowClick(
-                                        event,
-                                        groupReference,
-                                      )
-                                    }
-                                  >
-                                    <td className="telegramControlPage_scopeGroupCell">
-                                      {isMenuOpen ? (
-                                        <div
-                                          className="telegramControlPage_scopeMiniBar telegramControlPage_scopeMiniBar--inline"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                          }}
-                                        >
-                                          <button
-                                            type="button"
-                                            className="telegramControlPage_scopeMiniBarButton"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleViewScopeStoredGroup();
-                                            }}
-                                          >
-                                            {storageCopy.viewAction}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="telegramControlPage_scopeMiniBarButton"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleDeleteScopeStoredGroup();
-                                            }}
-                                          >
-                                            {storageCopy.deleteAction}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="telegramControlPage_scopeMiniBarButton"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleEditScopeStoredGroup();
-                                            }}
-                                          >
-                                            {storageCopy.editAction}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="telegramControlPage_scopeMiniBarButton"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleContinueScopeStoredGroup(groupReference);
-                                            }}
-                                            disabled={isRowSyncRunning}
-                                          >
-                                            {isRowSyncRunning
-                                              ? "Migrating..."
-                                              : isRowSyncDisrupted
-                                                ? "Continue"
-                                                : "Migrate"}
-                                          </button>
-                                        </div>
-                                      ) : null}
-                                      {groupLabel === "Telegram Migration"
-                                        ? ""
-                                        : groupLabel}
-                                      {isRowSyncRunning ? (
-                                        <span className="telegramControlPage_status">
-                                          {" "}
-                                          {String(telegramSyncLiveStatus?.reason || "").trim() ===
-                                          "paused"
-                                            ? "Paused"
-                                            : String(telegramSyncLiveStatus?.reason || "").trim() ===
-                                                "stopping"
-                                              ? "Stopping..."
-                                              : "Migrating..."}
-                                        </span>
-                                      ) : null}
-                                      {isRowSyncDisrupted ? (
-                                        <span className="telegramControlPage_feedback">
-                                          {" "}Migration disrupted
-                                        </span>
-                                      ) : null}
-                                    </td>
-                                    <td>{getStoredGroupContentsLabel(group)}</td>
-                                    <td>{migrationIntervalLabel}</td>
-                                    <td>{Number(group?.storedCount || 0)}</td>
-                                    <td>
-                                      {isRowSyncRunning
-                                        ? String(telegramSyncLiveStatus?.reason || "").trim() ===
-                                          "paused"
-                                          ? "Paused"
-                                          : String(telegramSyncLiveStatus?.reason || "").trim() ===
-                                              "stopping"
-                                            ? "Stopping..."
-                                            : "Migrating..."
-                                        : isRowSyncDisrupted
-                                          ? "Migration disrupted"
-                                          : Number(group?.storedCount || 0) > 0
-                                            ? "Migrated"
-                                            : "Configured"}
-                                    </td>
-                                  </tr>
-                                </React.Fragment>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan={5}>{storageCopy.noStoredGroups}</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : null}
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={4}>No allowed Telegram groups yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           <button
             type="button"

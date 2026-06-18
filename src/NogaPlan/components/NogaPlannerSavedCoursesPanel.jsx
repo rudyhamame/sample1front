@@ -21,6 +21,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
   const [telegramSearchQuery, setTelegramSearchQuery] = useState("");
   const [telegramMessages, setTelegramMessages] = useState([]);
   const [telegramChatLoading, setTelegramChatLoading] = useState(false);
+  const [telegramUpdateLoading, setTelegramUpdateLoading] = useState(false);
   const [telegramChatError, setTelegramChatError] = useState("");
   const [showNewCourseToolbar, setShowNewCourseToolbar] = useState(false);
   const [telegramChatFrame, setTelegramChatFrame] = useState({
@@ -87,11 +88,6 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       key: "traces",
       label: "Study Materials",
       icon: "fi fi-rr-folder",
-    },
-    {
-      key: "documents",
-      label: "Documents",
-      icon: "fi fi-rr-document",
     },
     {
       key: "youtube-text",
@@ -372,6 +368,42 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
       );
     } finally {
       setTelegramChatLoading(false);
+    }
+  };
+
+  const updateTelegramGroup = async () => {
+    const groupReference = String(telegramSelectedGroupReference || "").trim();
+    if (!plannerToken) {
+      setTelegramChatError("Telegram login token is missing.");
+      return;
+    }
+    if (!groupReference) {
+      setTelegramChatError("Choose a stored group first.");
+      return;
+    }
+    setTelegramUpdateLoading(true);
+    setTelegramChatError("");
+    try {
+      const response = await fetch(
+        apiUrl(`/api/telegram/stored-groups/${encodeURIComponent(groupReference)}/sync`),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${plannerToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ syncEnabled: true }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Unable to update Telegram group.");
+      }
+      await searchTelegramStoredMessages(groupReference);
+    } catch (nextError) {
+      setTelegramChatError(nextError?.message || "Unable to update Telegram group.");
+    } finally {
+      setTelegramUpdateLoading(false);
     }
   };
 
@@ -1898,9 +1930,18 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
               type="button"
               className="telegramControlPage_button telegramControlPage_button--primary"
               onClick={() => searchTelegramStoredMessages()}
-              disabled={telegramChatLoading}
+              disabled={telegramChatLoading || telegramUpdateLoading}
             >
               Search
+            </button>
+            <button
+              id="nogaPlanner_telegramMiniChatUpdateBtn"
+              type="button"
+              className="telegramControlPage_button"
+              onClick={updateTelegramGroup}
+              disabled={telegramUpdateLoading || telegramChatLoading || !telegramSelectedGroupReference}
+            >
+              {telegramUpdateLoading ? "Updating..." : "Update"}
             </button>
           </div>
         </div>
@@ -1925,16 +1966,27 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
                     "Unknown sender",
                 ).trim();
                 const text = String(message?.text || "").trim();
+                const hasArabic = (str) => /[؀-ۿ]/.test(str);
+                const senderIsArabic = hasArabic(sender);
+                const textIsArabic = hasArabic(text);
                 return (
                   <article
                     key={`telegram-mini-message-${messageKey}`}
                     className="telegramControlPage_message telegramControlPage_message--ltr"
                   >
                     <div className="telegramControlPage_messageMeta">
-                      <strong>{sender || "Unknown sender"}</strong>
+                      <strong
+                        className={senderIsArabic ? "nogaPlanner_arabicText" : undefined}
+                        dir={senderIsArabic ? "rtl" : undefined}
+                      >
+                        {sender || "Unknown sender"}
+                      </strong>
                       <span>{formatTelegramMessageDate(message?.date)}</span>
                     </div>
-                    <p className="telegramControlPage_messageText">
+                    <p
+                      className={`telegramControlPage_messageText${textIsArabic ? " nogaPlanner_arabicText" : ""}`}
+                      dir={textIsArabic ? "rtl" : undefined}
+                    >
                       {text || "(No text content)"}
                     </p>
                   </article>
