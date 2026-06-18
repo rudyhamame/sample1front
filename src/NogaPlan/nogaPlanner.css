@@ -3236,6 +3236,12 @@ color: #fff;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+body.dark .nogaPlanner_homeIntervalsTableWrap,
+.dark .nogaPlanner_homeIntervalsTableWrap {
+  background: transparent;
 }
 
 .nogaPlanner_homeIntervalsMiniTable {
@@ -3303,6 +3309,22 @@ color: #fff;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nogaPlanner_materialMetadataComponentStack > div {
+  padding: 0;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.nogaPlanner_materialMetadataComponentStack > div:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.205);
+  padding-bottom: 4px;
 }
 
 .nogaPlanner_homeIntervalsInput {
@@ -7597,17 +7619,9 @@ width: 100%;
   gap: 12px;
   width: 100%;
   min-width: 0;
-  padding: 15px;
 }
 .nogaPlanner_savedCoursesTableSubEyebrow{
   font-weight: 600;
-}
-.nogaPlanner_documentsPanelSummary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .nogaPlanner_documentsPanelCount {
