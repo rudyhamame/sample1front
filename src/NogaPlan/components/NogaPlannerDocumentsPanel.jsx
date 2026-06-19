@@ -584,7 +584,6 @@ export const StoredDocumentsCard = ({ planner }) => {
   const [stagedDocs, setStagedDocs] = useState([]);
   const [showSubmitAction, setShowSubmitAction] = useState(false);
   const [submitState, setSubmitState] = useState({ loading: false, error: "" });
-  const [selectedOverviewKey, setSelectedOverviewKey] = useState("");
 
   const plannerRoot = useMemo(() => {
     const root =
@@ -862,46 +861,17 @@ export const StoredDocumentsCard = ({ planner }) => {
     }
   };
 
-  const selectedOverviewDocument = useMemo(() => {
-    const allDocuments = [
-      ...existingProgramDocuments.map((entry, idx) => ({
-        key: `existing_${idx}`,
-        entry,
-      })),
-      ...stagedDocs.map((entry, idx) => ({
-        key: `staged_${idx}`,
-        entry,
-      })),
-    ];
-    if (!selectedOverviewKey) {
-      return allDocuments[0] || null;
-    }
-    return allDocuments.find((entry) => entry.key === selectedOverviewKey) || null;
-  }, [existingProgramDocuments, stagedDocs, selectedOverviewKey]);
-
-  const selectedOverviewInfo =
-    selectedOverviewDocument?.entry?.documentInfo &&
-    typeof selectedOverviewDocument.entry.documentInfo === "object"
-      ? selectedOverviewDocument.entry.documentInfo
-      : {};
-  const selectedOverviewPages = getDocumentPagesForUi(selectedOverviewInfo);
-  const selectedOverviewDonePages = selectedOverviewPages.filter(
-    (entry) => String(entry?.pageStatus || "").trim().toLowerCase() === "done",
-  );
-  const selectedOverviewDone = selectedOverviewDonePages.length;
-  const selectedOverviewVolume = resolveDocumentVolumeNumber(selectedOverviewInfo);
-  const selectedOverviewSquares = Number.isFinite(selectedOverviewVolume) && selectedOverviewVolume > 0
-    ? Array.from({ length: Math.trunc(selectedOverviewVolume) }, (_, index) => index + 1)
-    : [];
-  const handleOverviewSquareClick = async (pageNumber) => {
-    if (!selectedOverviewDocument || !selectedOverviewDocument.key.startsWith("existing_")) {
+  const formatDocumentPageNumbers = (documentInfo = {}) => {
+    const pageNumbers = getDocumentPagesForUi(documentInfo)
+      .map((pageEntry) => Number(pageEntry?.pageOrder))
+      .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
+    return pageNumbers.length > 0 ? pageNumbers.join(", ") : "—";
+  };
+  const toggleExistingDocumentPageDone = async (documentIndex, pageNumber) => {
+    if (!Number.isInteger(documentIndex) || documentIndex < 0) {
       return;
     }
-    const documentIndex = Number.parseInt(
-      selectedOverviewDocument.key.replace("existing_", ""),
-      10,
-    );
-    if (!Number.isInteger(documentIndex) || documentIndex < 0) {
+    if (!Number.isFinite(Number(pageNumber)) || Number(pageNumber) <= 0) {
       return;
     }
     setSubmitState({ loading: true, error: "" });
@@ -910,10 +880,10 @@ export const StoredDocumentsCard = ({ planner }) => {
         if (idx !== documentIndex) {
           return entry;
         }
-        const info = entry?.documentInfo || {};
+        const info = getDocumentInfoForEntry(entry);
         const currentPages = getDocumentPagesForUi(info);
         const nextPages = currentPages.map((pageEntry) => {
-          if (Number(pageEntry?.pageOrder) !== pageNumber) {
+          if (Number(pageEntry?.pageOrder) !== Number(pageNumber)) {
             return pageEntry;
           }
           const isDone =
@@ -946,6 +916,40 @@ export const StoredDocumentsCard = ({ planner }) => {
         error: String(err?.message || "Failed to update document progress."),
       });
     }
+  };
+  const renderDocumentPageButtons = (documentInfo = {}, options = {}) => {
+    const pages = getDocumentPagesForUi(documentInfo);
+    if (pages.length === 0) {
+      return "—";
+    }
+    const { onPageClick = null, disabled = false } = options;
+    return (
+      <div className="nogaPlanner_documentsPageList">
+        {pages.map((pageEntry) => {
+          const pageNumber = Number(pageEntry?.pageOrder);
+          const isDone =
+            String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done";
+          return (
+            <button
+              key={`nogaPlanner_documentsPageBtn_${pageNumber}`}
+              type="button"
+              className={
+                "nogaPlanner_documentsPageBtn" +
+                (isDone ? " nogaPlanner_documentsPageBtn--done" : "")
+              }
+              disabled={disabled}
+              onClick={
+                typeof onPageClick === "function"
+                  ? () => onPageClick(pageNumber)
+                  : undefined
+              }
+            >
+              {pageNumber}
+            </button>
+          );
+        })}
+      </div>
+    );
   };
 
   const documentRows = useMemo(() => {
@@ -1197,6 +1201,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                 <th rowSpan={2}>Type</th>
                 <th rowSpan={2}>Volume Unit</th>
                 <th colSpan={3}>Volume</th>
+                <th rowSpan={2}>Pages</th>
                 <th rowSpan={2}>Editors</th>
                 <th rowSpan={2}>Actions</th>
               </tr>
@@ -1222,7 +1227,6 @@ export const StoredDocumentsCard = ({ planner }) => {
                           documentEditors: draft.documentEditors,
                         }
                       : storedInfo;
-                    const rowKey = `existing_${idx}`;
                     const totalVolume = resolveDocumentVolumeNumber(info);
                     const doneVolume = getDocumentPagesForUi(info).filter(
                       (pageEntry) =>
@@ -1241,12 +1245,8 @@ export const StoredDocumentsCard = ({ planner }) => {
                         key={`prog-doc-${idx}`}
                         className={
                           "nogaPlanner_tabTableRow" +
-                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "") +
-                          (selectedOverviewDocument?.key === rowKey
-                            ? " nogaPlanner_documentsTableRow--selected"
-                            : "")
+                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "")
                         }
-                        onClick={() => setSelectedOverviewKey(rowKey)}
                       >
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
@@ -1258,6 +1258,13 @@ export const StoredDocumentsCard = ({ planner }) => {
                         <td>{totalVolume != null ? totalVolume : "—"}</td>
                         <td>{doneVolume != null ? doneVolume : "—"}</td>
                         <td>{remainingVolume != null ? remainingVolume : "—"}</td>
+                        <td>
+                          {renderDocumentPageButtons(info, {
+                            disabled: submitState.loading,
+                            onPageClick: (pageNumber) =>
+                              toggleExistingDocumentPageDone(idx, pageNumber),
+                          })}
+                        </td>
                         <td>{formatStringList(info.documentEditors) || "—"}</td>
                         <td className="nogaPlanner_documentsActionsCell">
                           <div className="nogaPlanner_materialMetadataActionsGroup">
@@ -1303,7 +1310,6 @@ export const StoredDocumentsCard = ({ planner }) => {
                           documentEditors: draft.documentEditors,
                         }
                       : storedInfo;
-                    const rowKey = `staged_${idx}`;
                     const totalVolume = resolveDocumentVolumeNumber(info);
                     const doneVolume = getDocumentPagesForUi(info).filter(
                       (pageEntry) =>
@@ -1322,12 +1328,8 @@ export const StoredDocumentsCard = ({ planner }) => {
                         key={`staged-doc-${idx}`}
                         className={
                           "nogaPlanner_tabTableRow nogaPlanner_tabTableRow--staged" +
-                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "") +
-                          (selectedOverviewDocument?.key === rowKey
-                            ? " nogaPlanner_documentsTableRow--selected"
-                            : "")
+                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "")
                         }
-                        onClick={() => setSelectedOverviewKey(rowKey)}
                       >
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
@@ -1339,6 +1341,11 @@ export const StoredDocumentsCard = ({ planner }) => {
                         <td>{totalVolume != null ? totalVolume : "—"}</td>
                         <td>{doneVolume != null ? doneVolume : "—"}</td>
                         <td>{remainingVolume != null ? remainingVolume : "—"}</td>
+                        <td>
+                          {renderDocumentPageButtons(info, {
+                            disabled: true,
+                          })}
+                        </td>
                         <td>{formatStringList(info.documentEditors) || "—"}</td>
                         <td className="nogaPlanner_documentsActionsCell">
                           <div className="nogaPlanner_materialMetadataActionsGroup">
@@ -1374,7 +1381,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                 <tr id="nogaPlanner_documentsTableEmptyRow">
                 <td
                   id="nogaPlanner_documentsTableEmptyCell"
-                  colSpan={8}
+                  colSpan={10}
                 >
                   No stored documents found in lectureDocuments.
                 </td>
@@ -1382,49 +1389,6 @@ export const StoredDocumentsCard = ({ planner }) => {
               )}
             </tbody>
           </table>
-        </div>
-        <div
-          id="nogaPlanner_documentsAchievementOverview"
-          className="nogaPlanner_documentsAchievementOverview"
-        >
-          <div className="nogaPlanner_documentsAchievementOverviewHeader">
-            <strong>Achievement Overview</strong>
-            <span className="nogaPlanner_documentsAchievementOverviewMeta">
-              {String(selectedOverviewInfo?.documentName || "").trim() || "Select a document"}
-            </span>
-          </div>
-          {selectedOverviewSquares.length > 0 ? (
-            <div className="nogaPlanner_documentsAchievementOverviewGrid">
-              {selectedOverviewSquares.map((pageNumber) => (
-                <button
-                  key={`nogaPlanner_documentsAchievementSquare_${pageNumber}`}
-                  type="button"
-                  className={
-                    "nogaPlanner_documentsAchievementSquare" +
-                    (selectedOverviewPages.some(
-                      (pageEntry) =>
-                        Number(pageEntry?.pageOrder) === pageNumber &&
-                        String(pageEntry?.pageStatus || "").trim().toLowerCase() ===
-                          "done",
-                    )
-                      ? " nogaPlanner_documentsAchievementSquare--done"
-                      : "")
-                  }
-                  disabled={
-                    submitState.loading ||
-                    !selectedOverviewDocument?.key?.startsWith("existing_")
-                  }
-                  onClick={() => handleOverviewSquareClick(pageNumber)}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="nogaPlanner_documentsAchievementOverviewEmpty">
-              No pages volume to show.
-            </div>
-          )}
         </div>
       </div>
     </div>

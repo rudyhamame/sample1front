@@ -17319,6 +17319,7 @@ export default class NogaPlanner extends Component {
       homeCurrentIntervalStatusDraft: "Normal",
       homeCurrentIntervalStartDateDraft: "",
       homeCurrentIntervalEndDateDraft: "",
+      homeSecondaryChildOpen: true,
       homeSubIntervalsDatesEditorOpen: false,
       homeSubIntervalsDatesEditingKey: "",
       plannerRoot:
@@ -17406,6 +17407,8 @@ export default class NogaPlanner extends Component {
       homeCourseComponentLectureNameDraft: "",
       homeCourseComponentLectureDraftList: [],
       homePanelModeTab: "intervals",
+      homeFocusedCardKey: "",
+      homeExpandedStackCardKey: "",
       plannerShellAsideVisible: false,
       plannerPendingRequests: 0,
       plannerPendingLabel: "",
@@ -23120,11 +23123,91 @@ export default class NogaPlanner extends Component {
     )
       ? rawHomePanelModeTab
       : "intervals";
+    const focusedHomeCardKey = String(
+      this.state?.homeFocusedCardKey || "",
+    ).trim();
+    const expandedStackHomeCardKey = String(
+      this.state?.homeExpandedStackCardKey || "",
+    ).trim();
+    const isHomeCardMounted = (cardKey) =>
+      !focusedHomeCardKey || focusedHomeCardKey === cardKey;
+    const toggleHomeCardFocus = (cardKey) =>
+      this.setState((prevState) => ({
+        homeFocusedCardKey:
+          String(prevState?.homeFocusedCardKey || "").trim() === cardKey
+            ? ""
+            : cardKey,
+      }));
+    const toggleHomeCardStackExpansion = (cardKey) =>
+      this.setState((prevState) => ({
+        homeExpandedStackCardKey:
+          String(prevState?.homeExpandedStackCardKey || "").trim() === cardKey
+            ? ""
+            : cardKey,
+      }));
+    const renderHomePanelCardTitleRow = ({
+      rowId,
+      headingId,
+      title,
+      actions = null,
+      cardKey,
+    }) => (
+      <div id={rowId} className="nogaPlanner_homePanelCardTitleRow">
+        <div className="nogaPlanner_homePanelCardTitleLead">
+          <button
+            type="button"
+            className={
+              "nogaPlanner_homePanelCardStackBtn" +
+              (expandedStackHomeCardKey === cardKey ? " is-active" : "")
+            }
+            aria-label={
+              expandedStackHomeCardKey === cardKey
+                ? `Return ${title} to the stack`
+                : `Pull ${title} out of the stack`
+            }
+            title={
+              expandedStackHomeCardKey === cardKey
+                ? "Return to stack"
+                : "Show full card in stack"
+            }
+            onClick={() => toggleHomeCardStackExpansion(cardKey)}
+          >
+            <span aria-hidden="true">
+              {expandedStackHomeCardKey === cardKey ? "-" : "+"}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="nogaPlanner_homePanelCardSoloBtn"
+            aria-label={
+              focusedHomeCardKey === cardKey
+                ? `Show all home cards from ${title}`
+                : `Show only ${title}`
+            }
+            title={
+              focusedHomeCardKey === cardKey
+                ? "Show all cards"
+                : "Show only this card"
+            }
+            onClick={() => toggleHomeCardFocus(cardKey)}
+          >
+            <i className="fi fi-rr-expand" aria-hidden="true" />
+          </button>
+          <strong id={headingId}>{title}</strong>
+        </div>
+        {actions}
+      </div>
+    );
     return (
       <section id="nogaPlanner_homePanel" className="nogaPlanner_homePanel">
-        <div id="nogaPlanner_homePanelGrid" className="nogaPlanner_homePanelGrid">
-          <div id="nogaPlanner_homePanelRest" className="nogaPlanner_homePanelRest">
-          <div id="nogaPlanner_homePanelColumn_2" className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right">
+        <div
+          id="nogaPlanner_homePanelColumn_2"
+          className={
+            "nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right" +
+            (focusedHomeCardKey ? " is-focused" : " is-collapsed")
+          }
+        >
+            {isHomeCardMounted("programIntervals") ? (
             <div
               id="nogaPlanner_home_intervals_card"
               className={
@@ -23139,8 +23222,12 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_15" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_intervals">Program Intervals</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_15",
+                headingId: "nogaPlanner_home_heading_intervals",
+                title: "Program Intervals",
+                cardKey: "programIntervals",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_15" className="nogaPlanner_homePanelCardActions">
                   {intervalsHasRegisteredValue ? (
                     <>
@@ -23180,7 +23267,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   )}
                 </div>
-              </div>
+                ),
+              })}
               <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
               <table id="nogaPlanner_homeIntervalsMiniTable_2" className="nogaPlanner_homeIntervalsMiniTable">
                 <colgroup>
@@ -23370,6 +23458,8 @@ export default class NogaPlanner extends Component {
               </table>
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programCourses") ? (
             <div
               id="nogaPlanner_home_programCourses_card"
               className={
@@ -23384,8 +23474,12 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_17" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programCourses">Program Courses</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_17",
+                headingId: "nogaPlanner_home_heading_programCourses",
+                title: "Program Courses",
+                cardKey: "programCourses",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_17" className="nogaPlanner_homePanelCardActions">
                   {coursesEditorOpen ? null : (
                     <>
@@ -23511,7 +23605,8 @@ export default class NogaPlanner extends Component {
                     </>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               <div
                 id="nogaPlanner_homePanelCardBody_2"
                 className={`nogaPlanner_homePanelCardBody${
@@ -24399,6 +24494,8 @@ export default class NogaPlanner extends Component {
                 </div>
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programLectures") ? (
             <div
               id="nogaPlanner_home_programLectures_card"
               className={
@@ -24412,8 +24509,12 @@ export default class NogaPlanner extends Component {
               }
             >
               <div className="nogaPlanner_lectureCareContentCol">
-              <div id="nogaPlanner_homePanelCardTitleRow_programLectures" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programLectures">Program Lectures</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_programLectures",
+                headingId: "nogaPlanner_home_heading_programLectures",
+                title: "Program Lectures",
+                cardKey: "programLectures",
+                actions: (
                 <div className="nogaPlanner_homePanelCardActions">
                   {programLecturesEditorOpen ? null : (
                     <>
@@ -24489,7 +24590,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               <div
                 className={`nogaPlanner_homePanelCardBody${
                   programLecturesEditorOpen ? "" : ""
@@ -24837,6 +24939,8 @@ export default class NogaPlanner extends Component {
                 return null;
               })()}
             </div>
+            ) : null}
+            {isHomeCardMounted("programTasks") ? (
             <div
               id="nogaPlanner_home_programTasks_card"
               className={
@@ -24849,8 +24953,12 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_programTasks" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programTasks">Program Tasks</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_programTasks",
+                headingId: "nogaPlanner_home_heading_programTasks",
+                title: "Program Tasks",
+                cardKey: "programTasks",
+                actions: (
                 <div className="nogaPlanner_homePanelCardActions">
                   <button
                     type="button"
@@ -24889,7 +24997,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               <div
                 className={`nogaPlanner_homePanelCardBody${
                   this.state?.homeMaterialMetadataAiLoading
@@ -25265,6 +25374,8 @@ export default class NogaPlanner extends Component {
                 </div>
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("storedDocuments") ? (
             <div
               id="nogaPlanner_home_storedDocuments_card"
               className={
@@ -25277,10 +25388,18 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_storedDocuments",
+                headingId: "nogaPlanner_home_heading_storedDocuments",
+                title: "Program Documents",
+                cardKey: "storedDocuments",
+              })}
               <div className="nogaPlanner_homePanelCardBody">
                 <StoredDocumentsCard planner={this} />
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("lecturesMode") ? (
             <div
               id="nogaPlanner_home_lecturesMode_card"
               className={
@@ -25295,13 +25414,18 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_19" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_lectures">Lectures</strong>
-              </div>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_19",
+                headingId: "nogaPlanner_home_heading_lectures",
+                title: "Lectures",
+                cardKey: "lecturesMode",
+              })}
               <div id="nogaPlanner_homePanelCardBody_4" className="nogaPlanner_homePanelCardBody">
                 {this.renderSelectedCourseLecturesTable("full")}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("documentsMode") ? (
             <div
               id="nogaPlanner_home_documentsMode_card"
               className={
@@ -25316,9 +25440,12 @@ export default class NogaPlanner extends Component {
                   : { display: "none" }
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_20" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_documents">Documents</strong>
-              </div>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_20",
+                headingId: "nogaPlanner_home_heading_documents",
+                title: "Documents",
+                cardKey: "documentsMode",
+              })}
               <div id="nogaPlanner_homePanelCardBody_5" className="nogaPlanner_homePanelCardBody">
                 <NogaPlannerTelegramPanel
                   planner={this}
@@ -25326,11 +25453,47 @@ export default class NogaPlanner extends Component {
                 />
               </div>
             </div>
+            ) : null}
           </div>
-          <div id="nogaPlanner_homePanelColumn" className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--left">
+        <div className="nogaPlanner_homePanel_secondaryChildToggleWrap">
+          <button
+            id="nogaPlanner_homePanel_secondaryChildToggleBtn"
+            type="button"
+            className="nogaPlanner_homePanelSecondaryChildToggleBtn"
+            aria-expanded={Boolean(this.state?.homeSecondaryChildOpen)}
+            aria-controls="nogaPlanner_homePanel_secondaryChild"
+            onClick={() =>
+              this.setState((previousState) => ({
+                homeSecondaryChildOpen: !previousState?.homeSecondaryChildOpen,
+              }))
+            }
+          >
+            <i
+              className={
+                "fi " +
+                (this.state?.homeSecondaryChildOpen
+                  ? "fi-br-angle-down"
+                  : "fi-br-angle-up")
+              }
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+        <div
+          id="nogaPlanner_homePanel_secondaryChild"
+          className="nogaPlanner_homePanel_secondaryChild"
+          style={this.state?.homeSecondaryChildOpen ? undefined : { display: "none" }}
+        >
+          <div className="nogaPlanner_homePanel_secondaryChildScroller">
+            <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--short">
+            {isHomeCardMounted("programName") ? (
             <div id="nogaPlanner_home_programName_card" className="nogaPlanner_homePanelCard">
-              <div id="nogaPlanner_homePanelCardTitleRow_2" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programName">Program Name</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_2",
+                headingId: "nogaPlanner_home_heading_programName",
+                title: "Program Name",
+                cardKey: "programName",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_2" className="nogaPlanner_homePanelCardActions">
                   {programNameEditorOpen ? (
                     <button
@@ -25370,7 +25533,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programNameEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_programName"
@@ -25389,12 +25553,18 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("programId") ? (
             <div
               id="nogaPlanner_home_programID_card"
               className="nogaPlanner_homePanelCard"
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_programID" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programID">Program ID</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_programID",
+                headingId: "nogaPlanner_home_heading_programID",
+                title: "Program ID",
+                cardKey: "programId",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_programID" className="nogaPlanner_homePanelCardActions">
                   {programEditorOpen ? (
                     <button
@@ -25434,7 +25604,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_programID"
@@ -25455,6 +25626,8 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("language") ? (
             <div
               id="nogaPlanner_home_language_card"
               className={
@@ -25464,8 +25637,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_3" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_language">Language</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_3",
+                headingId: "nogaPlanner_home_heading_language",
+                title: "Language",
+                cardKey: "language",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_3" className="nogaPlanner_homePanelCardActions">
                   {languageEditorOpen ? (
                     <button
@@ -25509,7 +25686,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {languageEditorOpen ? (
                 <select
                   id="nogaPlanner_homeIntervalsInput_9"
@@ -25537,6 +25715,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_language_displayValue">{programLanguage || "-"}</span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("programStartYear") ? (
             <div
               id="nogaPlanner_home_programStartYear_card"
               className={
@@ -25546,8 +25726,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_4" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programStartYear">Program Start Year</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_4",
+                headingId: "nogaPlanner_home_heading_programStartYear",
+                title: "Program Start Year",
+                cardKey: "programStartYear",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_4" className="nogaPlanner_homePanelCardActions">
                   {programStartYearEditorOpen ? (
                     <button
@@ -25589,7 +25773,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programStartYearEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_10"
@@ -25611,6 +25796,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programStartYear_displayValue">{registeredProgramStartYear || "-"}</span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("programTotalYears") ? (
             <div
               id="nogaPlanner_home_programTotalYears_card"
               className={
@@ -25620,8 +25807,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_5" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programTotalYears">Program Total Years</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_5",
+                headingId: "nogaPlanner_home_heading_programTotalYears",
+                title: "Program Total Years",
+                cardKey: "programTotalYears",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_5" className="nogaPlanner_homePanelCardActions">
                   {programTotalYearsEditorOpen ? (
                     <button
@@ -25665,7 +25856,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programTotalYearsEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_11"
@@ -25687,6 +25879,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTotalYears_displayValue">{registeredProgramTotalYears || "-"}</span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("programTermsPerYear") ? (
             <div
               id="nogaPlanner_home_programTermsPerYear_card"
               className={
@@ -25696,8 +25890,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_6" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programTermsPerYear">Program Terms Per Year</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_6",
+                headingId: "nogaPlanner_home_heading_programTermsPerYear",
+                title: "Program Terms Per Year",
+                cardKey: "programTermsPerYear",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_6" className="nogaPlanner_homePanelCardActions">
                   {programTermsPerYearEditorOpen ? (
                     <button
@@ -25741,7 +25939,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programTermsPerYearEditorOpen ? (
                 <select
                   id="nogaPlanner_homeIntervalsInput_12"
@@ -25766,282 +25965,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTermsPerYear_displayValue">{registeredProgramTermsPerYear || "-"}</span>
               )}
             </div>
-            <div
-              id="nogaPlanner_home_programFailingRules_card"
-              className={
-                "nogaPlanner_homePanelCard" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_7" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programFailingRules">Program Failing Rules</strong>
-                <div id="nogaPlanner_homePanelCardActions_7" className="nogaPlanner_homePanelCardActions">
-                  {intervalPassingThresholdEditorOpen ? (
-                    <button
-                      id="nogaPlanner_home_button_failingRules_submit"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                      disabled={
-                        isHomeCardsLocked ||
-                        !canSubmitIntervalPassingThreshold
-                      }
-                      onClick={this.handleHomeIntervalPassingThresholdSetSubmit}
-                    >
-                      Submit
-                    </button>
-                  ) : (
-                    <button
-                      id="nogaPlanner_home_button_failingRules_setEdit"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={() => {
-                        this.setState({
-                          homeIntervalPassingThresholdEditorOpen: true,
-                          homeIntervalPassingThresholdModeDraft: "",
-                          homeIntervalPassingThresholdUnitDraft: "",
-                          homeIntervalPassingThresholdNumberDraft: "",
-                          homeIntervalPassingThresholdRuleDraft: "",
-                          homeIntervalPassingThresholdIsEditing: false,
-                          homeIntervalPassingThresholdDraftTouched: false,
-                          homeIntervalPassingThresholdDraftList: registeredProgramFailingRules.map(
-                            (entry) => ({
-                              key: String(entry?.key || "").trim(),
-                              thresholdMode: String(entry?.thresholdMode || "").trim(),
-                              thresholdUnit: String(entry?.thresholdUnit || "").trim(),
-                              thresholdNumber: String(entry?.thresholdNumber ?? "").trim(),
-                              thresholdRule: String(entry?.thresholdRule || "").trim(),
-                            }),
-                          ),
-                        });
-                      }}
-                    >
-                      {registeredProgramFailingRules.length > 0
-                        ? "Edit"
-                        : "Set"}
-                    </button>
-                  )}
-                  {intervalPassingThresholdEditorOpen ? (
-                    <button
-                      id="nogaPlanner_home_button_failingRules_cancel"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.cancelHomeIntervalPassingThresholdEditor}
-                    >
-                      Cancel
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              {intervalPassingThresholdEditorOpen ? (
-                <div id="nogaPlanner_homeIntervalsAddRow_2" className="nogaPlanner_homeIntervalsAddRow">
-                  <select
-                    id="nogaPlanner_homeIntervalsInput_13"
-                    name="homeIntervalPassingThresholdMode"
-                    className="nogaPlanner_homeIntervalsInput"
-                    disabled={isHomeCardsLocked}
-                    value={String(
-                      this.state?.homeIntervalPassingThresholdModeDraft || "",
-                    )}
-                    onChange={(event) =>
-                      this.setState({
-                        homeIntervalPassingThresholdModeDraft: String(
-                          event.target.value || "",
-                        ),
-                      })
-                    }
-                  >
-                    <option value="">Mode</option>
-                    <option value="Interval">Interval</option>
-                    <option value="subInterval">subInterval</option>
-                    <option value="Course">Course</option>
-                    {plannerComponentIds.length > 0 ? (
-                      plannerComponentIds.map((componentId) => (
-                        <option
-                          key={`programFailingRuleComponent_${componentId}`}
-                          value={`Component: ${componentId}`}
-                        >
-                          {`Component: ${componentId}`}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>
-                        No program components
-                      </option>
-                    )}
-                    <option value="Lecture">Lecture</option>
-                  </select>
-                  <select
-                    id="nogaPlanner_homeIntervalsInput_14"
-                    name="homeIntervalPassingThresholdUnit"
-                    className="nogaPlanner_homeIntervalsInput"
-                    disabled={isHomeCardsLocked}
-                    value={String(
-                      this.state?.homeIntervalPassingThresholdUnitDraft || "",
-                    )}
-                    onChange={(event) =>
-                      this.setState({
-                        homeIntervalPassingThresholdUnitDraft: String(
-                          event.target.value || "",
-                        ),
-                      })
-                    }
-                  >
-                    <option value="">Unit</option>
-                    {intervalPassingThresholdUnitOptions.map((unitOption) => (
-                      <option
-                        key={`homeIntervalPassingThresholdUnitOption_${unitOption.value}`}
-                        value={unitOption.value}
-                      >
-                        {unitOption.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    id="nogaPlanner_homeIntervalsInput_15"
-                    type="number"
-                    name="homeIntervalPassingThresholdNumber"
-                    className="nogaPlanner_homeIntervalsInput"
-                    placeholder="Threshold"
-                    disabled={isHomeCardsLocked}
-                    value={String(
-                      this.state?.homeIntervalPassingThresholdNumberDraft || "",
-                    )}
-                    onChange={(event) =>
-                      this.setState({
-                        homeIntervalPassingThresholdNumberDraft: String(
-                          event.target.value || "",
-                        ),
-                      })
-                    }
-                  />
-                  <select
-                    id="nogaPlanner_homeIntervalsInput_15b"
-                    name="homeIntervalPassingThresholdRule"
-                    className="nogaPlanner_homeIntervalsInput"
-                    disabled={isHomeCardsLocked}
-                    value={String(
-                      this.state?.homeIntervalPassingThresholdRuleDraft || "",
-                    )}
-                    onChange={(event) =>
-                      this.setState({
-                        homeIntervalPassingThresholdRuleDraft: String(
-                          event.target.value || "",
-                        ),
-                      })
-                    }
-                  >
-                    <option value="">Rule</option>
-                    <option value="less than">less than</option>
-                    <option value="equal">equal</option>
-                    <option value="more than">more than</option>
-                  </select>
-                  <button
-                    id="nogaPlanner_home_button_failingRule_add"
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn"
-                    disabled={
-                      isHomeCardsLocked ||
-                      !hasIntervalPassingThresholdDraftValue ||
-                      !isIntervalPassingThresholdReady
-                    }
-                    onClick={this.appendHomeIntervalPassingThresholdDraftEntry}
-                  >
-                    {this.state?.homeIntervalPassingThresholdIsEditing ? "Apply changes" : "Add"}
-                  </button>
-                </div>
-              ) : null}
-              <div id="nogaPlanner_homePanelCardStoredBlock" className="nogaPlanner_homePanelCardStoredBlock">
-                {visibleProgramFailingRules.length > 0 ? (
-                  <table id="nogaPlanner_homeComponentsTable" className="nogaPlanner_homeComponentsTable">
-                    <thead id="nogaPlanner_homeComponentsTable_head">
-                      <tr id="nogaPlanner_homeComponentsTable_row1">
-                        <th id="nogaPlanner_homeComponentsTable_th_Mode">Mode</th>
-                        <th id="nogaPlanner_homeComponentsTable_th_Unit">Unit</th>
-                        <th id="nogaPlanner_homeComponentsTable_th_Threshold">Threshold</th>
-                        {intervalPassingThresholdEditorOpen ? (
-                          <th id="nogaPlanner_homeComponentsTable_th_Actions">Actions</th>
-                        ) : null}
-                      </tr>
-                    </thead>
-                    <tbody id="nogaPlanner_homeComponentsTable_body">
-                      {visibleProgramFailingRules.map((rule) => (
-                        <tr id={`nogaPlanner_failingRule_row_${rule.key}`} key={rule.key}>
-                          <td id={`nogaPlanner_failingRule_${rule.key}_mode`}>{this.formatPlannerTableValue(rule.thresholdMode)}</td>
-                          <td id={`nogaPlanner_failingRule_${rule.key}_unit`}>{this.formatPlannerTableValue(rule.thresholdUnit)}</td>
-                          <td id={`nogaPlanner_failingRule_${rule.key}_number`}>
-                            {this.formatPlannerTableValue(rule.thresholdNumber)}
-                            {rule.thresholdRule ? ` (${this.formatPlannerTableValue(rule.thresholdRule)})` : ""}
-                          </td>
-                          {intervalPassingThresholdEditorOpen ? (
-                            <td id={`nogaPlanner_failingRule_${rule.key}_actions`}>
-                              <button
-                                id="nogaPlanner_home_button_failingRule_edit"
-                                type="button"
-                                className="nogaPlanner_homePanelCardSetBtn"
-                                disabled={isHomeCardsLocked}
-                                onClick={() =>
-                                  this.editHomeIntervalPassingThresholdDraftEntry(
-                                    rule,
-                                  )
-                                }
-                              >
-                                Edit
-                              </button>
-                              <button
-                                id="nogaPlanner_home_button_failingRule_remove"
-                                type="button"
-                                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                                disabled={isHomeCardsLocked}
-                                onClick={() =>
-                                  this.removeHomeIntervalPassingThresholdDraftEntry(
-                                    rule,
-                                  )
-                                }
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          ) : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  intervalPassingThresholdEditorOpen ? (
-                    <table id="nogaPlanner_homeComponentsTable_2" className="nogaPlanner_homeComponentsTable">
-                      <thead id="nogaPlanner_homeComponentsTable_2_head">
-                        <tr id="nogaPlanner_homeComponentsTable_2_row1">
-                          <th id="nogaPlanner_homeComponentsTable_2_th_Mode">Mode</th>
-                          <th id="nogaPlanner_homeComponentsTable_2_th_Unit">Unit</th>
-                          <th id="nogaPlanner_homeComponentsTable_2_th_Threshold">Threshold</th>
-                          <th id="nogaPlanner_homeComponentsTable_2_th_Rule">Rule</th>
-                          <th id="nogaPlanner_homeComponentsTable_2_th_Actions">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="nogaPlanner_homeComponentsTable_2_body">
-                        <tr id="nogaPlanner_homeComponentsTable_2_row2">
-                          <td id="nogaPlanner_noDraftRules_emptyCell" colSpan={5}>
-                            <span id="nogaPlanner_homePanelCardEmptyValue" className="nogaPlanner_homePanelCardEmptyValue">
-                              No draft rules
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  ) : (
-                    <span id="nogaPlanner_homePanelCardEmptyValue_2" className="nogaPlanner_homePanelCardEmptyValue">
-                      {registeredProgramFailingRules.length > 0
-                        ? `${registeredIntervalPassingThresholdMode}: ${registeredIntervalPassingThresholdNumber} ${registeredIntervalPassingThresholdUnit}`
-                        : "No stored rules"}
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
+            ) : null}
+            {isHomeCardMounted("university") ? (
             <div
               id="nogaPlanner_home_university_card"
               className={
@@ -26051,8 +25976,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_8" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_university">University</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_8",
+                headingId: "nogaPlanner_home_heading_university",
+                title: "University",
+                cardKey: "university",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_8" className="nogaPlanner_homePanelCardActions">
                   {universityEditorOpen ? (
                     <button
@@ -26096,7 +26025,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {universityEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_16"
@@ -26116,6 +26046,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_university_displayValue">{this.renderPlannerLocalizedText(locationUniversity)}</span>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("faculty") ? (
             <div
               id="nogaPlanner_home_faculty_card"
               className={
@@ -26125,8 +26057,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_9" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_faculty">Faculty</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_9",
+                headingId: "nogaPlanner_home_heading_faculty",
+                title: "Faculty",
+                cardKey: "faculty",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_9" className="nogaPlanner_homePanelCardActions">
                   {facultyEditorOpen ? (
                     <button
@@ -26170,7 +26106,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {facultyEditorOpen ? (
                 <input
                   id="nogaPlanner_homeIntervalsInput_17"
@@ -26192,6 +26129,10 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+            ) : null}
+            </div>
+            <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--tall">
+            {isHomeCardMounted("programComponents") ? (
             <div
               id="nogaPlanner_home_programComponents_card"
               className={
@@ -26201,8 +26142,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_10" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programComponents">Program Component Names</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_10",
+                headingId: "nogaPlanner_home_heading_programComponents",
+                title: "Program Component Names",
+                cardKey: "programComponents",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_10" className="nogaPlanner_homePanelCardActions">
                   {componentEditorOpen ? (
                     <button
@@ -26243,7 +26188,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {componentEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_2" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_3" className="nogaPlanner_homeIntervalsAddRow">
@@ -26330,6 +26276,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programTaskNames") ? (
             <div
               id="nogaPlanner_home_programTaskNames_card"
               className={
@@ -26339,8 +26287,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_11" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programTaskNames">Program Tasks</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_11",
+                headingId: "nogaPlanner_home_heading_programTaskNames",
+                title: "Program Tasks",
+                cardKey: "programTaskNames",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_11" className="nogaPlanner_homePanelCardActions">
                   {tasksEditorOpen ? (
                     <button
@@ -26381,7 +26333,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {tasksEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_3" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_4" className="nogaPlanner_homeIntervalsAddRow">
@@ -26468,6 +26421,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programDocumentTypes") ? (
             <div
               id="nogaPlanner_home_programDocumentTypes_card"
               className={
@@ -26477,8 +26432,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_docTypes" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programDocumentTypes">Document Types</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_docTypes",
+                headingId: "nogaPlanner_home_heading_programDocumentTypes",
+                title: "Document Types",
+                cardKey: "programDocumentTypes",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_docTypes" className="nogaPlanner_homePanelCardActions">
                   {docTypesEditorOpen ? (
                     <button
@@ -26519,7 +26478,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {docTypesEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_docTypes" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_docTypes" className="nogaPlanner_homeIntervalsAddRow">
@@ -26594,6 +26554,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programDocumentVolumeUnit") ? (
             <div
               id="nogaPlanner_home_programDocumentVolumeUnit_card"
               className={
@@ -26603,13 +26565,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div
-                id="nogaPlanner_homePanelCardTitleRow_docVolumeUnits"
-                className="nogaPlanner_homePanelCardTitleRow"
-              >
-                <strong id="nogaPlanner_home_heading_programDocumentVolumeUnit">
-                  Document Volume Units
-                </strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_docVolumeUnits",
+                headingId: "nogaPlanner_home_heading_programDocumentVolumeUnit",
+                title: "Document Volume Units",
+                cardKey: "programDocumentVolumeUnit",
+                actions: (
                 <div
                   id="nogaPlanner_homePanelCardActions_docVolumeUnits"
                   className="nogaPlanner_homePanelCardActions"
@@ -26653,7 +26614,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {docVolumeUnitsEditorOpen ? (
                 <div
                   id="nogaPlanner_homeIntervalsMiniForm_docVolumeUnits"
@@ -26764,6 +26726,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programCurrentIntervalSelection") ? (
             <div
               id="nogaPlanner_home_programCurrentIntervalSelection_card"
               className={
@@ -26771,8 +26735,12 @@ export default class NogaPlanner extends Component {
                 (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_currentIntervalSelection" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_currentIntervalSelection">Current sub-Interval</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_currentIntervalSelection",
+                headingId: "nogaPlanner_home_heading_currentIntervalSelection",
+                title: "Current sub-Interval",
+                cardKey: "programCurrentIntervalSelection",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_currentIntervalSelection" className="nogaPlanner_homePanelCardActions">
                   {currentIntervalEditorOpen ? (
                     <button
@@ -26830,7 +26798,8 @@ export default class NogaPlanner extends Component {
                       </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {currentIntervalEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_currentIntervalSelection" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_currentIntervalSelection" className="nogaPlanner_homeIntervalsAddRow">
@@ -26936,6 +26905,8 @@ export default class NogaPlanner extends Component {
                 </div>
               )}
             </div>
+            ) : null}
+            {isHomeCardMounted("programEditors") ? (
             <div
               id="nogaPlanner_home_programEditors_card"
               className={
@@ -26945,8 +26916,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_13" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programEditors">Program editors</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_13",
+                headingId: "nogaPlanner_home_heading_programEditors",
+                title: "Program editors",
+                cardKey: "programEditors",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_13" className="nogaPlanner_homePanelCardActions">
                   {programEditorsEditorOpen ? (
                     <button
@@ -26987,7 +26962,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programEditorsEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_5" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_6" className="nogaPlanner_homeIntervalsAddRow">
@@ -27075,6 +27051,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+            ) : null}
+            {isHomeCardMounted("programLocations") ? (
             <div
               id="nogaPlanner_home_programLocations_card"
               className={
@@ -27084,8 +27062,12 @@ export default class NogaPlanner extends Component {
                   : "")
               }
             >
-              <div id="nogaPlanner_homePanelCardTitleRow_14" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programLocations">Program locations</strong>
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_14",
+                headingId: "nogaPlanner_home_heading_programLocations",
+                title: "Program locations",
+                cardKey: "programLocations",
+                actions: (
                 <div id="nogaPlanner_homePanelCardActions_14" className="nogaPlanner_homePanelCardActions">
                   {programLocationsEditorOpen ? (
                     <button
@@ -27127,7 +27109,8 @@ export default class NogaPlanner extends Component {
                     </button>
                   ) : null}
                 </div>
-              </div>
+                ),
+              })}
               {programLocationsEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_6" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_7" className="nogaPlanner_homeIntervalsAddRow">
@@ -27289,7 +27272,8 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
-          </div>
+            ) : null}
+            </div>
           </div>
         </div>
       </section>
