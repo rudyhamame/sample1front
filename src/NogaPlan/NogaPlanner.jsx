@@ -1210,20 +1210,26 @@ export default class NogaPlanner extends Component {
   };
 
   handleHomeProgramCurrentIntervalSetSubmit = async () => {
-    const selectedSubIntervalID = String(
-      this.state?.homeProgramCurrentSubIntervalIDDraft || "",
+    const selectedIntervalNum = String(
+      this.state?.homeProgramCurrentIntervalNumDraft || "",
     ).trim();
-    if (!selectedSubIntervalID) {
-      this.props.serverReply?.("Choose a sub-interval first.");
+    const selectedSubIntervalNum = String(
+      this.state?.homeProgramCurrentSubIntervalNumDraft || "",
+    ).trim();
+    if (!selectedIntervalNum || !selectedSubIntervalNum) {
+      this.props.serverReply?.("Choose an interval number and sub-interval number first.");
       return;
     }
     const currentPlannerRoot = this.getResolvedPlannerRoot();
     const resolvedSelection = this.resolveCurrentIntervalSelectionFromPlannerRoot(
       currentPlannerRoot,
-      { subIntervalID: selectedSubIntervalID },
+      {
+        intervalNum: selectedIntervalNum,
+        subIntervalNum: selectedSubIntervalNum,
+      },
     );
     if (!resolvedSelection?.subIntervalID) {
-      this.props.serverReply?.("Failed to resolve the target sub-interval.");
+      this.props.serverReply?.("Failed to resolve the target interval selection.");
       return;
     }
     try {
@@ -17400,6 +17406,7 @@ export default class NogaPlanner extends Component {
       homeCourseComponentLectureNameDraft: "",
       homeCourseComponentLectureDraftList: [],
       homePanelModeTab: "intervals",
+      plannerShellAsideVisible: false,
       plannerPendingRequests: 0,
       plannerPendingLabel: "",
       homeMaterialMetadataAiLoading: false,
@@ -20772,32 +20779,25 @@ export default class NogaPlanner extends Component {
             })
           : null)
       : null;
-    const currentSubIntervalIdSelectOptions = Array.isArray(plannerProgramIntervals)
-      ? plannerProgramIntervals.flatMap((intervalEntry) => {
-          const intervalNum = String(intervalEntry?.intervalNum || "").trim();
-          return Array.isArray(intervalEntry?.intervalSubIntervals)
-            ? intervalEntry.intervalSubIntervals
-                .map((subEntry) => {
-                  const subIntervalID = String(
-                    subEntry?.subIntervalID || subEntry?.subIntervalId || "",
-                  ).trim();
-                  if (!subIntervalID) return null;
-                  return {
-                    value: subIntervalID,
-                    label: `${intervalNum || "-"} • ${subIntervalID}`,
-                  };
-                })
-                .filter(Boolean)
-            : [];
-        })
+    const currentIntervalNumSelectOptions = Array.isArray(plannerProgramIntervals)
+      ? plannerProgramIntervals
+          .map((intervalEntry) => String(intervalEntry?.intervalNum || "").trim())
+          .filter(Boolean)
       : [];
+    const currentSubIntervalNumSelectOptions =
+      currentIntervalSelectedEntry &&
+      Array.isArray(currentIntervalSelectedEntry?.intervalSubIntervals)
+        ? currentIntervalSelectedEntry.intervalSubIntervals
+            .map((subEntry) => String(subEntry?.subIntervalNum || "").trim())
+            .filter(Boolean)
+        : [];
     const isCurrentIntervalDirty =
       draftCurrentSubIntervalID !== registeredCurrentSubIntervalID ||
       draftCurrentIntervalNum !== registeredCurrentIntervalNum ||
       draftCurrentSubIntervalNum !== registeredCurrentSubIntervalNum;
     const canSubmitCurrentInterval =
       currentIntervalEditorOpen &&
-      Boolean(draftCurrentSubIntervalID) &&
+      Boolean(draftCurrentIntervalNum && draftCurrentSubIntervalNum) &&
       (!hasRegisteredCurrentInterval || isCurrentIntervalDirty);
     const storedProgramAIExtractions = Array.isArray(plannerRoot?.programAIExtractions)
       ? plannerRoot.programAIExtractions
@@ -25955,11 +25955,6 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel" className="nogaPlanner_homePanelCardStoredLabel">
-                  {intervalPassingThresholdEditorOpen
-                    ? "Draft Rules"
-                    : "Stored Rules"}
-                </span>
                 {visibleProgramFailingRules.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable" className="nogaPlanner_homeComponentsTable">
                     <thead id="nogaPlanner_homeComponentsTable_head">
@@ -26281,17 +26276,15 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_2" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel_2" className="nogaPlanner_homePanelCardStoredLabel">
-                  {componentEditorOpen ? "Draft Components" : "Stored Components"}
-                </span>
                 {visibleProgramComponents.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_3" className="nogaPlanner_homeComponentsTable">
-                    <thead id="nogaPlanner_homeComponentsTable_3_head">
-                      <tr id="nogaPlanner_homeComponentsTable_3_row1">
-                        <th id="nogaPlanner_homeComponentsTable_3_th_Component">Component</th>
-                        {componentEditorOpen ? <th id="nogaPlanner_programComponents_th_actions">Actions</th> : null}
-                      </tr>
-                    </thead>
+                    {componentEditorOpen ? (
+                      <thead id="nogaPlanner_homeComponentsTable_3_head">
+                        <tr id="nogaPlanner_homeComponentsTable_3_row1">
+                          <th id="nogaPlanner_programComponents_th_actions">Actions</th>
+                        </tr>
+                      </thead>
+                    ) : null}
                     <tbody id="nogaPlanner_homeComponentsTable_3_body">
                       {visibleProgramComponents.map((componentEntry) => (
                         <tr id={`nogaPlanner_programComponent_row_${componentEntry.key}`} key={componentEntry.key}>
@@ -26421,11 +26414,13 @@ export default class NogaPlanner extends Component {
               <div id="nogaPlanner_homePanelCardStoredBlock_3" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramTasks.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_4" className="nogaPlanner_homeComponentsTable">
-                    <thead id="nogaPlanner_homeComponentsTable_4_head">
-                      <tr id="nogaPlanner_homeComponentsTable_4_row1">
-                        {tasksEditorOpen ? <th id="nogaPlanner_taskNames_th_actions">Actions</th> : null}
-                      </tr>
-                    </thead>
+                    {tasksEditorOpen ? (
+                      <thead id="nogaPlanner_homeComponentsTable_4_head">
+                        <tr id="nogaPlanner_homeComponentsTable_4_row1">
+                          <th id="nogaPlanner_taskNames_th_actions">Actions</th>
+                        </tr>
+                      </thead>
+                    ) : null}
                     <tbody id="nogaPlanner_homeComponentsTable_4_body">
                       {visibleProgramTasks.map((examEntry) => (
                         <tr id={`nogaPlanner_taskName_row_${examEntry.key}`} key={examEntry.key}>
@@ -26700,31 +26695,20 @@ export default class NogaPlanner extends Component {
                 id="nogaPlanner_homePanelCardStoredBlock_docVolumeUnits"
                 className="nogaPlanner_homePanelCardStoredBlock"
               >
-                <span
-                  id="nogaPlanner_homePanelCardStoredLabel_docVolumeUnits"
-                  className="nogaPlanner_homePanelCardStoredLabel"
-                >
-                  {docVolumeUnitsEditorOpen
-                    ? "Draft Document Volume Units"
-                    : "Stored Document Volume Units"}
-                </span>
                 {visibleProgramDocVolumeUnits.length > 0 ? (
                   <table
                     id="nogaPlanner_homeComponentsTable_docVolumeUnits"
                     className="nogaPlanner_homeComponentsTable"
                   >
-                    <thead id="nogaPlanner_homeComponentsTable_docVolumeUnits_head">
-                      <tr id="nogaPlanner_homeComponentsTable_docVolumeUnits_row1">
-                        <th id="nogaPlanner_homeComponentsTable_docVolumeUnits_th_name">
-                          Document Volume Unit
-                        </th>
-                        {docVolumeUnitsEditorOpen ? (
+                    {docVolumeUnitsEditorOpen ? (
+                      <thead id="nogaPlanner_homeComponentsTable_docVolumeUnits_head">
+                        <tr id="nogaPlanner_homeComponentsTable_docVolumeUnits_row1">
                           <th id="nogaPlanner_docVolumeUnits_th_actions">
                             Actions
                           </th>
-                        ) : null}
-                      </tr>
-                    </thead>
+                        </tr>
+                      </thead>
+                    ) : null}
                     <tbody id="nogaPlanner_homeComponentsTable_docVolumeUnits_body">
                       {visibleProgramDocVolumeUnits.map((entry) => (
                         <tr
@@ -26850,24 +26834,77 @@ export default class NogaPlanner extends Component {
               {currentIntervalEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_currentIntervalSelection" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_currentIntervalSelection" className="nogaPlanner_homeIntervalsAddRow">
-                    <select
-                      id="nogaPlanner_homeIntervalsSelect_subIntervalID"
-                      className="nogaPlanner_homeIntervalsInput"
-                      disabled={isHomeCardsLocked}
-                      value={draftCurrentSubIntervalID}
-                      onChange={(event) =>
-                        this.setState({
-                          homeProgramCurrentSubIntervalIDDraft: String(event.target.value || ""),
-                        })
-                      }
-                    >
-                      <option value="">sub-Interval ID</option>
-                      {currentSubIntervalIdSelectOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Interval num
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsSelect_intervalNum"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={draftCurrentIntervalNum}
+                        onChange={(event) =>
+                          this.setState({
+                            homeProgramCurrentIntervalNumDraft: String(event.target.value || ""),
+                            homeProgramCurrentSubIntervalNumDraft: "",
+                            homeProgramCurrentSubIntervalIDDraft: "",
+                          })
+                        }
+                      >
+                        <option value="">Interval num</option>
+                        {currentIntervalNumSelectOptions.map((intervalNum) => (
+                          <option
+                            key={`nogaPlanner_currentInterval_intervalNum_${intervalNum}`}
+                            value={intervalNum}
+                          >
+                            {intervalNum}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        sub-Interval num
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsSelect_subIntervalNum"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked || !draftCurrentIntervalNum}
+                        value={draftCurrentSubIntervalNum}
+                        onChange={(event) =>
+                          this.setState(() => {
+                            const nextSubIntervalNum = String(event.target.value || "").trim();
+                            const matchedSubInterval =
+                              currentIntervalSelectedEntry &&
+                              Array.isArray(currentIntervalSelectedEntry?.intervalSubIntervals)
+                                ? currentIntervalSelectedEntry.intervalSubIntervals.find(
+                                    (subEntry) =>
+                                      String(subEntry?.subIntervalNum || "").trim() ===
+                                      nextSubIntervalNum,
+                                  ) || null
+                                : null;
+                            return {
+                              homeProgramCurrentSubIntervalNumDraft: nextSubIntervalNum,
+                              homeProgramCurrentSubIntervalIDDraft: String(
+                                matchedSubInterval?.subIntervalID ||
+                                  matchedSubInterval?.subIntervalId ||
+                                  "",
+                              ).trim(),
+                            };
+                          })
+                        }
+                      >
+                        <option value="">sub-Interval num</option>
+                        {currentSubIntervalNumSelectOptions.map((subIntervalNum) => (
+                          <option
+                            key={`nogaPlanner_currentInterval_subIntervalNum_${draftCurrentIntervalNum}_${subIntervalNum}`}
+                            value={subIntervalNum}
+                          >
+                            {subIntervalNum}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -26876,12 +26913,18 @@ export default class NogaPlanner extends Component {
                     <table id="nogaPlanner_homeComponentsTable_currentIntervalSelection" className="nogaPlanner_homeComponentsTable">
                       <thead>
                         <tr>
-                          <th>sub-Interval ID</th>
+                          <th>Interval num</th>
+                          <th>sub-Interval num</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td id="nogaPlanner_currentIntervalSelection_subIntervalID">{this.renderPlannerLocalizedText(registeredCurrentSubIntervalID || registeredCurrentSubIntervalNum || registeredCurrentIntervalNum)}</td>
+                          <td id="nogaPlanner_currentIntervalSelection_intervalNum">
+                            {this.renderPlannerLocalizedText(registeredCurrentIntervalNum || "-")}
+                          </td>
+                          <td id="nogaPlanner_currentIntervalSelection_subIntervalNum">
+                            {this.renderPlannerLocalizedText(registeredCurrentSubIntervalNum || "-")}
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -26978,12 +27021,13 @@ export default class NogaPlanner extends Component {
               <div id="nogaPlanner_homePanelCardStoredBlock_5" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramEditors.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_6" className="nogaPlanner_homeComponentsTable">
-                    <thead id="nogaPlanner_homeComponentsTable_6_head">
-                      <tr id="nogaPlanner_homeComponentsTable_6_row1">
-                        <th id="nogaPlanner_homeComponentsTable_6_th_Editor">Editor</th>
-                        {programEditorsEditorOpen ? <th id="nogaPlanner_programEditors_th_actions">Actions</th> : null}
-                      </tr>
-                    </thead>
+                    {programEditorsEditorOpen ? (
+                      <thead id="nogaPlanner_homeComponentsTable_6_head">
+                        <tr id="nogaPlanner_homeComponentsTable_6_row1">
+                          <th id="nogaPlanner_programEditors_th_actions">Actions</th>
+                        </tr>
+                      </thead>
+                    ) : null}
                     <tbody id="nogaPlanner_homeComponentsTable_6_body">
                       {visibleProgramEditors.map((editorValue) => (
                         <tr id={`nogaPlanner_editor_row_${editorValue}`} key={editorValue}>
@@ -27117,9 +27161,6 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_6" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel_6" className="nogaPlanner_homePanelCardStoredLabel">
-                  {programLocationsEditorOpen ? "Draft Locations" : "Stored Locations"}
-                </span>
                 {visibleProgramLocationsByBuilding.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_7" className="nogaPlanner_homeComponentsTable">
                     <thead id="nogaPlanner_homeComponentsTable_7_head">
@@ -27641,6 +27682,7 @@ export default class NogaPlanner extends Component {
             planner={this}
             runtime={NOGAPLANNER_PANEL_RUNTIME}
             shellOnly={true}
+            shellVisible={Boolean(this.state?.plannerShellAsideVisible)}
           />
           <div
             id="nogaPlanner_mainTabPanel"
@@ -27650,6 +27692,23 @@ export default class NogaPlanner extends Component {
               id="nogaPlanner_mainTabPanelTitle"
               className="nogaPlanner_mainTabPanelTitle"
             >
+              <button
+                id="nogaPlanner_articleShellAsideToggleBtn"
+                type="button"
+                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_articleShellAsideToggleBtn"
+                onClick={() =>
+                  this.setState((previousState) => ({
+                    plannerShellAsideVisible: !previousState?.plannerShellAsideVisible,
+                  }))
+                }
+                aria-expanded={Boolean(this.state?.plannerShellAsideVisible)}
+                aria-controls="nogaPlanner_shellAside"
+              >
+                <i
+                  className="fi fi-br-apps"
+                  aria-hidden="true"
+                />
+              </button>
               <p id="nogaPlanner_mainTabPanelTitle_text">{this.getPlannerMainTabTitle(wrapperTab)}</p>
               {isPlannerPending ? (
                 <div

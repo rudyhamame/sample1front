@@ -8,7 +8,7 @@ import {
   PLANNER_ACTIVE_EVENT,
 } from "../plannerCountdown";
 
-const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) => {
+const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false, shellVisible = true }) => {
   const [coursesMiniBarActionsLeft, setCoursesMiniBarActionsLeft] =
     useState("50%");
   const [isMiniBarActionsVisible, setIsMiniBarActionsVisible] = useState(false);
@@ -2029,6 +2029,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
         id="nogaPlanner_shellAside"
         className="nogaPlanner_homeSoulPanel"
         ref={planner.savedCoursesColumnHeaderRef}
+        style={{ display: shellVisible ? "flex" : "none" }}
       >
         {countdownActive ? (
           <div id="nogaPlanner_shellAsideCountdown" className="nogaPlanner_shellAsideCountdown">

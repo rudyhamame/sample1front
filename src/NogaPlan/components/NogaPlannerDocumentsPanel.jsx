@@ -89,6 +89,33 @@ const hasStoredDocumentDraftValues = (draft = {}) =>
       (Array.isArray(draft?.documentEditors) && draft.documentEditors.length > 0),
   );
 
+const containsArabicText = (value = "") =>
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(value ?? ""));
+
+const renderLocalizedDocumentText = (value = "") => {
+  const normalizedValue = String(value ?? "").trim();
+  if (!normalizedValue) {
+    return "—";
+  }
+  if (!containsArabicText(normalizedValue)) {
+    return normalizedValue;
+  }
+  return (
+    <span
+      className="nogaPlanner_arabicText"
+      lang="ar"
+      dir="rtl"
+      style={{
+        fontFamily: '"Parastoo", serif',
+        fontOpticalSizing: "auto",
+        fontStyle: "normal",
+      }}
+    >
+      {normalizedValue}
+    </span>
+  );
+};
+
 const buildLectureOptions = (planner) => {
   const plannerRoot =
     typeof planner?.getResolvedPlannerRoot === "function"
@@ -427,7 +454,6 @@ const StoredDocumentFormFields = ({
 
   return (
     <div id="nogaPlanner_storedDocumentForm" className="nogaPlanner_storedDocumentForm">
-      <div className="nogaPlanner_storedDocumentFormRow">
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Name</span>
           <input
@@ -547,7 +573,6 @@ const StoredDocumentFormFields = ({
             </div>
           ) : null}
         </div>
-      </div>
     </div>
   );
 };
@@ -1146,7 +1171,7 @@ export const StoredDocumentsCard = ({ planner }) => {
       {submitState.error ? (
         <p className="nogaPlanner_documentsStagedError">{submitState.error}</p>
       ) : null}
-      {isEditing && (editingRef !== null || isDraftPopulated) ? (
+      {isEditing ? (
         <StoredDocumentFormFields
           draft={draft}
           setDraft={setDraft}
@@ -1223,7 +1248,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                         }
                         onClick={() => setSelectedOverviewKey(rowKey)}
                       >
-                        <td>{String(info.documentName || "—")}</td>
+                        <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
                           ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
                           : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
@@ -1304,7 +1329,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                         }
                         onClick={() => setSelectedOverviewKey(rowKey)}
                       >
-                        <td>{String(info.documentName || "—")}</td>
+                        <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
                           ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
                           : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
