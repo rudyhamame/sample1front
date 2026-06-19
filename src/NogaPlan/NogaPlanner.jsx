@@ -350,6 +350,8 @@ export default class NogaPlanner extends Component {
         : rawEntry;
     return {
       ...documentInfo,
+      documentLectureID: String(rawEntry?.documentLectureID || "").trim(),
+      documentLectureName: String(rawEntry?.documentLectureName || "").trim(),
       documentURL: String(rawEntry?.documentURL || "").trim(),
     };
   };
@@ -1765,6 +1767,76 @@ export default class NogaPlanner extends Component {
     } catch (error) {
       this.props.serverReply?.(
         String(error?.message || "Failed to push lectures to courses."),
+      );
+    }
+  };
+  handlePushProgramDocumentsToLectures = async () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const programLectures = Array.isArray(plannerRoot?.programLectures)
+      ? plannerRoot.programLectures
+      : [];
+    const programDocuments = Array.isArray(plannerRoot?.programDocuments)
+      ? plannerRoot.programDocuments
+      : [];
+    if (programDocuments.length === 0) {
+      this.props.serverReply?.("No program documents to push.");
+      return;
+    }
+    let mountedCount = 0;
+    const nextProgramLectures = programLectures.map((lectureEntry) => {
+      const lectureInfo =
+        lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
+          ? lectureEntry.lectureInfo
+          : lectureEntry || {};
+      const lectureId = String(lectureInfo?.lectureID || "").trim();
+      if (!lectureId) {
+        return lectureEntry;
+      }
+      const matchingDocumentIds = programDocuments
+        .map((documentEntry) => {
+          const documentInfo =
+            documentEntry?.documentInfo &&
+            typeof documentEntry.documentInfo === "object"
+              ? documentEntry.documentInfo
+              : documentEntry || {};
+          const documentId = String(documentInfo?.documentID || "").trim();
+          if (!documentId || !documentId.startsWith(lectureId)) {
+            return null;
+          }
+          mountedCount += 1;
+          return documentId;
+        })
+        .filter(Boolean);
+      const currentLectureDocuments = Array.isArray(lectureEntry?.lectureDocuments)
+        ? lectureEntry.lectureDocuments
+        : [];
+      return {
+        ...(lectureEntry && typeof lectureEntry === "object" ? lectureEntry : {}),
+        lectureDocuments: Array.from(
+          new Set(
+            [...currentLectureDocuments, ...matchingDocumentIds]
+              .map((entry) => String(entry || "").trim())
+              .filter(Boolean),
+          ),
+        ),
+      };
+    });
+    if (mountedCount === 0) {
+      this.props.serverReply?.(
+        "No saved document matched any designated Program Lecture.",
+      );
+      return;
+    }
+    try {
+      const nextPlannerRoot =
+        await this.persistStudyPlannerLectures(nextProgramLectures);
+      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+        this.setState({ plannerRoot: nextPlannerRoot });
+      }
+      this.props.serverReply?.("Program documents pushed to lectures.");
+    } catch (error) {
+      this.props.serverReply?.(
+        String(error?.message || "Failed to push documents to lectures."),
       );
     }
   };
@@ -4167,6 +4239,50 @@ export default class NogaPlanner extends Component {
           : lectureEntry || {};
       const lectureId = String(lectureInfo?.lectureID || "").trim();
       if (!lectureId || !syncedLectureIdSet.has(lectureId)) {
+        pendingCount += 1;
+      }
+    });
+    return pendingCount;
+  };
+  getProgramDocumentsPendingPushCount = (
+    plannerRoot = this.getResolvedPlannerRoot(),
+  ) => {
+    const programDocuments = Array.isArray(plannerRoot?.programDocuments)
+      ? plannerRoot.programDocuments
+      : [];
+    if (programDocuments.length === 0) {
+      return 0;
+    }
+    const lectureDocumentSet = new Set(
+      (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
+        .flatMap((lectureEntry) =>
+          Array.isArray(lectureEntry?.lectureDocuments)
+            ? lectureEntry.lectureDocuments
+            : [],
+        )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean),
+    );
+    const lectureIds = (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
+      .map((lectureEntry) => {
+        const info = lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
+          ? lectureEntry.lectureInfo
+          : lectureEntry || {};
+        return String(info?.lectureID || "").trim();
+      })
+      .filter(Boolean);
+
+    let pendingCount = 0;
+    programDocuments.forEach((documentEntry) => {
+      const documentInfo =
+        documentEntry?.documentInfo &&
+        typeof documentEntry.documentInfo === "object"
+          ? documentEntry.documentInfo
+          : documentEntry || {};
+      const documentId = String(documentInfo?.documentID || "").trim();
+      if (!documentId) return;
+      const matchesLecture = lectureIds.some((lid) => documentId.startsWith(lid));
+      if (matchesLecture && !lectureDocumentSet.has(documentId)) {
         pendingCount += 1;
       }
     });
@@ -9016,6 +9132,8 @@ export default class NogaPlanner extends Component {
       })
       .filter(Boolean);
     this.setState({
+      homeCoursesEditorOpen: true,
+      homeMaterialMetadataMode: "course",
       homeCourseEditingKey: courseRow.key,
       homeCourseApplyPending: false,
       homeCourseOriginalIntervalId: String(courseRow.subIntervalId || courseRow.subIntervalID || ""),
@@ -9029,9 +9147,11 @@ export default class NogaPlanner extends Component {
       ),
       homeCourseComponentDraft: preloadedComponentDraft,
       homeCourseComponentIdDraft: "",
+      homeCourseComponentEditingId: "",
       homeCourseComponentPartialWeightDraft: "",
       homeCourseSubIntervalYearDraft: String(courseRow.intervalNum || ""),
       homeCourseSubIntervalTermDraft: String(courseRow.subIntervalNum || ""),
+      homeCourseIntervalIdDraft: String(courseRow.subIntervalId || courseRow.subIntervalID || ""),
     });
   };
 
@@ -10805,8 +10925,8 @@ export default class NogaPlanner extends Component {
           ? "settings"
         : tab === "ai"
             ? "ai"
-            // : tab === "traces"
-            //   ? "traces"
+            : tab === "traces"
+              ? "traces"
               : tab === "documents"
                 ? "documents"
               : tab === "youtube-text"
@@ -19632,7 +19752,7 @@ export default class NogaPlanner extends Component {
                 <button
                   id="nogaPlanner_home_button_courses_reset"
                   type="button"
-                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
                   disabled={isHomeCardsLocked}
                   onClick={() =>
                     this.requestResetWithPassword(
@@ -19898,6 +20018,10 @@ export default class NogaPlanner extends Component {
             </div>
           </div>
         ) : null}
+        <div
+          id="nogaPlanner_courses_miniTable_wrap"
+          className="nogaPlanner_homeIntervalsTableWrap"
+        >
         <table id="nogaPlanner_courses_miniTable" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCoursesMiniTable">
           <thead id="nogaPlanner_courses_tableHead">
             <tr id="nogaPlanner_courses_tableHeadRow1">
@@ -20026,6 +20150,7 @@ export default class NogaPlanner extends Component {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     );
   };
@@ -21831,6 +21956,11 @@ export default class NogaPlanner extends Component {
                 )
                   ? normalizedLecture.lectureInstructors.join(", ")
                   : "-",
+                lecture_documents: Array.isArray(
+                  lectureEntry?.lectureDocuments,
+                )
+                  ? lectureEntry.lectureDocuments.length
+                  : 0,
                 lecture_date: lectureDate || "-",
               };
             })
@@ -22953,6 +23083,2223 @@ export default class NogaPlanner extends Component {
       <section id="nogaPlanner_homePanel" className="nogaPlanner_homePanel">
         <div id="nogaPlanner_homePanelGrid" className="nogaPlanner_homePanelGrid">
           <div id="nogaPlanner_homePanelRest" className="nogaPlanner_homePanelRest">
+          <div id="nogaPlanner_homePanelColumn_2" className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right">
+            <div
+              id="nogaPlanner_home_intervals_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervals" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div id="nogaPlanner_homePanelCardTitleRow_15" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_intervals">Program Intervals</strong>
+                <div id="nogaPlanner_homePanelCardActions_15" className="nogaPlanner_homePanelCardActions">
+                  {intervalsHasRegisteredValue ? (
+                    <>
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                        disabled={isHomeCardsLocked || !canSubmitIntervals}
+                        onClick={this.addHomeTableInterval}
+                      >
+                        Submit
+                      </button>
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn_5"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
+                        disabled={isHomeCardsLocked}
+                        onClick={() =>
+                          this.requestResetWithPassword(
+                            "Reset All Program Intervals",
+                            () => this.deleteAllHomeIntervals(),
+                          )
+                        }
+                      >
+                        Reset
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      id="nogaPlanner_homePanelCardSetBtn_4"
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked || !isHomeIntervalGeneratorReady}
+                      onClick={this.addHomeTableInterval}
+                    >
+                      Generate Program Intervals
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
+              <table id="nogaPlanner_homeIntervalsMiniTable_2" className="nogaPlanner_homeIntervalsMiniTable">
+                <colgroup>
+                <col />{/* Interval Number */}
+                <col />{/* Interval Status */}
+                  <col />{/* sub-Interval Number */}
+                  <col />{/* Courses per Interval Total */}
+                  <col />{/* Courses per Interval Passed */}
+                  <col />{/* Courses per Interval Failed */}
+                  <col />{/* Courses per sub-Interval Total */}
+                  <col />{/* Courses per sub-Interval Passed */}
+                  <col />{/* Courses per sub-Interval Failed */}
+                </colgroup>
+                <thead id="nogaPlanner_homeIntervalsMiniTable_2_head">
+                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row1">
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_Interval" colSpan={2}>Interval</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_SubInterval" colSpan={1}>sub-Interval</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_Courses" colSpan={6}>Courses</th>
+                  </tr>
+                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row2">
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_IntervalNum" rowSpan={2}>Number</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_IntervalStatus" rowSpan={2}>Status</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_SubIntervalNum" rowSpan={2}>Number</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesInterval" colSpan={3}>Interval</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubInterval" colSpan={3}>sub-Interval</th>
+                  </tr>
+                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row3">
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalTotal">Total</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalPassed">Passed</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalFailed">Failed</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalTotal">Total</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalPassed">Passed</th>
+                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalFailed">Failed</th>
+                  </tr>
+                </thead>
+                <tbody id="nogaPlanner_homeIntervalsMiniTable_2_body">
+                  {homeIntervalsDisplayRows.length === 0 ? (
+                    <tr id="nogaPlanner_homeIntervalsMiniTable_2_emptyRow">
+                      <td id="nogaPlanner_intervals_emptyCell" colSpan={9}>No intervals yet.</td>
+                    </tr>
+                  ) : (
+                    homeIntervalsDisplayRows.map((intervalEntry, rowIndex) => {
+                      const intervalYearGroupMeta =
+                        intervalYearGroupMetaByRowIndex.get(rowIndex) || null;
+                      const intervalCourseStats =
+                        intervalCourseStatsByRowIndex.get(
+                          intervalYearGroupMeta?.rowIndex ?? rowIndex,
+                        ) || { total: 0, passed: 0, failed: 0 };
+                      const subIntervalCourseStats =
+                        subIntervalCourseStatsByRowIndex.get(rowIndex) || {
+                          total: 0,
+                          passed: 0,
+                          failed: 0,
+                        };
+                      const intervalStatusValue = String(
+                        intervalYearGroupMeta?.intervalStatus ||
+                          intervalEntry?.intervalStatus ||
+                          "",
+                      )
+                        .trim()
+                        .toLowerCase();
+                      const rowIntervalNum = Number.parseInt(
+                        String(intervalEntry?.intervalNum || "").trim(),
+                        10,
+                      ) || null;
+                      const isRegisteredCurrentIntervalSelection =
+                        Number.isFinite(
+                          Number.parseInt(registeredCurrentIntervalNum, 10),
+                        ) &&
+                        rowIntervalNum ===
+                          Number.parseInt(registeredCurrentIntervalNum, 10) &&
+                        (Number.parseInt(
+                          String(intervalEntry?.subIntervalNum || "").trim(),
+                          10,
+                        ) || null) ===
+                          Number.parseInt(registeredCurrentSubIntervalNum, 10);
+                      const isCurrent =
+                        isRegisteredCurrentIntervalSelection ||
+                        intervalStatusValue === "current" ||
+                        (currentIntervalKey
+                          ? currentIntervalKey === intervalEntry.key
+                          : (intervalEntry.intervalNum || intervalEntry.year) === currentInterval &&
+                            (intervalEntry.subIntervalNum || intervalEntry.term) === currentTerm);
+                      const intervalKey =
+                        intervalEntry?.key ||
+                        this.getPlannerSubIntervalSchemaID(intervalEntry) ||
+                        "";
+                      const isPendingRetaking = this.state?.homeIntervalPendingRetakingKey === intervalKey;
+                      const effectiveStatusValue = isPendingRetaking ? "failed" : intervalStatusValue;
+                      const effectiveStatusDisplay = isPendingRetaking
+                        ? "Failed"
+                        : intervalStatusValue === "failed"
+                          ? "Failed"
+                          : intervalStatusValue === "failedretaking"
+                            ? "Failed: Retaking"
+                            : intervalStatusValue === "retaking"
+                              ? "Failed: Retaking"
+                              : intervalStatusValue === "failedretook"
+                                ? "Failed: Retook"
+                                : intervalStatusValue === "passedretook"
+                                  ? "Passed: Retook"
+                                  : (intervalEntry?.intervalStatus || "Normal");
+                      const btn = (label, onClick) => (
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn"
+                          disabled={isHomeCardsLocked}
+                          onClick={onClick}
+                        >
+                          {label}
+                        </button>
+                      );
+                      const fmtCountPart = (value) =>
+                        this.renderPlannerLocalizedText(Number.isFinite(Number(value)) ? Number(value) : 0);
+                      return (
+                        <tr
+                          id={`nogaPlanner_interval_row_${intervalEntry.key}`}
+                          key={`nogaPlanner_homeIntervalRow_${intervalEntry.key}`}
+                          className={
+                            (isCurrent ? "is-current" : "") +
+                            (intervalEntry.isPreview ? " is-preview" : "") +
+                            (intervalEntry.previewType === "unusual"
+                              ? " is-manual-preview"
+                              : "")
+                          }
+                        >
+                          {intervalYearGroupMeta ? (
+                            <>
+                              <td
+                                id={`nogaPlanner_interval_${intervalEntry.key}_num`}
+                                rowSpan={intervalYearGroupMeta.rowSpan}
+                              >
+                                {this.renderPlannerLocalizedText(
+                                  intervalYearGroupMeta?.intervalNum ??
+                                    intervalEntry?.intervalNum,
+                                )}
+                              </td>
+                            </>
+                          ) : null}
+                          {intervalYearGroupMeta ? (
+                            <td
+                              id={`nogaPlanner_interval_${intervalEntry.key}_status`}
+                              rowSpan={intervalYearGroupMeta.rowSpan}
+                            >
+                              {effectiveStatusDisplay}
+                            </td>
+                          ) : null}
+                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subNumber`}>
+                            {this.renderPlannerLocalizedText(intervalEntry?.subIntervalNum)}
+                          </td>
+                          {intervalYearGroupMeta ? (
+                            <>
+                              <td
+                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesTotal`}
+                                rowSpan={intervalYearGroupMeta.rowSpan}
+                              >
+                                {fmtCountPart(intervalCourseStats.total)}
+                              </td>
+                              <td
+                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesPassed`}
+                                rowSpan={intervalYearGroupMeta.rowSpan}
+                              >
+                                {fmtCountPart(intervalCourseStats.passed)}
+                              </td>
+                              <td
+                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesFailed`}
+                                rowSpan={intervalYearGroupMeta.rowSpan}
+                              >
+                                {fmtCountPart(intervalCourseStats.failed)}
+                              </td>
+                            </>
+                          ) : null}
+                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesTotal`}>
+                            {fmtCountPart(subIntervalCourseStats.total)}
+                          </td>
+                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesPassed`}>
+                            {fmtCountPart(subIntervalCourseStats.passed)}
+                          </td>
+                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesFailed`}>
+                            {fmtCountPart(subIntervalCourseStats.failed)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+              </div>
+            </div>
+            <div
+              id="nogaPlanner_home_programCourses_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div id="nogaPlanner_homePanelCardTitleRow_17" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_programCourses">Program Courses</strong>
+                <div id="nogaPlanner_homePanelCardActions_17" className="nogaPlanner_homePanelCardActions">
+                  {coursesEditorOpen ? null : (
+                    <>
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn_open_courses"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn"
+                        disabled={isHomeCardsLocked}
+                        onClick={() =>
+                          this.setState({
+                            homeCoursesEditorOpen: true,
+                            homeMaterialMetadataMode: "course",
+                            homeCourseEditingKey: "",
+                            homeCourseOriginalId: "",
+                            homeCourseOriginalIntervalId: "",
+                            homeCourseOriginalCourseNum: "",
+                            homeCourseNameDraft: "",
+                            homeCourseIdDraft: "",
+                            homeCourseCodeDraft: "",
+                            homeCourseComponentDraft: [],
+                            homeCourseComponentEditingId: "",
+                            homeCourseSubIntervalYearDraft: "",
+                            homeCourseSubIntervalTermDraft: "",
+                            homeCourseComponentIdDraft: "",
+                            homeCourseComponentPartialWeightDraft: "",
+                            homeCourseComponentStartDateDayDraft: "",
+                            homeCourseComponentStartDateMonthDraft: "",
+                            homeCourseComponentStartDateYearDraft: "",
+                            homeCourseComponentEndDateDayDraft: "",
+                            homeCourseComponentEndDateMonthDraft: "",
+                            homeCourseComponentEndDateYearDraft: "",
+                            homeCourseComponentLocationBuildingDraft: "",
+                            homeCourseComponentLocationRoomDraft: "",
+                            homeCourseComponentInstructorFirstNameDraft: "",
+                            homeCourseComponentInstructorLastNameDraft: "",
+                            homeCourseComponentInstructorsDraftList: [],
+                            homeCourseComponentStatusDraft: "",
+                            homeCourseIntervalIdDraft: "",
+                            homeCourseTotalWeightDraft: "",
+                          })
+                        }
+                      >
+                        {coursesHasRegisteredValue ? "Add Course" : "Set"}
+                      </button>
+                      {coursesHasRegisteredValue ? (
+                        <button
+                          id="nogaPlanner_homePanelCardSetBtn_resetSubIntervalMaterial"
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
+                          disabled={isHomeCardsLocked}
+                          onClick={() =>
+                            this.requestResetWithPassword(
+                              "Reset Program Courses",
+                              this.handleResetProgramCourses,
+                            )
+                          }
+                        >
+                          Reset
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                  <button
+                    id="nogaPlanner_homePanelCardSetBtn_pushCoursesToIntervals"
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
+                    disabled={isHomeCardsLocked}
+                    title="Push all Program Courses to Intervals"
+                    onClick={this.handlePushProgramCoursesToIntervals}
+                    style={{ flex: "0 0 auto" }}
+                  >
+                    <span>Push to Intervals</span>
+                    <span className="nogaPlanner_homePanelCardSetBtnBadge">
+                      {programCoursesToPushCount}
+                    </span>
+                  </button>
+                  {coursesEditorOpen ? (
+                    <>
+                      {!courseEditingKey ? (
+                        homeCourseApplyPending ? (
+                          <button
+                            id="nogaPlanner_homePanelCardSetBtn_13_courses"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                            disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
+                            onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
+                          >
+                            Submit
+                          </button>
+                        ) : (
+                          <button
+                            id="nogaPlanner_homePanelCardSetBtn_16b"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn"
+                            disabled={isHomeCardsLocked || !canAddGlobalCourse}
+                            onClick={this.addHomeCourseWithStagedComponents}
+                          >
+                            Add Course
+                          </button>
+                        )
+                      ) : null}
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn_15_courses"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                        disabled={isHomeCardsLocked}
+                        onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.cancelHomeCoursesEditor)}
+                      >
+                        Cancel
+                      </button>
+                      {aiHelpersEnabled ? (
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
+                          disabled={isHomeCardsLocked}
+                          title="Run AI for Program Courses"
+                          onClick={() => this.handleMaterialMetadataAiAction("course")}
+                          style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
+                        >
+                          <i className="fi fi-rr-magic-wand" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div
+                id="nogaPlanner_homePanelCardBody_2"
+                className={`nogaPlanner_homePanelCardBody${
+                  this.state?.homeMaterialMetadataAiLoading
+                    ? " nogaPlanner_homePanelCardBody--loading"
+                    : ""
+                }`}
+              >
+                {this.state?.homeMaterialMetadataAiLoading ? (
+                  <div
+                    id="nogaPlanner_homePanelCardBodyLoader_2"
+                    className="nogaPlanner_homePanelCardBodyLoader"
+                  >
+                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
+                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
+                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
+                        Loading AI results...
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                {coursesEditorOpen ? (
+                <div id="nogaPlanner_homeIntervalsMiniForm_7" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
+                  <div id="nogaPlanner_homeIntervalsMiniFormFields_course">
+                            <span
+                              id="nogaPlanner_homeIntervalsMiniFormEyebrow_courseInfo"
+                              className="nogaPlanner_homeIntervalsMiniFormSectionEyebrow"
+                            >
+                              Course Info
+                            </span>
+                            <div className="nogaPlanner_homeIntervalsMiniFormFields_courseRow">
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_9" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_11" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course Name
+                              </span>
+                              <input
+                                id="nogaPlanner_homeIntervalsInput_26"
+                                type="text"
+                                name="homeCourseNameMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                disabled={isHomeCardsLocked}
+                                placeholder="Course Name"
+                                value={String(this.state?.homeCourseNameDraft || "")}
+                                onChange={(event) =>
+                                  this.setState({ homeCourseNameDraft: String(event.target.value || "") })
+                                }
+                              />
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_10" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_12" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course Code
+                              </span>
+                              <input
+                                id="nogaPlanner_homeIntervalsInput_27"
+                                type="text"
+                                name="homeCourseCodeMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                placeholder="Course Code"
+                                disabled={isHomeCardsLocked}
+                                value={String(this.state?.homeCourseCodeDraft || "")}
+                                onChange={(event) => {
+                                  const nextCourseCode = String(event.target.value || "");
+                                  const matchedCourse = this.resolvePlannerCourseDraft({
+                                    courseName: String(this.state?.homeCourseNameDraft || "").trim(),
+                                    courseCode: nextCourseCode,
+                                  });
+                                  this.setState((previousState) => ({
+                                    homeCourseCodeDraft: nextCourseCode,
+                                    homeCourseIdDraft: String(matchedCourse?._id || "").trim(),
+                                    homeCourseNameDraft:
+                                      String(previousState?.homeCourseNameDraft || "") ||
+                                      String(matchedCourse?.course_name || matchedCourse?.name || "").trim(),
+                                  }));
+                                }}
+                              />
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_14" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_16" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course Interval
+                              </span>
+                              <select
+                                id="nogaPlanner_homeIntervalsInput_31"
+                                name="homeCourseIntervalMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                disabled={isHomeCardsLocked}
+                                value={courseSubIntervalYearDraftValue}
+                                onChange={(event) =>
+                                  this.setState({ homeCourseSubIntervalYearDraft: String(event.target.value || ""), homeCourseSubIntervalTermDraft: "" })
+                                }
+                              >
+                                <option value="">Select Course Interval</option>
+                                {homeGeneratedIntervalNumOptions.map((intervalNum) => (
+                                  <option key={`nogaPlanner_homeCourseInterval_${intervalNum}`} value={String(intervalNum)}>
+                                    {intervalNum}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_14b" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_16b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course sub-Interval
+                              </span>
+                              <select
+                                id="nogaPlanner_homeIntervalsInput_31b"
+                                name="homeCourseSubIntervalMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                disabled={isHomeCardsLocked || !courseSubIntervalYearDraftValue}
+                                value={courseSubIntervalTermDraftValue}
+                                onChange={(event) =>
+                                  this.setState({ homeCourseSubIntervalTermDraft: String(event.target.value || "") })
+                                }
+                              >
+                                <option value="">Select Course sub-Interval</option>
+                                {courseInfoSubIntervalNumOptions.map((subIntervalNum) => (
+                                  <option key={`nogaPlanner_homeCourseSubInterval_${subIntervalNum}`} value={String(subIntervalNum)}>
+                                    {subIntervalNum}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_courseWeight" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_courseWeight" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course Weight
+                              </span>
+                              <input
+                                id="nogaPlanner_homeIntervalsInput_courseWeight"
+                                type="number"
+                                name="homeCourseTotalWeightMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                disabled={isHomeCardsLocked}
+                                placeholder={getPlannerFieldDefaultValue(
+                                  this.state?.plannerSelectSettings?.fieldDefaults,
+                                  "course",
+                                  "homeCourseTotalWeightDraft",
+                                ) || "Course Weight"}
+                                value={String(this.state?.homeCourseTotalWeightDraft || "")}
+                                onChange={(event) =>
+                                  this.setState({ homeCourseTotalWeightDraft: String(event.target.value || "") })
+                                }
+                              />
+                            </div>
+                            </div>
+                          </div>
+                  <div id="nogaPlanner_homeIntervalsMiniFormFields_component">
+                            <span
+                              id="nogaPlanner_homeIntervalsMiniFormEyebrow_componentInfo"
+                              className="nogaPlanner_homeIntervalsMiniFormSectionEyebrow"
+                            >
+                              Course Components Info
+                            </span>
+                            <div className="nogaPlanner_homeIntervalsMiniFormFields_componentRow">
+                            <div className="nogaPlanner_homeIntervalsMiniFormFields_componentMain">
+                            <div id="nogaPlanner_CourseForm_wrapper">
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_12" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <div className="nogaPlanner_homePanelCardTitleRow">
+                                <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_14" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                  Course Component
+                                </span>
+                              </div>
+                              <select
+                                id="nogaPlanner_homeIntervalsInput_29"
+                                name="homeCourseComponentMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                disabled={areComponentFieldsDisabled}
+                                value={courseComponentIdDraftValue}
+                                onChange={(event) =>
+                                  this.setState({
+                                    homeCourseComponentIdDraft: String(
+                                      event.target.value || "",
+                                    ).trim(),
+                                  })
+                                }
+                              >
+                                <option value="">Select Course Component</option>
+                                {courseComponentOptions.map((componentId) => (
+                                  <option
+                                    key={`nogaPlanner_homeCourseComponentMini_${componentId}`}
+                                    value={componentId}
+                                  >
+                                    {componentId}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_13" className="nogaPlanner_homeIntervalsMiniFormField">
+                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_15" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Course Component Weight
+                              </span>
+                              <input
+                                id="nogaPlanner_homeIntervalsInput_30"
+                                type="number"
+                                name="homeCourseComponentPartialWeightMini"
+                                className="nogaPlanner_homeIntervalsInput"
+                                placeholder="Course Component Weight"
+                                disabled={areComponentFieldsDisabled}
+                                value={String(
+                                  this.state?.homeCourseComponentPartialWeightDraft || "",
+                                )}
+                                onChange={(event) =>
+                                  this.setState({
+                                    homeCourseComponentPartialWeightDraft: String(
+                                      event.target.value || "",
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentDates">
+                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Component Dates
+                              </span>
+                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentDatesFields">
+                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentStartDate" className="nogaPlanner_homeIntervalsMiniFormField">
+                                  <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_componentStartDate" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                    Course Component Start Date
+                                  </span>
+                                  <div className="nogaPlanner_homeIntervalsDateTriplet">
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentStartDateDay"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentStartDateDayDraft || "")}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentStartDateDayDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">DD</option>
+                                      {courseComponentDateDayOptions.map((dayNumber) => (
+                                        <option key={`nogaPlanner_homeCourseComponentStartDay_${dayNumber}`} value={dayNumber}>
+                                          {dayNumber}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentStartDateMonth"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentStartDateMonthDraft || "")}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentStartDateMonthDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">MON</option>
+                                      {courseComponentDateMonthOptions.map((monthOption) => (
+                                        <option key={`nogaPlanner_homeCourseComponentStartMonth_${monthOption.value}`} value={monthOption.value}>
+                                          {monthOption.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentStartDateYear"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      style={{ minWidth: "84px" }}
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentStartDateYearDraft || new Date().getFullYear())}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentStartDateYearDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">YEAR</option>
+                                      {courseComponentDateYearOptions.map((yearNumber) => (
+                                        <option key={`nogaPlanner_homeCourseComponentStartYear_${yearNumber}`} value={yearNumber}>
+                                          {yearNumber}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentEndDate" className="nogaPlanner_homeIntervalsMiniFormField">
+                                  <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_componentEndDate" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                    Course Component End Date
+                                  </span>
+                                  <div className="nogaPlanner_homeIntervalsDateTriplet">
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentEndDateDay"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentEndDateDayDraft || "")}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentEndDateDayDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">DD</option>
+                                      {courseComponentDateDayOptions.map((dayNumber) => (
+                                        <option key={`nogaPlanner_homeCourseComponentEndDay_${dayNumber}`} value={dayNumber}>
+                                          {dayNumber}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentEndDateMonth"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentEndDateMonthDraft || "")}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentEndDateMonthDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">MON</option>
+                                      {courseComponentDateMonthOptions.map((monthOption) => (
+                                        <option key={`nogaPlanner_homeCourseComponentEndMonth_${monthOption.value}`} value={monthOption.value}>
+                                          {monthOption.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      id="nogaPlanner_homeCourseComponentEndDateYear"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      style={{ minWidth: "84px" }}
+                                      disabled={areComponentFieldsDisabled}
+                                      value={String(this.state?.homeCourseComponentEndDateYearDraft || new Date().getFullYear())}
+                                      onChange={(event) =>
+                                        this.setState({
+                                          homeCourseComponentEndDateYearDraft: String(event.target.value || ""),
+                                        })
+                                      }
+                                    >
+                                      <option value="">YEAR</option>
+                                      {courseComponentDateYearOptions.map((yearNumber) => (
+                                        <option key={`nogaPlanner_homeCourseComponentEndYear_${yearNumber}`} value={yearNumber}>
+                                          {yearNumber}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocation">
+                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                Component Location
+                              </span>
+                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationFields">
+                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationBuilding" className="nogaPlanner_homeIntervalsMiniFormField">
+                                  <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                    Component Building
+                                  </span>
+                                  <select
+                                    id="nogaPlanner_homeCourseComponentLocationBuilding"
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    disabled={areComponentFieldsDisabled}
+                                    value={String(this.state?.homeCourseComponentLocationBuildingDraft || "")}
+                                    onChange={(event) =>
+                                      this.setState({
+                                        homeCourseComponentLocationBuildingDraft: String(event.target.value || ""),
+                                        homeCourseComponentLocationRoomDraft: "",
+                                      })
+                                    }
+                                  >
+                                    <option value="">Select Building</option>
+                                    {visibleProgramLocationsByBuilding.map((loc) => (
+                                      <option key={`nogaPlanner_compLocBuilding_${loc.building}`} value={loc.building}>
+                                        {loc.building}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationRoom" className="nogaPlanner_homeIntervalsMiniFormField">
+                                  <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                    Component Room
+                                  </span>
+                                  <select
+                                    id="nogaPlanner_homeCourseComponentLocationRoom"
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    disabled={areComponentFieldsDisabled || !this.state?.homeCourseComponentLocationBuildingDraft}
+                                    value={String(this.state?.homeCourseComponentLocationRoomDraft || "")}
+                                    onChange={(event) =>
+                                      this.setState({
+                                        homeCourseComponentLocationRoomDraft: String(event.target.value || ""),
+                                      })
+                                    }
+                                  >
+                                    <option value="">Select Room</option>
+                                    {(() => {
+                                      const selectedBuilding = String(this.state?.homeCourseComponentLocationBuildingDraft || "").trim();
+                                      const locationEntry = visibleProgramLocationsByBuilding.find(
+                                        (loc) => loc.building === selectedBuilding,
+                                      );
+                                      return Array.isArray(locationEntry?.rooms) ? locationEntry.rooms : [];
+                                    })().map((room) => (
+                                      <option key={`nogaPlanner_compLocRoom_${room}`} value={room}>
+                                        {room}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentInstructors">
+                              <div className="nogaPlanner_homePanelCardTitleRow">
+                                <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                                  Component Instructors
+                                </span>
+                                <button
+                                  id="nogaPlanner_home_button_componentInstructor_add"
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn"
+                                  disabled={
+                                    areComponentFieldsDisabled ||
+                                    (!String(this.state?.homeCourseComponentInstructorFirstNameDraft || "").trim() &&
+                                      !String(this.state?.homeCourseComponentInstructorLastNameDraft || "").trim())
+                                  }
+                                  onClick={this.appendHomeCourseComponentInstructorDraftEntry}
+                                >
+                                  Add instructor
+                                </button>
+                              </div>
+                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentInstructorsFields">
+                                <div className="nogaPlanner_homeProgramInstructorsEditorGrid">
+                                  <input
+                                    id="nogaPlanner_homeIntervalsInput_componentInstructorFirstName"
+                                    type="text"
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    placeholder="Instructor first name"
+                                    disabled={areComponentFieldsDisabled}
+                                    value={String(this.state?.homeCourseComponentInstructorFirstNameDraft || "")}
+                                    onChange={(event) =>
+                                      this.setState({
+                                        homeCourseComponentInstructorFirstNameDraft: String(event.target.value || ""),
+                                      })
+                                    }
+                                  />
+                                  <input
+                                    id="nogaPlanner_homeIntervalsInput_componentInstructorLastName"
+                                    type="text"
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    placeholder="Instructor last name"
+                                    disabled={areComponentFieldsDisabled}
+                                    value={String(this.state?.homeCourseComponentInstructorLastNameDraft || "")}
+                                    onChange={(event) =>
+                                      this.setState({
+                                        homeCourseComponentInstructorLastNameDraft: String(event.target.value || ""),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            <ul id="nogaPlanner_homeCourseComponentInstructorDraftList">
+                              {Array.isArray(this.state?.homeCourseComponentInstructorsDraftList) &&
+                              this.state.homeCourseComponentInstructorsDraftList.length > 0 ? (
+                                this.state.homeCourseComponentInstructorsDraftList.map((entry, index) => {
+                                  const firstName = String(entry?.firstName || "").trim();
+                                  const lastName = String(entry?.lastName || "").trim();
+                                  const displayName = [firstName, lastName].filter(Boolean).join(" ") || "-";
+                                  return (
+                                    <li key={`component_instructor_${index}_${displayName}`.replace(/[^a-z0-9]+/gi, "_")} className="nogaPlanner_componentDraftItem">
+                                      <span>{displayName}</span>
+                                      <button
+                                        type="button"
+                                        className="nogaPlanner_courseActionBtn nogaPlanner_courseActionBtn--delete"
+                                        disabled={isHomeCardsLocked}
+                                        onClick={() => this.removeHomeCourseComponentInstructorDraftEntry(index)}
+                                        title="Remove instructor"
+                                      >
+                                        ✕
+                                      </button>
+                                    </li>
+                                  );
+                                })
+                              ) : (
+                                <li className="nogaPlanner_componentDraftItem">
+                                  <span>-</span>
+                                </li>
+                              )}
+                            </ul>
+                            </div>
+                            </div>
+                            <div className="nogaPlanner_componentDraftListSection">
+                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Components</span>
+                            <ul id="nogaPlanner_homeCourseComponentDraftList">
+                              {courseComponentDraftValues.length > 0 ? (
+                                courseComponentDraftValues.map((comp) => (
+                                  <li key={comp.componentId} className="nogaPlanner_componentDraftItem">
+                                    <span>{comp.componentId}</span>
+                                    <button
+                                      type="button"
+                                      className="nogaPlanner_courseActionBtn"
+                                      disabled={isHomeCardsLocked}
+                                      onClick={() => this.editHomeCourseComponentDraftEntry(comp)}
+                                      title="Edit component"
+                                    >
+                                      ✏
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="nogaPlanner_courseActionBtn nogaPlanner_courseActionBtn--delete"
+                                      disabled={isHomeCardsLocked}
+                                      onClick={() => this.removeHomeCourseComponentDraftEntry(comp.componentId)}
+                                      title="Remove component"
+                                    >
+                                      ✕
+                                    </button>
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="nogaPlanner_componentDraftItem">
+                                  <span>-</span>
+                                </li>
+                              )}
+                            </ul>
+                            </div>
+                            </div>
+                          </div>
+                        {courseEditingKey ? (
+                          homeCourseApplyPending ? (
+                            <button
+                              id="nogaPlanner_homePanelCardSetBtn"
+                              type="button"
+                              className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                              disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
+                              onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
+                            >
+                              Submit
+                            </button>
+                          ) : (
+                            <button
+                              id="nogaPlanner_homePanelCardSetBtn_16b"
+                              type="button"
+                              className="nogaPlanner_homePanelCardSetBtn"
+                              disabled={isHomeCardsLocked || !hasDraftChanges || hasPendingComponentDraftInput}
+                              onClick={this.queueHomeCourseEditDraft}
+                            >
+                              Apply changes
+                            </button>
+                          )
+                        ) : null}
+                </div>
+                </div>
+                ) : null}
+                <div
+                  id="nogaPlanner_homeIntervalsMiniTable_6_wrap"
+                  className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_homeIntervalsTableWrap--courses"
+                >
+                <table id="nogaPlanner_homeIntervalsMiniTable_6" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeIntervalCoursesMiniTable">
+                    <thead id="nogaPlanner_homeIntervalsMiniTable_6_head">
+                      <tr id="nogaPlanner_homeIntervalsMiniTable_6_row1">
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_name" rowSpan={2}>Name</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_code" rowSpan={2}>Code</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_interval" rowSpan={2}>Interval</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_subInterval" rowSpan={2}>sub-Interval</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_weight" rowSpan={2}>Weight</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component" rowSpan={2}>Component</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_instructors" rowSpan={2}>Component Instructors</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_weight" rowSpan={2}>Component Weight</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_startDate" rowSpan={2}>Component Start Date</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_endDate" rowSpan={2}>Component End Date</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_location" colSpan={2}>Component Location</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_lectures" rowSpan={2}>Component Lectures</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_actions" rowSpan={2}>Actions</th>
+                      </tr>
+                      <tr id="nogaPlanner_homeIntervalsMiniTable_6_row2">
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_building">Building</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_room">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody id="nogaPlanner_homeIntervalsMiniTable_6_body">
+                      {visibleMaterialMetadataCourseInfoRows.length === 0 ? (
+                        <tr
+                          id="nogaPlanner_homeIntervalsMiniTable_6_emptyRow"
+                          className="nogaPlanner_materialMetadataEmptyRow"
+                        >
+                          <td
+                            id="nogaPlanner_homePanelCardEmptyValue_8"
+                            className="nogaPlanner_homePanelCardEmptyValue"
+                            colSpan={14}
+                          >
+                            <div className="nogaPlanner_materialMetadataEmptyState">
+                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">CRS</span>
+                              <span className="nogaPlanner_materialMetadataEmptyStateText">
+                                No course info mapped to sub-Intervals yet.
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        visibleMaterialMetadataCourseInfoRows.map((courseRow) => {
+                          const aiRowSubIntervalOptions = Array.from(
+                            new Set(
+                              homeIntervalsDisplayRows
+                                .filter(
+                                  (entry) =>
+                                    String(entry?.intervalNum || "").trim() ===
+                                    String(courseRow?.intervalNum || "").trim(),
+                                )
+                                .map((entry) =>
+                                  Number.parseInt(
+                                    String(
+                                      entry?.subIntervalNum ??
+                                        entry?.term ??
+                                        "",
+                                    ).trim(),
+                                    10,
+                                  ),
+                                )
+                                .filter((value) => Number.isFinite(value)),
+                            ),
+                          ).sort((left, right) => left - right);
+                          const rowNeedsAssignment =
+                            courseRow.isStagedDraft &&
+                            (!String(courseRow?.intervalNum || "").trim() ||
+                              !String(courseRow?.subIntervalNum || "").trim());
+                          const rowClassName = [
+                            courseRow.isPreview ? "is-preview" : "",
+                            courseRow.isStagedDraft
+                              ? "nogaPlanner_materialMetadataRow--staged"
+                              : "",
+                            courseRow.isStagedEdit
+                              ? "nogaPlanner_materialMetadataRow--edit"
+                              : "",
+                            courseRow.isAiExtracted
+                              ? "nogaPlanner_materialMetadataRow--ai"
+                              : "",
+                            rowNeedsAssignment
+                              ? "nogaPlanner_materialMetadataRow--needsAssignment"
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ");
+                          const courseComponents = Array.isArray(
+                            courseRow.courseComponents,
+                          )
+                            ? courseRow.courseComponents
+                            : [];
+                          const renderComponentStack = (items, renderItem, emptyValue = "-") => {
+                            if (items.length === 0) {
+                              return this.renderPlannerLocalizedText(emptyValue);
+                            }
+                            return (
+                              <div className="nogaPlanner_materialMetadataComponentStack">
+                                {items.map((item, idx) => (
+                                  <div
+                                    key={`${courseRow.key}_${idx}`}
+                                  >
+                                    {renderItem(item, idx)}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          };
+
+                          return (
+                            <tr
+                              id={`nogaPlanner_materialMetadata_row_${courseRow.key}`}
+                              key={`nogaPlanner_homeIntervalCourseInfo_${courseRow.key}`}
+                              className={rowClassName || undefined}
+                            >
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseName`}>
+                                <div className="nogaPlanner_materialMetadataCourseNameCell">
+                                  <span>{this.renderPlannerLocalizedText(courseRow.courseName)}</span>
+                                  {courseRow.isAiExtracted && courseRow.isStagedDraft ? (
+                                    <span className="nogaPlanner_materialMetadataBadge">
+                                      AI Staged
+                                    </span>
+                                  ) : null}
+                                  {rowNeedsAssignment ? (
+                                    <span className="nogaPlanner_materialMetadataBadge nogaPlanner_materialMetadataBadge--warning">
+                                      Needs Interval
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseCode`}>
+                                {this.renderPlannerLocalizedText(courseRow.courseCode)}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_intervalNum`}>
+                                {courseRow.isAiExtracted ? (
+                                  <select
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    value={String(courseRow?.intervalNum || "")}
+                                    onChange={(event) =>
+                                      courseRow.isStagedDraft
+                                        ? this.updateHomeCourseDraftEntrySubInterval(
+                                            courseRow.key,
+                                            event.target.value,
+                                            courseRow?.subIntervalNum || "",
+                                          )
+                                        : this.updateHomeCourseAiExtractedRowSubInterval(
+                                            courseRow.key,
+                                            event.target.value,
+                                            courseRow?.subIntervalNum || "",
+                                          )
+                                    }
+                                  >
+                                    <option value="">Select interval</option>
+                                    {homeGeneratedIntervalNumOptions.map((intervalNum) => (
+                                      <option
+                                        key={`nogaPlanner_homeCourseAiInterval_${courseRow.key}_${intervalNum}`}
+                                        value={String(intervalNum)}
+                                      >
+                                        {intervalNum}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  this.renderPlannerLocalizedText(courseRow.intervalNum || "-")
+                                )}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_subIntervalNum`}>
+                                {courseRow.isAiExtracted ? (
+                                  <select
+                                    className="nogaPlanner_homeIntervalsInput"
+                                    value={String(courseRow?.subIntervalNum || "")}
+                                    onChange={(event) =>
+                                      courseRow.isStagedDraft
+                                        ? this.updateHomeCourseDraftEntrySubInterval(
+                                            courseRow.key,
+                                            courseRow?.intervalNum || "",
+                                            event.target.value,
+                                          )
+                                        : this.updateHomeCourseAiExtractedRowSubInterval(
+                                            courseRow.key,
+                                            courseRow?.intervalNum || "",
+                                            event.target.value,
+                                          )
+                                    }
+                                  >
+                                    <option value="">Select sub-interval</option>
+                                    {aiRowSubIntervalOptions.map((subIntervalNum) => (
+                                      <option
+                                        key={`nogaPlanner_homeCourseAiSubIntervalNum_${courseRow.key}_${subIntervalNum}`}
+                                        value={String(subIntervalNum)}
+                                      >
+                                        {subIntervalNum}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  this.renderPlannerLocalizedText(courseRow.subIntervalNum || "-")
+                                )}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseWeight`}>
+                                {this.renderPlannerLocalizedText(
+                                  courseRow.courseWeight != null && courseRow.courseWeight !== "-"
+                                    ? String(courseRow.courseWeight)
+                                    : "-",
+                                )}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseComponent`}>
+                                {renderComponentStack(courseComponents, (comp) =>
+                                  this.renderPlannerLocalizedText(
+                                    comp?.componentInfo?.componentName ||
+                                      comp?.componentName ||
+                                      comp?.componentId ||
+                                      comp?.componentClass ||
+                                      "-",
+                                  ),
+                                )}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentInstructors`}>
+                                {renderComponentStack(courseComponents, (comp, idx) => {
+                                  const instructorNames = getComponentInstructorDisplayNames(
+                                    comp?.componentInfo || comp,
+                                  );
+                                  return (
+                                    <div className="nogaPlanner_materialMetadataComponentStack">
+                                      {instructorNames.map((name, instructorIndex) => (
+                                        <div key={`${courseRow.key}_compInstructors_${idx}_${instructorIndex}`}>
+                                          {this.renderPlannerLocalizedText(name)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentWeight`}>
+                                {renderComponentStack(courseComponents, (comp) =>
+                                  this.renderPlannerLocalizedText(
+                                    comp?.componentInfo?.componentWeight ||
+                                      comp?.componentWeight ||
+                                      comp?.componentInfo?.componentWeightPercentage ||
+                                      comp?.componentWeightPercentage ||
+                                      "-",
+                                  ),
+                                )}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentStartDate`}>
+                                {renderComponentStack(courseComponents, (comp) => {
+                                  const dates =
+                                    comp?.componentInfo?.componentDates ||
+                                    comp?.componentDates ||
+                                    {};
+                                  const start = dates?.start || {};
+                                  const startStr = [start.day, start.month, start.year]
+                                    .filter(Boolean)
+                                    .join("/");
+                                  return this.renderPlannerLocalizedText(startStr || "-");
+                                })}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentEndDate`}>
+                                {renderComponentStack(courseComponents, (comp) => {
+                                  const dates =
+                                    comp?.componentInfo?.componentDates ||
+                                    comp?.componentDates ||
+                                    {};
+                                  const end = dates?.end || {};
+                                  const endStr = [end.day, end.month, end.year]
+                                    .filter(Boolean)
+                                    .join("/");
+                                  return this.renderPlannerLocalizedText(endStr || "-");
+                                })}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentBuilding`}>
+                                {renderComponentStack(courseComponents, (comp) => {
+                                  const location =
+                                    comp?.componentInfo?.componentLocation ||
+                                    comp?.componentLocation ||
+                                    {};
+                                  return this.renderPlannerLocalizedText(
+                                    String(location?.building || "").trim() || "-",
+                                  );
+                                })}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentRoom`}>
+                                {renderComponentStack(courseComponents, (comp) => {
+                                  const location =
+                                    comp?.componentInfo?.componentLocation ||
+                                    comp?.componentLocation ||
+                                    {};
+                                  const rooms = Array.isArray(location?.rooms)
+                                    ? location.rooms
+                                    : [];
+                                  return this.renderPlannerLocalizedText(rooms[0] || "-");
+                                })}
+                              </td>
+                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentLectures`}>
+                                {renderComponentStack(courseComponents, (comp) => {
+                                  const componentLectures =
+                                    comp?.componentLectures ||
+                                    comp?.componentInfo?.componentLectures;
+                                  const lectureCount = Array.isArray(componentLectures)
+                                    ? componentLectures.length
+                                    : null;
+                                  return this.renderPlannerLocalizedText(
+                                    lectureCount == null ? "-" : String(lectureCount),
+                                  );
+                                })}
+                              </td>
+                              {!courseRow.isPreview &&
+                              !courseRow.isStagedDraft &&
+                              !courseRow.isAiExtracted ? (
+                                <td
+                                  id={`nogaPlanner_materialMetadata_${courseRow.key}_actions`}
+                                  className="nogaPlanner_materialMetadataActionsCell"
+                                >
+                                  <div className="nogaPlanner_materialMetadataActionsGroup">
+                                    <button
+                                      type="button"
+                                      className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                      aria-label="Edit course"
+                                      disabled={isHomeCardsLocked}
+                                      onClick={() => this.handleEditProgramCourseRow(courseRow)}
+                                    >
+                                      <i className="fi fi-rr-pencil" aria-hidden="true" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                      aria-label="Delete course"
+                                      disabled={isHomeCardsLocked}
+                                      onClick={() => this.handleDeleteProgramCourseRow(courseRow)}
+                                    >
+                                      <i className="fi fi-br-cross" aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                </td>
+                              ) : (
+                                <td id={`nogaPlanner_materialMetadata_${courseRow.key}_actions`} />
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div
+              id="nogaPlanner_home_programLectures_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div className="nogaPlanner_lectureCareContentCol">
+              <div id="nogaPlanner_homePanelCardTitleRow_programLectures" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_programLectures">Program Lectures</strong>
+                <div className="nogaPlanner_homePanelCardActions">
+                  {programLecturesEditorOpen ? null : (
+                    <>
+                      <button
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn"
+                        disabled={isHomeCardsLocked}
+                        onClick={() =>
+                          this.setState({
+                            homeCourseComponentLecturesEditorOpen: true,
+                            homeCourseLectureCourseContextDraft: "",
+        homeCourseLectureCourseNameDraft: "",
+        homeCourseLectureComponentNameDraft: "",
+        homeCourseLectureNameDraft: "",
+        homeCourseLectureOrderDraft: "",
+        homeCourseLectureInstructorsDraft: "",
+        homeCourseLectureInstructionDateDraft: "",
+        homeCourseLectureEditingId: "",
+        homeCourseComponentLectureDraftList: [],
+                          })
+                        }
+                      >
+                        {programLecturesHasRegisteredValue ? "Edit" : "Set"}
+                      </button>
+                      {programLecturesHasRegisteredValue ? (
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
+                          disabled={isHomeCardsLocked}
+                          onClick={() =>
+                            this.requestResetWithPassword(
+                              "Reset Program Lectures",
+                              this.handleResetProgramLectures,
+                            )
+                          }
+                        >
+                          Reset
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
+                        disabled={isHomeCardsLocked}
+                        title="Push all Program Lectures to Courses"
+                        onClick={this.handlePushProgramLecturesToCourses}
+                        style={{ flex: "0 0 auto" }}
+                      >
+                        <span>Push to Courses</span>
+                        <span className="nogaPlanner_homePanelCardSetBtnBadge">
+                          {programLecturesToPushCount}
+                        </span>
+                      </button>
+                    </>
+                  )}
+                  {programLecturesEditorOpen ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.cancelHomeCourseComponentLecturesEditor}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                  {canSubmitProgramLectures ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.handleHomeCourseComponentLecturesSetSubmit}
+                    >
+                      Submit
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div
+                className={`nogaPlanner_homePanelCardBody${
+                  programLecturesEditorOpen ? "" : ""
+                }`}
+              >
+                {programLecturesEditorOpen ? (
+                  <div id="nogaPlanner_homeIntervalsMiniForm_7l" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_16" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_18" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture name
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_33"
+                        type="text"
+                        name="homeCourseLectureNameMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Lecture name"
+                        disabled={isHomeCardsLocked}
+                        value={programLectureNameDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseLectureNameDraft: String(event.target.value || ""),
+                          })
+                        }
+                      />
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_16b" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_18b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture Order
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_33b"
+                        type="number"
+                        min="1"
+                        step="1"
+                        name="homeCourseLectureOrderMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Lecture order"
+                        disabled={isHomeCardsLocked}
+                        value={programLectureOrderDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseLectureOrderDraft: String(event.target.value || ""),
+                          })
+                        }
+                      />
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_15" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_17" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture Course
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_32"
+                        name="homeCourseLectureCourseMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={programLectureCourseContextDraftValue}
+                        onChange={(event) => {
+                          const nextKey = String(event.target.value || "");
+                          const selectedOption = event.target.selectedOptions?.[0] || null;
+                          const selectedLabel = String(selectedOption?.textContent || "").trim();
+                          this.setState({
+                            homeCourseLectureCourseContextDraft: nextKey,
+                            homeCourseLectureCourseNameDraft: selectedLabel,
+                            homeCourseLectureComponentNameDraft: "",
+                            homeCourseLectureInstructorsDraft: "",
+                          });
+                        }}
+                      >
+                        <option value="">Select lecture course</option>
+                        {programLectureCourseOptions.map((courseOption) => (
+                          <option
+                            key={`nogaPlanner_homeCourseLectureCourseMini_${courseOption.value}`}
+                            value={courseOption.value}
+                          >
+                            {courseOption.courseName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_17" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_19" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture Course Component
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_34"
+                        name="homeCourseLectureComponentMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked || !programLectureCourseContextDraftValue}
+                        value={programLectureComponentNameDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseLectureComponentNameDraft: String(event.target.value || ""),
+                            homeCourseLectureInstructorsDraft: "",
+                          })
+                        }
+                      >
+                        <option value="">Select lecture component</option>
+                        {programLectureComponentOptions.map((componentOption) => (
+                          <option
+                            key={`nogaPlanner_homeCourseLectureComponentMini_${programLectureCourseContextDraftValue}_${componentOption.value}`}
+                            value={componentOption.value}
+                          >
+                            {componentOption.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_18" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_20" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture Instructor
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_35"
+                        name="homeCourseLectureInstructorMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={
+                          isHomeCardsLocked ||
+                          programLectureInstructorOptions.length === 0
+                        }
+                        value={programLectureInstructorsDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseLectureInstructorsDraft: String(event.target.value || ""),
+                          })
+                        }
+                      >
+                        <option value="">Select instructor</option>
+                        {programLectureInstructorOptions.map((instructorLabelText, index) => {
+                          const instructorValue =
+                            String(instructorLabelText || "").trim() ||
+                            `instructor_${index}`;
+                          return (
+                            <option
+                              key={`nogaPlanner_homeCourseLectureInstructorMini_${instructorValue}_${index}`}
+                              value={instructorValue}
+                            >
+                              {instructorValue}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_19" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_21" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Lecture date
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_36"
+                        type="date"
+                        name="homeCourseLectureDateMini"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={programLectureDateDraftValue}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseLectureInstructionDateDraft: String(event.target.value || ""),
+                          })
+                        }
+                      />
+                    </div>
+                    <button
+                      id="nogaPlanner_homePanelCardSetBtn_17"
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.appendHomeCourseComponentLectureDraftEntry}
+                    >
+                      {this.state?.homeCourseLectureEditingId ? "Apply changes" : "Add"}
+                    </button>
+                  </div>
+                ) : null}
+                <div
+                  id="nogaPlanner_homeIntervalsMiniTable_7_wrap"
+                  className="nogaPlanner_homeIntervalsTableWrap"
+                >
+                <table id="nogaPlanner_homeIntervalsMiniTable_7" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeIntervalCoursesMiniTable">
+                    <thead id="nogaPlanner_homeIntervalsMiniTable_7_head">
+                      <tr id="nogaPlanner_homeIntervalsMiniTable_7_row1">
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_order">Order</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_name">Name</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Course_name">Course</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Component_ID">Course Component</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Instructor">Instructor</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Documents">Lecture Document</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_date">Date</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Actions">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="nogaPlanner_homeIntervalsMiniTable_7_body">
+                      {programLecturesPreviewRows.length === 0 ? (
+                        <tr
+                          id="nogaPlanner_homeIntervalsMiniTable_7_emptyRow"
+                          className="nogaPlanner_materialMetadataEmptyRow"
+                        >
+                          <td
+                          id="nogaPlanner_homePanelCardEmptyValue_9"
+                          className="nogaPlanner_homePanelCardEmptyValue"
+                            colSpan={8}
+                          >
+                            <div className="nogaPlanner_materialMetadataEmptyState">
+                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">LEC</span>
+                              <span className="nogaPlanner_materialMetadataEmptyStateText">
+                                No lectures saved yet.
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                      {programLecturesPreviewRows.map((lectureEntry) => (
+                        <tr id={`nogaPlanner_lectureInfo_row_${lectureEntry.key}`} key={`nogaPlanner_homeIntervalLectureInfo_${lectureEntry.key}`} className={lectureEntry.isPreview ? "is-preview" : ""}>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureOrder`}>{this.renderPlannerLocalizedText(String(lectureEntry.lecture_order || "-"))}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_name)}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_courseName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_course)}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_componentName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_component)}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_instructor`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_instructors)}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_documents`}>{this.renderPlannerLocalizedText(String(lectureEntry.lecture_documents ?? 0))}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureDate`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_date)}</td>
+                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_actions`}>
+                            <div id={`nogaPlanner_lectureInfo_rowActions_${lectureEntry.key}`} className="nogaPlanner_homeIntervalRowActions">
+                              <button
+                                type="button"
+                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                aria-label="Edit lecture row"
+                                disabled={isHomeCardsLocked}
+                                onClick={() => this.handleEditProgramLectureRow(lectureEntry)}
+                              >
+                                <i className="fi fi-rr-pencil" aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                aria-label="Move lecture up"
+                                disabled={
+                                  isHomeCardsLocked ||
+                                  programLecturesPreviewRows[0]?.key === lectureEntry.key
+                                }
+                                onClick={() => this.moveProgramLectureRow(lectureEntry, -1)}
+                              >
+                                <i className="fi fi-rr-arrow-small-up" aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                aria-label="Move lecture down"
+                                disabled={
+                                  isHomeCardsLocked ||
+                                  programLecturesPreviewRows[programLecturesPreviewRows.length - 1]?.key === lectureEntry.key
+                                }
+                                onClick={() => this.moveProgramLectureRow(lectureEntry, 1)}
+                              >
+                                <i className="fi fi-rr-arrow-small-down" aria-hidden="true" />
+                              </button>
+                              {lectureEntry.isPreview ? (
+                                <button
+                                  id="nogaPlanner_homeIntervalsDeleteIconBtn_3"
+                                  type="button"
+                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                  aria-label="Delete lecture draft row"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.setState((previousState) => ({
+                                      homeCourseComponentLectureDraftList: (
+                                        Array.isArray(previousState?.homeCourseComponentLectureDraftList)
+                                          ? previousState.homeCourseComponentLectureDraftList
+                                          : []
+                                      ).filter(
+                                        (entry) =>
+                                          [
+                                            String(entry?.lecture_course || "").trim(),
+                                            String(entry?.lecture_component || "").trim(),
+                                            String(entry?.lecture_name || "").trim(),
+                                            String(entry?.lecture_date || "").trim(),
+                                          ].join("|") !==
+                                          [
+                                            String(lectureEntry?.lecture_course || "").trim(),
+                                            String(lectureEntry?.lecture_component || "").trim(),
+                                            String(lectureEntry?.lecture_name || "").trim(),
+                                            String(lectureEntry?.lecture_date || "").trim(),
+                                          ].join("|"),
+                                      ),
+                                    }))
+                                  }
+                                >
+                                  <i className="fi fi-br-cross" aria-hidden="true" />
+                                </button>
+                              ) : (
+                                <button
+                                  id="nogaPlanner_homeIntervalsDeleteIconBtn_3"
+                                  type="button"
+                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                  aria-label="Delete lecture row"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.requestResetWithPassword(
+                                      "Delete Lecture",
+                                      async () => {
+                                        const lectureId = String(
+                                          lectureEntry?._id ||
+                                            lectureEntry?.lectureID ||
+                                            "",
+                                        ).trim();
+                                        if (!lectureId) {
+                                          return;
+                                        }
+                                        checkedLectures = [lectureId];
+                                        await this.deleteLecture();
+                                      },
+                                    )
+                                  }
+                                >
+                                  <i className="fi fi-br-cross" aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              </div>{/* end nogaPlanner_lectureCareContentCol */}
+              {(() => {
+                const allLecDocs = (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
+                  .flatMap((lec) => Array.isArray(lec?.lectureDocuments) ? lec.lectureDocuments : [])
+                  .map((entry) => String(entry || "").trim())
+                  .filter(Boolean);
+                const uniqueLecDocKeys = Array.from(new Set(allLecDocs));
+                if (uniqueLecDocKeys.length === 0) return null;
+                const progDocs = Array.isArray(plannerRoot?.programDocuments) ? plannerRoot.programDocuments : [];
+                const squares = uniqueLecDocKeys.map((key) => {
+                  const match = progDocs.find(
+                    (d) =>
+                      String(d?.documentInfo?.documentID || "").trim() === key ||
+                      String(d?.documentInfo?.documentName || "").trim() === key,
+                  );
+                  const rawVolume = match?.documentInfo?.documentVolume;
+                  const normalizedVolume = Number.isFinite(Number(rawVolume))
+                    ? Number(rawVolume)
+                    : null;
+                  const name = match?.documentInfo?.documentName || key;
+                  return { key, name, volume: normalizedVolume };
+                });
+                return (
+                  <div className="nogaPlanner_lectureDocsVolumePanel">
+                    {squares.map(({ key, name, volume }) => (
+                      <div
+                        key={key}
+                        className="nogaPlanner_lectureDocVolumeSquare"
+                        title={name}
+                      >
+                        <span className="nogaPlanner_lectureDocVolumeNum">
+                          {volume != null ? volume : "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+            <div
+              id="nogaPlanner_home_programTasks_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div id="nogaPlanner_homePanelCardTitleRow_programTasks" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_programTasks">Program Tasks</strong>
+                <div className="nogaPlanner_homePanelCardActions">
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
+                    disabled={isHomeCardsLocked}
+                    onClick={() => this.requestResetWithPassword("Reset Material Metadata", this.handleResetSubIntervalMaterialMetadata)}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                    disabled={isHomeCardsLocked || !canSubmitMaterialMetadataExamInfo}
+                    onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.handleHomeCoursesSetSubmit)}
+                  >
+                    Submit
+                  </button>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                    disabled={isHomeCardsLocked}
+                    onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.cancelHomeCoursesEditor)}
+                  >
+                    Cancel
+                  </button>
+                  {aiHelpersEnabled ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
+                      disabled={isHomeCardsLocked}
+                      title="Run AI for Tasks"
+                      onClick={() => this.handleMaterialMetadataAiAction("exams")}
+                      style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
+                    >
+                      <i className="fi fi-rr-magic-wand" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div
+                className={`nogaPlanner_homePanelCardBody${
+                  this.state?.homeMaterialMetadataAiLoading
+                    ? " nogaPlanner_homePanelCardBody--loading"
+                    : ""
+                }`}
+              >
+                {this.state?.homeMaterialMetadataAiLoading ? (
+                  <div className="nogaPlanner_homePanelCardBodyLoader">
+                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
+                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
+                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
+                        Loading AI results...
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                <div id="nogaPlanner_homeIntervalsMiniForm_8" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_18" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_20" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Component ID
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_35"
+                        name="homeCourseExamComponentMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={String(
+                          this.state?.homeCourseExamComponentIdDraft || "",
+                        )}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamComponentIdDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                          })
+                        }
+                      >
+                        <option value="">Select component</option>
+                        {materialMetadataCourseRows
+                          .filter((courseRow) => {
+                            const comp = String(courseRow.courseComponent || "").trim().toLowerCase();
+                            return !comp.includes("exam");
+                          })
+                          .map((courseRow) => {
+                          const cid = String(courseRow.courseID || "").trim();
+                          const comp = String(courseRow.courseComponent || "").trim();
+                          const componentID = String(courseRow.componentID || "").trim();
+                          const displayId = componentID && componentID !== "-"
+                            ? componentID
+                            : cid && comp && comp !== "-"
+                              ? `${cid}_${comp}`
+                              : comp || "-";
+                          const optionValue = componentID && componentID !== "-" ? componentID : displayId;
+                          return (
+                            <option
+                              key={`nogaPlanner_homeCourseExamComponentStandalone_${optionValue}`}
+                              value={optionValue}
+                            >
+                              {courseRow.courseName || "-"} ({displayId})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                    {String(this.state?.homeCourseExamComponentIdDraft || "").trim() ? (
+                    <><div id="nogaPlanner_homeIntervalsMiniFormField_19" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_21" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Task
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_36"
+                        name="homeCourseExamClassMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseExamClassDraft || "")}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamClassDraft: String(
+                              event.target.value || "",
+                            ).trim(),
+                          })
+                        }
+                      >
+                        <option value="">Select task</option>
+                        {plannerTasks.map((examClass) => (
+                          <option
+                            key={`nogaPlanner_examClassOption_${examClass}`}
+                            value={examClass}
+                          >
+                            {examClass}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_20" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_22" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Exam date
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_37"
+                        type="date"
+                        name="homeCourseExamDateMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseExamDateDraft || "")}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamDateDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_21" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_23" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Exam time
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_38"
+                        type="time"
+                        name="homeCourseExamTimeMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseExamTimeDraft || "")}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamTimeDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_22" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_24" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Building
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_39"
+                        name="homeCourseExamLocationBuildingMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked}
+                        value={String(
+                          this.state?.homeCourseExamLocationBuildingDraft || "",
+                        )}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamLocationBuildingDraft: String(event.target.value || ""),
+                            homeCourseExamLocationRoomDraft: "",
+                          })
+                        }
+                      >
+                        <option value="">Select building</option>
+                        {materialMetadataProgramLocations.map((loc) => (
+                          <option
+                            key={`nogaPlanner_examLocationBuilding_${loc.building}`}
+                            value={String(loc.building || "")}
+                          >
+                            {loc.building}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_22b" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_24b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Room
+                      </span>
+                      <select
+                        id="nogaPlanner_homeIntervalsInput_39b"
+                        name="homeCourseExamLocationRoomMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        disabled={isHomeCardsLocked || !String(this.state?.homeCourseExamLocationBuildingDraft || "").trim()}
+                        value={String(
+                          this.state?.homeCourseExamLocationRoomDraft || "",
+                        )}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamLocationRoomDraft: String(event.target.value || ""),
+                          })
+                        }
+                      >
+                        <option value="">Select room</option>
+                        {(() => {
+                          const selectedBuilding = String(this.state?.homeCourseExamLocationBuildingDraft || "").trim();
+                          const matchedLoc = materialMetadataProgramLocations.find(
+                            (loc) => String(loc.building || "") === selectedBuilding,
+                          );
+                          return Array.isArray(matchedLoc?.rooms) ? matchedLoc.rooms : [];
+                        })().map((room) => (
+                          <option
+                            key={`nogaPlanner_examLocationRoom_${room}`}
+                            value={room}
+                          >
+                            {room}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_23" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_25" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Exam weight
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_40"
+                        type="number"
+                        name="homeCourseExamWeightMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Exam weight"
+                        disabled={isHomeCardsLocked}
+                        value={String(this.state?.homeCourseExamWeightDraft || "")}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamWeightDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <div id="nogaPlanner_homeIntervalsMiniFormField_25" className="nogaPlanner_homeIntervalsMiniFormField">
+                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_27" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+                        Exam grade
+                      </span>
+                      <input
+                        id="nogaPlanner_homeIntervalsInput_42"
+                        type="number"
+                        name="homeCourseExamGradeMiniStandalone"
+                        className="nogaPlanner_homeIntervalsInput"
+                        placeholder="Exam grade"
+                        disabled={isHomeCardsLocked}
+                        value={String(
+                          this.state?.homeCourseExamGradeDraft || "",
+                        )}
+                        onChange={(event) =>
+                          this.setState({
+                            homeCourseExamGradeDraft: String(
+                              event.target.value || "",
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                    <button
+                      id="nogaPlanner_homePanelCardSetBtn_23"
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={
+                        isHomeCardsLocked ||
+                        !Boolean(
+                          String(this.state?.homeCourseExamComponentIdDraft || "").trim() &&
+                            String(this.state?.homeCourseExamClassDraft || "").trim(),
+                        )
+                      }
+                      onClick={this.appendHomeCourseExamDraftEntry}
+                    >
+                      {isExamEntryEditMode ? "Apply changes" : "Add task"}
+                    </button>
+                    </>) : null}
+                  </div>
+                <div
+                  id="nogaPlanner_homeIntervalsMiniTable_8_wrap"
+                  className="nogaPlanner_homeIntervalsTableWrap"
+                >
+                <table id="nogaPlanner_homeIntervalsMiniTable_8" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCoursesMiniTable">
+                    <thead id="nogaPlanner_homeIntervalsMiniTable_8_head">
+                      <tr id="nogaPlanner_homeIntervalsMiniTable_8_row1">
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_ID" rowSpan={2}>Task ID</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Course_name" rowSpan={2}>Course name</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Course_Component_Class" rowSpan={2}>Component name</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_class" rowSpan={2}>Task</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_date" rowSpan={2}>Task date</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_time" rowSpan={2}>Task time</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location" colSpan={2}>Task location</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_weight" rowSpan={2}>Task weight</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_grade" rowSpan={2}>Task grade</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Actions" rowSpan={2}>Actions</th>
+                      </tr>
+                      <tr id="nogaPlanner_homeIntervalsMiniTable_8_row2">
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location_building">Building</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location_room">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody id="nogaPlanner_homeIntervalsMiniTable_8_body">
+                      {!hasHomeCourseExamScheduleRows ? (
+                        <tr
+                          id="nogaPlanner_homeIntervalsMiniTable_8_emptyRow"
+                          className="nogaPlanner_materialMetadataEmptyRow"
+                        >
+                          <td
+                            id="nogaPlanner_homePanelCardEmptyValue_10"
+                            className="nogaPlanner_homePanelCardEmptyValue"
+                            colSpan={11}
+                          >
+                            <div className="nogaPlanner_materialMetadataEmptyState">
+                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">TSK</span>
+                              <span className="nogaPlanner_materialMetadataEmptyStateText">
+                                No task schedule saved yet.
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : liveExamScheduleGroups.flatMap((group) =>
+                        group.parts.map((row, partIndex) => (
+                          <tr
+                            id={`nogaPlanner_examSchedule_row_${row.key}`}
+                            key={`nogaPlanner_homeExamScheduleRow_${row.key}`}
+                            className={row?.isPreview ? "is-preview" : ""}
+                          >
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examID`}>{this.renderPlannerLocalizedText(row.taskID || row.examPartID)}</td>
+                            {partIndex === 0 ? (
+                              <>
+                                <td
+                                  id={`nogaPlanner_examSchedule_${group.componentID}_courseName`}
+                                  rowSpan={group.parts.length}
+                                >
+                                  {this.renderPlannerLocalizedText(group.courseName)}
+                                </td>
+                                <td
+                                  id={`nogaPlanner_examSchedule_${group.componentID}_componentClass`}
+                                  rowSpan={group.parts.length}
+                                >
+                                  {this.renderPlannerLocalizedText(group.courseComponentClass)}
+                                </td>
+                              </>
+                            ) : null}
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examClass`}>{this.renderPlannerLocalizedText(row.examClass)}</td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examDate`}>{this.renderPlannerLocalizedText(row.taskDate)}</td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examTime`}>{this.renderPlannerLocalizedText(row.taskTime)}</td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examLocation_building`}>
+                              {this.renderPlannerLocalizedText(row.taskLocation?.building)}
+                            </td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examLocation_room`}>
+                              {this.renderPlannerLocalizedText(
+                                Array.isArray(row.taskLocation?.rooms) && row.taskLocation.rooms.length > 0
+                                  ? row.taskLocation.rooms[0]
+                                  : String(row.taskLocation?.room || "").trim(),
+                              )}
+                            </td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examWeight`}>{this.renderPlannerLocalizedText(row.taskWeight)}</td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_examGrade`}>{this.renderPlannerLocalizedText(row.taskGrade)}</td>
+                            <td id={`nogaPlanner_examSchedule_${row.key}_actions`}>
+                              {!row.isPreview ? (
+                                <div id={`nogaPlanner_examSchedule_rowActions_${row.key}`} className="nogaPlanner_homeIntervalRowActions">
+                                  <button
+                                    id={`nogaPlanner_homePanelCardSetBtn_24_${row.key}`}
+                                    type="button"
+                                    className="nogaPlanner_homePanelCardSetBtn"
+                                    disabled={isHomeCardsLocked}
+                                    onClick={() => this.editHomeCourseExamScheduleEntry(row)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    id={`nogaPlanner_homeIntervalsDeleteIconBtn_4_${row.key}`}
+                                    type="button"
+                                    className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                                    aria-label="Delete exam part"
+                                    disabled={isHomeCardsLocked}
+                                    onClick={() => this.deleteHomeCourseExamScheduleEntry(row)}
+                                  >
+                                    <i className="fi fi-br-cross" aria-hidden="true" />
+                                  </button>
+                                </div>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div
+              id="nogaPlanner_home_storedDocuments_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div className="nogaPlanner_homePanelCardBody">
+                <StoredDocumentsCard planner={this} />
+              </div>
+            </div>
+            <div
+              id="nogaPlanner_home_lecturesMode_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "lectures"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div id="nogaPlanner_homePanelCardTitleRow_19" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_lectures">Lectures</strong>
+              </div>
+              <div id="nogaPlanner_homePanelCardBody_4" className="nogaPlanner_homePanelCardBody">
+                {this.renderSelectedCourseLecturesTable("full")}
+              </div>
+            </div>
+            <div
+              id="nogaPlanner_home_documentsMode_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "documents"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              <div id="nogaPlanner_homePanelCardTitleRow_20" className="nogaPlanner_homePanelCardTitleRow">
+                <strong id="nogaPlanner_home_heading_documents">Documents</strong>
+              </div>
+              <div id="nogaPlanner_homePanelCardBody_5" className="nogaPlanner_homePanelCardBody">
+                <NogaPlannerTelegramPanel
+                  planner={this}
+                  runtime={NOGAPLANNER_PANEL_RUNTIME}
+                />
+              </div>
+            </div>
+          </div>
           <div id="nogaPlanner_homePanelColumn" className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--left">
             <div id="nogaPlanner_home_programName_card" className="nogaPlanner_homePanelCard">
               <div id="nogaPlanner_homePanelCardTitleRow_2" className="nogaPlanner_homePanelCardTitleRow">
@@ -23593,7 +25940,6 @@ export default class NogaPlanner extends Component {
                         <th id="nogaPlanner_homeComponentsTable_th_Mode">Mode</th>
                         <th id="nogaPlanner_homeComponentsTable_th_Unit">Unit</th>
                         <th id="nogaPlanner_homeComponentsTable_th_Threshold">Threshold</th>
-                        <th id="nogaPlanner_homeComponentsTable_th_Rule">Rule</th>
                         {intervalPassingThresholdEditorOpen ? (
                           <th id="nogaPlanner_homeComponentsTable_th_Actions">Actions</th>
                         ) : null}
@@ -23604,8 +25950,10 @@ export default class NogaPlanner extends Component {
                         <tr id={`nogaPlanner_failingRule_row_${rule.key}`} key={rule.key}>
                           <td id={`nogaPlanner_failingRule_${rule.key}_mode`}>{this.formatPlannerTableValue(rule.thresholdMode)}</td>
                           <td id={`nogaPlanner_failingRule_${rule.key}_unit`}>{this.formatPlannerTableValue(rule.thresholdUnit)}</td>
-                          <td id={`nogaPlanner_failingRule_${rule.key}_number`}>{this.formatPlannerTableValue(rule.thresholdNumber)}</td>
-                          <td id={`nogaPlanner_failingRule_${rule.key}_rule`}>{this.formatPlannerTableValue(rule.thresholdRule)}</td>
+                          <td id={`nogaPlanner_failingRule_${rule.key}_number`}>
+                            {this.formatPlannerTableValue(rule.thresholdNumber)}
+                            {rule.thresholdRule ? ` (${this.formatPlannerTableValue(rule.thresholdRule)})` : ""}
+                          </td>
                           {intervalPassingThresholdEditorOpen ? (
                             <td id={`nogaPlanner_failingRule_${rule.key}_actions`}>
                               <button
@@ -24044,14 +26392,10 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_3" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel_3" className="nogaPlanner_homePanelCardStoredLabel">
-                  {tasksEditorOpen ? "Draft Task Names" : "Stored Task Names"}
-                </span>
                 {visibleProgramTasks.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_4" className="nogaPlanner_homeComponentsTable">
                     <thead id="nogaPlanner_homeComponentsTable_4_head">
                       <tr id="nogaPlanner_homeComponentsTable_4_row1">
-                        <th id="nogaPlanner_homeComponentsTable_4_th_Task_Name">Task Name</th>
                         {tasksEditorOpen ? <th id="nogaPlanner_taskNames_th_actions">Actions</th> : null}
                       </tr>
                     </thead>
@@ -24182,14 +26526,10 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_docTypes" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel_docTypes" className="nogaPlanner_homePanelCardStoredLabel">
-                  {docTypesEditorOpen ? "Draft Document Types" : "Stored Document Types"}
-                </span>
                 {visibleProgramDocTypes.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_docTypes" className="nogaPlanner_homeComponentsTable">
                     <thead id="nogaPlanner_homeComponentsTable_docTypes_head">
                       <tr id="nogaPlanner_homeComponentsTable_docTypes_row1">
-                        <th id="nogaPlanner_homeComponentsTable_docTypes_th_name">Document Type</th>
                         {docTypesEditorOpen ? <th id="nogaPlanner_docTypes_th_actions">Actions</th> : null}
                       </tr>
                     </thead>
@@ -24466,7 +26806,7 @@ export default class NogaPlanner extends Component {
                     <button
                       id="nogaPlanner_home_button_currentInterval_reset"
                       type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
                       disabled={isHomeCardsLocked}
                       onClick={() =>
                         this.requestResetWithPassword(
@@ -24609,9 +26949,6 @@ export default class NogaPlanner extends Component {
                 </div>
               ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_5" className="nogaPlanner_homePanelCardStoredBlock">
-                <span id="nogaPlanner_homePanelCardStoredLabel_5" className="nogaPlanner_homePanelCardStoredLabel">
-                  {programEditorsEditorOpen ? "Draft Editors" : "Stored Editors"}
-                </span>
                 {visibleProgramEditors.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_6" className="nogaPlanner_homeComponentsTable">
                     <thead id="nogaPlanner_homeComponentsTable_6_head">
@@ -24885,2248 +27222,6 @@ export default class NogaPlanner extends Component {
               </div>
             </div>
           </div>
-          <div id="nogaPlanner_homePanelColumn_2" className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right">
-            <div
-              id="nogaPlanner_home_intervals_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervals" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_15" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_intervals">Program Intervals</strong>
-                <div id="nogaPlanner_homePanelCardActions_15" className="nogaPlanner_homePanelCardActions">
-                  {intervalsHasRegisteredValue ? (
-                    <>
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                        disabled={isHomeCardsLocked || !canSubmitIntervals}
-                        onClick={this.addHomeTableInterval}
-                      >
-                        Submit
-                      </button>
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn_5"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                        disabled={isHomeCardsLocked}
-                        onClick={() =>
-                          this.requestResetWithPassword(
-                            "Reset All Program Intervals",
-                            () => this.deleteAllHomeIntervals(),
-                          )
-                        }
-                      >
-                        Reset
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      id="nogaPlanner_homePanelCardSetBtn_4"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked || !isHomeIntervalGeneratorReady}
-                      onClick={this.addHomeTableInterval}
-                    >
-                      Generate Program Intervals
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
-              <table id="nogaPlanner_homeIntervalsMiniTable_2" className="nogaPlanner_homeIntervalsMiniTable">
-                <colgroup>
-                <col />{/* Interval ID */}
-                <col />{/* Interval Number */}
-                <col />{/* Interval Status */}
-                  <col />{/* sub-Interval ID */}
-                  <col />{/* sub-Interval Number */}
-                  <col />{/* Courses per Interval Total */}
-                  <col />{/* Courses per Interval Passed */}
-                  <col />{/* Courses per Interval Failed */}
-                  <col />{/* Courses per sub-Interval Total */}
-                  <col />{/* Courses per sub-Interval Passed */}
-                  <col />{/* Courses per sub-Interval Failed */}
-                </colgroup>
-                <thead id="nogaPlanner_homeIntervalsMiniTable_2_head">
-                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row1">
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_Interval" colSpan={3}>Interval</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_SubInterval" colSpan={2}>sub-Interval</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_Courses" colSpan={6}>Courses</th>
-                  </tr>
-                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row2">
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_IntervalID" rowSpan={2}>ID</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_IntervalNum" rowSpan={2}>Number</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_IntervalStatus" rowSpan={2}>Status</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_SubIntervalID" rowSpan={2}>ID</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_SubIntervalNum" rowSpan={2}>Number</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesInterval" colSpan={3}>Interval</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubInterval" colSpan={3}>sub-Interval</th>
-                  </tr>
-                  <tr id="nogaPlanner_homeIntervalsMiniTable_2_row3">
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalTotal">Total</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalPassed">Passed</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesIntervalFailed">Failed</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalTotal">Total</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalPassed">Passed</th>
-                    <th id="nogaPlanner_homeIntervalsMiniTable_2_th_CoursesSubIntervalFailed">Failed</th>
-                  </tr>
-                </thead>
-                <tbody id="nogaPlanner_homeIntervalsMiniTable_2_body">
-                  {homeIntervalsDisplayRows.length === 0 ? (
-                    <tr id="nogaPlanner_homeIntervalsMiniTable_2_emptyRow">
-                      <td id="nogaPlanner_intervals_emptyCell" colSpan={17}>No intervals yet.</td>
-                    </tr>
-                  ) : (
-                    homeIntervalsDisplayRows.map((intervalEntry, rowIndex) => {
-                      const intervalYearGroupMeta =
-                        intervalYearGroupMetaByRowIndex.get(rowIndex) || null;
-                      const intervalCourseStats =
-                        intervalCourseStatsByRowIndex.get(
-                          intervalYearGroupMeta?.rowIndex ?? rowIndex,
-                        ) || { total: 0, passed: 0, failed: 0 };
-                      const subIntervalCourseStats =
-                        subIntervalCourseStatsByRowIndex.get(rowIndex) || {
-                          total: 0,
-                          passed: 0,
-                          failed: 0,
-                        };
-                      const intervalStatusValue = String(
-                        intervalYearGroupMeta?.intervalStatus ||
-                          intervalEntry?.intervalStatus ||
-                          "",
-                      )
-                        .trim()
-                        .toLowerCase();
-                      const rowIntervalNum = Number.parseInt(
-                        String(intervalEntry?.intervalNum || "").trim(),
-                        10,
-                      ) || null;
-                      const isRegisteredCurrentIntervalSelection =
-                        Number.isFinite(
-                          Number.parseInt(registeredCurrentIntervalNum, 10),
-                        ) &&
-                        rowIntervalNum ===
-                          Number.parseInt(registeredCurrentIntervalNum, 10) &&
-                        (Number.parseInt(
-                          String(intervalEntry?.subIntervalNum || "").trim(),
-                          10,
-                        ) || null) ===
-                          Number.parseInt(registeredCurrentSubIntervalNum, 10);
-                      const isCurrent =
-                        isRegisteredCurrentIntervalSelection ||
-                        intervalStatusValue === "current" ||
-                        (currentIntervalKey
-                          ? currentIntervalKey === intervalEntry.key
-                          : (intervalEntry.intervalNum || intervalEntry.year) === currentInterval &&
-                            (intervalEntry.subIntervalNum || intervalEntry.term) === currentTerm);
-                      const intervalKey =
-                        intervalEntry?.key ||
-                        this.getPlannerSubIntervalSchemaID(intervalEntry) ||
-                        "";
-                      const isPendingRetaking = this.state?.homeIntervalPendingRetakingKey === intervalKey;
-                      const effectiveStatusValue = isPendingRetaking ? "failed" : intervalStatusValue;
-                      const effectiveStatusDisplay = isPendingRetaking
-                        ? "Failed"
-                        : intervalStatusValue === "failed"
-                          ? "Failed"
-                          : intervalStatusValue === "failedretaking"
-                            ? "Failed: Retaking"
-                            : intervalStatusValue === "retaking"
-                              ? "Failed: Retaking"
-                              : intervalStatusValue === "failedretook"
-                                ? "Failed: Retook"
-                                : intervalStatusValue === "passedretook"
-                                  ? "Passed: Retook"
-                                  : (intervalEntry?.intervalStatus || "Normal");
-                      const btn = (label, onClick) => (
-                        <button
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn"
-                          disabled={isHomeCardsLocked}
-                          onClick={onClick}
-                        >
-                          {label}
-                        </button>
-                      );
-                      const fmtCountPart = (value) =>
-                        this.renderPlannerLocalizedText(Number.isFinite(Number(value)) ? Number(value) : 0);
-                      return (
-                        <tr
-                          id={`nogaPlanner_interval_row_${intervalEntry.key}`}
-                          key={`nogaPlanner_homeIntervalRow_${intervalEntry.key}`}
-                          className={
-                            (isCurrent ? "is-current" : "") +
-                            (intervalEntry.isPreview ? " is-preview" : "") +
-                            (intervalEntry.previewType === "unusual"
-                              ? " is-manual-preview"
-                              : "")
-                          }
-                        >
-                          {intervalYearGroupMeta ? (
-                            <>
-                              <td
-                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalID`}
-                                rowSpan={intervalYearGroupMeta.rowSpan}
-                              >
-                                {this.renderPlannerLocalizedText(
-                                  intervalEntry?.intervalID || intervalEntry?.intervalId,
-                                )}
-                              </td>
-                              <td
-                                id={`nogaPlanner_interval_${intervalEntry.key}_num`}
-                                rowSpan={intervalYearGroupMeta.rowSpan}
-                              >
-                                {this.renderPlannerLocalizedText(
-                                  intervalYearGroupMeta?.intervalNum ??
-                                    intervalEntry?.intervalNum,
-                                )}
-                              </td>
-                            </>
-                          ) : null}
-                          {intervalYearGroupMeta ? (
-                            <td
-                              id={`nogaPlanner_interval_${intervalEntry.key}_status`}
-                              rowSpan={intervalYearGroupMeta.rowSpan}
-                            >
-                              {effectiveStatusDisplay}
-                            </td>
-                          ) : null}
-                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalID`}>
-                            {this.renderPlannerLocalizedText(
-                              intervalEntry?.key ||
-                                intervalEntry?.subIntervalID ||
-                                intervalEntry?.subIntervalId,
-                            )}
-                          </td>
-                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subNumber`}>
-                            {this.renderPlannerLocalizedText(intervalEntry?.subIntervalNum)}
-                          </td>
-                          {intervalYearGroupMeta ? (
-                            <>
-                              <td
-                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesTotal`}
-                                rowSpan={intervalYearGroupMeta.rowSpan}
-                              >
-                                {fmtCountPart(intervalCourseStats.total)}
-                              </td>
-                              <td
-                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesPassed`}
-                                rowSpan={intervalYearGroupMeta.rowSpan}
-                              >
-                                {fmtCountPart(intervalCourseStats.passed)}
-                              </td>
-                              <td
-                                id={`nogaPlanner_interval_${intervalEntry.key}_intervalCoursesFailed`}
-                                rowSpan={intervalYearGroupMeta.rowSpan}
-                              >
-                                {fmtCountPart(intervalCourseStats.failed)}
-                              </td>
-                            </>
-                          ) : null}
-                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesTotal`}>
-                            {fmtCountPart(subIntervalCourseStats.total)}
-                          </td>
-                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesPassed`}>
-                            {fmtCountPart(subIntervalCourseStats.passed)}
-                          </td>
-                          <td id={`nogaPlanner_interval_${intervalEntry.key}_subIntervalCoursesFailed`}>
-                            {fmtCountPart(subIntervalCourseStats.failed)}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-              </div>
-            </div>
-            <div
-              id="nogaPlanner_home_programCourses_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_17" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programCourses">Program Courses</strong>
-                <div id="nogaPlanner_homePanelCardActions_17" className="nogaPlanner_homePanelCardActions">
-                  {coursesEditorOpen ? null : (
-                    <>
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn_open_courses"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn"
-                        disabled={isHomeCardsLocked}
-                        onClick={() =>
-                          this.setState({
-                            homeCoursesEditorOpen: true,
-                            homeMaterialMetadataMode: "course",
-                            homeCourseEditingKey: "",
-                            homeCourseOriginalId: "",
-                            homeCourseOriginalIntervalId: "",
-                            homeCourseOriginalCourseNum: "",
-                            homeCourseNameDraft: "",
-                            homeCourseIdDraft: "",
-                            homeCourseCodeDraft: "",
-                            homeCourseComponentDraft: [],
-                            homeCourseComponentEditingId: "",
-                            homeCourseSubIntervalYearDraft: "",
-                            homeCourseSubIntervalTermDraft: "",
-                            homeCourseComponentIdDraft: "",
-                            homeCourseComponentPartialWeightDraft: "",
-                            homeCourseComponentStartDateDayDraft: "",
-                            homeCourseComponentStartDateMonthDraft: "",
-                            homeCourseComponentStartDateYearDraft: "",
-                            homeCourseComponentEndDateDayDraft: "",
-                            homeCourseComponentEndDateMonthDraft: "",
-                            homeCourseComponentEndDateYearDraft: "",
-                            homeCourseComponentLocationBuildingDraft: "",
-                            homeCourseComponentLocationRoomDraft: "",
-                            homeCourseComponentInstructorFirstNameDraft: "",
-                            homeCourseComponentInstructorLastNameDraft: "",
-                            homeCourseComponentInstructorsDraftList: [],
-                            homeCourseComponentStatusDraft: "",
-                            homeCourseIntervalIdDraft: "",
-                            homeCourseTotalWeightDraft: "",
-                          })
-                        }
-                      >
-                        {coursesHasRegisteredValue ? "Edit" : "Set"}
-                      </button>
-                      {coursesHasRegisteredValue ? (
-                        <button
-                          id="nogaPlanner_homePanelCardSetBtn_resetSubIntervalMaterial"
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                          disabled={isHomeCardsLocked}
-                          onClick={() =>
-                            this.requestResetWithPassword(
-                              "Reset Program Courses",
-                              this.handleResetProgramCourses,
-                            )
-                          }
-                        >
-                          Reset
-                        </button>
-                      ) : null}
-                    </>
-                  )}
-                  <button
-                    id="nogaPlanner_homePanelCardSetBtn_pushCoursesToIntervals"
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-                    disabled={isHomeCardsLocked}
-                    title="Push all Program Courses to Intervals"
-                    onClick={this.handlePushProgramCoursesToIntervals}
-                    style={{ flex: "0 0 auto" }}
-                  >
-                    <span>Push to Intervals</span>
-                    <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                      {programCoursesToPushCount}
-                    </span>
-                  </button>
-                  {coursesEditorOpen ? (
-                    <>
-                      {!courseEditingKey ? (
-                        homeCourseApplyPending ? (
-                          <button
-                            id="nogaPlanner_homePanelCardSetBtn_13_courses"
-                            type="button"
-                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                            disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
-                            onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
-                          >
-                            Submit
-                          </button>
-                        ) : (
-                          <button
-                            id="nogaPlanner_homePanelCardSetBtn_16b"
-                            type="button"
-                            className="nogaPlanner_homePanelCardSetBtn"
-                            disabled={isHomeCardsLocked || !canAddGlobalCourse}
-                            onClick={this.addHomeCourseWithStagedComponents}
-                          >
-                            Add Course
-                          </button>
-                        )
-                      ) : null}
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn_15_courses"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                        disabled={isHomeCardsLocked}
-                        onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.cancelHomeCoursesEditor)}
-                      >
-                        Cancel
-                      </button>
-                      {aiHelpersEnabled ? (
-                        <button
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
-                          disabled={isHomeCardsLocked}
-                          title="Run AI for Program Courses"
-                          onClick={() => this.handleMaterialMetadataAiAction("course")}
-                          style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
-                        >
-                          <i className="fi fi-rr-magic-wand" aria-hidden="true" />
-                        </button>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              <div
-                id="nogaPlanner_homePanelCardBody_2"
-                className={`nogaPlanner_homePanelCardBody${
-                  this.state?.homeMaterialMetadataAiLoading
-                    ? " nogaPlanner_homePanelCardBody--loading"
-                    : ""
-                }`}
-              >
-                {this.state?.homeMaterialMetadataAiLoading ? (
-                  <div
-                    id="nogaPlanner_homePanelCardBodyLoader_2"
-                    className="nogaPlanner_homePanelCardBodyLoader"
-                  >
-                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
-                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
-                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
-                        Loading AI results...
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-                {coursesEditorOpen ? (
-                <div id="nogaPlanner_homeIntervalsMiniForm_7" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
-                  <div id="nogaPlanner_homeIntervalsMiniFormFields_course">
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_9" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_11" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Name
-                              </span>
-                              <input
-                                id="nogaPlanner_homeIntervalsInput_26"
-                                type="text"
-                                name="homeCourseNameMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                disabled={isHomeCardsLocked}
-                                placeholder="Course Name"
-                                value={String(this.state?.homeCourseNameDraft || "")}
-                                onChange={(event) =>
-                                  this.setState({ homeCourseNameDraft: String(event.target.value || "") })
-                                }
-                              />
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_10" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_12" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Code
-                              </span>
-                              <input
-                                id="nogaPlanner_homeIntervalsInput_27"
-                                type="text"
-                                name="homeCourseCodeMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                placeholder="Course Code"
-                                disabled={isHomeCardsLocked}
-                                value={String(this.state?.homeCourseCodeDraft || "")}
-                                onChange={(event) => {
-                                  const nextCourseCode = String(event.target.value || "");
-                                  const matchedCourse = this.resolvePlannerCourseDraft({
-                                    courseName: String(this.state?.homeCourseNameDraft || "").trim(),
-                                    courseCode: nextCourseCode,
-                                  });
-                                  this.setState((previousState) => ({
-                                    homeCourseCodeDraft: nextCourseCode,
-                                    homeCourseIdDraft: String(matchedCourse?._id || "").trim(),
-                                    homeCourseNameDraft:
-                                      String(previousState?.homeCourseNameDraft || "") ||
-                                      String(matchedCourse?.course_name || matchedCourse?.name || "").trim(),
-                                  }));
-                                }}
-                              />
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_14" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_16" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Interval
-                              </span>
-                              <select
-                                id="nogaPlanner_homeIntervalsInput_31"
-                                name="homeCourseIntervalMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                disabled={isHomeCardsLocked}
-                                value={courseSubIntervalYearDraftValue}
-                                onChange={(event) =>
-                                  this.setState({ homeCourseSubIntervalYearDraft: String(event.target.value || ""), homeCourseSubIntervalTermDraft: "" })
-                                }
-                              >
-                                <option value="">Select Course Interval</option>
-                                {homeGeneratedIntervalNumOptions.map((intervalNum) => (
-                                  <option key={`nogaPlanner_homeCourseInterval_${intervalNum}`} value={String(intervalNum)}>
-                                    {intervalNum}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_14b" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_16b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course sub-Interval
-                              </span>
-                              <select
-                                id="nogaPlanner_homeIntervalsInput_31b"
-                                name="homeCourseSubIntervalMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                disabled={isHomeCardsLocked || !courseSubIntervalYearDraftValue}
-                                value={courseSubIntervalTermDraftValue}
-                                onChange={(event) =>
-                                  this.setState({ homeCourseSubIntervalTermDraft: String(event.target.value || "") })
-                                }
-                              >
-                                <option value="">Select Course sub-Interval</option>
-                                {courseInfoSubIntervalNumOptions.map((subIntervalNum) => (
-                                  <option key={`nogaPlanner_homeCourseSubInterval_${subIntervalNum}`} value={String(subIntervalNum)}>
-                                    {subIntervalNum}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_courseWeight" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_courseWeight" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Weight
-                              </span>
-                              <input
-                                id="nogaPlanner_homeIntervalsInput_courseWeight"
-                                type="number"
-                                name="homeCourseTotalWeightMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                disabled={isHomeCardsLocked}
-                                placeholder={getPlannerFieldDefaultValue(
-                                  this.state?.plannerSelectSettings?.fieldDefaults,
-                                  "course",
-                                  "homeCourseTotalWeightDraft",
-                                ) || "Course Weight"}
-                                value={String(this.state?.homeCourseTotalWeightDraft || "")}
-                                onChange={(event) =>
-                                  this.setState({ homeCourseTotalWeightDraft: String(event.target.value || "") })
-                                }
-                              />
-                            </div>
-                          </div>
-                  <div id="nogaPlanner_homeIntervalsMiniFormFields_component">
-                            <div id="nogaPlanner_CourseForm_wrapper">
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_12" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_14" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Component
-                              </span>
-                              <select
-                                id="nogaPlanner_homeIntervalsInput_29"
-                                name="homeCourseComponentMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                disabled={areComponentFieldsDisabled}
-                                value={courseComponentIdDraftValue}
-                                onChange={(event) =>
-                                  this.setState({
-                                    homeCourseComponentIdDraft: String(
-                                      event.target.value || "",
-                                    ).trim(),
-                                  })
-                                }
-                              >
-                                <option value="">Select Course Component</option>
-                                {courseComponentOptions.map((componentId) => (
-                                  <option
-                                    key={`nogaPlanner_homeCourseComponentMini_${componentId}`}
-                                    value={componentId}
-                                  >
-                                    {componentId}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_13" className="nogaPlanner_homeIntervalsMiniFormField">
-                              <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_15" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Course Component Weight
-                              </span>
-                              <input
-                                id="nogaPlanner_homeIntervalsInput_30"
-                                type="number"
-                                name="homeCourseComponentPartialWeightMini"
-                                className="nogaPlanner_homeIntervalsInput"
-                                placeholder="Course Component Weight"
-                                disabled={areComponentFieldsDisabled}
-                                value={String(
-                                  this.state?.homeCourseComponentPartialWeightDraft || "",
-                                )}
-                                onChange={(event) =>
-                                  this.setState({
-                                    homeCourseComponentPartialWeightDraft: String(
-                                      event.target.value || "",
-                                    ),
-                                  })
-                                }
-                              />
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentDates">
-                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Component Dates
-                              </span>
-                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentDatesFields">
-                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentStartDate" className="nogaPlanner_homeIntervalsMiniFormField">
-                                  <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_componentStartDate" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                    Course Component Start Date
-                                  </span>
-                                  <div className="nogaPlanner_homeIntervalsDateTriplet">
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentStartDateDay"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentStartDateDayDraft || "")}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentStartDateDayDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">DD</option>
-                                      {courseComponentDateDayOptions.map((dayNumber) => (
-                                        <option key={`nogaPlanner_homeCourseComponentStartDay_${dayNumber}`} value={dayNumber}>
-                                          {dayNumber}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentStartDateMonth"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentStartDateMonthDraft || "")}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentStartDateMonthDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">MON</option>
-                                      {courseComponentDateMonthOptions.map((monthOption) => (
-                                        <option key={`nogaPlanner_homeCourseComponentStartMonth_${monthOption.value}`} value={monthOption.value}>
-                                          {monthOption.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentStartDateYear"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      style={{ minWidth: "84px" }}
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentStartDateYearDraft || new Date().getFullYear())}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentStartDateYearDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">YEAR</option>
-                                      {courseComponentDateYearOptions.map((yearNumber) => (
-                                        <option key={`nogaPlanner_homeCourseComponentStartYear_${yearNumber}`} value={yearNumber}>
-                                          {yearNumber}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </div>
-                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentEndDate" className="nogaPlanner_homeIntervalsMiniFormField">
-                                  <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_componentEndDate" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                    Course Component End Date
-                                  </span>
-                                  <div className="nogaPlanner_homeIntervalsDateTriplet">
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentEndDateDay"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentEndDateDayDraft || "")}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentEndDateDayDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">DD</option>
-                                      {courseComponentDateDayOptions.map((dayNumber) => (
-                                        <option key={`nogaPlanner_homeCourseComponentEndDay_${dayNumber}`} value={dayNumber}>
-                                          {dayNumber}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentEndDateMonth"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentEndDateMonthDraft || "")}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentEndDateMonthDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">MON</option>
-                                      {courseComponentDateMonthOptions.map((monthOption) => (
-                                        <option key={`nogaPlanner_homeCourseComponentEndMonth_${monthOption.value}`} value={monthOption.value}>
-                                          {monthOption.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <select
-                                      id="nogaPlanner_homeCourseComponentEndDateYear"
-                                      className="nogaPlanner_homeIntervalsInput"
-                                      style={{ minWidth: "84px" }}
-                                      disabled={areComponentFieldsDisabled}
-                                      value={String(this.state?.homeCourseComponentEndDateYearDraft || new Date().getFullYear())}
-                                      onChange={(event) =>
-                                        this.setState({
-                                          homeCourseComponentEndDateYearDraft: String(event.target.value || ""),
-                                        })
-                                      }
-                                    >
-                                      <option value="">YEAR</option>
-                                      {courseComponentDateYearOptions.map((yearNumber) => (
-                                        <option key={`nogaPlanner_homeCourseComponentEndYear_${yearNumber}`} value={yearNumber}>
-                                          {yearNumber}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocation">
-                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Component Location
-                              </span>
-                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationFields">
-                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationBuilding" className="nogaPlanner_homeIntervalsMiniFormField">
-                                  <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                    Component Building
-                                  </span>
-                                  <select
-                                    id="nogaPlanner_homeCourseComponentLocationBuilding"
-                                    className="nogaPlanner_homeIntervalsInput"
-                                    disabled={areComponentFieldsDisabled}
-                                    value={String(this.state?.homeCourseComponentLocationBuildingDraft || "")}
-                                    onChange={(event) =>
-                                      this.setState({
-                                        homeCourseComponentLocationBuildingDraft: String(event.target.value || ""),
-                                        homeCourseComponentLocationRoomDraft: "",
-                                      })
-                                    }
-                                  >
-                                    <option value="">Select Building</option>
-                                    {visibleProgramLocationsByBuilding.map((loc) => (
-                                      <option key={`nogaPlanner_compLocBuilding_${loc.building}`} value={loc.building}>
-                                        {loc.building}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div id="nogaPlanner_homeIntervalsMiniFormField_componentLocationRoom" className="nogaPlanner_homeIntervalsMiniFormField">
-                                  <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                    Component Room
-                                  </span>
-                                  <select
-                                    id="nogaPlanner_homeCourseComponentLocationRoom"
-                                    className="nogaPlanner_homeIntervalsInput"
-                                    disabled={areComponentFieldsDisabled || !this.state?.homeCourseComponentLocationBuildingDraft}
-                                    value={String(this.state?.homeCourseComponentLocationRoomDraft || "")}
-                                    onChange={(event) =>
-                                      this.setState({
-                                        homeCourseComponentLocationRoomDraft: String(event.target.value || ""),
-                                      })
-                                    }
-                                  >
-                                    <option value="">Select Room</option>
-                                    {(() => {
-                                      const selectedBuilding = String(this.state?.homeCourseComponentLocationBuildingDraft || "").trim();
-                                      const locationEntry = visibleProgramLocationsByBuilding.find(
-                                        (loc) => loc.building === selectedBuilding,
-                                      );
-                                      return Array.isArray(locationEntry?.rooms) ? locationEntry.rooms : [];
-                                    })().map((room) => (
-                                      <option key={`nogaPlanner_compLocRoom_${room}`} value={room}>
-                                        {room}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                            </div>
-                            <div id="nogaPlanner_homeIntervalsMiniFormField_componentInstructors">
-                              <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                                Component Instructors
-                              </span>
-                              <div id="nogaPlanner_homeIntervalsMiniFormField_componentInstructorsFields">
-                                <div className="nogaPlanner_homeProgramInstructorsEditorGrid">
-                                  <input
-                                    id="nogaPlanner_homeIntervalsInput_componentInstructorFirstName"
-                                    type="text"
-                                    className="nogaPlanner_homeIntervalsInput"
-                                    placeholder="Instructor first name"
-                                    disabled={areComponentFieldsDisabled}
-                                    value={String(this.state?.homeCourseComponentInstructorFirstNameDraft || "")}
-                                    onChange={(event) =>
-                                      this.setState({
-                                        homeCourseComponentInstructorFirstNameDraft: String(event.target.value || ""),
-                                      })
-                                    }
-                                  />
-                                  <input
-                                    id="nogaPlanner_homeIntervalsInput_componentInstructorLastName"
-                                    type="text"
-                                    className="nogaPlanner_homeIntervalsInput"
-                                    placeholder="Instructor last name"
-                                    disabled={areComponentFieldsDisabled}
-                                    value={String(this.state?.homeCourseComponentInstructorLastNameDraft || "")}
-                                    onChange={(event) =>
-                                      this.setState({
-                                        homeCourseComponentInstructorLastNameDraft: String(event.target.value || ""),
-                                      })
-                                    }
-                                  />
-                                  <button
-                                    id="nogaPlanner_home_button_componentInstructor_add"
-                                    type="button"
-                                    className="nogaPlanner_homePanelCardSetBtn"
-                                    disabled={
-                                      areComponentFieldsDisabled ||
-                                      (!String(this.state?.homeCourseComponentInstructorFirstNameDraft || "").trim() &&
-                                        !String(this.state?.homeCourseComponentInstructorLastNameDraft || "").trim())
-                                    }
-                                    onClick={this.appendHomeCourseComponentInstructorDraftEntry}
-                                  >
-                                    Add instructor
-                                  </button>
-                                </div>
-                              </div>
-                              <ul id="nogaPlanner_homeCourseComponentInstructorDraftList">
-                              {Array.isArray(this.state?.homeCourseComponentInstructorsDraftList) &&
-                              this.state.homeCourseComponentInstructorsDraftList.length > 0 ? (
-                                this.state.homeCourseComponentInstructorsDraftList.map((entry, index) => {
-                                  const firstName = String(entry?.firstName || "").trim();
-                                  const lastName = String(entry?.lastName || "").trim();
-                                  const displayName = [firstName, lastName].filter(Boolean).join(" ") || "-";
-                                  return (
-                                    <li key={`component_instructor_${index}_${displayName}`.replace(/[^a-z0-9]+/gi, "_")} className="nogaPlanner_componentDraftItem">
-                                      <span>{displayName}</span>
-                                      <button
-                                        type="button"
-                                        className="nogaPlanner_courseActionBtn nogaPlanner_courseActionBtn--delete"
-                                        disabled={isHomeCardsLocked}
-                                        onClick={() => this.removeHomeCourseComponentInstructorDraftEntry(index)}
-                                        title="Remove instructor"
-                                      >
-                                        ✕
-                                      </button>
-                                    </li>
-                                  );
-                                })
-                              ) : (
-                                <li className="nogaPlanner_componentDraftItem">
-                                  <span>-</span>
-                                </li>
-                              )}
-                            </ul>
-                            </div>
-                            <button
-                              id="nogaPlanner_homePanelCardSetBtn_16"
-                              type="button"
-                              className="nogaPlanner_homePanelCardSetBtn"
-                              disabled={isHomeCardsLocked || !canAddCourseComponentDraft}
-                              onClick={this.appendHomeCourseComponentDraftEntry}
-                            >
-                              {courseComponentEditingId ? "Edit component" : "Add component"}
-                            </button>
-                            </div>
-                            <ul id="nogaPlanner_homeCourseComponentDraftList">
-                              {courseComponentDraftValues.length > 0 ? (
-                                courseComponentDraftValues.map((comp) => (
-                                  <li key={comp.componentId} className="nogaPlanner_componentDraftItem">
-                                    <span>{comp.componentId}</span>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_courseActionBtn"
-                                      disabled={isHomeCardsLocked}
-                                      onClick={() => this.editHomeCourseComponentDraftEntry(comp)}
-                                      title="Edit component"
-                                    >
-                                      ✏
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="nogaPlanner_courseActionBtn nogaPlanner_courseActionBtn--delete"
-                                      disabled={isHomeCardsLocked}
-                                      onClick={() => this.removeHomeCourseComponentDraftEntry(comp.componentId)}
-                                      title="Remove component"
-                                    >
-                                      ✕
-                                    </button>
-                                  </li>
-                                ))
-                              ) : (
-                                <li className="nogaPlanner_componentDraftItem">
-                                  <span>-</span>
-                                </li>
-                              )}
-                            </ul>
-                          </div>
-                        {courseEditingKey ? (
-                          homeCourseApplyPending ? (
-                            <button
-                              id="nogaPlanner_homePanelCardSetBtn"
-                              type="button"
-                              className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                              disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
-                              onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
-                            >
-                              Submit
-                            </button>
-                          ) : (
-                            <button
-                              id="nogaPlanner_homePanelCardSetBtn_16b"
-                              type="button"
-                              className="nogaPlanner_homePanelCardSetBtn"
-                              disabled={isHomeCardsLocked || !hasDraftChanges || hasPendingComponentDraftInput}
-                              onClick={this.queueHomeCourseEditDraft}
-                            >
-                              Apply changes
-                            </button>
-                          )
-                        ) : null}
-                </div>
-                ) : null}
-                <table id="nogaPlanner_homeIntervalsMiniTable_6" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeIntervalCoursesMiniTable">
-                    <thead id="nogaPlanner_homeIntervalsMiniTable_6_head">
-                      <tr id="nogaPlanner_homeIntervalsMiniTable_6_row1">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_name" rowSpan={2}>Name</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_code" rowSpan={2}>Code</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_interval" rowSpan={2}>Interval</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_subInterval" rowSpan={2}>sub-Interval</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_weight" rowSpan={2}>Weight</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component" rowSpan={2}>Component</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_instructors" rowSpan={2}>Component Instructors</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_weight" rowSpan={2}>Component Weight</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_startDate" rowSpan={2}>Component Start Date</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_endDate" rowSpan={2}>Component End Date</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_location" colSpan={2}>Component Location</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_lectures" rowSpan={2}>Component Lectures</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_actions" rowSpan={2}>Actions</th>
-                      </tr>
-                      <tr id="nogaPlanner_homeIntervalsMiniTable_6_row2">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_building">Building</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_6_th_Course_component_room">Room</th>
-                      </tr>
-                    </thead>
-                    <tbody id="nogaPlanner_homeIntervalsMiniTable_6_body">
-                      {visibleMaterialMetadataCourseInfoRows.length === 0 ? (
-                        <tr
-                          id="nogaPlanner_homeIntervalsMiniTable_6_emptyRow"
-                          className="nogaPlanner_materialMetadataEmptyRow"
-                        >
-                          <td
-                            id="nogaPlanner_homePanelCardEmptyValue_8"
-                            className="nogaPlanner_homePanelCardEmptyValue"
-                            colSpan={14}
-                          >
-                            <div className="nogaPlanner_materialMetadataEmptyState">
-                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">CRS</span>
-                              <span className="nogaPlanner_materialMetadataEmptyStateText">
-                                No course info mapped to sub-Intervals yet.
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : visibleMaterialMetadataCourseInfoRows.map((courseRow) => (
-                        (() => {
-                          const aiRowSubIntervalOptions = Array.from(
-                            new Set(
-                              homeIntervalsDisplayRows
-                                .filter(
-                                  (entry) =>
-                                    String(entry?.intervalNum || "").trim() ===
-                                    String(courseRow?.intervalNum || "").trim(),
-                                )
-                                .map((entry) =>
-                                  Number.parseInt(
-                                    String(
-                                      entry?.subIntervalNum ??
-                                        entry?.term ??
-                                        "",
-                                    ).trim(),
-                                    10,
-                                  ),
-                                )
-                                .filter((value) => Number.isFinite(value)),
-                            ),
-                          ).sort((left, right) => left - right);
-                          const rowNeedsAssignment =
-                            courseRow.isStagedDraft &&
-                            (!String(courseRow?.intervalNum || "").trim() ||
-                              !String(courseRow?.subIntervalNum || "").trim());
-                          const rowClassName = [
-                            courseRow.isPreview ? "is-preview" : "",
-                            courseRow.isStagedDraft ? "nogaPlanner_materialMetadataRow--staged" : "",
-                            courseRow.isStagedEdit ? "nogaPlanner_materialMetadataRow--edit" : "",
-                            courseRow.isAiExtracted ? "nogaPlanner_materialMetadataRow--ai" : "",
-                            rowNeedsAssignment
-                              ? "nogaPlanner_materialMetadataRow--needsAssignment"
-                              : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ");
-                          return (
-                        <tr
-                          id={`nogaPlanner_materialMetadata_row_${courseRow.key}`}
-                          key={`nogaPlanner_homeIntervalCourseInfo_${courseRow.key}`}
-                          className={rowClassName || undefined}
-                        >
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseName`}>
-                            <div className="nogaPlanner_materialMetadataCourseNameCell">
-                              <span>{this.renderPlannerLocalizedText(courseRow.courseName)}</span>
-                              {courseRow.isAiExtracted && courseRow.isStagedDraft ? (
-                                <span className="nogaPlanner_materialMetadataBadge">
-                                  AI Staged
-                                </span>
-                              ) : null}
-                              {rowNeedsAssignment ? (
-                                <span className="nogaPlanner_materialMetadataBadge nogaPlanner_materialMetadataBadge--warning">
-                                  Needs Interval
-                                </span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseCode`}>{this.renderPlannerLocalizedText(courseRow.courseCode)}</td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_intervalNum`}>
-                            {courseRow.isAiExtracted ? (
-                              <select
-                                className="nogaPlanner_homeIntervalsInput"
-                                value={String(courseRow?.intervalNum || "")}
-                                onChange={(event) =>
-                                  courseRow.isStagedDraft
-                                    ? this.updateHomeCourseDraftEntrySubInterval(
-                                        courseRow.key,
-                                        event.target.value,
-                                        courseRow?.subIntervalNum || "",
-                                      )
-                                    : this.updateHomeCourseAiExtractedRowSubInterval(
-                                        courseRow.key,
-                                        event.target.value,
-                                        courseRow?.subIntervalNum || "",
-                                      )
-                                }
-                              >
-                                <option value="">Select interval</option>
-                                {homeGeneratedIntervalNumOptions.map((intervalNum) => (
-                                    <option
-                                      key={`nogaPlanner_homeCourseAiInterval_${courseRow.key}_${intervalNum}`}
-                                      value={String(intervalNum)}
-                                    >
-                                      {intervalNum}
-                                    </option>
-                                  ))}
-                              </select>
-                            ) : (
-                              this.renderPlannerLocalizedText(courseRow.intervalNum || "-")
-                            )}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_subIntervalNum`}>
-                            {courseRow.isAiExtracted ? (
-                              <select
-                                className="nogaPlanner_homeIntervalsInput"
-                                value={String(courseRow?.subIntervalNum || "")}
-                                onChange={(event) =>
-                                  courseRow.isStagedDraft
-                                    ? this.updateHomeCourseDraftEntrySubInterval(
-                                        courseRow.key,
-                                        courseRow?.intervalNum || "",
-                                        event.target.value,
-                                      )
-                                    : this.updateHomeCourseAiExtractedRowSubInterval(
-                                        courseRow.key,
-                                        courseRow?.intervalNum || "",
-                                        event.target.value,
-                                      )
-                                }
-                              >
-                                <option value="">Select sub-interval</option>
-                                {aiRowSubIntervalOptions.map((subIntervalNum) => (
-                                    <option
-                                      key={`nogaPlanner_homeCourseAiSubIntervalNum_${courseRow.key}_${subIntervalNum}`}
-                                      value={String(subIntervalNum)}
-                                    >
-                                      {subIntervalNum}
-                                    </option>
-                                  ))}
-                              </select>
-                            ) : (
-                              this.renderPlannerLocalizedText(courseRow.subIntervalNum || "-")
-                            )}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseWeight`}>
-                            {this.renderPlannerLocalizedText(
-                              courseRow.courseWeight != null && courseRow.courseWeight !== "-"
-                                ? String(courseRow.courseWeight)
-                                : "-"
-                            )}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseComponent`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) {
-                                return this.renderPlannerLocalizedText("-");
-                              }
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => (
-                                    <div key={`${courseRow.key}_comp_${idx}`}>
-                                      {this.renderPlannerLocalizedText(
-                                        comp?.componentInfo?.componentName ||
-                                        comp?.componentName ||
-                                        comp?.componentId ||
-                                        comp?.componentClass ||
-                                        "-"
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentInstructors`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) {
-                                return this.renderPlannerLocalizedText("-");
-                              }
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => (
-                                    <div key={`${courseRow.key}_compInstructors_${idx}`}>
-                                      <div className="nogaPlanner_materialMetadataComponentStack">
-                                        {getComponentInstructorDisplayNames(comp?.componentInfo || comp).map((name, instructorIndex) => (
-                                          <div key={`${courseRow.key}_compInstructors_${idx}_${instructorIndex}`}>
-                                            {this.renderPlannerLocalizedText(name)}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentWeight`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) {
-                                return this.renderPlannerLocalizedText("-");
-                              }
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => (
-                                    <div key={`${courseRow.key}_compWeight_${idx}`}>
-                                      {this.renderPlannerLocalizedText(
-                                        comp?.componentInfo?.componentWeight ||
-                                        comp?.componentWeight ||
-                                        comp?.componentInfo?.componentWeightPercentage ||
-                                        comp?.componentWeightPercentage ||
-                                        "-"
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentStartDate`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) {
-                                return this.renderPlannerLocalizedText("-");
-                              }
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => {
-                                    const dates = comp?.componentInfo?.componentDates || comp?.componentDates || {};
-                                    const start = dates?.start || {};
-                                    const startStr = [start.day, start.month, start.year].filter(Boolean).join("/");
-                                    return (
-                                      <div key={`${courseRow.key}_compStartDate_${idx}`}>
-                                        {this.renderPlannerLocalizedText(startStr || "-")}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentEndDate`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) {
-                                return this.renderPlannerLocalizedText("-");
-                              }
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => {
-                                    const dates = comp?.componentInfo?.componentDates || comp?.componentDates || {};
-                                    const end = dates?.end || {};
-                                    const endStr = [end.day, end.month, end.year].filter(Boolean).join("/");
-                                    return (
-                                      <div key={`${courseRow.key}_compEndDate_${idx}`}>
-                                        {this.renderPlannerLocalizedText(endStr || "-")}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentBuilding`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) return this.renderPlannerLocalizedText("-");
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => {
-                                    const loc = comp?.componentInfo?.componentLocation || comp?.componentLocation || {};
-                                    return (
-                                      <div key={`${courseRow.key}_compBuilding_${idx}`}>
-                                        {this.renderPlannerLocalizedText(String(loc?.building || "").trim() || "-")}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentRoom`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) return this.renderPlannerLocalizedText("-");
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => {
-                                    const loc = comp?.componentInfo?.componentLocation || comp?.componentLocation || {};
-                                    const rooms = Array.isArray(loc?.rooms) ? loc.rooms : [];
-                                    return (
-                                      <div key={`${courseRow.key}_compRoom_${idx}`}>
-                                        {this.renderPlannerLocalizedText(rooms[0] || "-")}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td id={`nogaPlanner_materialMetadata_${courseRow.key}_componentLectures`}>
-                            {(() => {
-                              const comps = Array.isArray(courseRow.courseComponents) ? courseRow.courseComponents : [];
-                              if (comps.length === 0) return this.renderPlannerLocalizedText("-");
-                              return (
-                                <div className="nogaPlanner_materialMetadataComponentStack">
-                                  {comps.map((comp, idx) => {
-                                    const lectureCount = Array.isArray(
-                                      comp?.componentLectures ||
-                                        comp?.componentInfo?.componentLectures,
-                                    )
-                                      ? (comp?.componentLectures ||
-                                          comp?.componentInfo?.componentLectures).length
-                                      : null;
-                                    return (
-                                      <div key={`${courseRow.key}_compLectures_${idx}`}>
-                                        {this.renderPlannerLocalizedText(
-                                          lectureCount == null ? "-" : String(lectureCount),
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          {!courseRow.isPreview && !courseRow.isStagedDraft && !courseRow.isAiExtracted ? (
-                            <td id={`nogaPlanner_materialMetadata_${courseRow.key}_actions`} className="nogaPlanner_materialMetadataActionsCell">
-                              <div className="nogaPlanner_materialMetadataActionsGroup">
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                  aria-label="Edit course"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() => this.handleEditProgramCourseRow(courseRow)}
-                                >
-                                  <i className="fi fi-rr-pencil" aria-hidden="true" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                  aria-label="Delete course"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() => this.handleDeleteProgramCourseRow(courseRow)}
-                                >
-                                  <i className="fi fi-br-cross" aria-hidden="true" />
-                                </button>
-                              </div>
-                            </td>
-                          ) : (
-                            <td id={`nogaPlanner_materialMetadata_${courseRow.key}_actions`} />
-                          )}
-
-                        </tr>
-                          );
-                        })()
-                      ))}
-                    </tbody>
-                  </table>
-              </div>
-            </div>
-            <div
-              id="nogaPlanner_home_programLectures_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
-                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div className="nogaPlanner_lectureCareContentCol">
-              <div id="nogaPlanner_homePanelCardTitleRow_programLectures" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programLectures">Program Lectures</strong>
-                <div className="nogaPlanner_homePanelCardActions">
-                  {programLecturesEditorOpen ? null : (
-                    <>
-                      <button
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn"
-                        disabled={isHomeCardsLocked}
-                        onClick={() =>
-                          this.setState({
-                            homeCourseComponentLecturesEditorOpen: true,
-                            homeCourseLectureCourseContextDraft: "",
-        homeCourseLectureCourseNameDraft: "",
-        homeCourseLectureComponentNameDraft: "",
-        homeCourseLectureNameDraft: "",
-        homeCourseLectureOrderDraft: "",
-        homeCourseLectureInstructorsDraft: "",
-        homeCourseLectureInstructionDateDraft: "",
-        homeCourseLectureEditingId: "",
-        homeCourseComponentLectureDraftList: [],
-                          })
-                        }
-                      >
-                        {programLecturesHasRegisteredValue ? "Edit" : "Set"}
-                      </button>
-                      {programLecturesHasRegisteredValue ? (
-                        <button
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                          disabled={isHomeCardsLocked}
-                          onClick={() =>
-                            this.requestResetWithPassword(
-                              "Reset Program Lectures",
-                              this.handleResetProgramLectures,
-                            )
-                          }
-                        >
-                          Reset
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-                        disabled={isHomeCardsLocked}
-                        title="Push all Program Lectures to Courses"
-                        onClick={this.handlePushProgramLecturesToCourses}
-                        style={{ flex: "0 0 auto" }}
-                      >
-                        <span>Push to Courses</span>
-                        <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                          {programLecturesToPushCount}
-                        </span>
-                      </button>
-                    </>
-                  )}
-                  {programLecturesEditorOpen ? (
-                    <button
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.cancelHomeCourseComponentLecturesEditor}
-                    >
-                      Cancel
-                    </button>
-                  ) : null}
-                  {canSubmitProgramLectures ? (
-                    <button
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.handleHomeCourseComponentLecturesSetSubmit}
-                    >
-                      Submit
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <div
-                className={`nogaPlanner_homePanelCardBody${
-                  programLecturesEditorOpen ? "" : ""
-                }`}
-              >
-                {programLecturesEditorOpen ? (
-                  <div id="nogaPlanner_homeIntervalsMiniForm_7l" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_16" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_18" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture name
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_33"
-                        type="text"
-                        name="homeCourseLectureNameMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        placeholder="Lecture name"
-                        disabled={isHomeCardsLocked}
-                        value={programLectureNameDraftValue}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseLectureNameDraft: String(event.target.value || ""),
-                          })
-                        }
-                      />
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_16b" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_18b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture Order
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_33b"
-                        type="number"
-                        min="1"
-                        step="1"
-                        name="homeCourseLectureOrderMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        placeholder="Lecture order"
-                        disabled={isHomeCardsLocked}
-                        value={programLectureOrderDraftValue}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseLectureOrderDraft: String(event.target.value || ""),
-                          })
-                        }
-                      />
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_15" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_17" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture Course
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_32"
-                        name="homeCourseLectureCourseMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={programLectureCourseContextDraftValue}
-                        onChange={(event) => {
-                          const nextKey = String(event.target.value || "");
-                          const selectedOption = event.target.selectedOptions?.[0] || null;
-                          const selectedLabel = String(selectedOption?.textContent || "").trim();
-                          this.setState({
-                            homeCourseLectureCourseContextDraft: nextKey,
-                            homeCourseLectureCourseNameDraft: selectedLabel,
-                            homeCourseLectureComponentNameDraft: "",
-                            homeCourseLectureInstructorsDraft: "",
-                          });
-                        }}
-                      >
-                        <option value="">Select lecture course</option>
-                        {programLectureCourseOptions.map((courseOption) => (
-                          <option
-                            key={`nogaPlanner_homeCourseLectureCourseMini_${courseOption.value}`}
-                            value={courseOption.value}
-                          >
-                            {courseOption.courseName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_17" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_19" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture Course Component
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_34"
-                        name="homeCourseLectureComponentMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked || !programLectureCourseContextDraftValue}
-                        value={programLectureComponentNameDraftValue}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseLectureComponentNameDraft: String(event.target.value || ""),
-                            homeCourseLectureInstructorsDraft: "",
-                          })
-                        }
-                      >
-                        <option value="">Select lecture component</option>
-                        {programLectureComponentOptions.map((componentOption) => (
-                          <option
-                            key={`nogaPlanner_homeCourseLectureComponentMini_${programLectureCourseContextDraftValue}_${componentOption.value}`}
-                            value={componentOption.value}
-                          >
-                            {componentOption.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_18" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_20" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture Instructor
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_35"
-                        name="homeCourseLectureInstructorMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={
-                          isHomeCardsLocked ||
-                          programLectureInstructorOptions.length === 0
-                        }
-                        value={programLectureInstructorsDraftValue}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseLectureInstructorsDraft: String(event.target.value || ""),
-                          })
-                        }
-                      >
-                        <option value="">Select instructor</option>
-                        {programLectureInstructorOptions.map((instructorLabelText, index) => {
-                          const instructorValue =
-                            String(instructorLabelText || "").trim() ||
-                            `instructor_${index}`;
-                          return (
-                            <option
-                              key={`nogaPlanner_homeCourseLectureInstructorMini_${instructorValue}_${index}`}
-                              value={instructorValue}
-                            >
-                              {instructorValue}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_19" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_21" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Lecture date
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_36"
-                        type="date"
-                        name="homeCourseLectureDateMini"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={programLectureDateDraftValue}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseLectureInstructionDateDraft: String(event.target.value || ""),
-                          })
-                        }
-                      />
-                    </div>
-                    <button
-                      id="nogaPlanner_homePanelCardSetBtn_17"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.appendHomeCourseComponentLectureDraftEntry}
-                    >
-                      {this.state?.homeCourseLectureEditingId ? "Apply changes" : "Add"}
-                    </button>
-                  </div>
-                ) : null}
-                <table id="nogaPlanner_homeIntervalsMiniTable_7" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeIntervalCoursesMiniTable">
-                    <thead id="nogaPlanner_homeIntervalsMiniTable_7_head">
-                      <tr id="nogaPlanner_homeIntervalsMiniTable_7_row1">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_order">Order</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_name">Name</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Course_name">Course</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Component_ID">Course Component</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Instructor">Instructor</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_date">Date</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Actions">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="nogaPlanner_homeIntervalsMiniTable_7_body">
-                      {programLecturesPreviewRows.length === 0 ? (
-                        <tr
-                          id="nogaPlanner_homeIntervalsMiniTable_7_emptyRow"
-                          className="nogaPlanner_materialMetadataEmptyRow"
-                        >
-                          <td
-                          id="nogaPlanner_homePanelCardEmptyValue_9"
-                          className="nogaPlanner_homePanelCardEmptyValue"
-                            colSpan={7}
-                          >
-                            <div className="nogaPlanner_materialMetadataEmptyState">
-                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">LEC</span>
-                              <span className="nogaPlanner_materialMetadataEmptyStateText">
-                                No lectures saved yet.
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null}
-                      {programLecturesPreviewRows.map((lectureEntry) => (
-                        <tr id={`nogaPlanner_lectureInfo_row_${lectureEntry.key}`} key={`nogaPlanner_homeIntervalLectureInfo_${lectureEntry.key}`} className={lectureEntry.isPreview ? "is-preview" : ""}>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureOrder`}>{this.renderPlannerLocalizedText(String(lectureEntry.lecture_order || "-"))}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_name)}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_courseName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_course)}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_componentName`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_component)}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_instructor`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_instructors)}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_lectureDate`}>{this.renderPlannerLocalizedText(lectureEntry.lecture_date)}</td>
-                          <td id={`nogaPlanner_lectureInfo_${lectureEntry.key}_actions`}>
-                            <div id={`nogaPlanner_lectureInfo_rowActions_${lectureEntry.key}`} className="nogaPlanner_homeIntervalRowActions">
-                              <button
-                                type="button"
-                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                aria-label="Edit lecture row"
-                                disabled={isHomeCardsLocked}
-                                onClick={() => this.handleEditProgramLectureRow(lectureEntry)}
-                              >
-                                <i className="fi fi-rr-pencil" aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                aria-label="Move lecture up"
-                                disabled={
-                                  isHomeCardsLocked ||
-                                  programLecturesPreviewRows[0]?.key === lectureEntry.key
-                                }
-                                onClick={() => this.moveProgramLectureRow(lectureEntry, -1)}
-                              >
-                                <i className="fi fi-rr-arrow-small-up" aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                aria-label="Move lecture down"
-                                disabled={
-                                  isHomeCardsLocked ||
-                                  programLecturesPreviewRows[programLecturesPreviewRows.length - 1]?.key === lectureEntry.key
-                                }
-                                onClick={() => this.moveProgramLectureRow(lectureEntry, 1)}
-                              >
-                                <i className="fi fi-rr-arrow-small-down" aria-hidden="true" />
-                              </button>
-                              {lectureEntry.isPreview ? (
-                                <button
-                                  id="nogaPlanner_homeIntervalsDeleteIconBtn_3"
-                                  type="button"
-                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                  aria-label="Delete lecture draft row"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() =>
-                                    this.setState((previousState) => ({
-                                      homeCourseComponentLectureDraftList: (
-                                        Array.isArray(previousState?.homeCourseComponentLectureDraftList)
-                                          ? previousState.homeCourseComponentLectureDraftList
-                                          : []
-                                      ).filter(
-                                        (entry) =>
-                                          [
-                                            String(entry?.lecture_course || "").trim(),
-                                            String(entry?.lecture_component || "").trim(),
-                                            String(entry?.lecture_name || "").trim(),
-                                            String(entry?.lecture_date || "").trim(),
-                                          ].join("|") !==
-                                          [
-                                            String(lectureEntry?.lecture_course || "").trim(),
-                                            String(lectureEntry?.lecture_component || "").trim(),
-                                            String(lectureEntry?.lecture_name || "").trim(),
-                                            String(lectureEntry?.lecture_date || "").trim(),
-                                          ].join("|"),
-                                      ),
-                                    }))
-                                  }
-                                >
-                                  <i className="fi fi-br-cross" aria-hidden="true" />
-                                </button>
-                              ) : (
-                                <button
-                                  id="nogaPlanner_homeIntervalsDeleteIconBtn_3"
-                                  type="button"
-                                  className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                  aria-label="Delete lecture row"
-                                  disabled={isHomeCardsLocked}
-                                  onClick={() =>
-                                    this.requestResetWithPassword(
-                                      "Delete Lecture",
-                                      async () => {
-                                        const lectureId = String(
-                                          lectureEntry?._id ||
-                                            lectureEntry?.lectureID ||
-                                            "",
-                                        ).trim();
-                                        if (!lectureId) {
-                                          return;
-                                        }
-                                        checkedLectures = [lectureId];
-                                        await this.deleteLecture();
-                                      },
-                                    )
-                                  }
-                                >
-                                  <i className="fi fi-br-cross" aria-hidden="true" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-              </div>
-              </div>{/* end nogaPlanner_lectureCareContentCol */}
-              {(() => {
-                const allLecDocs = (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
-                  .flatMap((lec) => Array.isArray(lec?.lectureDocuments) ? lec.lectureDocuments : [])
-                  .map((entry) => String(entry || "").trim())
-                  .filter(Boolean);
-                const uniqueLecDocKeys = Array.from(new Set(allLecDocs));
-                if (uniqueLecDocKeys.length === 0) return null;
-                const progDocs = Array.isArray(plannerRoot?.programDocuments) ? plannerRoot.programDocuments : [];
-                const squares = uniqueLecDocKeys.map((key) => {
-                  const match = progDocs.find(
-                    (d) =>
-                      String(d?.documentInfo?.documentID || "").trim() === key ||
-                      String(d?.documentInfo?.documentName || "").trim() === key,
-                  );
-                  const volume = match?.documentInfo?.documentVolume?.total;
-                  const name = match?.documentInfo?.documentName || key;
-                  return { key, name, volume };
-                });
-                return (
-                  <div className="nogaPlanner_lectureDocsVolumePanel">
-                    {squares.map(({ key, name, volume }) => (
-                      <div
-                        key={key}
-                        className="nogaPlanner_lectureDocVolumeSquare"
-                        title={name}
-                      >
-                        <span className="nogaPlanner_lectureDocVolumeNum">
-                          {volume != null ? volume : "—"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-            <div
-              id="nogaPlanner_home_programTasks_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
-                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_programTasks" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_programTasks">Program Tasks</strong>
-                <div className="nogaPlanner_homePanelCardActions">
-                  <button
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                    disabled={isHomeCardsLocked}
-                    onClick={() => this.requestResetWithPassword("Reset Material Metadata", this.handleResetSubIntervalMaterialMetadata)}
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                    disabled={isHomeCardsLocked || !canSubmitMaterialMetadataExamInfo}
-                    onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.handleHomeCoursesSetSubmit)}
-                  >
-                    Submit
-                  </button>
-                  <button
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                    disabled={isHomeCardsLocked}
-                    onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.cancelHomeCoursesEditor)}
-                  >
-                    Cancel
-                  </button>
-                  {aiHelpersEnabled ? (
-                    <button
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
-                      disabled={isHomeCardsLocked}
-                      title="Run AI for Tasks"
-                      onClick={() => this.handleMaterialMetadataAiAction("exams")}
-                      style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
-                    >
-                      <i className="fi fi-rr-magic-wand" aria-hidden="true" />
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              <div
-                className={`nogaPlanner_homePanelCardBody${
-                  this.state?.homeMaterialMetadataAiLoading
-                    ? " nogaPlanner_homePanelCardBody--loading"
-                    : ""
-                }`}
-              >
-                {this.state?.homeMaterialMetadataAiLoading ? (
-                  <div className="nogaPlanner_homePanelCardBodyLoader">
-                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
-                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
-                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
-                        Loading AI results...
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-                <div id="nogaPlanner_homeIntervalsMiniForm_8" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_18" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_20" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Component ID
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_35"
-                        name="homeCourseExamComponentMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={String(
-                          this.state?.homeCourseExamComponentIdDraft || "",
-                        )}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamComponentIdDraft: String(
-                              event.target.value || "",
-                            ).trim(),
-                          })
-                        }
-                      >
-                        <option value="">Select component</option>
-                        {materialMetadataCourseRows
-                          .filter((courseRow) => {
-                            const comp = String(courseRow.courseComponent || "").trim().toLowerCase();
-                            return !comp.includes("exam");
-                          })
-                          .map((courseRow) => {
-                          const cid = String(courseRow.courseID || "").trim();
-                          const comp = String(courseRow.courseComponent || "").trim();
-                          const componentID = String(courseRow.componentID || "").trim();
-                          const displayId = componentID && componentID !== "-"
-                            ? componentID
-                            : cid && comp && comp !== "-"
-                              ? `${cid}_${comp}`
-                              : comp || "-";
-                          const optionValue = componentID && componentID !== "-" ? componentID : displayId;
-                          return (
-                            <option
-                              key={`nogaPlanner_homeCourseExamComponentStandalone_${optionValue}`}
-                              value={optionValue}
-                            >
-                              {courseRow.courseName || "-"} ({displayId})
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                    {String(this.state?.homeCourseExamComponentIdDraft || "").trim() ? (
-                    <><div id="nogaPlanner_homeIntervalsMiniFormField_19" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_21" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Task
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_36"
-                        name="homeCourseExamClassMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={String(this.state?.homeCourseExamClassDraft || "")}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamClassDraft: String(
-                              event.target.value || "",
-                            ).trim(),
-                          })
-                        }
-                      >
-                        <option value="">Select task</option>
-                        {plannerTasks.map((examClass) => (
-                          <option
-                            key={`nogaPlanner_examClassOption_${examClass}`}
-                            value={examClass}
-                          >
-                            {examClass}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_20" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_22" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Exam date
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_37"
-                        type="date"
-                        name="homeCourseExamDateMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={String(this.state?.homeCourseExamDateDraft || "")}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamDateDraft: String(
-                              event.target.value || "",
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_21" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_23" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Exam time
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_38"
-                        type="time"
-                        name="homeCourseExamTimeMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={String(this.state?.homeCourseExamTimeDraft || "")}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamTimeDraft: String(
-                              event.target.value || "",
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_22" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_24" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Building
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_39"
-                        name="homeCourseExamLocationBuildingMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked}
-                        value={String(
-                          this.state?.homeCourseExamLocationBuildingDraft || "",
-                        )}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamLocationBuildingDraft: String(event.target.value || ""),
-                            homeCourseExamLocationRoomDraft: "",
-                          })
-                        }
-                      >
-                        <option value="">Select building</option>
-                        {materialMetadataProgramLocations.map((loc) => (
-                          <option
-                            key={`nogaPlanner_examLocationBuilding_${loc.building}`}
-                            value={String(loc.building || "")}
-                          >
-                            {loc.building}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_22b" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_24b" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Room
-                      </span>
-                      <select
-                        id="nogaPlanner_homeIntervalsInput_39b"
-                        name="homeCourseExamLocationRoomMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        disabled={isHomeCardsLocked || !String(this.state?.homeCourseExamLocationBuildingDraft || "").trim()}
-                        value={String(
-                          this.state?.homeCourseExamLocationRoomDraft || "",
-                        )}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamLocationRoomDraft: String(event.target.value || ""),
-                          })
-                        }
-                      >
-                        <option value="">Select room</option>
-                        {(() => {
-                          const selectedBuilding = String(this.state?.homeCourseExamLocationBuildingDraft || "").trim();
-                          const matchedLoc = materialMetadataProgramLocations.find(
-                            (loc) => String(loc.building || "") === selectedBuilding,
-                          );
-                          return Array.isArray(matchedLoc?.rooms) ? matchedLoc.rooms : [];
-                        })().map((room) => (
-                          <option
-                            key={`nogaPlanner_examLocationRoom_${room}`}
-                            value={room}
-                          >
-                            {room}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_23" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_25" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Exam weight
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_40"
-                        type="number"
-                        name="homeCourseExamWeightMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        placeholder="Exam weight"
-                        disabled={isHomeCardsLocked}
-                        value={String(this.state?.homeCourseExamWeightDraft || "")}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamWeightDraft: String(
-                              event.target.value || "",
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                    <div id="nogaPlanner_homeIntervalsMiniFormField_25" className="nogaPlanner_homeIntervalsMiniFormField">
-                      <span id="nogaPlanner_homeIntervalsMiniFormEyebrow_27" className="nogaPlanner_homeIntervalsMiniFormEyebrow">
-                        Exam grade
-                      </span>
-                      <input
-                        id="nogaPlanner_homeIntervalsInput_42"
-                        type="number"
-                        name="homeCourseExamGradeMiniStandalone"
-                        className="nogaPlanner_homeIntervalsInput"
-                        placeholder="Exam grade"
-                        disabled={isHomeCardsLocked}
-                        value={String(
-                          this.state?.homeCourseExamGradeDraft || "",
-                        )}
-                        onChange={(event) =>
-                          this.setState({
-                            homeCourseExamGradeDraft: String(
-                              event.target.value || "",
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                    <button
-                      id="nogaPlanner_homePanelCardSetBtn_23"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={
-                        isHomeCardsLocked ||
-                        !Boolean(
-                          String(this.state?.homeCourseExamComponentIdDraft || "").trim() &&
-                            String(this.state?.homeCourseExamClassDraft || "").trim(),
-                        )
-                      }
-                      onClick={this.appendHomeCourseExamDraftEntry}
-                    >
-                      {isExamEntryEditMode ? "Apply changes" : "Add task"}
-                    </button>
-                    </>) : null}
-                  </div>
-                <table id="nogaPlanner_homeIntervalsMiniTable_8" className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_homeCoursesMiniTable">
-                    <thead id="nogaPlanner_homeIntervalsMiniTable_8_head">
-                      <tr id="nogaPlanner_homeIntervalsMiniTable_8_row1">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_ID" rowSpan={2}>Task ID</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Course_name" rowSpan={2}>Course name</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Course_Component_Class" rowSpan={2}>Component name</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_class" rowSpan={2}>Task</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_date" rowSpan={2}>Task date</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_time" rowSpan={2}>Task time</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location" colSpan={2}>Task location</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_weight" rowSpan={2}>Task weight</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_grade" rowSpan={2}>Task grade</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Actions" rowSpan={2}>Actions</th>
-                      </tr>
-                      <tr id="nogaPlanner_homeIntervalsMiniTable_8_row2">
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location_building">Building</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_8_th_Exam_location_room">Room</th>
-                      </tr>
-                    </thead>
-                    <tbody id="nogaPlanner_homeIntervalsMiniTable_8_body">
-                      {!hasHomeCourseExamScheduleRows ? (
-                        <tr
-                          id="nogaPlanner_homeIntervalsMiniTable_8_emptyRow"
-                          className="nogaPlanner_materialMetadataEmptyRow"
-                        >
-                          <td
-                            id="nogaPlanner_homePanelCardEmptyValue_10"
-                            className="nogaPlanner_homePanelCardEmptyValue"
-                            colSpan={11}
-                          >
-                            <div className="nogaPlanner_materialMetadataEmptyState">
-                              <span className="nogaPlanner_materialMetadataEmptyStateIcon">TSK</span>
-                              <span className="nogaPlanner_materialMetadataEmptyStateText">
-                                No task schedule saved yet.
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : liveExamScheduleGroups.flatMap((group) =>
-                        group.parts.map((row, partIndex) => (
-                          <tr
-                            id={`nogaPlanner_examSchedule_row_${row.key}`}
-                            key={`nogaPlanner_homeExamScheduleRow_${row.key}`}
-                            className={row?.isPreview ? "is-preview" : ""}
-                          >
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examID`}>{this.renderPlannerLocalizedText(row.taskID || row.examPartID)}</td>
-                            {partIndex === 0 ? (
-                              <>
-                                <td
-                                  id={`nogaPlanner_examSchedule_${group.componentID}_courseName`}
-                                  rowSpan={group.parts.length}
-                                >
-                                  {this.renderPlannerLocalizedText(group.courseName)}
-                                </td>
-                                <td
-                                  id={`nogaPlanner_examSchedule_${group.componentID}_componentClass`}
-                                  rowSpan={group.parts.length}
-                                >
-                                  {this.renderPlannerLocalizedText(group.courseComponentClass)}
-                                </td>
-                              </>
-                            ) : null}
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examClass`}>{this.renderPlannerLocalizedText(row.examClass)}</td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examDate`}>{this.renderPlannerLocalizedText(row.taskDate)}</td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examTime`}>{this.renderPlannerLocalizedText(row.taskTime)}</td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examLocation_building`}>
-                              {this.renderPlannerLocalizedText(row.taskLocation?.building)}
-                            </td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examLocation_room`}>
-                              {this.renderPlannerLocalizedText(
-                                Array.isArray(row.taskLocation?.rooms) && row.taskLocation.rooms.length > 0
-                                  ? row.taskLocation.rooms[0]
-                                  : String(row.taskLocation?.room || "").trim(),
-                              )}
-                            </td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examWeight`}>{this.renderPlannerLocalizedText(row.taskWeight)}</td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_examGrade`}>{this.renderPlannerLocalizedText(row.taskGrade)}</td>
-                            <td id={`nogaPlanner_examSchedule_${row.key}_actions`}>
-                              {!row.isPreview ? (
-                                <div id={`nogaPlanner_examSchedule_rowActions_${row.key}`} className="nogaPlanner_homeIntervalRowActions">
-                                  <button
-                                    id={`nogaPlanner_homePanelCardSetBtn_24_${row.key}`}
-                                    type="button"
-                                    className="nogaPlanner_homePanelCardSetBtn"
-                                    disabled={isHomeCardsLocked}
-                                    onClick={() => this.editHomeCourseExamScheduleEntry(row)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    id={`nogaPlanner_homeIntervalsDeleteIconBtn_4_${row.key}`}
-                                    type="button"
-                                    className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                                    aria-label="Delete exam part"
-                                    disabled={isHomeCardsLocked}
-                                    onClick={() => this.deleteHomeCourseExamScheduleEntry(row)}
-                                  >
-                                    <i className="fi fi-br-cross" aria-hidden="true" />
-                                  </button>
-                                </div>
-                              ) : null}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-              </div>
-            </div>
-            <div
-              id="nogaPlanner_home_storedDocuments_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
-                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div className="nogaPlanner_homePanelCardBody">
-                <StoredDocumentsCard planner={this} />
-              </div>
-            </div>
-            <div
-              id="nogaPlanner_home_lecturesMode_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "lectures"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_19" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_lectures">Lectures</strong>
-              </div>
-              <div id="nogaPlanner_homePanelCardBody_4" className="nogaPlanner_homePanelCardBody">
-                {this.renderSelectedCourseLecturesTable("full")}
-              </div>
-            </div>
-            <div
-              id="nogaPlanner_home_documentsMode_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "documents"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              <div id="nogaPlanner_homePanelCardTitleRow_20" className="nogaPlanner_homePanelCardTitleRow">
-                <strong id="nogaPlanner_home_heading_documents">Documents</strong>
-              </div>
-              <div id="nogaPlanner_homePanelCardBody_5" className="nogaPlanner_homePanelCardBody">
-                <NogaPlannerTelegramPanel
-                  planner={this}
-                  runtime={NOGAPLANNER_PANEL_RUNTIME}
-                />
-              </div>
-            </div>
-          </div>
           </div>
         </div>
       </section>
@@ -27140,9 +27235,9 @@ export default class NogaPlanner extends Component {
     if (wrapperTab === "plan") {
       return String(plannerText?.studyPlan?.title || "Plan");
     }
-    // if (wrapperTab === "traces") {
-    //   return "Study Materials";
-    // }
+    if (wrapperTab === "traces") {
+      return "Study";
+    }
     if (wrapperTab === "documents") {
       return "Documents";
     }
@@ -27173,9 +27268,9 @@ export default class NogaPlanner extends Component {
     if (wrapperTab === "plan") {
       return this.renderPlannerCurrentSubIntervalCalendar();
     }
-    // if (wrapperTab === "traces") {
-    //   return <NogaPlannerTelegramPanel planner={this} />;
-    // }
+    if (wrapperTab === "traces") {
+      return <div id="nogaPlanner_studyTabEmpty" className="nogaPlanner_mainTabEmptyPanel" />;
+    }
     if (wrapperTab === "documents") {
       return <NogaPlannerDocumentsPanel planner={this} />;
     }
@@ -27437,8 +27532,8 @@ export default class NogaPlanner extends Component {
         ? "home"
         : this.state.wrapperTab === "plan"
           ? "plan"
-        // : this.state.wrapperTab === "traces"
-        //   ? "traces"
+        : this.state.wrapperTab === "traces"
+          ? "traces"
           : this.state.wrapperTab === "documents"
             ? "documents"
           : this.state.wrapperTab === "youtube-text"

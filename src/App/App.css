@@ -48,6 +48,15 @@ h6,
 a {
   font-family: "IBM Plex Mono", monospace;
 }
+
+input,
+select,
+textarea {
+  outline: none;
+  border: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
 *::selection {
   background-color: var(--blue);
 }

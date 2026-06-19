@@ -16,7 +16,7 @@ const formatDocumentSize = (value = 0) => {
 };
 
 const formatDocumentVolume = (documentEntry = {}) => {
-  const volume = Number(documentEntry?.documentVolume);
+  const volume = resolveDocumentVolumeNumber(documentEntry);
   const unit = String(documentEntry?.documentVolumeUnit || "").trim();
   if (!Number.isFinite(volume) || volume <= 0) {
     return unit || "";
@@ -29,6 +29,65 @@ const formatStringList = (value = []) =>
     .map((entry) => String(entry || "").trim())
     .filter(Boolean)
     .join(", ");
+
+const getDocumentInfoForEntry = (entry = {}) =>
+  entry?.documentInfo && typeof entry.documentInfo === "object"
+    ? entry.documentInfo
+    : entry && typeof entry === "object"
+      ? entry
+      : {};
+
+const resolveDocumentVolumeNumber = (documentInfo = {}) => {
+  const rawVolume = documentInfo?.documentVolume;
+  if (Number.isFinite(Number(rawVolume))) {
+    return Number(rawVolume);
+  }
+  return null;
+};
+
+const buildDocumentPagesFromVolume = (volumeValue, existingPages = []) => {
+  const normalizedVolume = Number(volumeValue);
+  if (!Number.isFinite(normalizedVolume) || normalizedVolume <= 0) {
+    return [];
+  }
+  const maxPages = Math.max(0, Math.trunc(normalizedVolume));
+  return Array.from({ length: maxPages }, (_, index) => {
+    const pageOrder = index + 1;
+    const existingPage =
+      (Array.isArray(existingPages) ? existingPages : []).find(
+        (entry) => Number(entry?.pageOrder) === pageOrder,
+      ) || {};
+    return {
+      pageOrder,
+      pageStatus: String(existingPage?.pageStatus || "").trim() || null,
+      pageNotes: Array.isArray(existingPage?.pageNotes)
+        ? existingPage.pageNotes
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean)
+        : [],
+    };
+  });
+};
+
+const getDocumentPagesForUi = (documentInfo = {}) => {
+  const normalizedVolume = resolveDocumentVolumeNumber(documentInfo);
+  const explicitPages = Array.isArray(documentInfo?.documentPages)
+    ? documentInfo.documentPages
+    : [];
+  if (!Number.isFinite(normalizedVolume) || normalizedVolume <= 0) {
+    return [];
+  }
+  return buildDocumentPagesFromVolume(normalizedVolume, explicitPages);
+};
+
+const hasStoredDocumentDraftValues = (draft = {}) =>
+  Boolean(
+    String(draft?.documentName || "").trim() ||
+      String(draft?.documentType || "").trim() ||
+      String(draft?.documentVolumeUnit || "").trim() ||
+      String(draft?.documentVolume || "").trim() ||
+      (Array.isArray(draft?.documentEditors) && draft.documentEditors.length > 0),
+  );
 
 const buildLectureOptions = (planner) => {
   const plannerRoot =
@@ -333,9 +392,18 @@ const EMPTY_STORED_DOC_DRAFT = {
   documentVolumeUnit: "",
   documentVolume: "",
   documentEditors: [],
+  documentLectureID: "",
+  documentLectureName: "",
 };
 
-const StoredDocumentFormFields = ({ draft, setDraft, documentTypes, volumeUnits, programEditors }) => {
+const StoredDocumentFormFields = ({
+  draft,
+  setDraft,
+  documentTypes,
+  volumeUnits,
+  programEditors,
+  lectureOptions,
+}) => {
   const [editorSelection, setEditorSelection] = useState("");
 
   const availableEditors = useMemo(
@@ -369,6 +437,38 @@ const StoredDocumentFormFields = ({ draft, setDraft, documentTypes, volumeUnits,
             onChange={(e) => setDraft((prev) => ({ ...prev, documentName: e.target.value }))}
             placeholder="Enter document name"
           />
+        </label>
+        <label className="nogaPlanner_storedDocumentFormField">
+          <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Lecture</span>
+          <select
+            className="nogaPlanner_savedCoursesDetailsInput"
+            value={draft.documentLectureID}
+            onChange={(e) => {
+              const nextLectureId = String(e.target.value || "");
+              const selectedOption = e.target.selectedOptions?.[0] || null;
+              const nextLectureName = String(
+                selectedOption?.dataset?.lectureName ||
+                  selectedOption?.textContent ||
+                  "",
+              ).trim();
+              setDraft((prev) => ({
+                ...prev,
+                documentLectureID: nextLectureId,
+                documentLectureName: nextLectureId ? nextLectureName : "",
+              }));
+            }}
+          >
+            <option value="">— select lecture —</option>
+            {lectureOptions.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                data-lecture-name={option.lectureName}
+              >
+                {option.lectureName || option.value}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Type</span>
@@ -457,7 +557,9 @@ export const StoredDocumentsCard = ({ planner }) => {
   const [editingRef, setEditingRef] = useState(null); // { source: "existing"|"staged", idx }
   const [draft, setDraft] = useState(EMPTY_STORED_DOC_DRAFT);
   const [stagedDocs, setStagedDocs] = useState([]);
+  const [showSubmitAction, setShowSubmitAction] = useState(false);
   const [submitState, setSubmitState] = useState({ loading: false, error: "" });
+  const [selectedOverviewKey, setSelectedOverviewKey] = useState("");
 
   const plannerRoot = useMemo(() => {
     const root =
@@ -490,23 +592,76 @@ export const StoredDocumentsCard = ({ planner }) => {
         : [],
     [plannerRoot],
   );
+  const lectureOptions = useMemo(
+    () =>
+      (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
+        .map((entry, index) => {
+          const lectureInfo =
+            entry?.lectureInfo && typeof entry.lectureInfo === "object"
+              ? entry.lectureInfo
+              : entry || {};
+          const lectureId = String(lectureInfo?.lectureID || "").trim();
+          const lectureName = String(lectureInfo?.lectureName || "").trim();
+          const courseName = String(lectureInfo?.lectureCourseName || "").trim();
+          const componentName = String(lectureInfo?.lectureComponentName || "").trim();
+          if (!lectureId) {
+            return null;
+          }
+          return {
+            value: lectureId,
+            lectureName: lectureName || lectureId,
+            label: [lectureName || lectureId, courseName, componentName]
+              .filter(Boolean)
+              .join(" | "),
+            sortKey: `${String(lectureInfo?.lectureOrder || index + 1).padStart(4, "0")}|${lectureName}|${lectureId}`,
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => left.sortKey.localeCompare(right.sortKey)),
+    [plannerRoot],
+  );
 
   const existingProgramDocuments = useMemo(
     () =>
       Array.isArray(plannerRoot?.programDocuments) ? plannerRoot.programDocuments : [],
     [plannerRoot],
   );
+  const isDraftPopulated = hasStoredDocumentDraftValues(draft);
+
+  const inferLectureNameFromDocumentID = (documentID) => {
+    if (!documentID) return "";
+    for (const opt of lectureOptions) {
+      if (opt.value && documentID.startsWith(opt.value)) {
+        return opt.lectureName || opt.value;
+      }
+    }
+    return "";
+  };
 
   const handleStartEdit = (entry, source, idx) => {
-    const info = entry?.documentInfo || {};
+    const info = getDocumentInfoForEntry(entry);
     setDraft({
       documentName: String(info.documentName || ""),
       documentType: String(info.documentType || ""),
       documentVolumeUnit: String(info.documentVolumeUnit || ""),
-      documentVolume: info.documentVolume?.total != null ? String(info.documentVolume.total) : "",
+      documentVolume:
+        resolveDocumentVolumeNumber(info) != null
+          ? String(resolveDocumentVolumeNumber(info))
+          : "",
       documentEditors: Array.isArray(info.documentEditors) ? info.documentEditors : [],
+      documentLectureID: String(entry?.documentLectureID || ""),
+      documentLectureName: String(
+        entry?.documentLectureName ||
+          lectureOptions.find(
+            (option) =>
+              String(option?.value || "").trim() ===
+              String(entry?.documentLectureID || "").trim(),
+          )?.lectureName ||
+          "",
+      ),
     });
     setEditingRef({ source, idx });
+    setShowSubmitAction(false);
     setIsEditing(true);
   };
 
@@ -514,7 +669,10 @@ export const StoredDocumentsCard = ({ planner }) => {
     setSubmitState({ loading: true, error: "" });
     try {
       const updated = existingProgramDocuments.filter((_, i) => i !== idx);
-      const nextPlannerRoot = await planner.persistStudyPlannerDocuments([...updated, ...stagedDocs.map(({ _staged, ...rest }) => rest)]);
+      const nextPlannerRoot = await planner.persistStudyPlannerDocuments([
+        ...updated.map(sanitizeDocumentEntry),
+        ...stagedDocs.map(({ _staged, ...rest }) => sanitizeDocumentEntry(rest)),
+      ]);
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
@@ -525,52 +683,131 @@ export const StoredDocumentsCard = ({ planner }) => {
   };
 
   const handleDeleteStaged = (idx) => {
-    setStagedDocs((prev) => prev.filter((_, i) => i !== idx));
+    setStagedDocs((prev) => {
+      const nextDocs = prev.filter((_, i) => i !== idx);
+      if (nextDocs.length === 0) {
+        setShowSubmitAction(false);
+      }
+      return nextDocs;
+    });
   };
 
-  const buildEntryFromDraft = () => ({
-    documentInfo: {
-      documentName: String(draft.documentName || "").trim(),
-      documentType: draft.documentType,
-      documentVolumeUnit: draft.documentVolumeUnit,
-      documentVolume: {
-        total: draft.documentVolume !== "" ? Number(draft.documentVolume) : null,
-        done: null,
+  const sanitizeDocumentEntry = (entry) => {
+    if (!entry || typeof entry !== "object") return entry;
+    const { documentLectureID: _lid, documentLectureName: _lname, ...clean } = entry;
+    return clean;
+  };
+
+  const buildEntryFromDraft = (previousEntry = null, existingPages = [], nextDocNum = null) => {
+    const previousInfo = getDocumentInfoForEntry(previousEntry);
+    const docSymbol = String(previousInfo?.documentSymbol || "DOC");
+    const storedDocNum = Number.isFinite(Number(previousInfo?.documentNum)) && Number(previousInfo.documentNum) > 0
+      ? Number(previousInfo.documentNum)
+      : null;
+    const docNum = storedDocNum ?? nextDocNum;
+    const lectureIdRaw = String(draft.documentLectureID || "").trim();
+    let documentID = String(previousInfo?.documentID || "");
+    if (lectureIdRaw) {
+      documentID = [lectureIdRaw, docSymbol, docNum != null ? String(docNum) : ""]
+        .filter(Boolean)
+        .join("")
+        .replace(/[-_]/g, "");
+    }
+    const { documentLectureID: _lid, documentLectureName: _lname, ...previousEntryClean } =
+      previousEntry && typeof previousEntry === "object" ? previousEntry : {};
+    return {
+      ...previousEntryClean,
+      documentInfo: {
+        documentSymbol: docSymbol,
+        documentNum: docNum,
+        documentID,
+        documentName: String(draft.documentName || "").trim(),
+        documentType: draft.documentType,
+        documentVolumeUnit: draft.documentVolumeUnit,
+        documentVolume: draft.documentVolume !== "" ? Number(draft.documentVolume) : null,
+        documentPages: buildDocumentPagesFromVolume(
+          draft.documentVolume,
+          existingPages,
+        ),
+        documentEditors: draft.documentEditors,
       },
-      documentEditors: draft.documentEditors,
-    },
-    documentURL: "",
-  });
+      documentURL: String(previousEntry?.documentURL || "").trim(),
+    };
+  };
 
   const handleAddOrEditDocument = async () => {
     const documentName = String(draft.documentName || "").trim();
     if (!documentName) return;
-    const newEntry = buildEntryFromDraft();
 
     if (editingRef === null) {
+      const nextDocNum = existingProgramDocuments.length + stagedDocs.length + 1;
+      const newEntry = buildEntryFromDraft(null, [], nextDocNum);
       setStagedDocs((prev) => [...prev, { ...newEntry, _staged: true }]);
       setDraft(EMPTY_STORED_DOC_DRAFT);
+      setShowSubmitAction(true);
     } else if (editingRef.source === "staged") {
-      setStagedDocs((prev) =>
-        prev.map((e, i) => (i === editingRef.idx ? { ...newEntry, _staged: true } : e)),
+      const currentStagedEntry = stagedDocs[editingRef.idx] || {};
+      const currentStagedPages = Array.isArray(
+        getDocumentInfoForEntry(currentStagedEntry)?.documentPages,
+      )
+        ? getDocumentInfoForEntry(currentStagedEntry).documentPages
+        : [];
+      const stagedEntryWithPages = buildEntryFromDraft(
+        currentStagedEntry,
+        currentStagedPages,
+        existingProgramDocuments.length + editingRef.idx + 1,
       );
-      setEditingRef(null);
-      setDraft(EMPTY_STORED_DOC_DRAFT);
+      setStagedDocs((prev) =>
+        prev.map((e, i) =>
+          i === editingRef.idx ? { ...stagedEntryWithPages, _staged: true } : e,
+        ),
+      );
+      setDraft({
+        documentName: String(stagedEntryWithPages?.documentInfo?.documentName || ""),
+        documentType: String(stagedEntryWithPages?.documentInfo?.documentType || ""),
+        documentVolumeUnit: String(
+          stagedEntryWithPages?.documentInfo?.documentVolumeUnit || "",
+        ),
+        documentVolume:
+          stagedEntryWithPages?.documentInfo?.documentVolume != null
+            ? String(stagedEntryWithPages.documentInfo.documentVolume)
+            : "",
+        documentEditors: Array.isArray(
+          stagedEntryWithPages?.documentInfo?.documentEditors,
+        )
+          ? stagedEntryWithPages.documentInfo.documentEditors
+          : [],
+        documentLectureID: String(stagedEntryWithPages?.documentLectureID || ""),
+        documentLectureName: String(stagedEntryWithPages?.documentLectureName || ""),
+      });
+      setShowSubmitAction(false);
     } else {
       setSubmitState({ loading: true, error: "" });
       try {
+        const currentExistingEntry = existingProgramDocuments[editingRef.idx] || {};
+        const currentExistingPages = Array.isArray(
+          getDocumentInfoForEntry(currentExistingEntry)?.documentPages,
+        )
+          ? getDocumentInfoForEntry(currentExistingEntry).documentPages
+          : [];
+        const existingEntryWithPages = buildEntryFromDraft(
+          currentExistingEntry,
+          currentExistingPages,
+          editingRef.idx + 1,
+        );
         const updatedExisting = existingProgramDocuments.map((e, i) =>
-          i === editingRef.idx ? newEntry : e,
+          i === editingRef.idx ? existingEntryWithPages : e,
         );
         const nextPlannerRoot = await planner.persistStudyPlannerDocuments([
-          ...updatedExisting,
-          ...stagedDocs.map(({ _staged, ...rest }) => rest),
+          ...updatedExisting.map(sanitizeDocumentEntry),
+          ...stagedDocs.map(({ _staged, ...rest }) => sanitizeDocumentEntry(rest)),
         ]);
         if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
           planner.setState({ plannerRoot: nextPlannerRoot });
         }
-        setEditingRef(null);
         setDraft(EMPTY_STORED_DOC_DRAFT);
+        setEditingRef(null);
+        setShowSubmitAction(false);
         setSubmitState({ loading: false, error: "" });
       } catch (err) {
         setSubmitState({ loading: false, error: String(err?.message || "Failed to save.") });
@@ -583,8 +820,8 @@ export const StoredDocumentsCard = ({ planner }) => {
     setSubmitState({ loading: true, error: "" });
     try {
       const allDocs = [
-        ...existingProgramDocuments,
-        ...stagedDocs.map(({ _staged, ...rest }) => rest),
+        ...existingProgramDocuments.map(sanitizeDocumentEntry),
+        ...stagedDocs.map(({ _staged, ...rest }) => sanitizeDocumentEntry(rest)),
       ];
       const nextPlannerRoot = await planner.persistStudyPlannerDocuments(allDocs);
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
@@ -592,10 +829,97 @@ export const StoredDocumentsCard = ({ planner }) => {
       }
       setStagedDocs([]);
       setIsEditing(false);
+      setShowSubmitAction(false);
       setDraft(EMPTY_STORED_DOC_DRAFT);
       setSubmitState({ loading: false, error: "" });
     } catch (err) {
       setSubmitState({ loading: false, error: String(err?.message || "Failed to save.") });
+    }
+  };
+
+  const selectedOverviewDocument = useMemo(() => {
+    const allDocuments = [
+      ...existingProgramDocuments.map((entry, idx) => ({
+        key: `existing_${idx}`,
+        entry,
+      })),
+      ...stagedDocs.map((entry, idx) => ({
+        key: `staged_${idx}`,
+        entry,
+      })),
+    ];
+    if (!selectedOverviewKey) {
+      return allDocuments[0] || null;
+    }
+    return allDocuments.find((entry) => entry.key === selectedOverviewKey) || null;
+  }, [existingProgramDocuments, stagedDocs, selectedOverviewKey]);
+
+  const selectedOverviewInfo =
+    selectedOverviewDocument?.entry?.documentInfo &&
+    typeof selectedOverviewDocument.entry.documentInfo === "object"
+      ? selectedOverviewDocument.entry.documentInfo
+      : {};
+  const selectedOverviewPages = getDocumentPagesForUi(selectedOverviewInfo);
+  const selectedOverviewDonePages = selectedOverviewPages.filter(
+    (entry) => String(entry?.pageStatus || "").trim().toLowerCase() === "done",
+  );
+  const selectedOverviewDone = selectedOverviewDonePages.length;
+  const selectedOverviewVolume = resolveDocumentVolumeNumber(selectedOverviewInfo);
+  const selectedOverviewSquares = Number.isFinite(selectedOverviewVolume) && selectedOverviewVolume > 0
+    ? Array.from({ length: Math.trunc(selectedOverviewVolume) }, (_, index) => index + 1)
+    : [];
+  const handleOverviewSquareClick = async (pageNumber) => {
+    if (!selectedOverviewDocument || !selectedOverviewDocument.key.startsWith("existing_")) {
+      return;
+    }
+    const documentIndex = Number.parseInt(
+      selectedOverviewDocument.key.replace("existing_", ""),
+      10,
+    );
+    if (!Number.isInteger(documentIndex) || documentIndex < 0) {
+      return;
+    }
+    setSubmitState({ loading: true, error: "" });
+    try {
+      const updatedExisting = existingProgramDocuments.map((entry, idx) => {
+        if (idx !== documentIndex) {
+          return entry;
+        }
+        const info = entry?.documentInfo || {};
+        const currentPages = getDocumentPagesForUi(info);
+        const nextPages = currentPages.map((pageEntry) => {
+          if (Number(pageEntry?.pageOrder) !== pageNumber) {
+            return pageEntry;
+          }
+          const isDone =
+            String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done";
+          return {
+            ...pageEntry,
+            pageStatus: isDone ? null : "done",
+          };
+        });
+        return {
+          ...entry,
+          documentInfo: {
+            ...info,
+            documentVolume: resolveDocumentVolumeNumber(info),
+            documentPages: nextPages,
+          },
+        };
+      });
+      const nextPlannerRoot = await planner.persistStudyPlannerDocuments([
+        ...updatedExisting.map(sanitizeDocumentEntry),
+        ...stagedDocs.map(({ _staged, ...rest }) => sanitizeDocumentEntry(rest)),
+      ]);
+      if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
+        planner.setState({ plannerRoot: nextPlannerRoot });
+      }
+      setSubmitState({ loading: false, error: "" });
+    } catch (err) {
+      setSubmitState({
+        loading: false,
+        error: String(err?.message || "Failed to update document progress."),
+      });
     }
   };
 
@@ -674,11 +998,12 @@ export const StoredDocumentsCard = ({ planner }) => {
                   : [];
 
                 lectureDocuments.forEach((documentEntry, documentIndex) => {
+                  const documentInfo = getDocumentInfoForEntry(documentEntry);
                   const documentId = String(
-                    documentEntry?.documentID || "",
+                    documentInfo?.documentID || "",
                   ).trim();
                   const documentName = String(
-                    documentEntry?.documentName || "",
+                    documentInfo?.documentName || "",
                   ).trim();
                   const documentUrl = String(
                     documentEntry?.documentURL || "",
@@ -698,17 +1023,17 @@ export const StoredDocumentsCard = ({ planner }) => {
                     documentID: documentId,
                     documentName,
                     documentType: String(
-                      documentEntry?.documentType || "",
+                      documentInfo?.documentType || "",
                     ).trim(),
-                    documentVolume: formatDocumentVolume(documentEntry),
+                    documentVolume: formatDocumentVolume(documentInfo),
                     documentByteSize: formatDocumentSize(
-                      documentEntry?.documentByteSize,
+                      documentInfo?.documentByteSize,
                     ),
                     documentEditors: formatStringList(
-                      documentEntry?.documentEditors,
+                      documentInfo?.documentEditors,
                     ),
                     documentConcepts: formatStringList(
-                      documentEntry?.documentConcepts,
+                      documentInfo?.documentConcepts,
                     ),
                     documentURL: documentUrl,
                     lectureLabel,
@@ -747,7 +1072,7 @@ export const StoredDocumentsCard = ({ planner }) => {
           ].join("|"),
         ),
     );
-  }, [planner]);
+  }, [planner, plannerRoot]);
 
   return (
     <div
@@ -756,147 +1081,326 @@ export const StoredDocumentsCard = ({ planner }) => {
     >
       <div className="nogaPlanner_homePanelCardTitleRow">
         <strong>Program Documents</strong>
-        {isEditing ? (
-          <>
+        <div className="nogaPlanner_homePanelCardActions">
+          {isEditing ? (
+            editingRef !== null || isDraftPopulated || !showSubmitAction ? (
+              <button
+                type="button"
+                className="nogaPlanner_homePanelCardSetBtn"
+                disabled={!String(draft.documentName || "").trim()}
+                onClick={handleAddOrEditDocument}
+              >
+                {editingRef !== null ? "Edit Document" : "Add Document"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                disabled={submitState.loading || stagedDocs.length === 0}
+                onClick={handleSubmit}
+              >
+                {submitState.loading ? "Saving…" : "Submit"}
+              </button>
+            )
+          ) : existingProgramDocuments.length === 0 ? (
             <button
               type="button"
               className="nogaPlanner_homePanelCardSetBtn"
-              disabled={!String(draft.documentName || "").trim()}
-              onClick={handleAddOrEditDocument}
+              onClick={() => {
+                setShowSubmitAction(false);
+                setEditingRef(null);
+                setIsEditing(true);
+              }}
             >
-              {editingRef !== null ? "Edit Document" : "Add Document"}
+              Set
             </button>
-            <button
-              type="button"
-              className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-              disabled={submitState.loading || stagedDocs.length === 0}
-              onClick={handleSubmit}
-            >
-              {submitState.loading ? "Saving…" : "Submit"}
-            </button>
-          </>
-        ) : existingProgramDocuments.length === 0 ? (
-          <button
-            type="button"
-            className="nogaPlanner_homePanelCardSetBtn"
-            onClick={() => setIsEditing(true)}
-          >
-            Set
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="nogaPlanner_homePanelCardSetBtn"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </button>
-        )}
+          ) : (
+            <>
+              <button
+                type="button"
+                className="nogaPlanner_homePanelCardSetBtn"
+                onClick={() => {
+                  setShowSubmitAction(false);
+                  setEditingRef(null);
+                  setIsEditing(true);
+                }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
+                disabled={submitState.loading}
+                onClick={planner.handlePushProgramDocumentsToLectures}
+                title="Push all Program Documents to their designated lectures"
+              >
+                <span>Push to Lectures</span>
+                <span className="nogaPlanner_homePanelCardSetBtnBadge">
+                  {planner.getProgramDocumentsPendingPushCount(plannerRoot)}
+                </span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
       {submitState.error ? (
         <p className="nogaPlanner_documentsStagedError">{submitState.error}</p>
       ) : null}
-      {isEditing ? (
+      {isEditing && (editingRef !== null || isDraftPopulated) ? (
         <StoredDocumentFormFields
           draft={draft}
           setDraft={setDraft}
           documentTypes={documentTypes}
           volumeUnits={volumeUnits}
           programEditors={programEditors}
+          lectureOptions={lectureOptions}
         />
       ) : null}
-      <div
-        id="nogaPlanner_documentsTableWrap"
-        className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_documentsTableWrap"
-      >
-        <table
-          id="nogaPlanner_documentsTable"
-          className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_documentsTable"
+      <div className="nogaPlanner_documentsOverviewLayout">
+        <div
+          id="nogaPlanner_documentsTableWrap"
+          className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_documentsTableWrap"
         >
-          <thead id="nogaPlanner_documentsTableHead">
-            <tr>
-              <th>Document Name</th>
-              <th>Type</th>
-              <th>Volume Unit</th>
-              <th>Volume</th>
-              <th>Editors</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="nogaPlanner_documentsTableBody">
-            {existingProgramDocuments.length > 0 || stagedDocs.length > 0 ? (
-              <>
-                {existingProgramDocuments.map((entry, idx) => {
-                  const info = entry?.documentInfo || {};
-                  return (
-                    <tr key={`prog-doc-${idx}`} className="nogaPlanner_tabTableRow">
-                      <td>{String(info.documentName || "—")}</td>
-                      <td>{String(info.documentType || "—")}</td>
-                      <td>{String(info.documentVolumeUnit || "—")}</td>
-                      <td>{info.documentVolume?.total != null ? info.documentVolume.total : "—"}</td>
-                      <td>{formatStringList(info.documentEditors) || "—"}</td>
-                      <td className="nogaPlanner_documentsActionsCell">
-                        <button
-                          type="button"
-                          className="nogaPlanner_documentsActionBtn nogaPlanner_documentsActionBtn--edit"
-                          disabled={submitState.loading}
-                          onClick={() => handleStartEdit(entry, "existing", idx)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="nogaPlanner_documentsActionBtn nogaPlanner_documentsActionBtn--delete"
-                          disabled={submitState.loading}
-                          onClick={() => handleDeleteExisting(idx)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {stagedDocs.map((entry, idx) => {
-                  const info = entry?.documentInfo || {};
-                  return (
-                    <tr key={`staged-doc-${idx}`} className="nogaPlanner_tabTableRow nogaPlanner_tabTableRow--staged">
-                      <td>{String(info.documentName || "—")}</td>
-                      <td>{String(info.documentType || "—")}</td>
-                      <td>{String(info.documentVolumeUnit || "—")}</td>
-                      <td>{info.documentVolume?.total != null ? info.documentVolume.total : "—"}</td>
-                      <td>{formatStringList(info.documentEditors) || "—"}</td>
-                      <td className="nogaPlanner_documentsActionsCell">
-                        <button
-                          type="button"
-                          className="nogaPlanner_documentsActionBtn nogaPlanner_documentsActionBtn--edit"
-                          onClick={() => handleStartEdit(entry, "staged", idx)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="nogaPlanner_documentsActionBtn nogaPlanner_documentsActionBtn--delete"
-                          onClick={() => handleDeleteStaged(idx)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </>
-            ) : (
-              <tr id="nogaPlanner_documentsTableEmptyRow">
+          <table
+            id="nogaPlanner_documentsTable"
+            className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_documentsTable"
+          >
+            <thead id="nogaPlanner_documentsTableHead">
+              <tr>
+                <th rowSpan={2}>Document Name</th>
+                <th rowSpan={2}>Lecture</th>
+                <th rowSpan={2}>Type</th>
+                <th rowSpan={2}>Volume Unit</th>
+                <th colSpan={3}>Volume</th>
+                <th rowSpan={2}>Editors</th>
+                <th rowSpan={2}>Actions</th>
+              </tr>
+              <tr>
+                <th>Total</th>
+                <th>Done</th>
+                <th>Remaining</th>
+              </tr>
+            </thead>
+            <tbody id="nogaPlanner_documentsTableBody">
+              {existingProgramDocuments.length > 0 || stagedDocs.length > 0 ? (
+                <>
+                  {existingProgramDocuments.map((entry, idx) => {
+                    const isBeingEdited = editingRef?.source === "existing" && editingRef?.idx === idx;
+                    const storedInfo = entry?.documentInfo || {};
+                    const info = isBeingEdited
+                      ? {
+                          ...storedInfo,
+                          documentName: draft.documentName,
+                          documentType: draft.documentType,
+                          documentVolumeUnit: draft.documentVolumeUnit,
+                          documentVolume: draft.documentVolume !== "" ? Number(draft.documentVolume) : null,
+                          documentEditors: draft.documentEditors,
+                        }
+                      : storedInfo;
+                    const rowKey = `existing_${idx}`;
+                    const totalVolume = resolveDocumentVolumeNumber(info);
+                    const doneVolume = getDocumentPagesForUi(info).filter(
+                      (pageEntry) =>
+                        String(pageEntry?.pageStatus || "")
+                          .trim()
+                          .toLowerCase() === "done",
+                    ).length;
+                    const remainingVolume =
+                      totalVolume != null && doneVolume != null
+                        ? Math.max(0, totalVolume - doneVolume)
+                        : totalVolume != null
+                          ? totalVolume
+                          : null;
+                    return (
+                      <tr
+                        key={`prog-doc-${idx}`}
+                        className={
+                          "nogaPlanner_tabTableRow" +
+                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "") +
+                          (selectedOverviewDocument?.key === rowKey
+                            ? " nogaPlanner_documentsTableRow--selected"
+                            : "")
+                        }
+                        onClick={() => setSelectedOverviewKey(rowKey)}
+                      >
+                        <td>{String(info.documentName || "—")}</td>
+                        <td>{isBeingEdited
+                          ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
+                          : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
+                        </td>
+                        <td>{String(info.documentType || "—")}</td>
+                        <td>{String(info.documentVolumeUnit || "—")}</td>
+                        <td>{totalVolume != null ? totalVolume : "—"}</td>
+                        <td>{doneVolume != null ? doneVolume : "—"}</td>
+                        <td>{remainingVolume != null ? remainingVolume : "—"}</td>
+                        <td>{formatStringList(info.documentEditors) || "—"}</td>
+                        <td className="nogaPlanner_documentsActionsCell">
+                          <div className="nogaPlanner_materialMetadataActionsGroup">
+                            <button
+                              type="button"
+                              className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                              aria-label="Edit document"
+                              disabled={submitState.loading}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleStartEdit(entry, "existing", idx);
+                              }}
+                            >
+                              <i className="fi fi-rr-pencil" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                              aria-label="Delete document"
+                              disabled={submitState.loading}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteExisting(idx);
+                              }}
+                            >
+                              <i className="fi fi-br-cross" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {stagedDocs.map((entry, idx) => {
+                    const isBeingEdited = editingRef?.source === "staged" && editingRef?.idx === idx;
+                    const storedInfo = entry?.documentInfo || {};
+                    const info = isBeingEdited
+                      ? {
+                          ...storedInfo,
+                          documentName: draft.documentName,
+                          documentType: draft.documentType,
+                          documentVolumeUnit: draft.documentVolumeUnit,
+                          documentVolume: draft.documentVolume !== "" ? Number(draft.documentVolume) : null,
+                          documentEditors: draft.documentEditors,
+                        }
+                      : storedInfo;
+                    const rowKey = `staged_${idx}`;
+                    const totalVolume = resolveDocumentVolumeNumber(info);
+                    const doneVolume = getDocumentPagesForUi(info).filter(
+                      (pageEntry) =>
+                        String(pageEntry?.pageStatus || "")
+                          .trim()
+                          .toLowerCase() === "done",
+                    ).length;
+                    const remainingVolume =
+                      totalVolume != null && doneVolume != null
+                        ? Math.max(0, totalVolume - doneVolume)
+                        : totalVolume != null
+                          ? totalVolume
+                          : null;
+                    return (
+                      <tr
+                        key={`staged-doc-${idx}`}
+                        className={
+                          "nogaPlanner_tabTableRow nogaPlanner_tabTableRow--staged" +
+                          (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "") +
+                          (selectedOverviewDocument?.key === rowKey
+                            ? " nogaPlanner_documentsTableRow--selected"
+                            : "")
+                        }
+                        onClick={() => setSelectedOverviewKey(rowKey)}
+                      >
+                        <td>{String(info.documentName || "—")}</td>
+                        <td>{isBeingEdited
+                          ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
+                          : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
+                        </td>
+                        <td>{String(info.documentType || "—")}</td>
+                        <td>{String(info.documentVolumeUnit || "—")}</td>
+                        <td>{totalVolume != null ? totalVolume : "—"}</td>
+                        <td>{doneVolume != null ? doneVolume : "—"}</td>
+                        <td>{remainingVolume != null ? remainingVolume : "—"}</td>
+                        <td>{formatStringList(info.documentEditors) || "—"}</td>
+                        <td className="nogaPlanner_documentsActionsCell">
+                          <div className="nogaPlanner_materialMetadataActionsGroup">
+                            <button
+                              type="button"
+                              className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                              aria-label="Edit staged document"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleStartEdit(entry, "staged", idx);
+                              }}
+                            >
+                              <i className="fi fi-rr-pencil" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                              aria-label="Delete staged document"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteStaged(idx);
+                              }}
+                            >
+                              <i className="fi fi-br-cross" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>
+              ) : (
+                <tr id="nogaPlanner_documentsTableEmptyRow">
                 <td
                   id="nogaPlanner_documentsTableEmptyCell"
-                  colSpan={6}
+                  colSpan={8}
                 >
                   No stored documents found in lectureDocuments.
                 </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div
+          id="nogaPlanner_documentsAchievementOverview"
+          className="nogaPlanner_documentsAchievementOverview"
+        >
+          <div className="nogaPlanner_documentsAchievementOverviewHeader">
+            <strong>Achievement Overview</strong>
+            <span className="nogaPlanner_documentsAchievementOverviewMeta">
+              {String(selectedOverviewInfo?.documentName || "").trim() || "Select a document"}
+            </span>
+          </div>
+          {selectedOverviewSquares.length > 0 ? (
+            <div className="nogaPlanner_documentsAchievementOverviewGrid">
+              {selectedOverviewSquares.map((pageNumber) => (
+                <button
+                  key={`nogaPlanner_documentsAchievementSquare_${pageNumber}`}
+                  type="button"
+                  className={
+                    "nogaPlanner_documentsAchievementSquare" +
+                    (selectedOverviewPages.some(
+                      (pageEntry) =>
+                        Number(pageEntry?.pageOrder) === pageNumber &&
+                        String(pageEntry?.pageStatus || "").trim().toLowerCase() ===
+                          "done",
+                    )
+                      ? " nogaPlanner_documentsAchievementSquare--done"
+                      : "")
+                  }
+                  disabled={
+                    submitState.loading ||
+                    !selectedOverviewDocument?.key?.startsWith("existing_")
+                  }
+                  onClick={() => handleOverviewSquareClick(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="nogaPlanner_documentsAchievementOverviewEmpty">
+              No pages volume to show.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

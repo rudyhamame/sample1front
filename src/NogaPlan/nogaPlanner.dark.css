@@ -71,7 +71,9 @@ body.dark #nogaPlanner_article textarea:focus,
 .dark #nogaPlanner_article input:focus,
 .dark #nogaPlanner_article select:focus,
 .dark #nogaPlanner_article textarea:focus {
-  box-shadow: 0 0 0 3px rgba(126, 216, 232, 0.16);
+  box-shadow:
+    inset 0 0 0 1px rgba(126, 216, 232, 0.38),
+    0 0 0 1px rgba(126, 216, 232, 0.08);
 }
 
 /* Panel shadows */
@@ -355,7 +357,9 @@ body.dark .nogaPlanner_savedCoursesDetailsInput,
 body.dark .nogaPlanner_savedCoursesDetailsInput:focus,
 .dark .nogaPlanner_savedCoursesDetailsInput:focus {
   border-color: rgba(136, 212, 199, 0.54);
-  box-shadow: 0 0 0 3px rgba(136, 212, 199, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(136, 212, 199, 0.4),
+    0 0 0 1px rgba(136, 212, 199, 0.08);
 }
 
 body.dark .nogaPlanner_savedCoursesSchedulePill,

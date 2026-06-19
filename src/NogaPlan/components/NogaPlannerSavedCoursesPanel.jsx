@@ -86,7 +86,7 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false }) =
     },
     {
       key: "traces",
-      label: "Study Materials",
+      label: "Study",
       icon: "fi fi-rr-folder",
     },
     {

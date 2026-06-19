@@ -4124,7 +4124,7 @@ display: flex;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
-  font-size: 1.8vw;
+  font-size: clamp(1vw, 1.2vw, 2vw);
 }
 
 .Home_Noga_friendsPanelTitleButton i{
