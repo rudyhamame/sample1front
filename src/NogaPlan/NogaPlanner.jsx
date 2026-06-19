@@ -24793,21 +24793,7 @@ export default class NogaPlanner extends Component {
                   const name = match?.documentInfo?.documentName || key;
                   return { key, name, volume: normalizedVolume };
                 });
-                return (
-                  <div className="nogaPlanner_lectureDocsVolumePanel">
-                    {squares.map(({ key, name, volume }) => (
-                      <div
-                        key={key}
-                        className="nogaPlanner_lectureDocVolumeSquare"
-                        title={name}
-                      >
-                        <span className="nogaPlanner_lectureDocVolumeNum">
-                          {volume != null ? volume : "—"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
+                return null;
               })()}
             </div>
             <div
