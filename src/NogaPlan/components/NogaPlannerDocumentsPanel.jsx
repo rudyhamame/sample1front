@@ -1090,7 +1090,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                 disabled={!String(draft.documentName || "").trim()}
                 onClick={handleAddOrEditDocument}
               >
-                {editingRef !== null ? "Edit Document" : "Add Document"}
+                Add Document
               </button>
             ) : (
               <button
@@ -1112,7 +1112,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                 setIsEditing(true);
               }}
             >
-              Set
+              Add
             </button>
           ) : (
             <>
@@ -1125,7 +1125,7 @@ export const StoredDocumentsCard = ({ planner }) => {
                   setIsEditing(true);
                 }}
               >
-                Edit
+                Add
               </button>
               <button
                 type="button"

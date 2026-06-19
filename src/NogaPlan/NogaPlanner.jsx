@@ -1778,11 +1778,17 @@ export default class NogaPlanner extends Component {
     const programDocuments = Array.isArray(plannerRoot?.programDocuments)
       ? plannerRoot.programDocuments
       : [];
-    if (programDocuments.length === 0) {
-      this.props.serverReply?.("No program documents to push.");
-      return;
-    }
-    let mountedCount = 0;
+    const lectureIds = programLectures
+      .map((lectureEntry) => {
+        const lectureInfo =
+          lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
+            ? lectureEntry.lectureInfo
+            : lectureEntry || {};
+        return String(lectureInfo?.lectureID || "").trim();
+      })
+      .filter(Boolean);
+    let changedCount = 0;
+    let syncedCount = 0;
     const nextProgramLectures = programLectures.map((lectureEntry) => {
       const lectureInfo =
         lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
@@ -1803,27 +1809,43 @@ export default class NogaPlanner extends Component {
           if (!documentId || !documentId.startsWith(lectureId)) {
             return null;
           }
-          mountedCount += 1;
           return documentId;
         })
         .filter(Boolean);
       const currentLectureDocuments = Array.isArray(lectureEntry?.lectureDocuments)
         ? lectureEntry.lectureDocuments
         : [];
+      const preservedLectureDocuments = currentLectureDocuments
+        .map((entry) => String(entry || "").trim())
+        .filter(
+          (entry) =>
+            entry &&
+            !lectureIds.some((knownLectureId) => entry.startsWith(knownLectureId)),
+        );
+      const nextLectureDocuments = Array.from(
+        new Set([...preservedLectureDocuments, ...matchingDocumentIds]),
+      );
+      const currentNormalized = currentLectureDocuments
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean);
+      const isSameLength = currentNormalized.length === nextLectureDocuments.length;
+      const isSameOrder =
+        isSameLength &&
+        currentNormalized.every((entry, index) => entry === nextLectureDocuments[index]);
+      if (!isSameOrder) {
+        changedCount += 1;
+      }
+      syncedCount += matchingDocumentIds.length;
       return {
         ...(lectureEntry && typeof lectureEntry === "object" ? lectureEntry : {}),
-        lectureDocuments: Array.from(
-          new Set(
-            [...currentLectureDocuments, ...matchingDocumentIds]
-              .map((entry) => String(entry || "").trim())
-              .filter(Boolean),
-          ),
-        ),
+        lectureDocuments: nextLectureDocuments,
       };
     });
-    if (mountedCount === 0) {
+    if (changedCount === 0) {
       this.props.serverReply?.(
-        "No saved document matched any designated Program Lecture.",
+        syncedCount > 0
+          ? "Program documents are already synced with lectures."
+          : "No designated Program Documents were found for lecture sync.",
       );
       return;
     }
@@ -1833,10 +1855,10 @@ export default class NogaPlanner extends Component {
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         this.setState({ plannerRoot: nextPlannerRoot });
       }
-      this.props.serverReply?.("Program documents pushed to lectures.");
+      this.props.serverReply?.("Program documents synced to lectures.");
     } catch (error) {
       this.props.serverReply?.(
-        String(error?.message || "Failed to push documents to lectures."),
+        String(error?.message || "Failed to sync documents to lectures."),
       );
     }
   };
@@ -4250,20 +4272,10 @@ export default class NogaPlanner extends Component {
     const programDocuments = Array.isArray(plannerRoot?.programDocuments)
       ? plannerRoot.programDocuments
       : [];
-    if (programDocuments.length === 0) {
-      return 0;
-    }
-    const lectureDocumentSet = new Set(
-      (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
-        .flatMap((lectureEntry) =>
-          Array.isArray(lectureEntry?.lectureDocuments)
-            ? lectureEntry.lectureDocuments
-            : [],
-        )
-        .map((entry) => String(entry || "").trim())
-        .filter(Boolean),
-    );
-    const lectureIds = (Array.isArray(plannerRoot?.programLectures) ? plannerRoot.programLectures : [])
+    const programLectures = Array.isArray(plannerRoot?.programLectures)
+      ? plannerRoot.programLectures
+      : [];
+    const lectureIds = programLectures
       .map((lectureEntry) => {
         const info = lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
           ? lectureEntry.lectureInfo
@@ -4273,16 +4285,45 @@ export default class NogaPlanner extends Component {
       .filter(Boolean);
 
     let pendingCount = 0;
-    programDocuments.forEach((documentEntry) => {
-      const documentInfo =
-        documentEntry?.documentInfo &&
-        typeof documentEntry.documentInfo === "object"
-          ? documentEntry.documentInfo
-          : documentEntry || {};
-      const documentId = String(documentInfo?.documentID || "").trim();
-      if (!documentId) return;
-      const matchesLecture = lectureIds.some((lid) => documentId.startsWith(lid));
-      if (matchesLecture && !lectureDocumentSet.has(documentId)) {
+    programLectures.forEach((lectureEntry) => {
+      const lectureInfo =
+        lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
+          ? lectureEntry.lectureInfo
+          : lectureEntry || {};
+      const lectureId = String(lectureInfo?.lectureID || "").trim();
+      if (!lectureId) return;
+      const desiredDocumentIds = programDocuments
+        .map((documentEntry) => {
+          const documentInfo =
+            documentEntry?.documentInfo &&
+            typeof documentEntry.documentInfo === "object"
+              ? documentEntry.documentInfo
+              : documentEntry || {};
+          const documentId = String(documentInfo?.documentID || "").trim();
+          return documentId && documentId.startsWith(lectureId) ? documentId : null;
+        })
+        .filter(Boolean);
+      const currentLectureDocuments = Array.isArray(lectureEntry?.lectureDocuments)
+        ? lectureEntry.lectureDocuments
+        : [];
+      const preservedLectureDocuments = currentLectureDocuments
+        .map((entry) => String(entry || "").trim())
+        .filter(
+          (entry) =>
+            entry &&
+            !lectureIds.some((knownLectureId) => entry.startsWith(knownLectureId)),
+        );
+      const nextLectureDocuments = Array.from(
+        new Set([...preservedLectureDocuments, ...desiredDocumentIds]),
+      );
+      const currentNormalized = currentLectureDocuments
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean);
+      const isSameLength = currentNormalized.length === nextLectureDocuments.length;
+      const isSameOrder =
+        isSameLength &&
+        currentNormalized.every((entry, index) => entry === nextLectureDocuments[index]);
+      if (!isSameOrder) {
         pendingCount += 1;
       }
     });
