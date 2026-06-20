@@ -1826,6 +1826,14 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                       messageFriendSettings?.from?.message || "",
                     ).trim();
                   })();
+                  if (
+                    listeningFriendMessage !==
+                    (planner.state?.plannerFriendIncomingMessage ?? "")
+                  ) {
+                    planner.setState({
+                      plannerFriendIncomingMessage: listeningFriendMessage,
+                    });
+                  }
                   const toList = Array.isArray(
                     plannerSettingsMessageFromFriendToList,
                   )
