@@ -700,6 +700,19 @@ export const StoredDocumentsCard = ({
   const handleDeleteExisting = async (idx) => {
     setSubmitState({ loading: true, error: "" });
     try {
+      const targetEntry = existingProgramDocuments[idx] || {};
+      const targetInfo = getDocumentInfoForEntry(targetEntry);
+      if (planner?.archivePlannerMissedConnection && targetInfo) {
+        await planner.archivePlannerMissedConnection({
+          itemType: "document",
+          itemId: String(targetInfo?.documentID || targetInfo?.documentName || idx).trim(),
+          itemLabel: String(targetInfo?.documentName || targetInfo?.documentID || `Document ${idx + 1}`),
+          itemPayload: targetEntry,
+          restoreInfo: {
+            documentID: String(targetInfo?.documentID || "").trim(),
+          },
+        });
+      }
       const updated = existingProgramDocuments.filter((_, i) => i !== idx);
       const nextPlannerRoot = await planner.persistStudyPlannerDocuments([
         ...updated.map(sanitizeDocumentEntry),

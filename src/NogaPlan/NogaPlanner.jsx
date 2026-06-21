@@ -909,6 +909,347 @@ export default class NogaPlanner extends Component {
       return this.normalizePlannerRootForUi(payload?.studyPlanner || {});
     });
   };
+  getPlannerMissedConnections = (plannerRoot = this.getResolvedPlannerRoot()) => {
+    const root = plannerRoot && typeof plannerRoot === "object" ? plannerRoot : {};
+    return Array.isArray(root?.programMissedConnections)
+      ? root.programMissedConnections
+      : [];
+  };
+  normalizePlannerMissedConnectionEntry = (entry = {}) => {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const itemPayload =
+      entry?.itemPayload && typeof entry.itemPayload === "object"
+        ? entry.itemPayload
+        : {};
+    const itemPayloadJson =
+      typeof entry?.itemPayloadJson === "string" && entry.itemPayloadJson.trim()
+        ? entry.itemPayloadJson
+        : JSON.stringify(itemPayload, null, 2);
+    return {
+      missedConnectionID: String(
+        entry?.missedConnectionID || entry?.key || entry?.id || "",
+      ).trim(),
+      itemType: String(entry?.itemType || entry?.type || "").trim(),
+      itemId: String(entry?.itemId || entry?.originalId || "").trim(),
+      itemLabel: String(
+        entry?.itemLabel || entry?.title || entry?.label || "",
+      ).trim(),
+      itemPayload,
+      itemPayloadJson,
+      restoreInfo:
+        entry?.restoreInfo && typeof entry.restoreInfo === "object"
+          ? entry.restoreInfo
+          : {},
+      createdAt: String(entry?.createdAt || "").trim(),
+    };
+  };
+  persistPlannerMissedConnections = async (nextConnections = []) => {
+    return this.persistStudyPlannerMeta({
+      programMissedConnections: Array.isArray(nextConnections)
+        ? nextConnections
+        : [],
+    });
+  };
+  archivePlannerMissedConnection = async ({
+    itemType = "",
+    itemId = "",
+    itemLabel = "",
+    itemPayload = {},
+    restoreInfo = {},
+  } = {}) => {
+    const normalizedItemType = String(itemType || "").trim();
+    const normalizedItemId = String(itemId || "").trim();
+    const normalizedItemLabel = String(itemLabel || normalizedItemId || normalizedItemType || "").trim();
+    const normalizedPayload =
+      itemPayload && typeof itemPayload === "object" ? itemPayload : {};
+    if (!normalizedItemType || !normalizedItemId || Object.keys(normalizedPayload).length === 0) {
+      return null;
+    }
+    const missedConnectionID = `${normalizedItemType}_${normalizedItemId}_${Date.now()}`;
+    const nextEntry = this.normalizePlannerMissedConnectionEntry({
+      missedConnectionID,
+      itemType: normalizedItemType,
+      itemId: normalizedItemId,
+      itemLabel: normalizedItemLabel,
+      itemPayload: normalizedPayload,
+      itemPayloadJson: JSON.stringify(normalizedPayload, null, 2),
+      restoreInfo,
+      createdAt: new Date().toISOString(),
+    });
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentConnections = this.getPlannerMissedConnections(plannerRoot);
+    const nextConnections = [
+      nextEntry,
+      ...currentConnections.filter(
+        (existing) =>
+          String(existing?.missedConnectionID || "").trim() !== missedConnectionID,
+      ),
+    ];
+    const nextPlannerRoot = await this.persistPlannerMissedConnections(nextConnections);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextEntry;
+  };
+  removeMissedConnectionEntry = async (missedConnectionID = "") => {
+    const normalizedID = String(missedConnectionID || "").trim();
+    if (!normalizedID) {
+      return;
+    }
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const nextConnections = this.getPlannerMissedConnections(plannerRoot).filter(
+      (entry) => String(entry?.missedConnectionID || "").trim() !== normalizedID,
+    );
+    const nextPlannerRoot = await this.persistPlannerMissedConnections(nextConnections);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+  };
+  updateMissedConnectionEditorDraft = (nextValue = "") => {
+    this.setState({
+      homeMissedConnectionsEditorDraft: String(nextValue || ""),
+      homeMissedConnectionsEditorError: "",
+    });
+  };
+  startEditMissedConnectionEntry = (missedConnection = {}) => {
+    const normalized = this.normalizePlannerMissedConnectionEntry(missedConnection);
+    if (!normalized?.missedConnectionID) {
+      return;
+    }
+    this.setState({
+      homeMissedConnectionsEditorKey: normalized.missedConnectionID,
+      homeMissedConnectionsEditorDraft: normalized.itemPayloadJson,
+      homeMissedConnectionsEditorError: "",
+    });
+  };
+  cancelMissedConnectionEditor = () => {
+    this.setState({
+      homeMissedConnectionsEditorKey: "",
+      homeMissedConnectionsEditorDraft: "",
+      homeMissedConnectionsEditorError: "",
+    });
+  };
+  saveMissedConnectionEditorDraft = async () => {
+    const missedConnectionID = String(
+      this.state?.homeMissedConnectionsEditorKey || "",
+    ).trim();
+    if (!missedConnectionID) {
+      return;
+    }
+    let parsedPayload = null;
+    try {
+      parsedPayload = JSON.parse(
+        String(this.state?.homeMissedConnectionsEditorDraft || "").trim() || "{}",
+      );
+    } catch (error) {
+      this.setState({
+        homeMissedConnectionsEditorError: "Invalid JSON.",
+      });
+      return;
+    }
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const nextConnections = this.getPlannerMissedConnections(plannerRoot).map((entry) =>
+      String(entry?.missedConnectionID || "").trim() === missedConnectionID
+        ? {
+            ...entry,
+            itemPayload: parsedPayload,
+            itemPayloadJson: JSON.stringify(parsedPayload, null, 2),
+          }
+        : entry,
+    );
+    const nextPlannerRoot = await this.persistPlannerMissedConnections(nextConnections);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+      homeMissedConnectionsEditorKey: "",
+      homeMissedConnectionsEditorDraft: "",
+      homeMissedConnectionsEditorError: "",
+    });
+  };
+  restoreMissedConnectionEntry = async (missedConnection = {}) => {
+    const normalized = this.normalizePlannerMissedConnectionEntry(missedConnection);
+    if (!normalized?.missedConnectionID) {
+      return;
+    }
+    let payload = normalized.itemPayload;
+    if (String(this.state?.homeMissedConnectionsEditorKey || "").trim() === normalized.missedConnectionID) {
+      try {
+        payload = JSON.parse(
+          String(this.state?.homeMissedConnectionsEditorDraft || "").trim() || "{}",
+        );
+      } catch (error) {
+        this.setState({
+          homeMissedConnectionsEditorError: "Invalid JSON.",
+        });
+        return;
+      }
+    }
+    const itemType = String(normalized.itemType || "").trim();
+    const plannerRoot = this.getResolvedPlannerRoot();
+    if (itemType === "task") {
+      const currentProgramTasks = Array.isArray(plannerRoot?.programTasks)
+        ? plannerRoot.programTasks
+        : [];
+      const taskID = String(payload?.taskInfo?.taskID || normalized.itemId || "").trim();
+      if (!taskID) return;
+      const nextProgramTasks = [
+        ...currentProgramTasks.filter(
+          (entry) => String(entry?.taskInfo?.taskID || "").trim() !== taskID,
+        ),
+        payload,
+      ];
+      const nextPlannerRoot = await this.persistStudyPlannerMeta({
+        programTasks: nextProgramTasks,
+      });
+      await this.removeMissedConnectionEntry(normalized.missedConnectionID);
+      this.setState({
+        plannerRoot:
+          nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : this.state?.plannerRoot || {},
+      });
+      return;
+    }
+    if (itemType === "document") {
+      const currentProgramDocuments = Array.isArray(plannerRoot?.programDocuments)
+        ? plannerRoot.programDocuments
+        : [];
+      const documentID = String(payload?.documentInfo?.documentID || normalized.itemId || "").trim();
+      const nextProgramDocuments = [
+        ...currentProgramDocuments.filter(
+          (entry) => String(entry?.documentInfo?.documentID || "").trim() !== documentID,
+        ),
+        payload,
+      ];
+      const nextPlannerRoot = await this.persistStudyPlannerDocuments(nextProgramDocuments);
+      await this.removeMissedConnectionEntry(normalized.missedConnectionID);
+      this.setState({
+        plannerRoot:
+          nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : this.state?.plannerRoot || {},
+      });
+      return;
+    }
+    if (itemType === "interval" || itemType === "course" || itemType === "lecture") {
+      const currentIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
+      const targetSubIntervalId = String(
+        payload?.subIntervalId || payload?.subIntervalID || normalized.restoreInfo?.subIntervalId || "",
+      ).trim();
+      if (!targetSubIntervalId) return;
+      const nextIntervals = currentIntervals.map((intervalEntry) => {
+        const currentSubIntervalId = this.getPlannerSubIntervalSchemaID(intervalEntry);
+        if (currentSubIntervalId !== targetSubIntervalId) {
+          return intervalEntry;
+        }
+        if (itemType === "interval") {
+          const intervalID = String(payload?.subIntervalId || payload?.subIntervalID || normalized.itemId || "").trim();
+          return {
+            ...intervalEntry,
+            ...payload,
+            key: String(payload?.key || intervalID || intervalEntry?.key || "").trim(),
+          };
+        }
+        const currentIntervalCourses = Array.isArray(intervalEntry?.intervalCourses)
+          ? intervalEntry.intervalCourses
+          : [];
+        if (itemType === "course") {
+          const targetCourseID = String(payload?.courseID || payload?.courseId || normalized.itemId || "").trim();
+          const targetCourseNum = Number.parseInt(String(payload?.courseNum || "").trim(), 10) || null;
+          let replaced = false;
+          const nextCourses = currentIntervalCourses.map((courseEntry) => {
+            const currentCourseID = this.getPlannerCourseSchemaID(courseEntry);
+            const currentCourseNum = Number.parseInt(String(courseEntry?.courseNum || "").trim(), 10) || null;
+            const matches =
+              (targetCourseID && currentCourseID === targetCourseID) ||
+              (targetCourseNum != null && currentCourseNum === targetCourseNum);
+            if (!matches) return courseEntry;
+            replaced = true;
+            return payload;
+          });
+          if (!replaced) {
+            nextCourses.push(payload);
+          }
+          return {
+            ...intervalEntry,
+            intervalCourses: nextCourses,
+            subIntervalCourses: nextCourses,
+          };
+        }
+        const targetCourseNum = Number.parseInt(String(payload?.courseNum || "").trim(), 10) || null;
+        const targetComponentID = String(payload?.componentID || "").trim();
+        const targetTaskID = String(payload?.taskID || "").trim();
+        const nextCourses = currentIntervalCourses.map((courseEntry) => {
+          const currentCourseNum = Number.parseInt(String(courseEntry?.courseNum || "").trim(), 10) || null;
+          if (targetCourseNum != null && currentCourseNum !== targetCourseNum) {
+            return courseEntry;
+          }
+          const currentComponents = Array.isArray(courseEntry?.courseComponents)
+            ? courseEntry.courseComponents
+            : [];
+          const nextComponents = currentComponents.map((componentEntry) => {
+            const currentComponentID = this.getPlannerComponentSchemaID(componentEntry);
+            if (targetComponentID && currentComponentID !== targetComponentID) {
+              return componentEntry;
+            }
+            const currentExams = Array.isArray(componentEntry?.componentExams)
+              ? componentEntry.componentExams
+              : [];
+            const nextExams = currentExams.map((examEntry) => {
+              const currentTaskID = String(examEntry?.taskID || "").trim();
+              if (targetTaskID && currentTaskID !== targetTaskID) {
+                return examEntry;
+              }
+              const currentLectures = Array.isArray(examEntry?.tasksLectures)
+                ? examEntry.tasksLectures
+                : [];
+              const lectureID = String(payload?.lectureID || payload?.lectureInfo?.lectureID || normalized.itemId || "").trim();
+              const nextLectures = currentLectures.filter(
+                (lectureEntry) =>
+                  String(lectureEntry?.lectureID || "").trim() !== lectureID,
+              );
+              nextLectures.push(payload);
+              return {
+                ...examEntry,
+                tasksLectures: nextLectures,
+              };
+            });
+            return {
+              ...componentEntry,
+              componentExams: nextExams,
+            };
+          });
+          return {
+            ...courseEntry,
+            courseComponents: nextComponents,
+          };
+        });
+        return {
+          ...intervalEntry,
+          intervalCourses: nextCourses,
+          subIntervalCourses: nextCourses,
+        };
+      });
+      const nextPlannerRoot = await this.persistStudyPlannerIntervals(nextIntervals);
+      await this.removeMissedConnectionEntry(normalized.missedConnectionID);
+      this.setState({
+        plannerRoot:
+          nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : this.state?.plannerRoot || {},
+      });
+    }
+  };
   cancelHomeProgramEditor = () => {
     this.setState({
       homeProgramSetEditorOpen: false,
@@ -1858,6 +2199,9 @@ export default class NogaPlanner extends Component {
       homeProgramTaskCourseIdDraft: "",
       homeProgramTaskComponentIdDraft: "",
       homeProgramTaskComponentClassDraft: "",
+      homeMissedConnectionsEditorKey: "",
+      homeMissedConnectionsEditorDraft: "",
+      homeMissedConnectionsEditorError: "",
     });
   };
   cancelHomeCourseComponentLecturesEditor = () => {
@@ -2888,6 +3232,23 @@ export default class NogaPlanner extends Component {
     }
     const plannerRoot = this.getResolvedPlannerRoot();
     const sourceEntries = this.getPlannerIntervalsWithComponents(plannerRoot);
+    const targetEntry = sourceEntries.find(
+      (entry) =>
+        String(entry?.subIntervalId || entry?.key || "").trim() ===
+        normalizedSubIntervalId,
+    ) || null;
+    if (!targetEntry) {
+      return;
+    }
+    await this.archivePlannerMissedConnection({
+      itemType: "interval",
+      itemId: normalizedSubIntervalId,
+      itemLabel: String(targetEntry?.subIntervalId || targetEntry?.subIntervalID || normalizedSubIntervalId),
+      itemPayload: targetEntry,
+      restoreInfo: {
+        subIntervalId: String(targetEntry?.subIntervalId || targetEntry?.subIntervalID || normalizedSubIntervalId).trim(),
+      },
+    });
     const nextEntries = sourceEntries.filter(
       (entry) =>
         String(entry?.subIntervalId || entry?.key || "").trim() !==
@@ -7811,6 +8172,8 @@ export default class NogaPlanner extends Component {
             taskTime: String(taskRow?.taskTime || "").trim(),
             taskID: String(taskRow?.taskID || "").trim(),
             componentID: String(taskRow?.componentID || "").trim(),
+            courseName: String(taskRow?.courseName || "").trim(),
+            componentName: String(taskRow?.courseComponentClass || taskRow?.componentName || "").trim(),
             isEmpty: false,
           }));
         const paddedTasks = [...dayTasks];
@@ -7821,6 +8184,8 @@ export default class NogaPlanner extends Component {
             taskTime: "",
             taskID: "",
             componentID: "",
+            courseName: "",
+            componentName: "",
             isEmpty: true,
           });
         }
@@ -8062,14 +8427,22 @@ export default class NogaPlanner extends Component {
                                 &nbsp;
                               </span>
                             ) : (
-                                <>
-                                  <span className="nogaPlanner_planCalendarDayTaskTime">
+                              <div className="nogaPlanner_planCalendarDayTaskContent">
+                                <span className="nogaPlanner_planCalendarDayTaskTime">
                                   {this.formatPlannerTaskTimeDisplay(taskEntry.taskTime)}
-                                  </span>
-                                  <span className="nogaPlanner_planCalendarDayTaskLabel">
-                                    {taskEntry.label}
-                                  </span>
-                                </>
+                                </span>
+                                <span className="nogaPlanner_planCalendarDayTaskLabel">
+                                  {taskEntry.label}
+                                </span>
+                                <span className="nogaPlanner_planCalendarDayTaskMeta">
+                                  {[
+                                    String(taskEntry.courseName || "").trim(),
+                                    String(taskEntry.componentName || "").trim(),
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" • ") || "—"}
+                                </span>
+                              </div>
                             )}
                           </li>
                         ))}
@@ -9069,6 +9442,21 @@ export default class NogaPlanner extends Component {
       };
     });
   };
+  handleHomeProgramTaskApplyChanges = () => {
+    const taskName = String(this.state?.homeCourseExamClassDraft || "").trim();
+    const selectedCourseId = String(this.state?.homeProgramTaskCourseIdDraft || "").trim();
+    const selectedComponentId = String(this.state?.homeProgramTaskComponentIdDraft || "").trim();
+    const selectedComponentName = String(this.state?.homeProgramTaskComponentClassDraft || "").trim();
+    if (!taskName) {
+      this.props.serverReply?.("Choose a task name first.");
+      return;
+    }
+    if (!selectedCourseId || !selectedComponentId || !selectedComponentName) {
+      this.props.serverReply?.("Choose the course and component first.");
+      return;
+    }
+    this.appendHomeProgramTaskDraftEntry();
+  };
   handleProgramTaskSubmit = () => {
     const taskName = String(this.state?.homeCourseExamClassDraft || "").trim();
     if (!taskName) return;
@@ -9230,6 +9618,26 @@ export default class NogaPlanner extends Component {
     const programTasks = Array.isArray(plannerRoot?.programTasks)
       ? plannerRoot.programTasks
       : [];
+    const targetTaskEntry =
+      programTasks.find((taskEntry) => {
+        const taskID = String(taskEntry?.taskInfo?.taskID || "").trim();
+        return targetExamID ? taskID === targetExamID : false;
+      }) || null;
+    if (targetExamID && !targetTaskEntry) {
+      return;
+    }
+    if (targetTaskEntry) {
+      await this.archivePlannerMissedConnection({
+        itemType: "task",
+        itemId: targetExamID,
+        itemLabel: String(targetTaskEntry?.taskInfo?.taskName || targetExamID),
+        itemPayload: targetTaskEntry,
+        restoreInfo: {
+          componentID: targetComponentID,
+          taskID: targetExamID,
+        },
+      });
+    }
     const nextProgramTasks = programTasks.filter((taskEntry) => {
       const taskInfo =
         taskEntry?.taskInfo && typeof taskEntry.taskInfo === "object"
@@ -11659,6 +12067,17 @@ export default class NogaPlanner extends Component {
     }
     const plannerRoot = this.getResolvedPlannerRoot();
     const currentIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
+    await this.archivePlannerMissedConnection({
+      itemType: "course",
+      itemId: targetCourseID || String(targetCourseNum),
+      itemLabel: String(courseEntry?.courseName || targetCourseID || `Course ${targetCourseNum}`),
+      itemPayload: courseEntry,
+      restoreInfo: {
+        subIntervalId: targetSubIntervalId,
+        courseNum: targetCourseNum,
+        courseID: targetCourseID,
+      },
+    });
     const nextIntervals = currentIntervals.map((intervalEntry) => {
       const currentSubIntervalId = this.getPlannerSubIntervalSchemaID(intervalEntry);
       const currentIntervalCourses = Array.isArray(intervalEntry?.intervalCourses)
@@ -11754,6 +12173,19 @@ export default class NogaPlanner extends Component {
     }
     const plannerRoot = this.getResolvedPlannerRoot();
     const currentIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
+    await this.archivePlannerMissedConnection({
+      itemType: "lecture",
+      itemId: String(lectureEntry?.lectureID || "").trim() || `${targetComponentID}_L${targetLectureNum}`,
+      itemLabel: String(lectureEntry?.lectureName || lectureEntry?.lectureID || `Lecture ${targetLectureNum}`),
+      itemPayload: lectureEntry,
+      restoreInfo: {
+        subIntervalId: targetSubIntervalId,
+        courseNum: targetCourseNum,
+        componentID: targetComponentID,
+        lectureNum: targetLectureNum,
+        taskID: String(lectureEntry?.taskID || "").trim(),
+      },
+    });
     const nextIntervals = currentIntervals.map((intervalEntry) => {
       const currentSubIntervalId = this.getPlannerSubIntervalSchemaID(intervalEntry);
       const currentIntervalCourses = Array.isArray(intervalEntry?.intervalCourses)
@@ -24367,8 +24799,146 @@ export default class NogaPlanner extends Component {
         </div>
       );
     };
+    const missedConnections = this.getPlannerMissedConnections(
+      this.state?.plannerRoot || {},
+    ).map((entry) => this.normalizePlannerMissedConnectionEntry(entry)).filter(Boolean);
     const primaryCardsContent = (
       <React.Fragment>
+            {missedConnections.length > 0 ? (
+            <div
+              id="nogaPlanner_home_missedConnections_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_missedConnections",
+                headingId: "nogaPlanner_home_heading_missedConnections",
+                title: "Missed Connections",
+                cardKey: "missedConnections",
+                showViewControls: false,
+                actions: (
+                  <div id="nogaPlanner_homePanelCardActions_missedConnections" className="nogaPlanner_homePanelCardActions" />
+                ),
+              })}
+              <div className="nogaPlanner_homePanelCardBody">
+                <div className="nogaPlanner_homeMissedConnectionsList">
+                  {missedConnections.map((missedConnection) => {
+                    const isEditingThis =
+                      String(this.state?.homeMissedConnectionsEditorKey || "").trim() ===
+                      String(missedConnection?.missedConnectionID || "").trim();
+                    const displayJson = isEditingThis
+                      ? String(this.state?.homeMissedConnectionsEditorDraft || "")
+                      : String(missedConnection?.itemPayloadJson || "");
+                    return (
+                      <div
+                        key={missedConnection.missedConnectionID}
+                        className="nogaPlanner_homeMissedConnectionItem"
+                      >
+                        <div className="nogaPlanner_homeMissedConnectionItemHeader">
+                          <div className="nogaPlanner_homeMissedConnectionItemTitleBlock">
+                            <strong className="nogaPlanner_homeMissedConnectionItemTitle">
+                              {this.renderPlannerLocalizedText(
+                                missedConnection.itemLabel || missedConnection.itemType || "Missed item",
+                              )}
+                            </strong>
+                            <span className="nogaPlanner_homeMissedConnectionItemMeta">
+                              {this.renderPlannerLocalizedText(
+                                `${missedConnection.itemType || "item"} • ${missedConnection.itemId || "—"}`,
+                              )}
+                            </span>
+                          </div>
+                          <div className="nogaPlanner_homeMissedConnectionItemActions">
+                            {isEditingThis ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.saveMissedConnectionEditorDraft()
+                                  }
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.restoreMissedConnectionEntry(missedConnection)
+                                  }
+                                >
+                                  Recreate
+                                </button>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() => this.cancelMissedConnectionEditor()}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.startEditMissedConnectionEntry(missedConnection)
+                                  }
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                                  disabled={isHomeCardsLocked}
+                                  onClick={() =>
+                                    this.restoreMissedConnectionEntry(missedConnection)
+                                  }
+                                >
+                                  Recreate
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {isEditingThis ? (
+                          <textarea
+                            className="nogaPlanner_homeMissedConnectionEditor"
+                            value={displayJson}
+                            onChange={(event) =>
+                              this.updateMissedConnectionEditorDraft(
+                                event.target.value,
+                              )
+                            }
+                          />
+                        ) : (
+                          <pre className="nogaPlanner_homeMissedConnectionPayload">
+                            {displayJson}
+                          </pre>
+                        )}
+                        {isEditingThis && this.state?.homeMissedConnectionsEditorError ? (
+                          <div className="nogaPlanner_homeMissedConnectionError">
+                            {this.state.homeMissedConnectionsEditorError}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            ) : null}
             {isHomeCardMounted("programIntervals") ? (
             <div
               id="nogaPlanner_home_intervals_card"
@@ -26296,24 +26866,65 @@ export default class NogaPlanner extends Component {
                       </button>
                     </>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                        disabled={isHomeCardsLocked || !String(this.state?.homeCourseExamClassDraft || "").trim() || !String(this.state?.homeProgramTaskComponentIdDraft || "").trim()}
-                        onClick={this.handleProgramTaskSubmit}
-                      >
-                        {isEditingProgramTask ? "Apply Changes" : "Submit"}
-                      </button>
-                      <button
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                        disabled={isHomeCardsLocked}
-                        onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.cancelHomeCoursesEditor)}
-                      >
-                        Cancel
-                      </button>
-                    </>
+                    isEditingProgramTask ? (
+                      <>
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                          disabled={
+                            isHomeCardsLocked ||
+                            !String(this.state?.homeCourseExamClassDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskCourseIdDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskComponentIdDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskComponentClassDraft || "").trim()
+                          }
+                          onClick={this.handleProgramTaskSubmit}
+                        >
+                          Apply Changes
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                          disabled={isHomeCardsLocked}
+                          onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.cancelHomeCoursesEditor)}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                          disabled={
+                            isHomeCardsLocked ||
+                            !String(this.state?.homeCourseExamClassDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskCourseIdDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskComponentIdDraft || "").trim() ||
+                            !String(this.state?.homeProgramTaskComponentClassDraft || "").trim()
+                          }
+                          onClick={this.handleHomeProgramTaskApplyChanges}
+                        >
+                          Add to queue
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                          disabled={isHomeCardsLocked || !Array.isArray(this.state?.homeCourseExamDraftList) || this.state.homeCourseExamDraftList.length === 0}
+                          onClick={this.handleHomeCoursesSetSubmit}
+                        >
+                          Submit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                          disabled={isHomeCardsLocked}
+                          onClick={() => this.setState({ homeMaterialMetadataMode: "exams" }, this.cancelHomeCoursesEditor)}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )
                   )}
                 </div>
                 ),

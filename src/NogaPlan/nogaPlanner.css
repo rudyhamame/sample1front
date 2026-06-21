@@ -1092,7 +1092,6 @@
 
 .nogaPlanner_planCalendarDayTaskItem {
   display: flex;
-  align-items: baseline;
   gap: 8px;
   min-height: 0;
   padding: 6px 0;
@@ -1100,6 +1099,15 @@
   color: #3a2f33;
   font-size: 0.74rem;
   line-height: 1.25;
+  overflow: hidden;
+}
+
+.nogaPlanner_planCalendarDayTaskContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
 }
 
@@ -1119,12 +1127,21 @@
 }
 
 .nogaPlanner_planCalendarDayTaskLabel {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: white;
+}
+
+.nogaPlanner_planCalendarDayTaskMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
 .nogaPlanner_planCalendarDayTaskEmpty {
@@ -4624,9 +4641,99 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
   background-color: #4d4141;
 }
 
+#nogaPlanner_home_missedConnections_card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background-color: #5e4949;
+  color: #f7f2ec;
+}
+
 #nogaPlanner_home_storedDocuments_card {
   border-radius: 18px;
   overflow: hidden;
+}
+
+.nogaPlanner_homeMissedConnectionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.nogaPlanner_homeMissedConnectionItem {
+  border: 1px solid rgba(247, 242, 236, 0.16);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nogaPlanner_homeMissedConnectionItemHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nogaPlanner_homeMissedConnectionItemTitleBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nogaPlanner_homeMissedConnectionItemTitle {
+  color: inherit;
+  font-size: 0.92rem;
+}
+
+.nogaPlanner_homeMissedConnectionItemMeta {
+  font-size: 0.76rem;
+  opacity: 0.82;
+}
+
+.nogaPlanner_homeMissedConnectionItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nogaPlanner_homeMissedConnectionPayload {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: inherit;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow: auto;
+  max-height: 180px;
+}
+
+.nogaPlanner_homeMissedConnectionEditor {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid rgba(247, 242, 236, 0.25);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.nogaPlanner_homeMissedConnectionError {
+  color: #ffd8d8;
+  font-size: 0.8rem;
 }
 
 .nogaPlanner_lectureCareContentCol {
