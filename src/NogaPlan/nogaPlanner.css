@@ -3,6 +3,7 @@
 @import url("https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css");
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bitcount+Prop+Single:wght@100..900&display=swap");
 
 #nogaPlanner_article {
   position: relative;
@@ -510,13 +511,17 @@
 }
 
 .nogaPlanner_friendMessageViewer {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background-color: rgba(255, 255, 255, 0.18);
+  min-width: 0;
+  margin: 0 auto;
+  z-index: 1;
+  background-color: #5e4949;
   border: 1.5px solid rgba(255, 255, 255, 0.45);
   border-radius: 20px;
   padding: 4px 12px 4px 9px;
@@ -529,9 +534,22 @@
 }
 
 .nogaPlanner_friendMessageViewer_text {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "slnt" 0,
+    "CRSV" 0.5,
+    "ELSH" 0,
+    "ELXP" 0;
   white-space: nowrap;
+  font-size: 1.5rem;
+}
+
+.nogaPlanner_friendMessageViewer[data-empty="true"] {
+  opacity: 0.82;
+  font-style: italic;
 }
 
 .nogaPlanner_pendingIndicator {
@@ -2979,7 +2997,7 @@ color: #fff;
   box-sizing: border-box;
   overflow: auto;
   scrollbar-gutter: stable both-edges;
-  padding: 20px 40px;
+  padding: 10px 40px;
   background-color: #ffb80b;
 }
 
@@ -2993,9 +3011,19 @@ color: #fff;
 }
 
 #nogaPlanner_homePanelColumn_2{
-  margin-top: 20px;
   max-width: 100%;
+  min-height: 0;
   box-sizing: border-box;
+  padding: 24px 24px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable both-edges;
+}
+
+#nogaPlanner_homePanelColumn_2 > .nogaPlanner_homePanelCard {
+  min-height: 300px;
+  height: 300px;
+  max-height: 300px;
 }
 .nogaPlanner_homePanelRest {
   display: flex;
@@ -3075,7 +3103,10 @@ color: #fff;
   border: 1px solid rgba(118, 64, 53, 0.18);
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.81), #ffb80b);
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #ffb80b;
+  background-image: linear-gradient(180deg, rgb(255, 255, 255), #ffb80b);
   color: white;
   box-shadow:
     0 -1px 0 rgba(255, 255, 255, 0.7),
@@ -3083,13 +3114,33 @@ color: #fff;
   cursor: pointer;
 }
 
+.nogaPlanner_homePanelSecondaryChildToggleBtn--closed {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border-bottom: 1px solid rgba(118, 64, 53, 0.18);
+  background-color: #ffd15e;
+  background-image: linear-gradient(180deg, rgba(248, 245, 43, 0.74), #ffd15e);
+}
+
 .nogaPlanner_homePanelSecondaryChildToggleBtn:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 225, 212, 1));
+  background-color: #f6c319;
+  background-image: linear-gradient(180deg, rgba(255, 230, 86, 0.95), #f6c319);
+}
+
+.nogaPlanner_homePanelSecondaryChildToggleBtn--closed:hover {
+  background-color: #f0b30d;
+  background-image: linear-gradient(180deg, rgba(255, 231, 106, 0.96), #f0b30d);
 }
 
 .nogaPlanner_homePanelSecondaryChildToggleBtn i {
   font-size: 0.95rem;
   line-height: 1;
+}
+
+.nogaPlanner_homePanelSecondaryChildToggleBtn--closed i {
+  font-size: 0.78rem;
+  color: white;
 }
 
 .nogaPlanner_homePanel_secondaryChildScroller {
@@ -3122,6 +3173,7 @@ color: #fff;
   flex: 0 0 auto;
   width: max-content;
   min-width: min(100%, 360px);
+  min-height: 0;
 }
 
 .nogaPlanner_homePanel_secondaryChildRow--short > .nogaPlanner_homePanelCard {
@@ -3149,8 +3201,10 @@ color: #fff;
 @media (min-width: 981px) {
   .nogaPlanner_homePanelColumn--right.is-collapsed > .nogaPlanner_homePanelCard {
     position: relative;
-    min-height: 240px;
-    margin-top: -44px;
+    min-height: 300px;
+    height: 300px;
+    max-height: 300px;
+    margin-top: -180px;
     filter: drop-shadow(0 12px 20px rgba(44, 14, 23, 0.12));
   }
 
@@ -3240,7 +3294,8 @@ color: #fff;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: fit-content;
+  min-height: 300px;
+  position: relative;
   overflow: hidden;
   border-radius: 18px;
   background-color: #5e4949 !important;
@@ -3258,7 +3313,7 @@ color: #fff;
   width: 100%;
   max-width: 100%;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 300px;
   height: 100%;
   max-height: 100%;
   align-self: stretch;
@@ -3310,6 +3365,18 @@ color: #fff;
 
 .nogaPlanner_homePanelCardBody--loading {
   pointer-events: none;
+}
+
+.nogaPlanner_homePanelCardPendingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(255, 248, 244, 0.38);
+  backdrop-filter: blur(10px);
 }
 
 .nogaPlanner_homePanelCardBodyLoader {
@@ -4094,13 +4161,14 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
 
 .nogaPlanner_homePanelCard--intervalCourses {
   width: 100%;
-  height: 200px;
+  min-height: fit-content;
+  height: auto;
 }
 
 /* Sole-view: cards are direct children of the panel (no column wrapper) */
 .nogaPlanner_homePanel > .nogaPlanner_homePanelCard {
   width: 100%;
-  min-height: 0;
+  min-height: 300px;
   height: auto;
 }
 
@@ -8440,6 +8508,10 @@ width: 100%;
   flex-direction: column;
   width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+  position: relative;
 }
 .nogaPlanner_savedCoursesTableSubEyebrow{
   font-weight: 600;
@@ -8452,7 +8524,7 @@ width: 100%;
 
 .nogaPlanner_documentsTableWrap {
   display: flex;
-  align-self: flex-start;
+  align-self: stretch;
   max-width: 100%;
   box-shadow: none;
 }
@@ -8467,6 +8539,50 @@ width: 100%;
   display: flex;
   flex-direction: row;
   align-items: stretch;
+}
+
+.nogaPlanner_documentsEditorOverviewRow {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nogaPlanner_storedDocumentFormScrollWrap,
+.nogaPlanner_documentsEditorOverviewRow > .nogaPlanner_documentsOverviewLayout {
+  min-width: 0;
+}
+
+.nogaPlanner_storedDocumentFormScrollWrap {
+  flex: 0 0 min-content;
+  align-self: stretch;
+  height: 100%;
+  max-height: 100%;
+  width: min-content;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #3b2f2f;
+  box-shadow: 1px 4px 10px rgba(100, 100, 100, 0.70);
+  z-index: 1;
+}
+
+.nogaPlanner_storedDocumentFormScrollWrap > .nogaPlanner_storedDocumentForm {
+  height: 100%;
+  min-height: 0;
+}
+
+.nogaPlanner_documentsEditorOverviewRow > .nogaPlanner_documentsOverviewLayout {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+}
+
+.nogaPlanner_documentsEditorOverviewRow > .nogaPlanner_documentsOverviewLayout > .nogaPlanner_documentsTableWrap {
+  height: 100%;
+  min-height: 0;
 }
 
 .nogaPlanner_documentsOverviewLayout > * {
@@ -8689,16 +8805,22 @@ width: 100%;
 }
 
 .nogaPlanner_storedDocumentForm {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  padding: 12px;
-  background-color: #f7f5f5;
-  border: 1px dashed #dd2d4a;
   backdrop-filter: blur(12px);
-  background-color: #dd2d4a;
-  align-items: flex-start;
   width: 100%;
+  padding: 10px;
+}
+
+.nogaPlanner_storedDocumentForm .nogaPlanner_homeIntervalsInput {
+  text-align: start;
+}
+
+.nogaPlanner_storedDocumentForm .nogaPlanner_homeIntervalsInput[dir="rtl"],
+.nogaPlanner_storedDocumentForm .nogaPlanner_homeIntervalsInput.nogaPlanner_arabicInput {
+  text-align: right;
+  direction: rtl;
 }
 
 .nogaPlanner_storedDocumentFormRow {
@@ -8713,7 +8835,6 @@ width: 100%;
 .nogaPlanner_storedDocumentFormField {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
   min-width: 0;
 }
@@ -8730,7 +8851,7 @@ width: 100%;
   align-items: center;
 }
 
-.nogaPlanner_storedDocumentEditorRow .nogaPlanner_savedCoursesDetailsInput {
+.nogaPlanner_storedDocumentEditorRow .nogaPlanner_homeIntervalsInput {
   flex: 1 1 0;
   min-width: 0;
 }

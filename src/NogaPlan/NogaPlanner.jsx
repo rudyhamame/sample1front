@@ -350,8 +350,12 @@ export default class NogaPlanner extends Component {
         : rawEntry;
     return {
       ...documentInfo,
-      documentLectureID: String(rawEntry?.documentLectureID || "").trim(),
-      documentLectureName: String(rawEntry?.documentLectureName || "").trim(),
+      documentLectureID: String(
+        documentInfo?.documentLectureID || rawEntry?.documentLectureID || "",
+      ).trim(),
+      documentLectureName: String(
+        documentInfo?.documentLectureName || rawEntry?.documentLectureName || "",
+      ).trim(),
       documentURL: String(rawEntry?.documentURL || "").trim(),
     };
   };
@@ -588,11 +592,12 @@ export default class NogaPlanner extends Component {
   telegramWordOccurrences = [];
   plannerViewportMetaElement = null;
   plannerViewportMetaOriginalContent = "";
-  beginPlannerPending = (label = "Working...") => {
+  beginPlannerPending = (label = "Working...", targetCardKey = "") => {
     this.setState((previousState) => ({
       plannerPendingRequests:
         Number(previousState?.plannerPendingRequests || 0) + 1,
       plannerPendingLabel: String(label || "Working...").trim() || "Working...",
+      plannerPendingTargetCardKey: String(targetCardKey || "").trim(),
     }));
   };
   endPlannerPending = () => {
@@ -607,16 +612,27 @@ export default class NogaPlanner extends Component {
           nextPendingRequests > 0
             ? String(previousState?.plannerPendingLabel || "Working...")
             : "",
+        plannerPendingTargetCardKey:
+          nextPendingRequests > 0
+            ? String(previousState?.plannerPendingTargetCardKey || "").trim()
+            : "",
       };
     });
   };
-  runPlannerPendingTask = async (label = "Working...", task = null) => {
-    this.beginPlannerPending(label);
+  runPlannerPendingTask = async (
+    label = "Working...",
+    task = null,
+    targetCardKey = "",
+  ) => {
+    this.beginPlannerPending(label, targetCardKey);
     try {
       return await task?.();
     } finally {
       this.endPlannerPending();
     }
+  };
+  runPlannerCardPendingTask = async (cardKey = "", label = "Working...", task = null) => {
+    return this.runPlannerPendingTask(label, task, cardKey);
   };
   getPlannerStudyPlanAid = () => {
     const localStudyPlanAid =
@@ -1611,7 +1627,7 @@ export default class NogaPlanner extends Component {
         return refreshedStudyPlanner;
       }
       return payload?.studyPlanner || {};
-    });
+    }, "programIntervals");
   };
   persistStudyPlannerCourses = async (programCourses = []) => {
     return this.runPlannerPendingTask("Saving courses...", async () => {
@@ -1646,7 +1662,7 @@ export default class NogaPlanner extends Component {
         return refreshedStudyPlanner;
       }
       return payload?.studyPlanner || {};
-    });
+    }, "programCourses");
   };
   handlePushProgramCoursesToIntervals = async () => {
     const plannerRoot = this.getResolvedPlannerRoot();
@@ -1816,7 +1832,17 @@ export default class NogaPlanner extends Component {
               ? documentEntry.documentInfo
               : documentEntry || {};
           const documentId = String(documentInfo?.documentID || "").trim();
-          if (!documentId || !documentId.startsWith(lectureId)) {
+          const documentLectureId = String(
+            documentInfo?.documentLectureID || "",
+          ).trim();
+          if (documentLectureId && documentLectureId === lectureId) {
+            return documentId || null;
+          }
+          const hasExactLectureBoundary =
+            documentId &&
+            documentId.startsWith(lectureId) &&
+            !/^\d/.test(documentId.slice(lectureId.length));
+          if (!hasExactLectureBoundary) {
             return null;
           }
           return documentId;
@@ -1902,7 +1928,7 @@ export default class NogaPlanner extends Component {
         return refreshedStudyPlanner;
       }
       return payload?.studyPlanner || {};
-    });
+    }, "storedDocuments");
   };
   persistStudyPlannerLectures = async (programLectures = []) => {
     return this.runPlannerPendingTask("Saving lectures...", async () => {
@@ -1934,7 +1960,7 @@ export default class NogaPlanner extends Component {
         return refreshedStudyPlanner;
       }
       return payload?.studyPlanner || {};
-    });
+    }, "programLectures");
   };
 
   persistStudyPlannerIntervalStatus = async ({
@@ -3678,8 +3704,19 @@ export default class NogaPlanner extends Component {
       this.props.serverReply?.("Select the current sub-Interval first.");
       return null;
     }
+    const pendingCardKey =
+      normalizedMode === "course"
+        ? "programCourses"
+        : normalizedMode === "components"
+          ? "programComponents"
+          : normalizedMode === "lectures"
+            ? "programLectures"
+            : "programTasks";
+    return this.runPlannerCardPendingTask(
+      pendingCardKey,
+      "Loading AI results...",
+      async () => {
     try {
-      this.setState({ homeMaterialMetadataAiLoading: true });
       this.props.serverReply?.(
         `Extracting ${normalizedMode} info from all stored Telegram groups...`,
       );
@@ -4049,11 +4086,8 @@ export default class NogaPlanner extends Component {
     } catch (err) {
       this.props.serverReply?.(String(err?.message || "Extraction failed."));
       return null;
-    } finally {
-      if (this.isComponentMounted) {
-        this.setState({ homeMaterialMetadataAiLoading: false });
-      }
     }
+    });
   };
 
   extractTelegramCourseInfo = async () =>
@@ -4310,7 +4344,17 @@ export default class NogaPlanner extends Component {
               ? documentEntry.documentInfo
               : documentEntry || {};
           const documentId = String(documentInfo?.documentID || "").trim();
-          return documentId && documentId.startsWith(lectureId) ? documentId : null;
+          const documentLectureId = String(
+            documentInfo?.documentLectureID || "",
+          ).trim();
+          if (documentLectureId && documentLectureId === lectureId) {
+            return documentId || null;
+          }
+          const hasExactLectureBoundary =
+            documentId &&
+            documentId.startsWith(lectureId) &&
+            !/^\d/.test(documentId.slice(lectureId.length));
+          return hasExactLectureBoundary ? documentId : null;
         })
         .filter(Boolean);
       const currentLectureDocuments = Array.isArray(lectureEntry?.lectureDocuments)
@@ -4531,7 +4575,7 @@ export default class NogaPlanner extends Component {
         );
       }
       return payload?.studyPlanner || {};
-    });
+    }, "programComponents");
   };
   persistStudyPlannerTaskNames = async (programTaskNames = []) => {
     return this.runPlannerPendingTask("Saving task names...", async () => {
@@ -4573,7 +4617,7 @@ export default class NogaPlanner extends Component {
         );
       }
       return payload?.studyPlanner || {};
-    });
+    }, "programTaskNames");
   };
   persistStudyPlannerDocumentTypes = async (programDocumentTypes = []) => {
     return this.runPlannerPendingTask("Saving document types...", async () => {
@@ -4608,7 +4652,7 @@ export default class NogaPlanner extends Component {
         );
       }
       return payload?.studyPlanner || {};
-    });
+    }, "storedDocuments");
   };
   persistStudyPlannerDocumentVolumeUnits = async (
     programDocumentVolumeUnit = [],
@@ -4655,6 +4699,7 @@ export default class NogaPlanner extends Component {
         }
         return payload?.studyPlanner || {};
       },
+      "storedDocuments",
     );
   };
   fetchStudyPlannerFromDb = async () => {
@@ -17424,7 +17469,7 @@ export default class NogaPlanner extends Component {
       homeCurrentIntervalStatusDraft: "Normal",
       homeCurrentIntervalStartDateDraft: "",
       homeCurrentIntervalEndDateDraft: "",
-      homeSecondaryChildOpen: true,
+      homeSecondaryChildOpen: false,
       homeSubIntervalsDatesEditorOpen: false,
       homeSubIntervalsDatesEditingKey: "",
       plannerRoot:
@@ -17520,6 +17565,7 @@ export default class NogaPlanner extends Component {
       plannerShellAsideVisible: false,
       plannerPendingRequests: 0,
       plannerPendingLabel: "",
+      plannerPendingTargetCardKey: "",
       homeMaterialMetadataAiLoading: false,
       plannerSettingsVisible: false,
       deleteSelectionMode: false,
@@ -19922,20 +19968,6 @@ export default class NogaPlanner extends Component {
               ) : null}
               </>
             )}
-            <button
-              id="nogaPlanner_homePanelCardSetBtn_pushCoursesToIntervals"
-              type="button"
-              className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-              disabled={isHomeCardsLocked}
-              title="Push all Program Courses to Intervals"
-              onClick={this.handlePushProgramCoursesToIntervals}
-              style={{ flex: "0 0 auto" }}
-            >
-              <span>Push to Intervals</span>
-              <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                {programCoursesToPushCount}
-              </span>
-            </button>
             {coursesEditorOpen ? (
               <button
                 id="nogaPlanner_home_button_courses_cancel"
@@ -23363,6 +23395,35 @@ export default class NogaPlanner extends Component {
         {actions}
       </div>
     );
+    const plannerPendingTargetCardKey = String(
+      this.state?.plannerPendingTargetCardKey || "",
+    ).trim();
+    const renderPlannerPendingCardOverlay = (cardKey) => {
+      const hasPendingWork =
+        Number(this.state?.plannerPendingRequests || 0) > 0;
+      if (
+        !hasPendingWork ||
+        plannerPendingTargetCardKey !== String(cardKey || "").trim()
+      ) {
+        return null;
+      }
+      const pendingLabel =
+        String(this.state?.plannerPendingLabel || "").trim() || "Working...";
+      return (
+        <div
+          className="nogaPlanner_homePanelCardPendingOverlay"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="nogaPlanner_homePanelCardBodyLoaderBox">
+            <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
+            <span className="nogaPlanner_homePanelCardBodyLoaderText">
+              {pendingLabel}
+            </span>
+          </div>
+        </div>
+      );
+    };
     const primaryCardsContent = (
       <React.Fragment>
             {isHomeCardMounted("programIntervals") ? (
@@ -23427,6 +23488,7 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
+              {renderPlannerPendingCardOverlay("programIntervals")}
               <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
               <table id="nogaPlanner_homeIntervalsMiniTable_2" className="nogaPlanner_homeIntervalsMiniTable">
                 <colgroup>
@@ -23714,20 +23776,6 @@ export default class NogaPlanner extends Component {
                       ) : null}
                     </>
                   )}
-                  <button
-                    id="nogaPlanner_homePanelCardSetBtn_pushCoursesToIntervals"
-                    type="button"
-                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-                    disabled={isHomeCardsLocked}
-                    title="Push all Program Courses to Intervals"
-                    onClick={this.handlePushProgramCoursesToIntervals}
-                    style={{ flex: "0 0 auto" }}
-                  >
-                    <span>Push to Intervals</span>
-                    <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                      {programCoursesToPushCount}
-                    </span>
-                  </button>
                   {coursesEditorOpen ? (
                     <>
                       {!courseEditingKey ? (
@@ -23778,27 +23826,8 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
-              <div
-                id="nogaPlanner_homePanelCardBody_2"
-                className={`nogaPlanner_homePanelCardBody${
-                  this.state?.homeMaterialMetadataAiLoading
-                    ? " nogaPlanner_homePanelCardBody--loading"
-                    : ""
-                }`}
-              >
-                {this.state?.homeMaterialMetadataAiLoading ? (
-                  <div
-                    id="nogaPlanner_homePanelCardBodyLoader_2"
-                    className="nogaPlanner_homePanelCardBodyLoader"
-                  >
-                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
-                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
-                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
-                        Loading AI results...
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
+              {renderPlannerPendingCardOverlay("programCourses")}
+              <div id="nogaPlanner_homePanelCardBody_2" className="nogaPlanner_homePanelCardBody">
                 {coursesEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_7_wrap">
                 <div id="nogaPlanner_homeIntervalsMiniForm_7" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
@@ -24826,19 +24855,6 @@ export default class NogaPlanner extends Component {
                           Reset
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-                        disabled={isHomeCardsLocked}
-                        title="Push all Program Lectures to Courses"
-                        onClick={this.handlePushProgramLecturesToCourses}
-                        style={{ flex: "0 0 auto" }}
-                      >
-                        <span>Push to Courses</span>
-                        <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                          {programLecturesToPushCount}
-                        </span>
-                      </button>
                     </>
                   )}
                   {programLecturesEditorOpen ? (
@@ -24864,11 +24880,8 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
-              <div
-                className={`nogaPlanner_homePanelCardBody${
-                  programLecturesEditorOpen ? "" : ""
-                }`}
-              >
+              {renderPlannerPendingCardOverlay("programLectures")}
+              <div className="nogaPlanner_homePanelCardBody">
                 {programLecturesEditorOpen ? (
                   <div id="nogaPlanner_homeIntervalsMiniForm_7l" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
                     <div id="nogaPlanner_homeIntervalsMiniFormField_16" className="nogaPlanner_homeIntervalsMiniFormField">
@@ -25274,23 +25287,8 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
-              <div
-                className={`nogaPlanner_homePanelCardBody${
-                  this.state?.homeMaterialMetadataAiLoading
-                    ? " nogaPlanner_homePanelCardBody--loading"
-                    : ""
-                }`}
-              >
-                {this.state?.homeMaterialMetadataAiLoading ? (
-                  <div className="nogaPlanner_homePanelCardBodyLoader">
-                    <div className="nogaPlanner_homePanelCardBodyLoaderBox">
-                      <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
-                      <span className="nogaPlanner_homePanelCardBodyLoaderText">
-                        Loading AI results...
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
+              {renderPlannerPendingCardOverlay("programTasks")}
+              <div className="nogaPlanner_homePanelCardBody">
                 {examScheduleEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_8" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
                   <div id="nogaPlanner_homeIntervalsMiniFormFields_task">
@@ -25670,10 +25668,19 @@ export default class NogaPlanner extends Component {
                 rowId: "nogaPlanner_homePanelCardTitleRow_storedDocuments",
                 headingId: "nogaPlanner_home_heading_storedDocuments",
                 title: "Program Documents",
+                actions: (
+                  <div
+                    id="nogaPlanner_homePanelCardActions_storedDocuments"
+                    className="nogaPlanner_homePanelCardActions"
+                  />
+                ),
                 cardKey: "storedDocuments",
               })}
               <div className="nogaPlanner_homePanelCardBody">
-                <StoredDocumentsCard planner={this} />
+                <StoredDocumentsCard
+                  planner={this}
+                  titleActionsId="nogaPlanner_homePanelCardActions_storedDocuments"
+                />
               </div>
             </div>
             ) : null}
@@ -26450,6 +26457,7 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
+              {renderPlannerPendingCardOverlay("programComponents")}
               {componentEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_2" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_3" className="nogaPlanner_homeIntervalsAddRow">
@@ -26601,6 +26609,7 @@ export default class NogaPlanner extends Component {
                 </div>
                 ),
               })}
+              {renderPlannerPendingCardOverlay("programTaskNames")}
               {tasksEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_3" className="nogaPlanner_homeIntervalsMiniForm">
                   <div id="nogaPlanner_homeIntervalsAddRow_4" className="nogaPlanner_homeIntervalsAddRow">
@@ -27570,7 +27579,12 @@ export default class NogaPlanner extends Component {
             <button
               id="nogaPlanner_homePanel_secondaryChildToggleBtn"
               type="button"
-              className="nogaPlanner_homePanelSecondaryChildToggleBtn"
+              className={
+                "nogaPlanner_homePanelSecondaryChildToggleBtn" +
+                (this.state?.homeSecondaryChildOpen
+                  ? ""
+                  : " nogaPlanner_homePanelSecondaryChildToggleBtn--closed")
+              }
               aria-expanded={Boolean(this.state?.homeSecondaryChildOpen)}
               aria-controls="nogaPlanner_homePanel_secondaryChild"
               onClick={() =>
@@ -27584,7 +27598,7 @@ export default class NogaPlanner extends Component {
                   "fi " +
                   (this.state?.homeSecondaryChildOpen
                     ? "fi-br-angle-down"
-                    : "fi-br-angle-up")
+                    : "fi-br-triangle")
                 }
                 aria-hidden="true"
               />
@@ -27930,6 +27944,10 @@ export default class NogaPlanner extends Component {
     const plannerBackgroundUrl = `${import.meta.env.BASE_URL}img/NogaPlannerBG.png`;
     const isPlannerPending =
       Number(this.state?.plannerPendingRequests || 0) > 0;
+    const plannerPendingTargetCardKey = String(
+      this.state?.plannerPendingTargetCardKey || "",
+    ).trim();
+    const showGlobalPlannerPending = isPlannerPending && !plannerPendingTargetCardKey;
     const plannerPendingLabel =
       String(this.state?.plannerPendingLabel || "").trim() || "Working...";
     return (
@@ -28021,23 +28039,105 @@ export default class NogaPlanner extends Component {
               </button>
               <p id="nogaPlanner_mainTabPanelTitle_text">{this.getPlannerMainTabTitle(wrapperTab)}</p>
               {(() => {
-                const friendMessage = String(
-                  this.state?.plannerFriendIncomingMessage || "",
+                const normalizeFriendId = (value) => {
+                  if (!value) return "";
+                  if (typeof value === "object") {
+                    return String(
+                      value?._id ||
+                        value?.id ||
+                        value?.userID ||
+                        value?.chatId ||
+                        value?.friendID ||
+                        "",
+                    ).trim();
+                  }
+                  return String(value || "").trim();
+                };
+                const friends = Array.isArray(this.props?.state?.friends)
+                  ? this.props.state.friends
+                  : [];
+                const myUserId = String(this.props?.state?.my_id || "").trim();
+                const fromFriendId = String(
+                  this.state?.plannerSelectSettings?.messageFriend?.from?.friendID ||
+                    "",
                 ).trim();
-                if (!friendMessage) return null;
+                const friendMessage = (() => {
+                  if (!fromFriendId || !myUserId) {
+                    return String(
+                      this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
+                        this.state?.plannerFriendIncomingMessage ||
+                        "",
+                    ).trim();
+                  }
+                  const selectedFriend = friends.find((entry) => {
+                    const candidateId = String(
+                      entry?._id ||
+                        entry?.id ||
+                        entry?.userID ||
+                        entry?.chatId ||
+                        entry?.user?._id ||
+                        entry?.user?.id ||
+                        entry?.friendID ||
+                        "",
+                    ).trim();
+                    return candidateId && candidateId === fromFriendId;
+                  });
+                  const friendSettings =
+                    selectedFriend?.memory?.studyPlanner?.studyOrganizer?.settings ||
+                    selectedFriend?.memory?.studyPlanner?.settings ||
+                    selectedFriend?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+                    selectedFriend?.memory?.MOI?.studyPlanner?.settings ||
+                    selectedFriend?.settings ||
+                    selectedFriend?.user?.memory?.studyPlanner?.studyOrganizer?.settings ||
+                    selectedFriend?.user?.memory?.studyPlanner?.settings ||
+                    selectedFriend?.user?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+                    selectedFriend?.user?.memory?.MOI?.studyPlanner?.settings ||
+                    {};
+                  const outgoingToList = Array.isArray(friendSettings?.messageFriend?.to)
+                    ? friendSettings.messageFriend.to
+                    : [];
+                  const matchedIncoming = outgoingToList.find(
+                    (entry) =>
+                      normalizeFriendId(entry?.friendID) === myUserId &&
+                      String(entry?.message || "").trim(),
+                  );
+                  if (matchedIncoming) {
+                    return String(matchedIncoming?.message || "").trim();
+                  }
+                  const outgoingList = Array.isArray(
+                    this.state?.plannerSelectSettings?.messageFriend?.to,
+                  )
+                    ? this.state.plannerSelectSettings.messageFriend.to
+                    : [];
+                  const matchedOutgoing = outgoingList.find(
+                    (entry) =>
+                      normalizeFriendId(entry?.friendID) === fromFriendId &&
+                      String(entry?.message || "").trim(),
+                  );
+                  if (matchedOutgoing) {
+                    return String(matchedOutgoing?.message || "").trim();
+                  }
+                  return String(
+                    this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
+                      this.state?.plannerFriendIncomingMessage ||
+                      "",
+                  ).trim();
+                })();
+                const displayFriendMessage = friendMessage || "No message yet";
                 return (
                   <div
                     id="nogaPlanner_friendMessageViewer"
+                    data-empty={!friendMessage}
                     className="nogaPlanner_friendMessageViewer"
                   >
                     <i className="fi fi-br-envelope" aria-hidden="true" />
                     <span className="nogaPlanner_friendMessageViewer_text">
-                      {friendMessage}
+                      {displayFriendMessage}
                     </span>
                   </div>
                 );
               })()}
-              {isPlannerPending ? (
+              {showGlobalPlannerPending ? (
                 <div
                   id="nogaPlanner_pendingIndicator"
                   className="nogaPlanner_pendingIndicator"

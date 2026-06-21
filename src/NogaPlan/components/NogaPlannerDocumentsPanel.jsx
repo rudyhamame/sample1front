@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiUrl } from "../../config/api";
 
 const formatDocumentSize = (value = 0) => {
@@ -255,7 +256,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Name</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={String(info.documentName || "")}
             onChange={(e) => handleInfoChange("documentName", e.target.value)}
           />
@@ -264,7 +266,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Type</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={String(info.documentType || "")}
             onChange={(e) => handleInfoChange("documentType", e.target.value)}
           />
@@ -273,7 +276,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Volume Unit</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             placeholder="page / image / words"
             value={String(info.documentVolumeUnit || "")}
             onChange={(e) => handleInfoChange("documentVolumeUnit", e.target.value)}
@@ -283,7 +287,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Volume</span>
           <input
             type="number"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={info.documentVolume ?? ""}
             onChange={(e) =>
               handleInfoChange(
@@ -297,7 +302,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Concepts (comma-separated)</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={Array.isArray(info.documentConcepts) ? info.documentConcepts.join(", ") : ""}
             onChange={(e) =>
               handleInfoChange(
@@ -314,7 +320,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Editors (comma-separated)</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={Array.isArray(info.documentEditors) ? info.documentEditors.join(", ") : ""}
             onChange={(e) =>
               handleInfoChange(
@@ -331,7 +338,8 @@ const StagedDocumentForm = ({ planner }) => {
           <span>Cloudinary URL</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             readOnly
             value={String(draft.documentURL || "")}
             placeholder="Upload the PDF to fill this"
@@ -342,7 +350,8 @@ const StagedDocumentForm = ({ planner }) => {
       <label className="nogaPlanner_documentsStagedLabel nogaPlanner_documentsStagedLabel--url">
         <span>Lecture</span>
         <select
-          className="nogaPlanner_savedCoursesDetailsInput"
+          className="nogaPlanner_homeIntervalsInput"
+          dir="auto"
           value={selectedLectureId}
           onChange={(e) => setSelectedLectureId(e.target.value)}
         >
@@ -458,7 +467,7 @@ const StoredDocumentFormFields = ({
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Name</span>
           <input
             type="text"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
             value={draft.documentName}
             onChange={(e) => setDraft((prev) => ({ ...prev, documentName: e.target.value }))}
             placeholder="Enter document name"
@@ -467,7 +476,8 @@ const StoredDocumentFormFields = ({
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Lecture</span>
           <select
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={draft.documentLectureID}
             onChange={(e) => {
               const nextLectureId = String(e.target.value || "");
@@ -499,7 +509,8 @@ const StoredDocumentFormFields = ({
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Type</span>
           <select
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={draft.documentType}
             onChange={(e) => setDraft((prev) => ({ ...prev, documentType: e.target.value }))}
           >
@@ -512,7 +523,8 @@ const StoredDocumentFormFields = ({
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Volume Unit</span>
           <select
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={draft.documentVolumeUnit}
             onChange={(e) => setDraft((prev) => ({ ...prev, documentVolumeUnit: e.target.value }))}
           >
@@ -526,7 +538,8 @@ const StoredDocumentFormFields = ({
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Volume</span>
           <input
             type="number"
-            className="nogaPlanner_savedCoursesDetailsInput"
+            className="nogaPlanner_homeIntervalsInput"
+            dir="auto"
             value={draft.documentVolume}
             min={0}
             onChange={(e) => setDraft((prev) => ({ ...prev, documentVolume: e.target.value }))}
@@ -537,7 +550,8 @@ const StoredDocumentFormFields = ({
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Editors</span>
           <div className="nogaPlanner_storedDocumentEditorRow">
             <select
-              className="nogaPlanner_savedCoursesDetailsInput"
+              className="nogaPlanner_homeIntervalsInput"
+              dir="auto"
               value={editorSelection}
               onChange={(e) => setEditorSelection(e.target.value)}
             >
@@ -577,13 +591,14 @@ const StoredDocumentFormFields = ({
   );
 };
 
-export const StoredDocumentsCard = ({ planner }) => {
+export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingRef, setEditingRef] = useState(null); // { source: "existing"|"staged", idx }
   const [draft, setDraft] = useState(EMPTY_STORED_DOC_DRAFT);
   const [stagedDocs, setStagedDocs] = useState([]);
   const [showSubmitAction, setShowSubmitAction] = useState(false);
   const [submitState, setSubmitState] = useState({ loading: false, error: "" });
+  const [titleActionsHost, setTitleActionsHost] = useState(null);
 
   const plannerRoot = useMemo(() => {
     const root =
@@ -651,19 +666,16 @@ export const StoredDocumentsCard = ({ planner }) => {
     [plannerRoot],
   );
   const isDraftPopulated = hasStoredDocumentDraftValues(draft);
-
-  const inferLectureNameFromDocumentID = (documentID) => {
-    if (!documentID) return "";
-    for (const opt of lectureOptions) {
-      if (opt.value && documentID.startsWith(opt.value)) {
-        return opt.lectureName || opt.value;
-      }
-    }
-    return "";
-  };
+  const isEditingExistingDocument = editingRef?.source === "existing";
 
   const handleStartEdit = (entry, source, idx) => {
     const info = getDocumentInfoForEntry(entry);
+    const storedLectureId = String(
+      entry?.documentLectureID || info?.documentLectureID || "",
+    ).trim();
+    const storedLectureName = String(
+      info?.documentLectureName || entry?.documentLectureName || "",
+    ).trim();
     setDraft({
       documentName: String(info.documentName || ""),
       documentType: String(info.documentType || ""),
@@ -673,16 +685,8 @@ export const StoredDocumentsCard = ({ planner }) => {
           ? String(resolveDocumentVolumeNumber(info))
           : "",
       documentEditors: Array.isArray(info.documentEditors) ? info.documentEditors : [],
-      documentLectureID: String(entry?.documentLectureID || ""),
-      documentLectureName: String(
-        entry?.documentLectureName ||
-          lectureOptions.find(
-            (option) =>
-              String(option?.value || "").trim() ===
-              String(entry?.documentLectureID || "").trim(),
-          )?.lectureName ||
-          "",
-      ),
+      documentLectureID: storedLectureId,
+      documentLectureName: storedLectureName,
     });
     setEditingRef({ source, idx });
     setShowSubmitAction(false);
@@ -718,8 +722,7 @@ export const StoredDocumentsCard = ({ planner }) => {
 
   const sanitizeDocumentEntry = (entry) => {
     if (!entry || typeof entry !== "object") return entry;
-    const { documentLectureID: _lid, documentLectureName: _lname, ...clean } = entry;
-    return clean;
+    return entry;
   };
 
   const buildEntryFromDraft = (previousEntry = null, existingPages = [], nextDocNum = null) => {
@@ -745,6 +748,13 @@ export const StoredDocumentsCard = ({ planner }) => {
         documentSymbol: docSymbol,
         documentNum: docNum,
         documentID,
+        documentLectureID: lectureIdRaw,
+        documentLectureName: String(
+          draft.documentLectureName ||
+            lectureOptions.find((option) => String(option?.value || "").trim() === lectureIdRaw)
+              ?.lectureName ||
+            "",
+        ).trim(),
         documentName: String(draft.documentName || "").trim(),
         documentType: draft.documentType,
         documentVolumeUnit: draft.documentVolumeUnit,
@@ -801,8 +811,8 @@ export const StoredDocumentsCard = ({ planner }) => {
         )
           ? stagedEntryWithPages.documentInfo.documentEditors
           : [],
-        documentLectureID: String(stagedEntryWithPages?.documentLectureID || ""),
-        documentLectureName: String(stagedEntryWithPages?.documentLectureName || ""),
+        documentLectureID: String(stagedEntryWithPages?.documentInfo?.documentLectureID || ""),
+        documentLectureName: String(stagedEntryWithPages?.documentInfo?.documentLectureName || ""),
       });
       setShowSubmitAction(false);
     } else {
@@ -1103,93 +1113,113 @@ export const StoredDocumentsCard = ({ planner }) => {
     );
   }, [planner, plannerRoot]);
 
+  useEffect(() => {
+    if (!titleActionsId || typeof document === "undefined") {
+      setTitleActionsHost(null);
+      return;
+    }
+    setTitleActionsHost(document.getElementById(titleActionsId));
+  }, [
+    titleActionsId,
+    isEditing,
+    editingRef,
+    draft.documentName,
+    showSubmitAction,
+    submitState.loading,
+    stagedDocs.length,
+    existingProgramDocuments.length,
+  ]);
+
   return (
     <div
       id="nogaPlanner_documentsPanel"
       className="nogaPlanner_documentsPanel"
     >
-      <div className="nogaPlanner_homePanelCardTitleRow">
-        <strong>Program Documents</strong>
-        <div className="nogaPlanner_homePanelCardActions">
-          {isEditing ? (
-            editingRef !== null || isDraftPopulated || !showSubmitAction ? (
-              <button
-                type="button"
-                className="nogaPlanner_homePanelCardSetBtn"
-                disabled={!String(draft.documentName || "").trim()}
-                onClick={handleAddOrEditDocument}
-              >
-                Add Document
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                disabled={submitState.loading || stagedDocs.length === 0}
-                onClick={handleSubmit}
-              >
-                {submitState.loading ? "Saving…" : "Submit"}
-              </button>
-            )
-          ) : existingProgramDocuments.length === 0 ? (
-            <button
-              type="button"
-              className="nogaPlanner_homePanelCardSetBtn"
-              onClick={() => {
-                setShowSubmitAction(false);
-                setEditingRef(null);
-                setIsEditing(true);
-              }}
-            >
-              Add
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="nogaPlanner_homePanelCardSetBtn"
-                onClick={() => {
-                  setShowSubmitAction(false);
-                  setEditingRef(null);
-                  setIsEditing(true);
-                }}
-              >
-                Add
-              </button>
-              <button
-                type="button"
-                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini nogaPlanner_homePanelCardSetBtn--withBadge"
-                disabled={submitState.loading}
-                onClick={planner.handlePushProgramDocumentsToLectures}
-                title="Push all Program Documents to their designated lectures"
-              >
-                <span>Push to Lectures</span>
-                <span className="nogaPlanner_homePanelCardSetBtnBadge">
-                  {planner.getProgramDocumentsPendingPushCount(plannerRoot)}
-                </span>
-              </button>
-            </>
-          )}
+      {submitState.loading ? (
+        <div className="nogaPlanner_homePanelCardPendingOverlay" role="status" aria-live="polite">
+          <div className="nogaPlanner_homePanelCardBodyLoaderBox">
+            <span className="nogaPlanner_homePanelCardBodyLoaderSpinner" />
+            <span className="nogaPlanner_homePanelCardBodyLoaderText">
+              Saving documents...
+            </span>
+          </div>
         </div>
-      </div>
+      ) : null}
+      {titleActionsHost
+        ? createPortal(
+            <div className="nogaPlanner_homePanelCardActions">
+              {isEditing ? (
+                editingRef !== null || isDraftPopulated || !showSubmitAction ? (
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn"
+                    disabled={!String(draft.documentName || "").trim()}
+                    onClick={handleAddOrEditDocument}
+                  >
+                    {isEditingExistingDocument ? "Apply Changes" : "Add Document"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                    disabled={submitState.loading || stagedDocs.length === 0}
+                    onClick={handleSubmit}
+                  >
+                    {submitState.loading ? "Saving…" : "Submit"}
+                  </button>
+                )
+              ) : existingProgramDocuments.length === 0 ? (
+                <button
+                  type="button"
+                  className="nogaPlanner_homePanelCardSetBtn"
+                  onClick={() => {
+                    setShowSubmitAction(false);
+                    setEditingRef(null);
+                    setIsEditing(true);
+                  }}
+                >
+                  Add
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn"
+                    onClick={() => {
+                      setShowSubmitAction(false);
+                      setEditingRef(null);
+                      setIsEditing(true);
+                    }}
+                  >
+                    Add
+                  </button>
+                </>
+              )}
+            </div>,
+            titleActionsHost,
+          )
+        : null}
       {submitState.error ? (
         <p className="nogaPlanner_documentsStagedError">{submitState.error}</p>
       ) : null}
-      {isEditing ? (
-        <StoredDocumentFormFields
-          draft={draft}
-          setDraft={setDraft}
-          documentTypes={documentTypes}
-          volumeUnits={volumeUnits}
-          programEditors={programEditors}
-          lectureOptions={lectureOptions}
-        />
-      ) : null}
-      <div className="nogaPlanner_documentsOverviewLayout">
-        <div
-          id="nogaPlanner_documentsTableWrap"
-          className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_documentsTableWrap"
-        >
+      <div className="nogaPlanner_documentsEditorOverviewRow">
+        {isEditing ? (
+          <div className="nogaPlanner_storedDocumentFormScrollWrap">
+            <StoredDocumentFormFields
+              draft={draft}
+              setDraft={setDraft}
+              documentTypes={documentTypes}
+              volumeUnits={volumeUnits}
+              programEditors={programEditors}
+              lectureOptions={lectureOptions}
+            />
+          </div>
+        ) : null}
+        <div className="nogaPlanner_documentsOverviewLayout">
+          <div
+            id="nogaPlanner_documentsTableWrap"
+            className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_documentsTableWrap"
+          >
           <table
             id="nogaPlanner_documentsTable"
             className="nogaPlanner_homeIntervalsMiniTable nogaPlanner_documentsTable"
@@ -1250,8 +1280,8 @@ export const StoredDocumentsCard = ({ planner }) => {
                       >
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
-                          ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
-                          : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
+                          ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
+                          : String(storedInfo.documentLectureName || "—")}
                         </td>
                         <td>{String(info.documentType || "—")}</td>
                         <td>{String(info.documentVolumeUnit || "—")}</td>
@@ -1333,8 +1363,8 @@ export const StoredDocumentsCard = ({ planner }) => {
                       >
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
-                          ? String(draft.documentLectureName || inferLectureNameFromDocumentID(storedInfo.documentID) || "—")
-                          : String(inferLectureNameFromDocumentID(storedInfo.documentID) || "—")}
+                          ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
+                          : String(storedInfo.documentLectureName || "—")}
                         </td>
                         <td>{String(info.documentType || "—")}</td>
                         <td>{String(info.documentVolumeUnit || "—")}</td>
@@ -1390,6 +1420,7 @@ export const StoredDocumentsCard = ({ planner }) => {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

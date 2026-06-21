@@ -184,7 +184,14 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false, she
       return "";
     }
     if (typeof value === "object") {
-      return String(value?._id || value?.id || "").trim();
+      return String(
+        value?._id ||
+          value?.id ||
+          value?.userID ||
+          value?.chatId ||
+          value?.friendID ||
+          "",
+      ).trim();
     }
     return String(value || "").trim();
   };
@@ -198,16 +205,27 @@ const NogaPlannerSavedCoursesPanel = ({ planner, runtime, shellOnly = false, she
   const messageFromFriendText = (() => {
     const selectedFriend = friends.find((entry) => {
       const candidateId = String(
-        entry?._id || entry?.id || entry?.user?._id || entry?.user?.id || "",
+        entry?._id ||
+          entry?.id ||
+          entry?.userID ||
+          entry?.chatId ||
+          entry?.user?._id ||
+          entry?.user?.id ||
+          entry?.friendID ||
+          "",
       ).trim();
       return candidateId && candidateId === messageFromFriendId;
     });
     const friendSettings =
       selectedFriend?.memory?.studyPlanner?.studyOrganizer?.settings ||
+      selectedFriend?.memory?.studyPlanner?.settings ||
       selectedFriend?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+      selectedFriend?.memory?.MOI?.studyPlanner?.settings ||
       selectedFriend?.settings ||
       selectedFriend?.user?.memory?.studyPlanner?.studyOrganizer?.settings ||
+      selectedFriend?.user?.memory?.studyPlanner?.settings ||
       selectedFriend?.user?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+      selectedFriend?.user?.memory?.MOI?.studyPlanner?.settings ||
       {};
     const friendOutgoingList = Array.isArray(friendSettings?.messageFriend?.to)
       ? friendSettings.messageFriend.to

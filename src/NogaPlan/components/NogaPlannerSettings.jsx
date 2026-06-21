@@ -1730,7 +1730,14 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     return "";
                   }
                   if (typeof value === "object") {
-                    return String(value?._id || value?.id || "").trim();
+                    return String(
+                      value?._id ||
+                        value?.id ||
+                        value?.userID ||
+                        value?.chatId ||
+                        value?.friendID ||
+                        "",
+                    ).trim();
                   }
                   return String(value || "").trim();
                 };
@@ -1749,8 +1756,11 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     const friendId = normalizeFriendId(
                       entry?._id ||
                         entry?.id ||
+                        entry?.userID ||
+                        entry?.chatId ||
                         entry?.user?._id ||
-                        entry?.user?.id,
+                        entry?.user?.id ||
+                        entry?.friendID,
                     );
                     const firstName = String(info?.firstname || "").trim();
                     const lastName = String(info?.lastname || "").trim();
@@ -1788,13 +1798,17 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
                     const friendSettings =
                       selectedFriend.raw?.memory?.studyPlanner?.studyOrganizer
                         ?.settings ||
+                      selectedFriend.raw?.memory?.studyPlanner?.settings ||
                       selectedFriend.raw?.memory?.MOI?.studyPlanner
                         ?.studyOrganizer?.settings ||
+                      selectedFriend.raw?.memory?.MOI?.studyPlanner?.settings ||
                       selectedFriend.raw?.settings ||
                       selectedFriend.raw?.user?.memory?.studyPlanner
                         ?.studyOrganizer?.settings ||
+                      selectedFriend.raw?.user?.memory?.studyPlanner?.settings ||
                       selectedFriend.raw?.user?.memory?.MOI?.studyPlanner
                         ?.studyOrganizer?.settings ||
+                      selectedFriend.raw?.user?.memory?.MOI?.studyPlanner?.settings ||
                       {};
                     const outgoingToList = Array.isArray(
                       friendSettings?.messageFriend?.to,

@@ -6,32 +6,33 @@
 
 /* Dark palette variables */
 :root {
-  --nogaPlanner-dark-bg-start: #09161b;
-  --nogaPlanner-dark-bg-mid: #0d2026;
-  --nogaPlanner-dark-bg-end: #122930;
-  --nogaPlanner-dark-panel-start: rgba(14, 36, 44, 0.5);
-  --nogaPlanner-dark-panel-end: rgba(11, 28, 35, 0.42);
-  --nogaPlanner-dark-card-start: rgba(17, 46, 54, 0.96);
-  --nogaPlanner-dark-card-end: rgba(11, 33, 40, 0.94);
-  --nogaPlanner-dark-card-strong-start: rgba(23, 65, 76, 0.98);
-  --nogaPlanner-dark-card-strong-end: rgba(14, 39, 48, 0.96);
-  --nogaPlanner-dark-border: rgba(110, 168, 180, 0.22);
-  --nogaPlanner-dark-border-strong: rgba(132, 193, 203, 0.62);
-  --nogaPlanner-dark-ink: rgba(236, 245, 247, 0.9);
-  --nogaPlanner-dark-heading: #eef9fb;
-  --nogaPlanner-dark-subtle: rgba(185, 219, 226, 0.62);
-  --nogaPlanner-dark-accent: #88d4c7;
-  --nogaPlanner-dark-accent-strong: #7ed8e8;
-  --nogaPlanner-dark-pill: rgba(12, 35, 43, 0.8);
-  --nogaPlanner-dark-chip-text: #dcf5f7;
-  --nogaPlanner-dark-input-bg: rgba(9, 24, 31, 0.54);
-  --nogaPlanner-dark-input-border: rgba(110, 168, 180, 0.22);
-  --nogaPlanner-dark-overlay: rgba(4, 11, 14, 0.46);
+  --nogaPlanner-dark-bg-start: #020202;
+  --nogaPlanner-dark-bg-mid: #090909;
+  --nogaPlanner-dark-bg-end: #121212;
+  --nogaPlanner-dark-panel-start: rgba(18, 18, 18, 0.94);
+  --nogaPlanner-dark-panel-end: rgba(10, 10, 10, 0.94);
+  --nogaPlanner-dark-card-start: rgba(26, 26, 26, 0.98);
+  --nogaPlanner-dark-card-end: rgba(14, 14, 14, 0.98);
+  --nogaPlanner-dark-card-strong-start: rgba(34, 34, 34, 0.99);
+  --nogaPlanner-dark-card-strong-end: rgba(18, 18, 18, 0.99);
+  --nogaPlanner-dark-border: rgba(255, 255, 255, 0.08);
+  --nogaPlanner-dark-border-strong: rgba(255, 255, 255, 0.16);
+  --nogaPlanner-dark-ink: rgba(244, 244, 244, 0.92);
+  --nogaPlanner-dark-heading: #ffffff;
+  --nogaPlanner-dark-subtle: rgba(210, 210, 210, 0.62);
+  --nogaPlanner-dark-accent: #f2b44c;
+  --nogaPlanner-dark-accent-strong: #ffcb72;
+  --nogaPlanner-dark-pill: rgba(18, 18, 18, 0.86);
+  --nogaPlanner-dark-chip-text: #f5f5f5;
+  --nogaPlanner-dark-input-bg: rgba(8, 8, 8, 0.92);
+  --nogaPlanner-dark-input-border: rgba(255, 255, 255, 0.1);
+  --nogaPlanner-dark-overlay: rgba(0, 0, 0, 0.68);
 }
 
 /* Semantic variables — switched to dark palette */
 body.dark #nogaPlanner_article,
 .dark #nogaPlanner_article {
+  color-scheme: dark;
   --nogaPlanner-page-bg-start: var(--nogaPlanner-dark-bg-start);
   --nogaPlanner-page-bg-mid: var(--nogaPlanner-dark-bg-mid);
   --nogaPlanner-page-bg-end: var(--nogaPlanner-dark-bg-end);
@@ -53,15 +54,16 @@ body.dark #nogaPlanner_article,
   --nogaPlanner-input-bg: var(--nogaPlanner-dark-input-bg);
   --nogaPlanner-input-border: var(--nogaPlanner-dark-input-border);
   --nogaPlanner-overlay: var(--nogaPlanner-dark-overlay);
-  --nogaPlanner-bg-overlay-start: rgba(9, 26, 33, 0.54);
-  --nogaPlanner-bg-overlay-end: rgba(11, 31, 39, 0.5);
-  background-color: var(--nogaPlanner-page-bg-mid);
+  --nogaPlanner-bg-overlay-start: rgba(0, 0, 0, 0.82);
+  --nogaPlanner-bg-overlay-end: rgba(0, 0, 0, 0.72);
+  background-color: #030303;
   background-image:
-    linear-gradient(rgba(7, 17, 21, 0.74), rgba(7, 17, 21, 0.74)),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 34%),
+    linear-gradient(rgba(0, 0, 0, 0.84), rgba(0, 0, 0, 0.84)),
     var(--nogaPlanner-bg-image);
-  background-size: auto, 420px 420px;
-  background-position: 0 0, center;
-  background-repeat: repeat, repeat;
+  background-size: auto, auto, 420px 420px;
+  background-position: 0 0, 0 0, center;
+  background-repeat: repeat, repeat, repeat;
 }
 
 /* Input focus ring */
@@ -134,11 +136,7 @@ body.dark .nogaPlanner_wrapperTabBtn--active,
 body.dark .nogaPlanner_homePanelModesHeader,
 .dark .nogaPlanner_homePanelModesHeader {
   border-color: rgba(110, 168, 180, 0.26);
-  background: linear-gradient(
-    180deg,
-    rgba(17, 46, 54, 0.96),
-    rgba(11, 33, 40, 0.94)
-  );
+  background: linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(8, 8, 8, 0.96));
   color: var(--nogaPlanner-ink);
 }
 
@@ -149,20 +147,137 @@ body.dark .nogaPlanner_homePanelModesHeader > strong,
 
 body.dark .nogaPlanner_homePanelModeTab,
 .dark .nogaPlanner_homePanelModeTab {
-  border-color: rgba(110, 168, 180, 0.24);
-  background: rgba(9, 24, 31, 0.54);
-  color: var(--nogaPlanner-chip-text);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(30, 30, 30, 0.96), rgba(13, 13, 13, 0.96));
+  color: rgba(244, 244, 244, 0.9);
 }
 
 body.dark .nogaPlanner_homePanelModeTab.is-active,
 .dark .nogaPlanner_homePanelModeTab.is-active {
-  background: linear-gradient(
-    180deg,
-    rgba(126, 216, 232, 0.94),
-    rgba(136, 212, 199, 0.94)
-  );
-  color: #042028;
-  border-color: rgba(126, 216, 232, 0.62);
+  background: linear-gradient(180deg, rgba(58, 58, 58, 0.98), rgba(18, 18, 18, 0.98));
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body.dark .nogaPlanner_homePanel,
+.dark .nogaPlanner_homePanel,
+body.dark .nogaPlanner_documentsPanel,
+.dark .nogaPlanner_documentsPanel {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 26%),
+    linear-gradient(180deg, rgba(8, 8, 8, 0.98), rgba(16, 16, 16, 0.98));
+  color: var(--nogaPlanner-ink);
+}
+
+body.dark .nogaPlanner_homePanelCard,
+.dark .nogaPlanner_homePanelCard,
+body.dark .nogaPlanner_documentsPanel .nogaPlanner_homePanelCard,
+.dark .nogaPlanner_documentsPanel .nogaPlanner_homePanelCard {
+  background:
+    linear-gradient(180deg, rgba(34, 34, 34, 0.98), rgba(10, 10, 10, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.42),
+    0 3px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body.dark .nogaPlanner_homePanelCardTitleRow,
+.dark .nogaPlanner_homePanelCardTitleRow,
+body.dark .nogaPlanner_documentsPanel .nogaPlanner_homePanelCardTitleRow,
+.dark .nogaPlanner_documentsPanel .nogaPlanner_homePanelCardTitleRow {
+  background:
+    linear-gradient(180deg, rgba(34, 34, 34, 0.98), rgba(14, 14, 14, 0.98));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+body.dark .nogaPlanner_homePanelCardBody,
+.dark .nogaPlanner_homePanelCardBody {
+  background:
+    linear-gradient(180deg, rgba(15, 15, 15, 0.94), rgba(8, 8, 8, 0.96));
+}
+
+body.dark .nogaPlanner_homePanel_secondaryChild,
+.dark .nogaPlanner_homePanel_secondaryChild {
+  background:
+    linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(10, 10, 10, 0.98));
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.62),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.dark .nogaPlanner_homePanel_secondaryChildRow,
+.dark .nogaPlanner_homePanel_secondaryChildRow {
+  background: rgba(8, 8, 8, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+body.dark .nogaPlanner_homePanelSecondaryChildToggleBtn,
+.dark .nogaPlanner_homePanelSecondaryChildToggleBtn {
+  background: linear-gradient(180deg, rgba(48, 48, 48, 0.98), rgba(16, 16, 16, 0.98));
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+body.dark .nogaPlanner_homePanelSecondaryChildToggleBtn--closed,
+.dark .nogaPlanner_homePanelSecondaryChildToggleBtn--closed {
+  background: linear-gradient(180deg, rgba(58, 58, 58, 0.98), rgba(18, 18, 18, 0.98));
+}
+
+body.dark .nogaPlanner_homePanelSecondaryChildToggleBtn:hover,
+.dark .nogaPlanner_homePanelSecondaryChildToggleBtn:hover,
+body.dark .nogaPlanner_homePanelSecondaryChildToggleBtn--closed:hover,
+.dark .nogaPlanner_homePanelSecondaryChildToggleBtn--closed:hover {
+  background: linear-gradient(180deg, rgba(66, 66, 66, 0.98), rgba(24, 24, 24, 0.98));
+}
+
+body.dark .nogaPlanner_homeIntervalsInput,
+.dark .nogaPlanner_homeIntervalsInput,
+body.dark .nogaPlanner_savedCoursesDetailsInput,
+.dark .nogaPlanner_savedCoursesDetailsInput,
+body.dark .nogaPlanner_documentsPanel input,
+body.dark .nogaPlanner_documentsPanel select,
+body.dark .nogaPlanner_documentsPanel textarea,
+.dark .nogaPlanner_documentsPanel input,
+.dark .nogaPlanner_documentsPanel select,
+.dark .nogaPlanner_documentsPanel textarea {
+  background: rgba(6, 6, 6, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(245, 245, 245, 0.96);
+}
+
+body.dark .nogaPlanner_homeIntervalsInput::placeholder,
+.dark .nogaPlanner_homeIntervalsInput::placeholder,
+body.dark .nogaPlanner_documentsPanel input::placeholder,
+body.dark .nogaPlanner_documentsPanel textarea::placeholder,
+.dark .nogaPlanner_documentsPanel input::placeholder,
+.dark .nogaPlanner_documentsPanel textarea::placeholder {
+  color: rgba(210, 210, 210, 0.42);
+}
+
+body.dark .nogaPlanner_homeIntervalsTableWrap,
+.dark .nogaPlanner_homeIntervalsTableWrap,
+body.dark .nogaPlanner_documentsTableWrap,
+.dark .nogaPlanner_documentsTableWrap,
+body.dark .nogaPlanner_storedDocumentFormScrollWrap,
+.dark .nogaPlanner_storedDocumentFormScrollWrap {
+  background: rgba(10, 10, 10, 0.95);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark .nogaPlanner_documentsOverviewLayout,
+.dark .nogaPlanner_documentsOverviewLayout,
+body.dark .nogaPlanner_documentsEditorOverviewRow,
+.dark .nogaPlanner_documentsEditorOverviewRow {
+  background: transparent;
+}
+
+body.dark .nogaPlanner_homePanelCardActions,
+.dark .nogaPlanner_homePanelCardActions {
+  color: rgba(245, 245, 245, 0.92);
 }
 
 /* Main cards */
@@ -377,18 +492,19 @@ body.dark #nogaPlanner_addLecture_div [role="button"],
 .dark .nogaPlanner_telegramSendButton,
 .dark #nogaPlanner_addLecture_div label,
 .dark #nogaPlanner_addLecture_div [role="button"] {
-  background: linear-gradient(180deg, rgba(23, 65, 76, 0.95), rgba(14, 39, 48, 0.95));
-  border: 1px solid rgba(132, 193, 203, 0.26);
+  background: linear-gradient(180deg, rgba(36, 36, 36, 0.98), rgba(14, 14, 14, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow:
-    inset 0 1px 0 rgba(208, 235, 240, 0.18),
-    0 12px 22px rgba(0, 0, 0, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 22px rgba(0, 0, 0, 0.44);
+  color: rgba(246, 246, 246, 0.96);
 }
 
 body.dark #nogaPlanner_article button:hover,
 body.dark .nogaPlanner_telegramSendButton:hover,
 .dark #nogaPlanner_article button:hover,
 .dark .nogaPlanner_telegramSendButton:hover {
-  filter: saturate(1.1) brightness(1.06);
+  filter: brightness(1.08);
 }
 
 .app_page[data-theme="dark"] .nogaPlanner_coursesMiniBar,
