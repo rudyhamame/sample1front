@@ -528,7 +528,6 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: white;
-  max-width: 260px;
   overflow: hidden;
   pointer-events: none;
 }
