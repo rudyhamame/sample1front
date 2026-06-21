@@ -244,6 +244,7 @@ const NogaPlannerTelegramPanel = ({
   planner,
   mode = "default",
   languageSection = "all",
+  showDocumentIds = false,
 }) => {
   const [traceMainTab, setTraceMainTab] = useState("material");
   const [materialSourceTab, setMaterialSourceTab] = useState("telegram");
@@ -1644,7 +1645,9 @@ const NogaPlannerTelegramPanel = ({
             <table className="nogaPlanner_tracesTable">
               <thead>
                 <tr>
-                  <th style={{ whiteSpace: "nowrap" }}>ID</th>
+                  {showDocumentIds ? (
+                    <th style={{ whiteSpace: "nowrap" }}>ID</th>
+                  ) : null}
                   <th>Name</th>
                   <th>Uploader</th>
                   <th>Type</th>
@@ -1701,9 +1704,10 @@ const NogaPlannerTelegramPanel = ({
                         );
                       }}
                     >
-                      {message?._groupRowSpan !== 0 ? (
+                      {showDocumentIds && message?._groupRowSpan !== 0 ? (
                         <td
                           style={{ whiteSpace: "nowrap" }}
+                          className="nogaPlanner_homePanelRowIdCell"
                           rowSpan={message?._groupRowSpan > 1 ? message._groupRowSpan : undefined}
                         >
                           {Number(message?.id || 0) || "-"}

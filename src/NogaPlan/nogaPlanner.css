@@ -510,6 +510,14 @@
   flex: 0 0 auto;
 }
 
+.nogaPlanner_mainTabPanelTitleRightCluster {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .nogaPlanner_friendMessageViewer {
   position: relative;
   left: auto;
@@ -529,6 +537,184 @@
   font-weight: 600;
   color: white;
   overflow: hidden;
+  pointer-events: none;
+}
+
+.nogaPlanner_worldClockViewer {
+  gap: 12px;
+  padding: 4px 14px 4px 12px;
+}
+
+.nogaPlanner_worldTimerViewer {
+  gap: 10px;
+  padding: 4px 12px 4px 11px;
+  pointer-events: auto;
+}
+
+.nogaPlanner_worldClockViewer_side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nogaPlanner_worldClockViewer_location {
+  font-size: 0.58rem;
+  font-weight: 100;
+  letter-spacing: 0;
+  line-height: 1;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.nogaPlanner_worldClockViewer .nogaPlanner_worldClockViewer_time {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.nogaPlanner_worldClockViewer_date {
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.92;
+  white-space: nowrap;
+}
+
+.nogaPlanner_worldTimerViewer_controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.nogaPlanner_worldTimerViewer_setter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+  pointer-events: auto;
+}
+
+.nogaPlanner_worldTimerViewer_setterLabel {
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.84);
+  white-space: nowrap;
+}
+
+.nogaPlanner_worldTimerViewer_setterValue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  padding: 0 5px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nogaPlanner_worldTimerViewer_roundSwitch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  min-height: 1.55rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.nogaPlanner_worldTimerViewer_roundSwitch:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nogaPlanner_worldTimerViewer_roundSwitch--decrement {
+  transform: translateY(0);
+}
+
+.nogaPlanner_worldTimerViewer_roundSwitch--increment {
+  transform: translateY(0);
+}
+
+.nogaPlanner_worldTimerViewer_actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.55rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-size: 0.78rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nogaPlanner_worldTimerViewer_actionBtn:first-of-type {
+  background: rgba(100, 210, 140, 0.18);
+  border-color: rgba(100, 210, 140, 0.4);
+}
+
+.nogaPlanner_worldTimerViewer_actionBtn:first-of-type:hover:not(:disabled) {
+  background: rgba(100, 210, 140, 0.28);
+  border-color: rgba(100, 210, 140, 0.6);
+}
+
+.nogaPlanner_worldTimerViewer_actionBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nogaPlanner_worldTimerViewer_actionBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.nogaPlanner_worldClockViewer_divider {
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nogaPlanner_worldClockViewer_heart {
+  display: block;
+  font-family: "Bitcount Prop Single", system-ui !important;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "slnt" 0,
+  "CRSV" 0.5,
+  "ELSH" 0,
+  "ELXP" 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: white;
+  white-space: nowrap;
   pointer-events: none;
 }
 
@@ -589,16 +775,19 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 18px;
+  padding: 20px 50px;
   overflow-y: auto;
+  background-color: #ffb80b;
 }
 
 .nogaPlanner_planCalendarMainColumn {
   display: flex;
   flex: 1 1 0;
   min-width: 0;
+  max-width: 100%;
   flex-direction: column;
   gap: 18px;
+  overflow: auto;
 }
 
 .nogaPlanner_planCalendarTasksColumn {
@@ -636,8 +825,8 @@
   min-height: 34px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(120, 83, 91, 0.14);
+  background: #5e4949;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .nogaPlanner_planCalendarDateLabel {
@@ -645,12 +834,12 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #8f5f6b;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .nogaPlanner_planCalendarDateValue {
   font-size: 0.92rem;
-  color: #33272a;
+  color: rgba(255, 255, 255, 0.98);
 }
 
 .nogaPlanner_planCalendarEyebrow {
@@ -682,18 +871,16 @@
   margin-left: 10px;
   padding: 10px 14px;
   border-radius: 18px;
-  border: 1px solid rgba(39, 119, 73, 0.18);
-  background:
-    linear-gradient(135deg, rgba(232, 255, 239, 0.96), rgba(246, 255, 249, 0.9));
-  box-shadow: 0 12px 24px rgba(42, 122, 59, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #5e4949;
+  box-shadow: 0 10px 22px rgba(67, 39, 47, 0.18);
   vertical-align: middle;
 }
 
 .nogaPlanner_planCalendarCountdown.is-past {
-  border-color: rgba(176, 48, 48, 0.18);
-  background:
-    linear-gradient(135deg, rgba(255, 237, 237, 0.96), rgba(255, 246, 246, 0.92));
-  box-shadow: 0 12px 24px rgba(176, 48, 48, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #5e4949;
+  box-shadow: 0 10px 22px rgba(67, 39, 47, 0.18);
 }
 
 .nogaPlanner_planCalendarCountdownLabel {
@@ -701,11 +888,11 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #2a7a3b;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .nogaPlanner_planCalendarCountdown.is-past .nogaPlanner_planCalendarCountdownLabel {
-  color: #b03030;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .nogaPlanner_planCalendarCountdownStats {
@@ -723,22 +910,22 @@
   min-width: 58px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(39, 119, 73, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .nogaPlanner_planCalendarCountdown.is-past .nogaPlanner_planCalendarCountdownUnit {
-  border-color: rgba(176, 48, 48, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .nogaPlanner_planCalendarCountdownUnit strong {
   font-size: 1.05rem;
   line-height: 1;
-  color: #224f32;
+  color: rgba(255, 255, 255, 0.98);
 }
 
 .nogaPlanner_planCalendarCountdown.is-past .nogaPlanner_planCalendarCountdownUnit strong {
-  color: #8e2424;
+  color: rgba(255, 255, 255, 0.98);
 }
 
 .nogaPlanner_planCalendarCountdownUnit span {
@@ -747,55 +934,60 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6e7f74;
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .nogaPlanner_planCalendarCountdown.is-past .nogaPlanner_planCalendarCountdownUnit span {
-  color: #8c6f6f;
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .nogaPlanner_planCalendarGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   align-content: start;
+  gap: 50px;
+  box-sizing: border-box;
+}
+
+.nogaPlanner_planCalendarGridChild {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .nogaPlanner_planCalendarDay {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 92px;
-  padding: 10px 8px;
-  border: 1px solid rgba(120, 83, 91, 0.18);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 240, 242, 0.94));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 10px 24px rgba(67, 39, 47, 0.08);
+  justify-content: flex-start;
+  gap: 10px;
+  aspect-ratio: 1 / 1;
+  min-height: 220px;
+  width: 100%;
+  max-width: 100%;
+  padding: 16px 14px 14px;
+  background:#5e4949;
+  border-radius: 16px;
   cursor: pointer;
-  appearance: none;
   text-align: center;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .nogaPlanner_planCalendarDay.is-selected {
   border-color: rgba(221, 45, 74, 0.58);
-  background:
-    linear-gradient(180deg, rgba(255, 240, 243, 0.98), rgba(255, 228, 234, 0.94));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 14px 28px rgba(150, 42, 67, 0.16);
 }
 
 .nogaPlanner_planCalendarDay.is-today {
   border-color: #dd2d4a;
   background: #dd2d4a;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 14px 28px rgba(150, 42, 67, 0.26);
+    inset 0 2px 4px rgba(255, 255, 255, 0.22),
+    inset 0 -12px 24px rgba(120, 20, 42, 0.18),
+    0 1px 2px rgba(150, 42, 67, 0.18);
 }
 
 .nogaPlanner_planCalendarDay.is-today
@@ -856,18 +1048,88 @@
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #8f5f6b;
+  color: white;
+  line-height: 1.2;
 }
 
 .nogaPlanner_planCalendarDayNumber {
-  font-size: 1.7rem;
-  line-height: 1;
-  color: #281f22;
+  font-size: 0.70rem;
+  line-height: 1.1;
+  color: white;
+  word-break: break-word;
+  white-space: normal;
+  text-wrap: balance;
 }
 
-.nogaPlanner_planCalendarDayMonth {
-  font-size: 0.85rem;
-  color: #5f5457;
+.nogaPlanner_planCalendarDayCenterNumber {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  line-height: 1;
+  font-weight: 200;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.nogaPlanner_planCalendarDayTasks {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.nogaPlanner_planCalendarDayTaskItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(185, 170, 173, 0.75);
+  color: #3a2f33;
+  font-size: 0.74rem;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.nogaPlanner_planCalendarDayTaskItem:last-child {
+  border-bottom: 0;
+}
+
+.nogaPlanner_planCalendarDayTaskItem.is-empty {
+  color: transparent;
+}
+
+.nogaPlanner_planCalendarDayTaskTime {
+  flex: 0 0 auto;
+  min-width: 3.2em;
+  font-weight: 700;
+  color: white;
+}
+
+.nogaPlanner_planCalendarDayTaskLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: white;
+}
+
+.nogaPlanner_planCalendarDayTaskEmpty {
+  display: block;
+  min-height: 1em;
 }
 
 .nogaPlanner_planCalendarEmpty {
@@ -3086,6 +3348,154 @@ color: #fff;
   transform: translateY(2px);
 }
 
+.nogaPlanner_homeStudyGoals {
+  order: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  margin-top: 14px;
+  padding: 14px 16px 16px;
+  border: 1px solid rgba(118, 64, 53, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 250, 233, 0.9), rgba(255, 238, 182, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.06),
+    0 12px 24px rgba(83, 48, 35, 0.12);
+}
+
+.nogaPlanner_homeStudyGoalsHeader,
+.nogaPlanner_homeStudyGoalsSavedHeader,
+.nogaPlanner_homeStudyGoalsDraftDocumentHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.nogaPlanner_homeStudyGoalsHeader strong,
+.nogaPlanner_homeStudyGoalsSavedHeader strong,
+.nogaPlanner_homeStudyGoalsDraftDocumentHeader strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.nogaPlanner_homeStudyGoalsHeader span,
+.nogaPlanner_homeStudyGoalsSavedHeader span,
+.nogaPlanner_homeStudyGoalsDraftDocumentHeader span {
+  font-size: 0.82rem;
+  opacity: 0.78;
+}
+
+.nogaPlanner_homeStudyGoalsDraftBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nogaPlanner_homeStudyGoalsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+  flex: 1 1 140px;
+}
+
+.nogaPlanner_homeStudyGoalsField--wide {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.nogaPlanner_homeStudyGoalsField > span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.nogaPlanner_homeStudyGoalsInput {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(118, 64, 53, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3b2a24;
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.nogaPlanner_homeStudyGoalsPushBtn {
+  flex: 0 0 auto;
+  align-self: end;
+}
+
+.nogaPlanner_homeStudyGoalsDraftList,
+.nogaPlanner_homeStudyGoalsSavedList,
+.nogaPlanner_homeStudyGoalsSavedDocuments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nogaPlanner_homeStudyGoalsDraftDocument,
+.nogaPlanner_homeStudyGoalsSavedItem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid rgba(118, 64, 53, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.nogaPlanner_homeStudyGoalsPageList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nogaPlanner_homeStudyGoalsPageBtn {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid rgba(118, 64, 53, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #3b2a24;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nogaPlanner_homeStudyGoalsPageBtn--selected {
+  background: #5e4949;
+  color: #fff4e8;
+  border-color: #5e4949;
+}
+
+.nogaPlanner_homeStudyGoalsPageBtn:disabled,
+.nogaPlanner_homeStudyGoalsPushBtn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
 .nogaPlanner_homePanel_secondaryChildToggleWrap {
   position: relative;
   align-self: flex-start;
@@ -3187,7 +3597,7 @@ color: #fff;
   order: 2;
   display: grid;
   grid-template-columns: 1fr 1fr;  
-  gap: 12px;
+  gap: 40px;
   min-height: 0;
   flex-grow: 1;
   min-width: 0;
@@ -3464,12 +3874,11 @@ color: #fff;
   min-width: 0;
 }
 
-.nogaPlanner_homePanelCardSoloBtn {
+.nogaPlanner_homePanelCardSoloBtn,
+.nogaPlanner_homePanelCardIdsBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  min-width: 28px;
   height: 28px;
   border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 7px;
@@ -3478,6 +3887,20 @@ color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   cursor: pointer;
   font-size: 0.92rem;
+}
+
+.nogaPlanner_homePanelCardSoloBtn {
+  width: 28px;
+  min-width: 28px;
+}
+
+.nogaPlanner_homePanelCardIdsBtn {
+  min-width: 70px;
+  padding: 0 8px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .nogaPlanner_homePanelCardStackBtn {
@@ -3502,7 +3925,9 @@ color: #fff;
   background: rgba(255, 255, 255, 0.18);
 }
 
-.nogaPlanner_homePanelCardSoloBtn:hover {
+.nogaPlanner_homePanelCardSoloBtn:hover,
+.nogaPlanner_homePanelCardIdsBtn:hover,
+.nogaPlanner_homePanelCardIdsBtn.is-active {
   background: rgba(255, 255, 255, 0.18);
 }
 
@@ -3516,6 +3941,14 @@ color: #fff;
   font-size: 0.70rem;
   white-space: nowrap;
   border-right: 2px solid white;
+}
+
+.nogaPlanner_homePanelRowIdCell {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.68rem;
 }
 
 .nogaPlanner_homePanelCard > strong {

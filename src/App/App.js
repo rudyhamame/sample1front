@@ -4306,7 +4306,6 @@ class App extends React.Component {
         <InspectionOverlay
           rootId="root"
           debugClassName="App_debugBordersOn"
-          viewportBadgeId="App_viewportBadge"
           hoveredBadgeId="App_hoveredIdBadge"
         />
       </React.Fragment>

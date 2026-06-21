@@ -4,6 +4,7 @@ const NogaPlannerLecturesTablePanel = ({
   planner,
   runtime,
   renderMode = "full",
+  showLectureIds = false,
 }) => {
   const formatInstructorName = (entry) => {
     if (!entry || typeof entry !== "object") {
@@ -1195,6 +1196,7 @@ const NogaPlannerLecturesTablePanel = ({
           <table id="nogaPlanner_lecturesTable" className="nogaPlanner_tabTable nogaPlanner_lecturesTable">
               <thead id="nogaPlanner_lecturesTableHead" className="nogaPlanner_tableHead">
                 <tr id="nogaPlanner_lecturesTableHeadRow">
+                  {showLectureIds ? <th rowSpan={2}>Lecture ID</th> : null}
                   <th rowSpan={2}>Material metadata Id</th>
                   <th rowSpan={2}>Lecture name</th>
                   <th rowSpan={2}>Lecture Instructor</th>
@@ -1212,7 +1214,7 @@ const NogaPlannerLecturesTablePanel = ({
               <tbody id="nogaPlanner_lecturesTableBody">
                 {lectureRows.length === 0 ? (
                   <tr id="nogaPlanner_lecturesTableEmptyRow">
-                    <td id="nogaPlanner_lecturesTableEmptyCell" colSpan={9} style={{ textAlign: "center", opacity: 0.5, padding: "18px" }}>No lectures</td>
+                    <td id="nogaPlanner_lecturesTableEmptyCell" colSpan={showLectureIds ? 10 : 9} style={{ textAlign: "center", opacity: 0.5, padding: "18px" }}>No lectures</td>
                   </tr>
                 ) : lectureRows.map((rowEntry) => (
                   <tr
@@ -1220,6 +1222,11 @@ const NogaPlannerLecturesTablePanel = ({
                     className={`nogaPlanner_tabTableRow${String(rowEntry.key || "") === selectedLectureKey ? " selected" : ""}`}
                     onClick={() => setSelectedLectureKey(String(rowEntry.key || ""))}
                   >
+                    {showLectureIds ? (
+                      <td className="nogaPlanner_homePanelRowIdCell">
+                        {rowEntry.lectureId || rowEntry.lectureID || rowEntry.key || "-"}
+                      </td>
+                    ) : null}
                     <td>{rowEntry.contextLabel}</td>
                     <td>{rowEntry.lectureName || "-"}</td>
                     <td>{formatPlannerTextList(rowEntry.lectureInstructors)}</td>
@@ -1312,6 +1319,11 @@ const NogaPlannerLecturesTablePanel = ({
         >
           <thead id="nogaPlanner_lecturesTableHead" className="nogaPlanner_tableHead">
             <tr id="nogaPlanner_lecturesTableHeadRow">
+              {showLectureIds ? (
+                <th id="nogaPlanner_lecturesTableHead_lectureID">
+                  Lecture ID
+                </th>
+              ) : null}
               <th id="nogaPlanner_lecturesTableHead_courseName">
                 {NOGAPLANNER_TEXT.lectures.courseName}
               </th>
@@ -1399,7 +1411,7 @@ const NogaPlannerLecturesTablePanel = ({
               <tr id="nogaPlanner_lecturesTableEmptyRow">
                 <td
                   id="nogaPlanner_lecturesTableEmptyCell"
-                  colSpan={6}
+                  colSpan={showLectureIds ? 7 : 6}
                   style={{
                     textAlign: "center",
                     opacity: 0.5,
@@ -1426,6 +1438,14 @@ const NogaPlannerLecturesTablePanel = ({
                 }
                 onClick={() => planner.handleTabItemClick(item._id)}
               >
+                {showLectureIds ? (
+                  <td
+                    id={`nogaPlanner_lecturesTableCell_id_${itemIndex}`}
+                    className="nogaPlanner_homePanelRowIdCell"
+                  >
+                    {item.lectureID || item._id || "-"}
+                  </td>
+                ) : null}
                 <td
                   id={`nogaPlanner_lecturesTableCell_course_${itemIndex}`}
                   style={getCellAlignmentStyle(
@@ -1488,5 +1508,3 @@ const NogaPlannerLecturesTablePanel = ({
 };
 
 export default NogaPlannerLecturesTablePanel;
-
-

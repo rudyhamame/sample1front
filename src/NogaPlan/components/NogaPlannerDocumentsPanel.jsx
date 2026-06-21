@@ -591,7 +591,11 @@ const StoredDocumentFormFields = ({
   );
 };
 
-export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
+export const StoredDocumentsCard = ({
+  planner,
+  titleActionsId = "",
+  showDocumentIds = false,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingRef, setEditingRef] = useState(null); // { source: "existing"|"staged", idx }
   const [draft, setDraft] = useState(EMPTY_STORED_DOC_DRAFT);
@@ -1226,6 +1230,7 @@ export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
           >
             <thead id="nogaPlanner_documentsTableHead">
               <tr>
+                {showDocumentIds ? <th rowSpan={2}>Document ID</th> : null}
                 <th rowSpan={2}>Document Name</th>
                 <th rowSpan={2}>Lecture</th>
                 <th rowSpan={2}>Type</th>
@@ -1278,6 +1283,11 @@ export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
                           (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "")
                         }
                       >
+                        {showDocumentIds ? (
+                          <td className="nogaPlanner_homePanelRowIdCell">
+                            {renderLocalizedDocumentText(info.documentID || "—")}
+                          </td>
+                        ) : null}
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
                           ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
@@ -1361,6 +1371,11 @@ export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
                           (isBeingEdited ? " nogaPlanner_documentsTableRow--editing" : "")
                         }
                       >
+                        {showDocumentIds ? (
+                          <td className="nogaPlanner_homePanelRowIdCell">
+                            {renderLocalizedDocumentText(info.documentID || "—")}
+                          </td>
+                        ) : null}
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
                         <td>{isBeingEdited
                           ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
@@ -1411,7 +1426,7 @@ export const StoredDocumentsCard = ({ planner, titleActionsId = "" }) => {
                 <tr id="nogaPlanner_documentsTableEmptyRow">
                 <td
                   id="nogaPlanner_documentsTableEmptyCell"
-                  colSpan={10}
+                  colSpan={showDocumentIds ? 11 : 10}
                 >
                   No stored documents found in lectureDocuments.
                 </td>
