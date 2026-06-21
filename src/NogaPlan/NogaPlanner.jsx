@@ -22991,14 +22991,21 @@ export default class NogaPlanner extends Component {
       };
     })();
     const liveExamScheduleGroups = (() => {
-      const baseRows = examScheduleEditorOpen ? homeCourseExamDraftRows : materialMetadataExamRows;
+      const mergedRows = new Map();
+      [...materialMetadataExamRows, ...homeCourseExamDraftRows].forEach((row) => {
+        const rowKey = String(row?.taskID || row?.examPartID || row?.key || "").trim();
+        if (!rowKey) {
+          return;
+        }
+        mergedRows.set(rowKey, row);
+      });
       const allRows = examScheduleEditorOpen
         ? [
-            ...baseRows,
+            ...Array.from(mergedRows.values()),
             ...(homeCourseExamCurrentPartRow ? [homeCourseExamCurrentPartRow] : []),
             ...(homeProgramTaskCurrentRow ? [homeProgramTaskCurrentRow] : []),
           ]
-        : baseRows;
+        : materialMetadataExamRows;
       const groupMap = new Map();
       allRows.forEach((row) => {
         const cid = String(row?.componentID || "").trim();
