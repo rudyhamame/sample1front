@@ -8908,6 +8908,18 @@ export default class NogaPlanner extends Component {
       isPreview: Boolean(normalizedEntry?.isPreview),
     };
   };
+  getNextProgramTaskNumber = (plannerRoot = null, excludeTaskID = "") => {
+    const root = plannerRoot || this.getResolvedPlannerRoot();
+    const excludedTaskID = String(excludeTaskID || "").trim();
+    const taskRows = this.getPlannerMaterialMetadataExamRows(root).filter(
+      (row) => String(row?.taskID || "").trim() !== excludedTaskID,
+    );
+    const maxTaskNum = taskRows.reduce((maxValue, row) => {
+      const taskNum = Number.parseInt(String(row?.taskNum || "").trim(), 10);
+      return Number.isInteger(taskNum) && taskNum > maxValue ? taskNum : maxValue;
+    }, 0);
+    return maxTaskNum + 1;
+  };
   buildHomeCourseExamDraftEntry = (entryIndex = 0) => {
     const componentID = String(
       this.state?.homeCourseExamComponentIdDraft || "",
@@ -8938,9 +8950,14 @@ export default class NogaPlanner extends Component {
     const examLocationRoom = String(
       this.state?.homeCourseExamLocationRoomDraft || "",
     ).trim();
+    const taskNum = this.getNextProgramTaskNumber(
+      plannerRoot,
+      String(this.state?.homeCourseExamEditingId || "").trim(),
+    );
     return {
       key: `draft_${componentID}_${entryIndex}`,
       componentID,
+      taskNum,
       courseName: String(matchedCourseRow?.courseName || "").trim(),
       courseComponentClass: String(
         matchedCourseRow?.courseComponent || "",
@@ -9013,10 +9030,10 @@ export default class NogaPlanner extends Component {
         : [];
       const entryIndex = prevList.length;
       const componentID = selectedComponentId || `${taskName}_${entryIndex}`;
-      const existingCount = prevList.filter(
-        (e) => String(e?.componentID || "").trim() === componentID,
-      ).length;
-      const taskNum = existingCount + 1;
+      const taskNum = this.getNextProgramTaskNumber(
+        plannerRoot,
+        String(previousState?.homeCourseExamEditingId || "").trim(),
+      );
       const taskSymbol = "TSK";
       const taskID = `${componentID}${taskSymbol}${taskNum}`;
       const nextEntry = {
@@ -9073,10 +9090,7 @@ export default class NogaPlanner extends Component {
       (c) => String(c?.courseInfo?.courseID || c?.courseInfo?.courseName || "").trim() === selectedCourseId,
     );
     const resolvedCourseName = String(matchedCourse?.courseInfo?.courseName || selectedCourseId || "").trim();
-    const existingTasks = this.getPlannerMaterialMetadataExamRows(plannerRoot).filter(
-      (r) => String(r?.componentID || "").trim() === componentID,
-    );
-    const taskNum = existingTask?.taskInfo?.taskNum ?? existingTasks.length + 1;
+    const taskNum = existingTask?.taskInfo?.taskNum ?? this.getNextProgramTaskNumber(plannerRoot, editingTaskID);
     const taskID = `${componentID}_TSK_${taskNum}`;
     const locationBuilding = String(this.state?.homeCourseExamLocationBuildingDraft || "").trim();
     const locationRoom = String(this.state?.homeCourseExamLocationRoomDraft || "").trim();
@@ -9116,6 +9130,23 @@ export default class NogaPlanner extends Component {
         ? this.state.homeCourseExamDraftList
         : []
       : this.getPlannerMaterialMetadataExamRows(this.getResolvedPlannerRoot());
+    const matchedSourceRow =
+      sourceExamRows.find(
+        (entry) =>
+          String(entry?.taskID || entry?.examPartID || "").trim() ===
+          String(normalizedExamEntry?.taskID || "").trim(),
+      ) || null;
+    const resolvedCourseId = String(
+      matchedSourceRow?.courseID ||
+        matchedSourceRow?.courseId ||
+        normalizedExamEntry?.courseID ||
+        "",
+    ).trim();
+    const resolvedComponentClass = String(
+      matchedSourceRow?.courseComponentClass ||
+        normalizedExamEntry?.courseComponentClass ||
+        "",
+    ).trim();
     const normalizedLocation = normalizedExamEntry?.taskLocation || null;
     const locationBuilding = String(normalizedLocation?.building || "").trim();
     const locationRoom = Array.isArray(normalizedLocation?.rooms) && normalizedLocation.rooms.length > 0
@@ -9126,10 +9157,18 @@ export default class NogaPlanner extends Component {
       homeCourseExamScheduleEditorOpen: true,
       homeCourseExamEditingId: String(normalizedExamEntry?.taskID || "").trim(),
       homeMaterialMetadataMode: "",
+      homeCourseExamClassDraft: String(
+        normalizedExamEntry?.examClass || normalizedExamEntry?.taskName || "",
+      ).trim(),
       homeCourseExamDraftList: sourceExamRows.map((entry) => ({
         ...entry,
         key: String(entry?.key || entry?.examPartID || entry?.taskID || "").trim(),
       })),
+      homeProgramTaskCourseIdDraft: resolvedCourseId,
+      homeProgramTaskComponentIdDraft: String(
+        normalizedExamEntry?.componentID || matchedSourceRow?.componentID || "",
+      ).trim(),
+      homeProgramTaskComponentClassDraft: resolvedComponentClass,
       homeCourseExamComponentIdDraft: String(
         normalizedExamEntry?.componentID || "",
       ).trim(),
@@ -9188,45 +9227,38 @@ export default class NogaPlanner extends Component {
       return;
     }
     const plannerRoot = this.getResolvedPlannerRoot();
-    const currentIntervals = this.getPlannerIntervalsWithComponents(plannerRoot);
-    const nextIntervals = currentIntervals.map((intervalEntry) => {
-      const intervalCourses = Array.isArray(intervalEntry?.intervalCourses)
-        ? intervalEntry.intervalCourses
-        : [];
-      const nextIntervalCourses = intervalCourses.map((courseEntry) => {
-        const nextComponents = (Array.isArray(courseEntry?.courseComponents) ? courseEntry.courseComponents : []).map(
-          (comp) => {
-            const compID = String(comp?.componentID || "").trim();
-            if (compID !== targetComponentID) return comp;
-            const nextExams = (Array.isArray(comp?.componentExams) ? comp.componentExams : []).filter(
-              (ex) => {
-                const eID = String(ex?.taskID || "").trim();
-                return targetExamID ? eID !== targetExamID : false;
-              },
-            );
-            return { ...comp, componentExams: nextExams };
-          },
-        );
-        return { ...courseEntry, courseComponents: nextComponents };
-      });
-      return {
-        ...intervalEntry,
-        intervalCourses: nextIntervalCourses,
-        subIntervalCourses: nextIntervalCourses,
-      };
+    const programTasks = Array.isArray(plannerRoot?.programTasks)
+      ? plannerRoot.programTasks
+      : [];
+    const nextProgramTasks = programTasks.filter((taskEntry) => {
+      const taskInfo =
+        taskEntry?.taskInfo && typeof taskEntry.taskInfo === "object"
+          ? taskEntry.taskInfo
+          : {};
+      const taskID = String(taskInfo?.taskID || "").trim();
+      const componentID = String(taskID.split("_TSK_")[0] || taskEntry?.componentID || "").trim();
+      if (targetExamID) {
+        return taskID !== targetExamID;
+      }
+      if (targetComponentID) {
+        return componentID !== targetComponentID;
+      }
+      return true;
     });
     try {
-      const nextPlannerRoot = await this.persistStudyPlannerIntervals(nextIntervals);
+      const nextPlannerRoot = await this.persistStudyPlannerMeta({
+        programTasks: nextProgramTasks,
+      });
       this.setState({
         plannerRoot:
           nextPlannerRoot && typeof nextPlannerRoot === "object"
             ? nextPlannerRoot
             : this.state?.plannerRoot || {},
       });
-      this.props.serverReply?.("Exam deleted.");
+      this.props.serverReply?.("Task deleted.");
     } catch (error) {
       this.props.serverReply?.(
-        String(error?.message || "Failed to delete exam."),
+        String(error?.message || "Failed to delete task."),
       );
     }
   };
@@ -10283,10 +10315,13 @@ export default class NogaPlanner extends Component {
         existingTaskMap.delete(editingTaskID);
       }
       // Merge each draft (keyed by taskID; taskID encodes componentID as prefix before _TSK_)
+      let nextTaskNum = this.getNextProgramTaskNumber(plannerRoot, editingTaskID);
       examDraftList.forEach((draft) => {
         const taskID = String(draft?.taskID || "").trim();
         if (!taskID) return;
-        const taskNum = Number.isFinite(Number(draft?.taskNum)) ? Number(draft.taskNum) : null;
+        const taskNum = Number.isFinite(Number(draft?.taskNum))
+          ? Number(draft.taskNum)
+          : nextTaskNum++;
         existingTaskMap.set(taskID, {
           taskInfo: {
             taskSymbol: "TSK",
@@ -22933,10 +22968,7 @@ export default class NogaPlanner extends Component {
       );
       const resolvedCourseName = String(matchedCourse?.courseInfo?.courseName || selectedCourseId || "").trim();
       const componentName = String(this.state?.homeProgramTaskComponentClassDraft || "").trim();
-      const existingCount = homeCourseExamDraftRows.filter(
-        (e) => String(e?.componentID || "").trim() === componentID,
-      ).length;
-      const taskNum = existingCount + 1;
+      const taskNum = this.getNextProgramTaskNumber(plannerRoot);
       const taskID = `${componentID}TSK${taskNum}`;
       const locationBuilding = String(this.state?.homeCourseExamLocationBuildingDraft || "").trim();
       const locationRoom = String(this.state?.homeCourseExamLocationRoomDraft || "").trim();
