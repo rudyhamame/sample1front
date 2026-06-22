@@ -4467,6 +4467,7 @@ background-color: #5e4949;
   flex: 1 1 auto;
   align-self: stretch;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
 }
@@ -4491,6 +4492,32 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+#nogaPlanner_home_programLectures_card {
+  min-height: 0;
+}
+
+#nogaPlanner_home_programLectures_card > .nogaPlanner_homePanelCardBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#nogaPlanner_home_programLectures_card .nogaPlanner_lectureCareContentCol {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#nogaPlanner_home_programLectures_card .nogaPlanner_homeIntervalsTableWrap {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+#nogaPlanner_home_programLectures_card .nogaPlanner_homeIntervalsMiniTable {
+  width: max-content;
+  min-width: 100%;
 }
 
 .nogaPlanner_homeIntervalsTableWrap > .nogaPlanner_homeIntervalsMiniTable {
