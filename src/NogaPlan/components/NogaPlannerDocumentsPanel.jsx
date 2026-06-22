@@ -441,6 +441,7 @@ const StoredDocumentFormFields = ({
   lectureOptions,
 }) => {
   const [editorSelection, setEditorSelection] = useState("");
+  const [documentNameSameAsLectureName, setDocumentNameSameAsLectureName] = useState(false);
 
   const availableEditors = useMemo(
     () => programEditors.filter((e) => !draft.documentEditors.includes(e)),
@@ -461,14 +462,68 @@ const StoredDocumentFormFields = ({
     }));
   };
 
+  const selectedLectureName = useMemo(() => {
+    const selectedLecture = lectureOptions.find(
+      (option) => String(option?.value || "").trim() === String(draft?.documentLectureID || "").trim(),
+    );
+    return String(
+      selectedLecture?.lectureName ||
+        selectedLecture?.label ||
+        draft?.documentLectureName ||
+        "",
+    ).trim();
+  }, [lectureOptions, draft?.documentLectureID, draft?.documentLectureName]);
+
+  useEffect(() => {
+    if (!documentNameSameAsLectureName) {
+      return;
+    }
+    if (!selectedLectureName) {
+      return;
+    }
+    setDraft((prev) => ({
+      ...prev,
+      documentName: selectedLectureName,
+    }));
+  }, [documentNameSameAsLectureName, selectedLectureName, setDraft]);
+
   return (
     <div id="nogaPlanner_storedDocumentForm" className="nogaPlanner_storedDocumentForm">
         <label className="nogaPlanner_storedDocumentFormField">
-          <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Name</span>
+          <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">
+            Document Name
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                marginLeft: "10px",
+                fontWeight: 400,
+                fontSize: "0.88em",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={documentNameSameAsLectureName}
+                onChange={(e) => {
+                  const nextChecked = e.target.checked;
+                  setDocumentNameSameAsLectureName(nextChecked);
+                  if (nextChecked && selectedLectureName) {
+                    setDraft((prev) => ({
+                      ...prev,
+                      documentName: selectedLectureName,
+                    }));
+                  }
+                }}
+              />
+              same as lecture name
+            </label>
+          </span>
           <input
             type="text"
             className="nogaPlanner_homeIntervalsInput"
             value={draft.documentName}
+            disabled={documentNameSameAsLectureName}
             onChange={(e) => setDraft((prev) => ({ ...prev, documentName: e.target.value }))}
             placeholder="Enter document name"
           />
@@ -491,6 +546,9 @@ const StoredDocumentFormFields = ({
                 ...prev,
                 documentLectureID: nextLectureId,
                 documentLectureName: nextLectureId ? nextLectureName : "",
+                ...(documentNameSameAsLectureName && nextLectureName
+                  ? { documentName: nextLectureName }
+                  : {}),
               }));
             }}
           >
