@@ -9175,7 +9175,7 @@ export default class NogaPlanner extends Component {
     const lectureComponentId = String(normalizedEntry?.lecture_componentId || "").trim();
     const lectureID =
       String(normalizedEntry?.lectureID || "").trim() ||
-      `${lectureComponentId || lectureCourseId || "LEC"}-LEC${lectureOrder || fallbackIndex + 1}`;
+      `${lectureComponentId || lectureCourseId || "LEC"}LEC${lectureOrder || fallbackIndex + 1}`;
     return {
       lectureInfo: {
         lectureSymbol: "LEC",
@@ -11399,7 +11399,7 @@ export default class NogaPlanner extends Component {
                       return Number.isInteger(n) && n > maxValue ? n : maxValue;
                     }, 0) + 1;
                   const newLectureID = resolvedComponentID
-                    ? `${resolvedComponentID}-L${nextLectureNum}`
+                    ? `${resolvedComponentID}LEC${nextLectureNum}`
                     : `lecture_${nextLectureNum}_${Date.now()}`;
                   const newLecture = {
                     lectureID: newLectureID,
@@ -11608,7 +11608,7 @@ export default class NogaPlanner extends Component {
                 }, 0) + 1;
             const existingLectureID = String(originalLectureEntry?.lectureID || "").trim();
             const nextLectureID = existingLectureID ||
-              (resolvedComponentID ? `${resolvedComponentID}-L${nextLectureNum}` : `lecture_${nextLectureNum}_${Date.now()}`);
+              (resolvedComponentID ? `${resolvedComponentID}LEC${nextLectureNum}` : `lecture_${nextLectureNum}_${Date.now()}`);
             const newLecture = { lectureID: nextLectureID, lectureNum: nextLectureNum, lectureName, lectureInstructors: [lectureInstructor] };
             let nextExams;
             if (targetExamIndex >= 0) {
