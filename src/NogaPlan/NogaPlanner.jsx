@@ -1075,9 +1075,17 @@ export default class NogaPlanner extends Component {
     ).trim();
     const achievements = Array.isArray(entry?.achievements)
       ? entry.achievements
+      : Array.isArray(entry?.studySessionAchievements)
+        ? entry.studySessionAchievements
       : Array.isArray(entry?.sessionAchievements)
         ? entry.sessionAchievements
         : [];
+    const startDate = String(
+      entry?.studySessionStartDate || entry?.startDate || entry?.start_date || "",
+    ).trim();
+    const endDate = String(
+      entry?.studySessionEndDate || entry?.endDate || entry?.end_date || "",
+    ).trim();
     const derivedSessionID = this.buildPlannerStudySessionID(
       programID,
       studySessionSymbol,
@@ -1089,8 +1097,15 @@ export default class NogaPlanner extends Component {
       studySessionID: resolvedSessionID || `studySession_${index + 1}`,
       studySessionSymbol,
       studySessionNum: Number.isFinite(studySessionNum) ? studySessionNum : index + 1,
-      startDate: String(entry?.startDate || entry?.start_date || "").trim(),
-      endDate: String(entry?.endDate || entry?.end_date || "").trim(),
+      studySessionStartDate: startDate,
+      studySessionEndDate: endDate,
+      studySessionAchievements: achievements
+        .map((achievementEntry) =>
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry),
+        )
+        .filter(Boolean),
+      startDate,
+      endDate,
       achievements: achievements
         .map((achievementEntry) =>
           this.normalizePlannerStudySessionAchievementEntry(achievementEntry),
@@ -1105,7 +1120,13 @@ export default class NogaPlanner extends Component {
     const sessions = this.getPlannerStudySessions(plannerRoot);
     return (
       sessions.find(
-        (entry) => !String(entry?.endDate || "").trim(),
+        (entry) =>
+          !String(
+            entry?.studySessionEndDate ||
+              entry?.endDate ||
+              entry?.end_date ||
+              "",
+          ).trim(),
       ) || null
     );
   };
@@ -1223,6 +1244,7 @@ export default class NogaPlanner extends Component {
       });
       return {
         ...sessionEntry,
+        studySessionAchievements: Array.from(achievementMap.values()),
         achievements: Array.from(achievementMap.values()),
       };
     });
@@ -1294,6 +1316,7 @@ export default class NogaPlanner extends Component {
       });
       return {
         ...sessionEntry,
+        studySessionAchievements: Array.from(achievementMap.values()),
         achievements: Array.from(achievementMap.values()),
       };
     });
@@ -1311,8 +1334,11 @@ export default class NogaPlanner extends Component {
     const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
       (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
     );
-    const activeSession = currentSessions.find(
-      (entry) => !String(entry?.endDate || "").trim(),
+      const activeSession = currentSessions.find(
+      (entry) =>
+        !String(
+          entry?.studySessionEndDate || entry?.endDate || entry?.end_date || "",
+        ).trim(),
     );
     if (activeSession) {
       this.props.serverReply?.("A study session is already running.");
@@ -1331,6 +1357,9 @@ export default class NogaPlanner extends Component {
         studySessionSymbol: nextStudySessionSymbol,
         studySessionNum: nextStudySessionNum,
         sessionName: `Study Session ${nextStudySessionNum}`,
+        studySessionStartDate: new Date().toISOString(),
+        studySessionEndDate: "",
+        studySessionAchievements: [],
         startDate: new Date().toISOString(),
         endDate: "",
         achievements: [],
@@ -1354,19 +1383,23 @@ export default class NogaPlanner extends Component {
       (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
     );
     const activeSessionIndex = currentSessions.findIndex(
-      (entry) => !String(entry?.endDate || "").trim(),
+      (entry) =>
+        !String(
+          entry?.studySessionEndDate || entry?.endDate || entry?.end_date || "",
+        ).trim(),
     );
     if (activeSessionIndex < 0) {
       this.props.serverReply?.("No study session is running.");
       return;
     }
     const nextSessions = currentSessions.map((entry, index) =>
-      index === activeSessionIndex
-        ? {
-            ...entry,
-            endDate: new Date().toISOString(),
-          }
-        : entry,
+        index === activeSessionIndex
+          ? {
+              ...entry,
+              studySessionEndDate: new Date().toISOString(),
+              endDate: new Date().toISOString(),
+            }
+          : entry,
     );
     const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
     this.setState({
