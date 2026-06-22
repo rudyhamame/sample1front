@@ -9311,6 +9311,72 @@ export default class NogaPlanner extends Component {
           sensitivity: "base",
         });
     });
+  handleHomeProgramLecturesSort = (sortKey) => {
+    this.setState((previousState) => {
+      const nextDirection =
+        previousState.homeProgramLecturesSortKey === sortKey &&
+        previousState.homeProgramLecturesSortDirection === "asc"
+          ? "desc"
+          : "asc";
+      return {
+        homeProgramLecturesSortKey: sortKey,
+        homeProgramLecturesSortDirection: nextDirection,
+      };
+    });
+  };
+  sortHomeProgramLectureRows = (entries = []) => {
+    const { homeProgramLecturesSortKey, homeProgramLecturesSortDirection } = this.state;
+    const directionMultiplier =
+      homeProgramLecturesSortDirection === "desc" ? -1 : 1;
+    const normalizedEntries = Array.isArray(entries) ? [...entries] : [];
+    const getComparableValue = (lecture = {}) => {
+      switch (homeProgramLecturesSortKey) {
+        case "lectureID":
+          return String(lecture?.lectureID || "").trim();
+        case "lecture_order":
+          return String(this.getProgramLectureSortValue(lecture, 0));
+        case "lecture_name":
+          return String(lecture?.lecture_name || "").trim();
+        case "lecture_course":
+          return String(lecture?.lecture_course || "").trim();
+        case "lecture_component":
+          return String(lecture?.lecture_component || "").trim();
+        case "lecture_instructors":
+          return String(lecture?.lecture_instructors || "").trim();
+        case "lecture_documents":
+          return String(Number(lecture?.lecture_documents || 0) || 0);
+        case "lecture_date":
+          return String(lecture?.lecture_date || "").trim();
+        default:
+          return String(this.getProgramLectureSortValue(lecture, 0));
+      }
+    };
+    normalizedEntries.sort((leftLecture, rightLecture) => {
+      const leftValue = getComparableValue(leftLecture);
+      const rightValue = getComparableValue(rightLecture);
+      if (homeProgramLecturesSortKey === "lecture_order" || homeProgramLecturesSortKey === "lecture_documents") {
+        const leftNumber = Number(leftValue);
+        const rightNumber = Number(rightValue);
+        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber) && leftNumber !== rightNumber) {
+          return (leftNumber - rightNumber) * directionMultiplier;
+        }
+      }
+      if (homeProgramLecturesSortKey === "lecture_date") {
+        const leftDate = Date.parse(leftValue || "") || 0;
+        const rightDate = Date.parse(rightValue || "") || 0;
+        if (leftDate !== rightDate) {
+          return (leftDate - rightDate) * directionMultiplier;
+        }
+      }
+      return (
+        leftValue.localeCompare(rightValue, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }) * directionMultiplier
+      );
+    });
+    return normalizedEntries;
+  };
   normalizeHomeCourseLectureDraftEntry = (entry = {}) => {
     const normalizedEntry =
       entry && typeof entry === "object" && !Array.isArray(entry)
@@ -19559,6 +19625,8 @@ export default class NogaPlanner extends Component {
       examBoardSortDirection: "asc",
       lectureSortKey: "lecture_name",
       lectureSortDirection: "asc",
+      homeProgramLecturesSortKey: "lecture_order",
+      homeProgramLecturesSortDirection: "asc",
       inlineLectureRowVisible: false,
       inlineLectureDraft: getDefaultInlineLectureDraft(),
       savedCourseFloatingBarPosition: null,
@@ -24018,7 +24086,7 @@ export default class NogaPlanner extends Component {
         ])
         .filter(([courseId, courseName]) => courseId && courseName),
     );
-    const programLecturesRows = this.sortProgramLectureRowsByOrder(
+    const programLecturesRows = this.sortHomeProgramLectureRows(
       Array.from(
         new Map(
           (Array.isArray(plannerRoot?.programLectures)
@@ -24287,8 +24355,18 @@ export default class NogaPlanner extends Component {
           isPreview: true,
         });
       });
-      return this.sortProgramLectureRowsByOrder(Array.from(previewMap.values()));
+      return this.sortHomeProgramLectureRows(Array.from(previewMap.values()));
     })();
+    const renderHomeProgramLectureSortLabel = (sortKey, fallbackLabel) => {
+      const isActive =
+        this.state?.homeProgramLecturesSortKey === sortKey;
+      const sortMarker = isActive
+        ? this.state?.homeProgramLecturesSortDirection === "asc"
+          ? " ▲"
+          : " ▼"
+        : "";
+      return `${fallbackLabel}${sortMarker}`;
+    };
     const { startYear: intervalStartYear, endYear: intervalEndYear } =
       this.getPlannerCurrentAcademicYearRange();
     const startYearValue =
@@ -27228,15 +27306,119 @@ export default class NogaPlanner extends Component {
                     <thead id="nogaPlanner_homeIntervalsMiniTable_7_head">
                       <tr id="nogaPlanner_homeIntervalsMiniTable_7_row1">
                         {homeShowIdsByCard.programLectures ? (
-                          <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_ID">Lecture ID</th>
+                          <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_ID">
+                            <span
+                              className="nogaPlanner_tabTableSortLabel"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => this.handleHomeProgramLecturesSort("lectureID")}
+                              onKeyDown={(event) =>
+                                (event.key === "Enter" || event.key === " ") &&
+                                this.handleHomeProgramLecturesSort("lectureID")
+                              }
+                            >
+                              {renderHomeProgramLectureSortLabel("lectureID", "Lecture ID")}
+                            </span>
+                          </th>
                         ) : null}
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_order">Order</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_name">Name</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Course_name">Course</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Component_ID">Course Component</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Instructor">Instructor</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Documents">Lecture Document</th>
-                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_date">Date</th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_order">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_order")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_order")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_order", "Order")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_name">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_name")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_name")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_name", "Name")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Course_name">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_course")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_course")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_course", "Course")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Component_ID">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_component")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_component")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_component", "Course Component")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Instructor">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_instructors")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_instructors")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_instructors", "Instructor")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_Documents">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_documents")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_documents")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_documents", "Lecture Document")}
+                          </span>
+                        </th>
+                        <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Lecture_date">
+                          <span
+                            className="nogaPlanner_tabTableSortLabel"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => this.handleHomeProgramLecturesSort("lecture_date")}
+                            onKeyDown={(event) =>
+                              (event.key === "Enter" || event.key === " ") &&
+                              this.handleHomeProgramLecturesSort("lecture_date")
+                            }
+                          >
+                            {renderHomeProgramLectureSortLabel("lecture_date", "Date")}
+                          </span>
+                        </th>
                         <th id="nogaPlanner_homeIntervalsMiniTable_7_th_Actions">Action</th>
                       </tr>
                     </thead>
