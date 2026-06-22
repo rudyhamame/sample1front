@@ -1083,8 +1083,10 @@ export default class NogaPlanner extends Component {
       studySessionSymbol,
       Number.isFinite(studySessionNum) ? studySessionNum : null,
     );
+    const resolvedSessionID =
+      sessionID && sessionID !== "studySessionID" ? sessionID : derivedSessionID;
     return {
-      studySessionID: sessionID || derivedSessionID || `studySession_${index + 1}`,
+      studySessionID: resolvedSessionID || `studySession_${index + 1}`,
       studySessionSymbol,
       studySessionNum: Number.isFinite(studySessionNum) ? studySessionNum : index + 1,
       startDate: String(entry?.startDate || entry?.start_date || "").trim(),
@@ -1365,6 +1367,27 @@ export default class NogaPlanner extends Component {
             endDate: new Date().toISOString(),
           }
         : entry,
+    );
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+  };
+  deletePlannerStudySession = async (sessionEntry = {}) => {
+    const targetStudySessionID = String(sessionEntry?.studySessionID || "").trim();
+    if (!targetStudySessionID) {
+      return;
+    }
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const nextSessions = currentSessions.filter(
+      (entry) =>
+        String(entry?.studySessionID || "").trim() !== targetStudySessionID,
     );
     const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
     this.setState({
@@ -29905,11 +29928,11 @@ export default class NogaPlanner extends Component {
               ? achievementEntry.pagesDone
               : [];
             const isFirstAchievementRow = achievementIndex === 0;
-              return (
-                <tr
-                  key={`studySession_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
-                  className="nogaPlanner_homeStudySessionTableRow"
-                >
+            return (
+              <tr
+                key={`studySession_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
+                className="nogaPlanner_homeStudySessionTableRow"
+              >
                 {homeShowIdsByCard.studySessions && isFirstAchievementRow ? (
                   <td
                     rowSpan={achievementRows.length}
@@ -29953,6 +29976,24 @@ export default class NogaPlanner extends Component {
                 <td className="nogaPlanner_homeStudySessionTableCell">
                   {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
                 </td>
+                {isFirstAchievementRow ? (
+                  <td
+                    rowSpan={achievementRows.length}
+                    className="nogaPlanner_homeStudySessionTableCell"
+                  >
+                    <div className="nogaPlanner_homeIntervalRowActions">
+                      <button
+                        type="button"
+                        className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                        aria-label="Delete study session"
+                        disabled={isHomeCardsLocked}
+                        onClick={() => this.deletePlannerStudySession(sessionEntry)}
+                      >
+                        <i className="fi fi-br-trash" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             );
           });
@@ -30026,6 +30067,7 @@ export default class NogaPlanner extends Component {
                         <th rowSpan={2}>Number</th>
                         <th colSpan={2}>Date</th>
                         <th colSpan={homeShowIdsByCard.studySessions ? 6 : 5}>Achievements</th>
+                        <th rowSpan={2}>Actions</th>
                       </tr>
                       <tr>
                         <th>Start</th>
@@ -30044,7 +30086,7 @@ export default class NogaPlanner extends Component {
                       ) : (
                         <tr>
                           <td
-                            colSpan={homeShowIdsByCard.studySessions ? 10 : 9}
+                            colSpan={homeShowIdsByCard.studySessions ? 11 : 9}
                             className="nogaPlanner_homeStudySessionTableEmptyCell"
                           >
                             No study sessions stored yet.
