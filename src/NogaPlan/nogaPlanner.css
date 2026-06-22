@@ -4942,6 +4942,31 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
 #nogaPlanner_home_storedDocuments_card {
   border-radius: 18px;
   overflow: hidden;
+  min-height: 0;
+}
+
+#nogaPlanner_home_storedDocuments_card > .nogaPlanner_homePanelCardBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#nogaPlanner_home_storedDocuments_card .nogaPlanner_documentsPanel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#nogaPlanner_home_storedDocuments_card .nogaPlanner_documentsEditorOverviewRow,
+#nogaPlanner_home_storedDocuments_card .nogaPlanner_documentsOverviewLayout {
+  min-height: 0;
+}
+
+#nogaPlanner_home_storedDocuments_card .nogaPlanner_documentsTableWrap {
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .nogaPlanner_homeMissedConnectionsList {
