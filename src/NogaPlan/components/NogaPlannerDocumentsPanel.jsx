@@ -901,6 +901,15 @@ export const StoredDocumentsCard = ({
     if (!Number.isFinite(Number(pageNumber)) || Number(pageNumber) <= 0) {
       return;
     }
+    const targetDocumentEntry = existingProgramDocuments[documentIndex] || null;
+    const targetDocumentInfo = getDocumentInfoForEntry(targetDocumentEntry);
+    const targetCurrentPages = getDocumentPagesForUi(targetDocumentInfo);
+    const targetCurrentPage =
+      targetCurrentPages.find(
+        (pageEntry) => Number(pageEntry?.pageOrder) === Number(pageNumber),
+      ) || null;
+    const targetPageWasDone =
+      String(targetCurrentPage?.pageStatus || "").trim().toLowerCase() === "done";
     setSubmitState({ loading: true, error: "" });
     try {
       const updatedExisting = existingProgramDocuments.map((entry, idx) => {
@@ -935,6 +944,17 @@ export const StoredDocumentsCard = ({
       ]);
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
+      }
+      if (!targetPageWasDone && typeof planner.recordActiveStudySessionPageDone === "function") {
+        await planner.recordActiveStudySessionPageDone({
+          documentID: String(
+            targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
+          ).trim(),
+          pageNumber,
+          plannerRoot: nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : planner.getResolvedPlannerRoot?.(),
+        });
       }
       setSubmitState({ loading: false, error: "" });
     } catch (err) {

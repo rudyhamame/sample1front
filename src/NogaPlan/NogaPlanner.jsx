@@ -470,6 +470,11 @@ export default class NogaPlanner extends Component {
     }
     return {
       ...plannerRoot,
+      programStudySessions: Array.isArray(plannerRoot?.programStudySessions)
+        ? plannerRoot.programStudySessions.map((entry, index) =>
+            this.normalizePlannerStudySessionEntry(entry, index),
+          )
+        : [],
       programIntervals: this.normalizePlannerProgramIntervalsForUi(
         plannerRoot?.programIntervals,
       ),
@@ -914,6 +919,460 @@ export default class NogaPlanner extends Component {
     return Array.isArray(root?.programMissedConnections)
       ? root.programMissedConnections
       : [];
+  };
+  getPlannerStudySessions = (plannerRoot = this.getResolvedPlannerRoot()) => {
+    const root = plannerRoot && typeof plannerRoot === "object" ? plannerRoot : {};
+    return Array.isArray(root?.programStudySessions)
+      ? root.programStudySessions
+      : [];
+  };
+  buildPlannerStudySessionID = (
+    programID = "",
+    studySessionSymbol = "SS",
+    studySessionNum = null,
+  ) => {
+    const normalizedProgramID = String(programID || "").trim();
+    const normalizedSymbol = String(studySessionSymbol || "SS").trim() || "SS";
+    const normalizedNum = Number(studySessionNum);
+    if (!normalizedProgramID || !Number.isFinite(normalizedNum)) {
+      return "";
+    }
+    return `${normalizedProgramID}: ${normalizedSymbol}${normalizedNum}`;
+  };
+  getNextPlannerStudySessionNum = (plannerRoot = this.getResolvedPlannerRoot()) => {
+    const currentSessions = this.getPlannerStudySessions(plannerRoot);
+    const existingNums = currentSessions
+      .map((entry) => Number(entry?.studySessionNum))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    return (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+  };
+  resolvePlannerStudySessionAchievementLabels = (
+    achievementEntry = {},
+    plannerRoot = this.getResolvedPlannerRoot(),
+  ) => {
+    const root = plannerRoot && typeof plannerRoot === "object" ? plannerRoot : {};
+    const documentID = String(achievementEntry?.documentID || "").trim();
+    const programDocuments = Array.isArray(root?.programDocuments)
+      ? root.programDocuments
+      : [];
+    const programLectures = Array.isArray(root?.programLectures)
+      ? root.programLectures
+      : [];
+    const programCourses = Array.isArray(root?.programCourses)
+      ? root.programCourses
+      : [];
+    const matchedDocument =
+      programDocuments.find((documentEntry) => {
+        const documentInfo =
+          documentEntry?.documentInfo && typeof documentEntry.documentInfo === "object"
+            ? documentEntry.documentInfo
+            : documentEntry || {};
+        return (
+          String(documentInfo?.documentID || "").trim() === documentID ||
+          String(documentInfo?.documentName || "").trim() === documentID
+        );
+      }) || null;
+    const documentInfo =
+      matchedDocument?.documentInfo && typeof matchedDocument.documentInfo === "object"
+        ? matchedDocument.documentInfo
+        : matchedDocument || {};
+    const documentName = String(
+      documentInfo?.documentName || documentID || "-",
+    ).trim();
+    const documentLectureID = String(documentInfo?.documentLectureID || "").trim();
+    const documentLectureName = String(documentInfo?.documentLectureName || "").trim();
+    const matchedLecture =
+      programLectures.find((lectureEntry) => {
+        const lectureInfo =
+          lectureEntry?.lectureInfo && typeof lectureEntry.lectureInfo === "object"
+            ? lectureEntry.lectureInfo
+            : lectureEntry || {};
+        const lectureID = String(lectureInfo?.lectureID || "").trim();
+        const lectureName = String(lectureInfo?.lectureName || "").trim();
+        return (
+          (documentLectureID && lectureID === documentLectureID) ||
+          (documentLectureName && lectureName === documentLectureName)
+        );
+      }) || null;
+    const lectureInfo =
+      matchedLecture?.lectureInfo && typeof matchedLecture.lectureInfo === "object"
+        ? matchedLecture.lectureInfo
+        : matchedLecture || {};
+    const lectureName = String(
+      lectureInfo?.lectureName || documentLectureName || "-",
+    ).trim();
+    const lectureCourseName = String(lectureInfo?.lectureCourseName || "").trim();
+    const lectureComponentName = String(lectureInfo?.lectureComponentName || "").trim();
+    const matchedCourse =
+      programCourses.find((courseEntry) => {
+        const courseInfo =
+          courseEntry?.courseInfo && typeof courseEntry.courseInfo === "object"
+            ? courseEntry.courseInfo
+            : courseEntry || {};
+        const courseName = String(courseInfo?.courseName || "").trim();
+        return Boolean(courseName) && courseName === lectureCourseName;
+      }) || null;
+    const courseInfo =
+      matchedCourse?.courseInfo && typeof matchedCourse.courseInfo === "object"
+        ? matchedCourse.courseInfo
+        : matchedCourse || {};
+    const courseName = String(
+      courseInfo?.courseName || lectureCourseName || "-",
+    ).trim();
+    const componentName = String(lectureComponentName || "-").trim();
+    return {
+      documentName,
+      lectureName,
+      courseName,
+      componentName,
+    };
+  };
+  normalizePlannerStudySessionAchievementEntry = (entry = {}) => {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const pagesDone = Array.isArray(entry?.pagesDone)
+      ? entry.pagesDone
+      : Array.isArray(entry?.pageNumbers)
+        ? entry.pageNumbers
+        : [];
+    const normalizedPagesDone = Array.from(
+      new Set(
+        pagesDone
+          .map((pageNumber) => Number(pageNumber))
+          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0),
+      ),
+    ).sort((left, right) => left - right);
+    const documentID = String(
+      entry?.documentID || entry?.documentId || entry?.id || "",
+    ).trim();
+    return documentID || normalizedPagesDone.length > 0
+      ? {
+          documentID,
+          pagesDone: normalizedPagesDone,
+        }
+      : null;
+  };
+  normalizePlannerStudySessionEntry = (entry = {}, index = 0) => {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const programID = String(
+      this.getResolvedPlannerRoot()?.programID || "",
+    ).trim();
+    const studySessionSymbol = String(
+      entry?.studySessionSymbol || entry?.sessionSymbol || "SS",
+    ).trim() || "SS";
+    const studySessionNum = Number(entry?.studySessionNum);
+    const sessionID = String(
+      entry?.studySessionID ||
+        entry?.studySessionId ||
+        entry?.sessionID ||
+        entry?.sessionId ||
+        entry?._id ||
+        entry?.id ||
+        "",
+    ).trim();
+    const achievements = Array.isArray(entry?.achievements)
+      ? entry.achievements
+      : Array.isArray(entry?.sessionAchievements)
+        ? entry.sessionAchievements
+        : [];
+    const derivedSessionID = this.buildPlannerStudySessionID(
+      programID,
+      studySessionSymbol,
+      Number.isFinite(studySessionNum) ? studySessionNum : null,
+    );
+    return {
+      studySessionID: sessionID || derivedSessionID || `studySession_${index + 1}`,
+      studySessionSymbol,
+      studySessionNum: Number.isFinite(studySessionNum) ? studySessionNum : index + 1,
+      startDate: String(entry?.startDate || entry?.start_date || "").trim(),
+      endDate: String(entry?.endDate || entry?.end_date || "").trim(),
+      achievements: achievements
+        .map((achievementEntry) =>
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry),
+        )
+        .filter(Boolean),
+      sessionName: String(
+        entry?.sessionName || entry?.studySessionName || entry?.name || "",
+      ).trim(),
+    };
+  };
+  getActivePlannerStudySession = (plannerRoot = this.getResolvedPlannerRoot()) => {
+    const sessions = this.getPlannerStudySessions(plannerRoot);
+    return (
+      sessions.find(
+        (entry) => !String(entry?.endDate || "").trim(),
+      ) || null
+    );
+  };
+  persistStudyPlannerStudySessions = async (programStudySessions = []) => {
+    return this.runPlannerPendingTask("Saving study sessions...", async () => {
+      const userId = String(this.props?.state?.my_id || "").trim();
+      const token = String(this.props?.state?.token || "").trim();
+      if (!userId || !token) {
+        throw new Error("Failed to save study sessions: login data is incomplete.");
+      }
+      const response = await fetch(
+        apiUrl(`/api/user/editStudyPlannerStudySessions/${userId}`),
+        {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            programStudySessions: Array.isArray(programStudySessions)
+              ? programStudySessions
+              : [],
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          String(payload?.message || `Failed to save study sessions (${response.status}).`),
+        );
+      }
+      const refreshedStudyPlanner = await this.fetchStudyPlannerFromDb();
+      if (refreshedStudyPlanner && typeof refreshedStudyPlanner === "object") {
+        return refreshedStudyPlanner;
+      }
+      return payload?.studyPlanner || {};
+    }, "programStudySessions");
+  };
+  buildPlannerStudySessionSummaryLabel = (sessionEntry = {}, index = 0) =>
+    String(
+      sessionEntry?.sessionName ||
+        `Study Session ${index + 1}`,
+    ).trim();
+  syncActiveStudySessionAchievementsFromDocuments = async (
+    programDocuments = [],
+  ) => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (!activeSession?.studySessionID) {
+      return null;
+    }
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const documentMap = new Map();
+    (Array.isArray(programDocuments) ? programDocuments : []).forEach(
+      (documentEntry) => {
+        const documentInfo =
+          documentEntry?.documentInfo && typeof documentEntry.documentInfo === "object"
+            ? documentEntry.documentInfo
+            : documentEntry || {};
+        const documentID = String(
+          documentInfo?.documentID || documentInfo?.documentId || "",
+        ).trim();
+        if (!documentID) {
+          return;
+        }
+        const donePages = this.getHomeStudyGoalDocumentPages(documentInfo)
+          .filter(
+            (pageEntry) =>
+              String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done",
+          )
+          .map((pageEntry) => Number(pageEntry?.pageOrder))
+          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
+        if (donePages.length === 0) {
+          return;
+        }
+        documentMap.set(documentID, donePages);
+      },
+    );
+    const nextSessions = currentSessions.map((sessionEntry) => {
+      if (
+        String(sessionEntry?.studySessionID || "").trim() !==
+        String(activeSession?.studySessionID || "").trim()
+      ) {
+        return sessionEntry;
+      }
+      const currentAchievements = Array.isArray(sessionEntry?.achievements)
+        ? sessionEntry.achievements
+        : [];
+      const achievementMap = new Map();
+      currentAchievements.forEach((achievementEntry) => {
+        const normalizedAchievement =
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry);
+        if (!normalizedAchievement?.documentID) {
+          return;
+        }
+        achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
+      });
+      documentMap.forEach((pagesDone, documentID) => {
+        const previousAchievement = achievementMap.get(documentID);
+        const mergedPages = Array.from(
+          new Set([
+            ...(Array.isArray(previousAchievement?.pagesDone)
+              ? previousAchievement.pagesDone
+              : []),
+            ...pagesDone,
+          ]),
+        ).sort((left, right) => left - right);
+        achievementMap.set(documentID, {
+          documentID,
+          pagesDone: mergedPages,
+        });
+      });
+      return {
+        ...sessionEntry,
+        achievements: Array.from(achievementMap.values()),
+      };
+    });
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextPlannerRoot;
+  };
+  recordActiveStudySessionPageDone = async ({
+    documentID = "",
+    pageNumber = 0,
+    plannerRoot: basePlannerRoot = null,
+  } = {}) => {
+    const normalizedDocumentID = String(documentID || "").trim();
+    const normalizedPageNumber = Number(pageNumber);
+    if (
+      !normalizedDocumentID ||
+      !Number.isFinite(normalizedPageNumber) ||
+      normalizedPageNumber <= 0
+    ) {
+      return null;
+    }
+    const plannerRoot =
+      basePlannerRoot && typeof basePlannerRoot === "object"
+        ? basePlannerRoot
+        : this.getResolvedPlannerRoot();
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (!activeSession?.studySessionID) {
+      return null;
+    }
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const nextSessions = currentSessions.map((sessionEntry) => {
+      if (
+        String(sessionEntry?.studySessionID || "").trim() !==
+        String(activeSession?.studySessionID || "").trim()
+      ) {
+        return sessionEntry;
+      }
+      const currentAchievements = Array.isArray(sessionEntry?.achievements)
+        ? sessionEntry.achievements
+        : [];
+      const achievementMap = new Map();
+      currentAchievements.forEach((achievementEntry) => {
+        const normalizedAchievement =
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry);
+        if (!normalizedAchievement?.documentID) {
+          return;
+        }
+        achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
+      });
+      const previousAchievement = achievementMap.get(normalizedDocumentID);
+      const nextPages = Array.from(
+        new Set([
+          ...(Array.isArray(previousAchievement?.pagesDone)
+            ? previousAchievement.pagesDone
+            : []),
+          normalizedPageNumber,
+        ]),
+      ).sort((left, right) => left - right);
+      achievementMap.set(normalizedDocumentID, {
+        documentID: normalizedDocumentID,
+        pagesDone: nextPages,
+      });
+      return {
+        ...sessionEntry,
+        achievements: Array.from(achievementMap.values()),
+      };
+    });
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextPlannerRoot;
+  };
+  startPlannerStudySession = async () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const activeSession = currentSessions.find(
+      (entry) => !String(entry?.endDate || "").trim(),
+    );
+    if (activeSession) {
+      this.props.serverReply?.("A study session is already running.");
+      return;
+    }
+    const nextStudySessionNum = this.getNextPlannerStudySessionNum(plannerRoot);
+    const nextStudySessionSymbol = "SS";
+    const nextStudySessionID = this.buildPlannerStudySessionID(
+      plannerRoot?.programID,
+      nextStudySessionSymbol,
+      nextStudySessionNum,
+    );
+    const nextSession = this.normalizePlannerStudySessionEntry(
+      {
+        studySessionID: nextStudySessionID,
+        studySessionSymbol: nextStudySessionSymbol,
+        studySessionNum: nextStudySessionNum,
+        sessionName: `Study Session ${nextStudySessionNum}`,
+        startDate: new Date().toISOString(),
+        endDate: "",
+        achievements: [],
+      },
+      currentSessions.length,
+    );
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions([
+      ...currentSessions,
+      nextSession,
+    ]);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+  };
+  endPlannerStudySession = async () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const activeSessionIndex = currentSessions.findIndex(
+      (entry) => !String(entry?.endDate || "").trim(),
+    );
+    if (activeSessionIndex < 0) {
+      this.props.serverReply?.("No study session is running.");
+      return;
+    }
+    const nextSessions = currentSessions.map((entry, index) =>
+      index === activeSessionIndex
+        ? {
+            ...entry,
+            endDate: new Date().toISOString(),
+          }
+        : entry,
+    );
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
   };
   normalizePlannerMissedConnectionEntry = (entry = {}) => {
     if (!entry || typeof entry !== "object") {
@@ -5427,6 +5886,9 @@ export default class NogaPlanner extends Component {
     if (Array.isArray(plannerRoot?.programTaskNames)) {
       return true;
     }
+    if (Array.isArray(plannerRoot?.programStudySessions)) {
+      return true;
+    }
     if (Array.isArray(plannerRoot?.programExams)) {
       return true;
     }
@@ -6639,6 +7101,18 @@ export default class NogaPlanner extends Component {
       return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+  formatPlannerDurationDisplay = (startDate = "", endDate = "") => {
+    const startMs = new Date(startDate).getTime();
+    const endMs = endDate ? new Date(endDate).getTime() : Date.now();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs < startMs) {
+      return "-";
+    }
+    const totalSeconds = Math.floor((endMs - startMs) / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
   startPlannerTimer = () => {
     const minutes = Number.parseInt(String(this.state?.plannerTimerMinutesDraft || "").trim(), 10);
@@ -9627,16 +10101,20 @@ export default class NogaPlanner extends Component {
       return;
     }
     if (targetTaskEntry) {
-      await this.archivePlannerMissedConnection({
-        itemType: "task",
-        itemId: targetExamID,
-        itemLabel: String(targetTaskEntry?.taskInfo?.taskName || targetExamID),
-        itemPayload: targetTaskEntry,
-        restoreInfo: {
-          componentID: targetComponentID,
-          taskID: targetExamID,
-        },
-      });
+      try {
+        await this.archivePlannerMissedConnection({
+          itemType: "task",
+          itemId: targetExamID,
+          itemLabel: String(targetTaskEntry?.taskInfo?.taskName || targetExamID),
+          itemPayload: targetTaskEntry,
+          restoreInfo: {
+            componentID: targetComponentID,
+            taskID: targetExamID,
+          },
+        });
+      } catch {
+        // archive is best-effort; proceed with deletion regardless
+      }
     }
     const nextProgramTasks = programTasks.filter((taskEntry) => {
       const taskInfo =
@@ -21513,7 +21991,7 @@ export default class NogaPlanner extends Component {
               </button>
             </div>
           </div>
-        ) : null}
+            ) : null}
         <div
           id="nogaPlanner_courses_miniTable_wrap"
           className="nogaPlanner_homeIntervalsTableWrap"
@@ -24667,13 +25145,45 @@ export default class NogaPlanner extends Component {
             ? ""
             : cardKey,
       }));
+    const scrollHomeCardRowIntoView = (cardKey) => {
+      if (!cardKey) {
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        const cardRow = document.querySelector(
+          `.nogaPlanner_homePanelCardRow[data-card-key="${cardKey}"]`,
+        );
+        if (!(cardRow instanceof Element)) {
+          return;
+        }
+        cardRow.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "smooth",
+        });
+      });
+    };
     const toggleHomeCardStackExpansion = (cardKey) =>
-      this.setState((prevState) => ({
-        homeExpandedStackCardKey:
+      this.setState((prevState) => {
+        const nextCardKey =
           String(prevState?.homeExpandedStackCardKey || "").trim() === cardKey
             ? ""
-            : cardKey,
-      }));
+            : cardKey;
+        return {
+          homeExpandedStackCardKey: nextCardKey,
+        };
+      }, () => {
+        if (String(this.state?.homeExpandedStackCardKey || "").trim() === cardKey) {
+          scrollHomeCardRowIntoView(cardKey);
+        }
+      });
+    const isInteractiveHomeCardTarget = (target) =>
+      target instanceof Element &&
+      Boolean(
+        target.closest(
+          'button, input, select, textarea, label, a, [role="button"]',
+        ),
+      );
     const toggleHomeCardIds = (cardKey) =>
       this.setState((prevState) => {
         const previousShowIds =
@@ -24688,6 +25198,18 @@ export default class NogaPlanner extends Component {
           },
         };
       });
+    const getHomePanelCardRowProps = (cardKey) => ({
+      className:
+        "nogaPlanner_homePanelCardRow" +
+        (expandedStackHomeCardKey === cardKey ? " is-expanded" : ""),
+      "data-card-key": cardKey,
+      onClick: (event) => {
+        if (focusedHomeCardKey || isInteractiveHomeCardTarget(event.target)) {
+          return;
+        }
+        toggleHomeCardStackExpansion(cardKey);
+      },
+    });
     const renderHomePanelCardTitleRow = ({
       rowId,
       headingId,
@@ -24805,6 +25327,7 @@ export default class NogaPlanner extends Component {
     const primaryCardsContent = (
       <React.Fragment>
             {missedConnections.length > 0 ? (
+            <div {...getHomePanelCardRowProps("missedConnections")}>
             <div
               id="nogaPlanner_home_missedConnections_card"
               className={
@@ -24937,9 +25460,11 @@ export default class NogaPlanner extends Component {
                   })}
                 </div>
               </div>
+              </div>
             </div>
             ) : null}
             {isHomeCardMounted("programIntervals") ? (
+            <div {...getHomePanelCardRowProps("programIntervals")}>
             <div
               id="nogaPlanner_home_intervals_card"
               className={
@@ -25244,144 +25769,12 @@ export default class NogaPlanner extends Component {
               </table>
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programCourses") ? (
-            <div
-              id="nogaPlanner_home_programCourses_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "intervals"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              {renderHomePanelCardTitleRow({
-                rowId: "nogaPlanner_homePanelCardTitleRow_17",
-                headingId: "nogaPlanner_home_heading_programCourses",
-                title: "Program Courses",
-                cardKey: "programCourses",
-                idsMode: "course and component",
-                actions: (
-                <div id="nogaPlanner_homePanelCardActions_17" className="nogaPlanner_homePanelCardActions">
-                  {coursesEditorOpen ? null : (
-                    <>
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn_open_courses"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn"
-                        disabled={isHomeCardsLocked}
-                        onClick={() =>
-                          this.setState({
-                            homeCoursesEditorOpen: true,
-                            homeMaterialMetadataMode: "course",
-                            homeCourseEditingKey: "",
-                            homeCourseOriginalId: "",
-                            homeCourseOriginalIntervalId: "",
-                            homeCourseOriginalCourseNum: "",
-                            homeCourseNameDraft: "",
-                            homeCourseIdDraft: "",
-                            homeCourseCodeDraft: "",
-                            homeCourseComponentDraft: [],
-                            homeCourseComponentEditingId: "",
-                            homeCourseSubIntervalYearDraft: "",
-                            homeCourseSubIntervalTermDraft: "",
-                            homeCourseComponentIdDraft: "",
-                            homeCourseComponentPartialWeightDraft: "",
-                            homeCourseComponentStartDateDayDraft: "",
-                            homeCourseComponentStartDateMonthDraft: "",
-                            homeCourseComponentStartDateYearDraft: "",
-                            homeCourseComponentEndDateDayDraft: "",
-                            homeCourseComponentEndDateMonthDraft: "",
-                            homeCourseComponentEndDateYearDraft: "",
-                            homeCourseComponentLocationBuildingDraft: "",
-                            homeCourseComponentLocationRoomDraft: "",
-                            homeCourseComponentInstructorFirstNameDraft: "",
-                            homeCourseComponentInstructorLastNameDraft: "",
-                            homeCourseComponentInstructorsDraftList: [],
-                            homeCourseComponentStatusDraft: "",
-                            homeCourseIntervalIdDraft: "",
-                            homeCourseTotalWeightDraft: "",
-                          })
-                        }
-                      >
-                        {coursesHasRegisteredValue ? "Add Course" : "Set"}
-                      </button>
-                      {coursesHasRegisteredValue ? (
-                        <button
-                          id="nogaPlanner_homePanelCardSetBtn_resetSubIntervalMaterial"
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
-                          disabled={isHomeCardsLocked}
-                          onClick={() =>
-                            this.requestResetWithPassword(
-                              "Reset Program Courses",
-                              this.handleResetProgramCourses,
-                            )
-                          }
-                        >
-                          Reset
-                        </button>
-                      ) : null}
-                    </>
-                  )}
-                  {coursesEditorOpen ? (
-                    <>
-                      {!courseEditingKey ? (
-                        homeCourseApplyPending ? (
-                          <button
-                            id="nogaPlanner_homePanelCardSetBtn_13_courses"
-                            type="button"
-                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                            disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
-                            onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
-                          >
-                            Submit
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="nogaPlanner_homePanelCardSetBtn"
-                            disabled={isHomeCardsLocked || !canAddGlobalCourse}
-                            onClick={this.addHomeCourseWithStagedComponents}
-                          >
-                            Add Course
-                          </button>
-                        )
-                      ) : null}
-                      <button
-                        id="nogaPlanner_homePanelCardSetBtn_15_courses"
-                        type="button"
-                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                        disabled={isHomeCardsLocked}
-                        onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.cancelHomeCoursesEditor)}
-                      >
-                        Cancel
-                      </button>
-                      {aiHelpersEnabled ? (
-                        <button
-                          type="button"
-                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
-                          disabled={isHomeCardsLocked}
-                          title="Run AI for Program Courses"
-                          onClick={() => this.handleMaterialMetadataAiAction("course")}
-                          style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
-                        >
-                          <i className="fi fi-rr-magic-wand" aria-hidden="true" />
-                        </button>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-                ),
-              })}
-              {renderPlannerPendingCardOverlay("programCourses")}
-              <div id="nogaPlanner_homePanelCardBody_2" className="nogaPlanner_homePanelCardBody">
-                {coursesEditorOpen ? (
+            <div {...getHomePanelCardRowProps("programCourses")}>
+              {coursesEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_7_wrap">
                 <div id="nogaPlanner_homeIntervalsMiniForm_7" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
                   <div id="nogaPlanner_homeIntervalsMiniFormFields_course">
@@ -25977,7 +26370,142 @@ export default class NogaPlanner extends Component {
                 </div>
                 </div>
                 </div>
-                ) : null}
+            ) : null}
+            <div
+              id="nogaPlanner_home_programCourses_card"
+              className={
+                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                (isHomeCardsLocked
+                  ? " nogaPlanner_homePanelCard--disabled"
+                  : "")
+              }
+              style={
+                activeHomePanelModeTab === "intervals"
+                  ? undefined
+                  : { display: "none" }
+              }
+            >
+              {renderHomePanelCardTitleRow({
+                rowId: "nogaPlanner_homePanelCardTitleRow_17",
+                headingId: "nogaPlanner_home_heading_programCourses",
+                title: "Program Courses",
+                cardKey: "programCourses",
+                idsMode: "course and component",
+                actions: (
+                <div id="nogaPlanner_homePanelCardActions_17" className="nogaPlanner_homePanelCardActions">
+                  {coursesEditorOpen ? null : (
+                    <>
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn_open_courses"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn"
+                        disabled={isHomeCardsLocked}
+                        onClick={() =>
+                          this.setState({
+                            homeCoursesEditorOpen: true,
+                            homeMaterialMetadataMode: "course",
+                            homeCourseEditingKey: "",
+                            homeCourseOriginalId: "",
+                            homeCourseOriginalIntervalId: "",
+                            homeCourseOriginalCourseNum: "",
+                            homeCourseNameDraft: "",
+                            homeCourseIdDraft: "",
+                            homeCourseCodeDraft: "",
+                            homeCourseComponentDraft: [],
+                            homeCourseComponentEditingId: "",
+                            homeCourseSubIntervalYearDraft: "",
+                            homeCourseSubIntervalTermDraft: "",
+                            homeCourseComponentIdDraft: "",
+                            homeCourseComponentPartialWeightDraft: "",
+                            homeCourseComponentStartDateDayDraft: "",
+                            homeCourseComponentStartDateMonthDraft: "",
+                            homeCourseComponentStartDateYearDraft: "",
+                            homeCourseComponentEndDateDayDraft: "",
+                            homeCourseComponentEndDateMonthDraft: "",
+                            homeCourseComponentEndDateYearDraft: "",
+                            homeCourseComponentLocationBuildingDraft: "",
+                            homeCourseComponentLocationRoomDraft: "",
+                            homeCourseComponentInstructorFirstNameDraft: "",
+                            homeCourseComponentInstructorLastNameDraft: "",
+                            homeCourseComponentInstructorsDraftList: [],
+                            homeCourseComponentStatusDraft: "",
+                            homeCourseIntervalIdDraft: "",
+                            homeCourseTotalWeightDraft: "",
+                          })
+                        }
+                      >
+                        {coursesHasRegisteredValue ? "Add Course" : "Set"}
+                      </button>
+                      {coursesHasRegisteredValue ? (
+                        <button
+                          id="nogaPlanner_homePanelCardSetBtn_resetSubIntervalMaterial"
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel nogaPlanner_homePanelCardSetBtn--reset"
+                          disabled={isHomeCardsLocked}
+                          onClick={() =>
+                            this.requestResetWithPassword(
+                              "Reset Program Courses",
+                              this.handleResetProgramCourses,
+                            )
+                          }
+                        >
+                          Reset
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                  {coursesEditorOpen ? (
+                    <>
+                      {!courseEditingKey ? (
+                        homeCourseApplyPending ? (
+                          <button
+                            id="nogaPlanner_homePanelCardSetBtn_13_courses"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                            disabled={isHomeCardsLocked || !canSubmitMaterialMetadataCourseInfo}
+                            onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.handleHomeCoursesSetSubmit)}
+                          >
+                            Submit
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn"
+                            disabled={isHomeCardsLocked || !canAddGlobalCourse}
+                            onClick={this.addHomeCourseWithStagedComponents}
+                          >
+                            Add Course
+                          </button>
+                        )
+                      ) : null}
+                      <button
+                        id="nogaPlanner_homePanelCardSetBtn_15_courses"
+                        type="button"
+                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                        disabled={isHomeCardsLocked}
+                        onClick={() => this.setState({ homeMaterialMetadataMode: "course" }, this.cancelHomeCoursesEditor)}
+                      >
+                        Cancel
+                      </button>
+                      {aiHelpersEnabled ? (
+                        <button
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--mini"
+                          disabled={isHomeCardsLocked}
+                          title="Run AI for Program Courses"
+                          onClick={() => this.handleMaterialMetadataAiAction("course")}
+                          style={{ minWidth: "28px", padding: "2px 4px", flex: "0 0 auto" }}
+                        >
+                          <i className="fi fi-rr-magic-wand" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+                ),
+              })}
+              {renderPlannerPendingCardOverlay("programCourses")}
+              <div id="nogaPlanner_homePanelCardBody_2" className="nogaPlanner_homePanelCardBody">
                 <div
                   id="nogaPlanner_homeIntervalsMiniTable_6_wrap"
                   className="nogaPlanner_homeIntervalsTableWrap nogaPlanner_homeIntervalsTableWrap--courses"
@@ -26378,8 +26906,11 @@ export default class NogaPlanner extends Component {
                 </div>
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programLectures") ? (
+            <div {...getHomePanelCardRowProps("programLectures")}>
             <div
               id="nogaPlanner_home_programLectures_card"
               className={
@@ -26632,7 +27163,7 @@ export default class NogaPlanner extends Component {
                       {this.state?.homeCourseLectureEditingId ? "Apply changes" : "Add"}
                     </button>
                   </div>
-                ) : null}
+            ) : null}
                 <div
                   id="nogaPlanner_homeIntervalsMiniTable_7_wrap"
                   className="nogaPlanner_homeIntervalsTableWrap"
@@ -26821,8 +27352,11 @@ export default class NogaPlanner extends Component {
                 return null;
               })()}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programTasks") ? (
+            <div {...getHomePanelCardRowProps("programTasks")}>
             <div
               id="nogaPlanner_home_programTasks_card"
               className={
@@ -27177,7 +27711,7 @@ export default class NogaPlanner extends Component {
                     </div>
                   </div>
                 </div>
-                ) : null}
+            ) : null}
                 <div
                   id="nogaPlanner_homeIntervalsMiniTable_8_wrap"
                   className="nogaPlanner_homeIntervalsTableWrap"
@@ -27291,7 +27825,7 @@ export default class NogaPlanner extends Component {
                                     <i className="fi fi-br-cross" aria-hidden="true" />
                                   </button>
                                 </div>
-                              ) : null}
+            ) : null}
                             </td>
                           </tr>
                         ))
@@ -27301,8 +27835,11 @@ export default class NogaPlanner extends Component {
                 </div>
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("storedDocuments") ? (
+            <div {...getHomePanelCardRowProps("storedDocuments")}>
             <div
               id="nogaPlanner_home_storedDocuments_card"
               className={
@@ -27336,8 +27873,11 @@ export default class NogaPlanner extends Component {
                 />
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("lecturesMode") ? (
+            <div {...getHomePanelCardRowProps("lecturesMode")}>
             <div
               id="nogaPlanner_home_lecturesMode_card"
               className={
@@ -27365,8 +27905,11 @@ export default class NogaPlanner extends Component {
                 })}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("documentsMode") ? (
+            <div {...getHomePanelCardRowProps("documentsMode")}>
             <div
               id="nogaPlanner_home_documentsMode_card"
               className={
@@ -27396,6 +27939,8 @@ export default class NogaPlanner extends Component {
                 />
               </div>
             </div>
+
+            </div>
             ) : null}
       </React.Fragment>
     );
@@ -27403,6 +27948,7 @@ export default class NogaPlanner extends Component {
       <React.Fragment>
             <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--short">
             {isHomeCardMounted("programName") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div id="nogaPlanner_home_programName_card" className="nogaPlanner_homePanelCard">
               {renderHomePanelCardTitleRow({
                 rowId: "nogaPlanner_homePanelCardTitleRow_2",
@@ -27470,8 +28016,11 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programId") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programID_card"
               className="nogaPlanner_homePanelCard"
@@ -27544,8 +28093,11 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("language") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_language_card"
               className={
@@ -27634,8 +28186,11 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_language_displayValue">{programLanguage || "-"}</span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programStartYear") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programStartYear_card"
               className={
@@ -27716,8 +28271,11 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programStartYear_displayValue">{registeredProgramStartYear || "-"}</span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programTotalYears") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTotalYears_card"
               className={
@@ -27800,8 +28358,11 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTotalYears_displayValue">{registeredProgramTotalYears || "-"}</span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programTermsPerYear") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTermsPerYear_card"
               className={
@@ -27887,8 +28448,11 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTermsPerYear_displayValue">{registeredProgramTermsPerYear || "-"}</span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("university") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_university_card"
               className={
@@ -27969,8 +28533,11 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_university_displayValue">{this.renderPlannerLocalizedText(locationUniversity)}</span>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("faculty") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_faculty_card"
               className={
@@ -28053,10 +28620,13 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
+
+            </div>
             ) : null}
             </div>
             <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--tall">
             {isHomeCardMounted("programComponents") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programComponents_card"
               className={
@@ -28146,7 +28716,7 @@ export default class NogaPlanner extends Component {
                     </button>
                   </div>
                 </div>
-              ) : null}
+            ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_2" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramComponents.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_3" className="nogaPlanner_homeComponentsTable">
@@ -28207,8 +28777,11 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programTaskNames") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTaskNames_card"
               className={
@@ -28296,7 +28869,7 @@ export default class NogaPlanner extends Component {
                     </button>
                   </div>
                 </div>
-              ) : null}
+            ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_3" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramTasks.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_4" className="nogaPlanner_homeComponentsTable">
@@ -28354,8 +28927,11 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programDocumentTypes") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programDocumentTypes_card"
               className={
@@ -28440,7 +29016,7 @@ export default class NogaPlanner extends Component {
                     </button>
                   </div>
                 </div>
-              ) : null}
+            ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_docTypes" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramDocTypes.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_docTypes" className="nogaPlanner_homeComponentsTable">
@@ -28488,8 +29064,11 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programDocumentVolumeUnit") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programDocumentVolumeUnit_card"
               className={
@@ -28587,7 +29166,7 @@ export default class NogaPlanner extends Component {
                     </button>
                   </div>
                 </div>
-              ) : null}
+            ) : null}
               <div
                 id="nogaPlanner_homePanelCardStoredBlock_docVolumeUnits"
                 className="nogaPlanner_homePanelCardStoredBlock"
@@ -28661,8 +29240,11 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programCurrentIntervalSelection") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programCurrentIntervalSelection_card"
               className={
@@ -28841,8 +29423,11 @@ export default class NogaPlanner extends Component {
                 </div>
               )}
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programEditors") ? (
+            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programEditors_card"
               className={
@@ -28930,7 +29515,7 @@ export default class NogaPlanner extends Component {
                     </button>
                   </div>
                 </div>
-              ) : null}
+            ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_5" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramEditors.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_6" className="nogaPlanner_homeComponentsTable">
@@ -28988,232 +29573,497 @@ export default class NogaPlanner extends Component {
                 )}
               </div>
             </div>
+
+            </div>
             ) : null}
             {isHomeCardMounted("programLocations") ? (
-            <div
-              id="nogaPlanner_home_programLocations_card"
-              className={
-                "nogaPlanner_homePanelCard" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-            >
-              {renderHomePanelCardTitleRow({
-                rowId: "nogaPlanner_homePanelCardTitleRow_14",
-                headingId: "nogaPlanner_home_heading_programLocations",
-                title: "Program locations",
-                cardKey: "programLocations",
-                showViewControls: false,
-                actions: (
-                <div id="nogaPlanner_homePanelCardActions_14" className="nogaPlanner_homePanelCardActions">
+              <div className="nogaPlanner_homePanelCardRow">
+                <div
+                  id="nogaPlanner_home_programLocations_card"
+                  className={
+                    "nogaPlanner_homePanelCard" +
+                    (isHomeCardsLocked
+                      ? " nogaPlanner_homePanelCard--disabled"
+                      : "")
+                  }
+                >
+                  {renderHomePanelCardTitleRow({
+                    rowId: "nogaPlanner_homePanelCardTitleRow_14",
+                    headingId: "nogaPlanner_home_heading_programLocations",
+                    title: "Program locations",
+                    cardKey: "programLocations",
+                    showViewControls: false,
+                    actions: (
+                      <div
+                        id="nogaPlanner_homePanelCardActions_14"
+                        className="nogaPlanner_homePanelCardActions"
+                      >
+                        {programLocationsEditorOpen ? (
+                          <button
+                            id="nogaPlanner_home_button_locations_submit"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                            disabled={isHomeCardsLocked || !canSubmitProgramLocations}
+                            onClick={this.handleHomeProgramLocationsSetSubmit}
+                          >
+                            Submit
+                          </button>
+                        ) : (
+                          <button
+                            id="nogaPlanner_home_button_locations_setEdit"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn"
+                            disabled={isHomeCardsLocked}
+                            onClick={() =>
+                              this.setState({
+                                homeProgramLocationsSetEditorOpen: true,
+                                homeProgramLocationBuildingInput: "",
+                                homeProgramLocationRoomInputs: {},
+                                homeProgramLocationsDraftList: registeredProgramLocations,
+                              })
+                            }
+                          >
+                            {registeredProgramLocations.length > 0 ? "Edit" : "Set"}
+                          </button>
+                        )}
+                        {programLocationsEditorOpen ? (
+                          <button
+                            id="nogaPlanner_home_button_locations_cancel"
+                            type="button"
+                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                            disabled={isHomeCardsLocked}
+                            onClick={this.cancelHomeProgramLocationsEditor}
+                          >
+                            Cancel
+                          </button>
+                        ) : null}
+                      </div>
+                    ),
+                  })}
                   {programLocationsEditorOpen ? (
-                    <button
-                      id="nogaPlanner_home_button_locations_submit"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
-                      disabled={isHomeCardsLocked || !canSubmitProgramLocations}
-                      onClick={this.handleHomeProgramLocationsSetSubmit}
+                    <div
+                      id="nogaPlanner_homeIntervalsMiniForm_6"
+                      className="nogaPlanner_homeIntervalsMiniForm"
                     >
-                      Submit
-                    </button>
-                  ) : (
-                    <button
-                      id="nogaPlanner_home_button_locations_setEdit"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={() =>
-                        this.setState({
-                          homeProgramLocationsSetEditorOpen: true,
-                          homeProgramLocationBuildingInput: "",
-                          homeProgramLocationRoomInputs: {},
-                          homeProgramLocationsDraftList: registeredProgramLocations,
-                        })
-                      }
-                    >
-                      {registeredProgramLocations.length > 0 ? "Edit" : "Set"}
-                    </button>
-                  )}
-                  {programLocationsEditorOpen ? (
-                    <button
-                      id="nogaPlanner_home_button_locations_cancel"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.cancelHomeProgramLocationsEditor}
-                    >
-                      Cancel
-                    </button>
+                      <div
+                        id="nogaPlanner_homeIntervalsAddRow_7"
+                        className="nogaPlanner_homeIntervalsAddRow"
+                      >
+                        <input
+                          id="nogaPlanner_homeIntervalsInput_22"
+                          type="text"
+                          className="nogaPlanner_homeIntervalsInput"
+                          placeholder="Building"
+                          disabled={isHomeCardsLocked}
+                          value={String(
+                            this.state?.homeProgramLocationBuildingInput || "",
+                          )}
+                          onChange={(event) =>
+                            this.setState({
+                              homeProgramLocationBuildingInput: String(
+                                event.target.value || "",
+                              ),
+                            })
+                          }
+                        />
+                        <button
+                          id="nogaPlanner_home_button_location_add"
+                          type="button"
+                          className="nogaPlanner_homePanelCardSetBtn"
+                          disabled={isHomeCardsLocked}
+                          onClick={this.appendHomeProgramLocationDraftEntry}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
-                </div>
-                ),
-              })}
-              {programLocationsEditorOpen ? (
-                <div id="nogaPlanner_homeIntervalsMiniForm_6" className="nogaPlanner_homeIntervalsMiniForm">
-                  <div id="nogaPlanner_homeIntervalsAddRow_7" className="nogaPlanner_homeIntervalsAddRow">
-                    <input
-                      id="nogaPlanner_homeIntervalsInput_22"
-                      type="text"
-                      className="nogaPlanner_homeIntervalsInput"
-                      placeholder="Building"
-                      disabled={isHomeCardsLocked}
-                      value={String(
-                        this.state?.homeProgramLocationBuildingInput || "",
-                      )}
-                      onChange={(event) =>
-                        this.setState({
-                          homeProgramLocationBuildingInput: String(
-                            event.target.value || "",
-                          ),
-                        })
-                      }
-                    />
-                    <button
-                      id="nogaPlanner_home_button_location_add"
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.appendHomeProgramLocationDraftEntry}
-                    >
-                      Add
-                    </button>
+                  <div
+                    id="nogaPlanner_homePanelCardStoredBlock_6"
+                    className="nogaPlanner_homePanelCardStoredBlock"
+                  >
+                    {visibleProgramLocationsByBuilding.length > 0 ? (
+                      <table
+                        id="nogaPlanner_homeComponentsTable_7"
+                        className="nogaPlanner_homeComponentsTable"
+                      >
+                        <thead id="nogaPlanner_homeComponentsTable_7_head">
+                          <tr id="nogaPlanner_homeComponentsTable_7_row1">
+                            <th id="nogaPlanner_homeComponentsTable_7_th_Building">
+                              Building
+                            </th>
+                            <th id="nogaPlanner_homeComponentsTable_7_th_Rooms">
+                              Rooms
+                            </th>
+                            {programLocationsEditorOpen ? (
+                              <th id="nogaPlanner_programLocations_th_actions">
+                                Actions
+                              </th>
+                            ) : null}
+                          </tr>
+                        </thead>
+                        <tbody id="nogaPlanner_homeComponentsTable_7_body">
+                          {visibleProgramLocationsByBuilding.map((locationEntry) => (
+                            <tr
+                              id={`nogaPlanner_location_row_${locationEntry.building}`}
+                              key={locationEntry.building}
+                            >
+                              <td id={`nogaPlanner_location_${locationEntry.building}_building`}>
+                                {this.renderPlannerLocalizedText(locationEntry.building)}
+                              </td>
+                              <td id={`nogaPlanner_location_${locationEntry.building}_rooms`}>
+                                {Array.isArray(locationEntry.rooms) &&
+                                locationEntry.rooms.length > 0 ? (
+                                  programLocationsEditorOpen ? (
+                                    <ul
+                                      id={`nogaPlanner_location_${locationEntry.building}_roomsList`}
+                                      className="nogaPlanner_locationRoomsList"
+                                    >
+                                      {locationEntry.rooms.map((room) => (
+                                        <li
+                                          key={room}
+                                          id={`nogaPlanner_location_${locationEntry.building}_room_${room}`}
+                                          className="nogaPlanner_locationRoomsListItem"
+                                        >
+                                          <span>{this.renderPlannerLocalizedText(room)}</span>
+                                          <button
+                                            id={`nogaPlanner_home_button_location_removeRoom_${locationEntry.building}_${room}`}
+                                            type="button"
+                                            className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                                            disabled={isHomeCardsLocked}
+                                            onClick={() =>
+                                              this.setState((prev) => ({
+                                                homeProgramLocationsDraftList: (
+                                                  Array.isArray(prev?.homeProgramLocationsDraftList)
+                                                    ? prev.homeProgramLocationsDraftList
+                                                    : []
+                                                ).map((e) =>
+                                                  String(e?.building || "").trim() ===
+                                                    locationEntry.building
+                                                    ? {
+                                                        ...e,
+                                                        rooms: (Array.isArray(e.rooms)
+                                                          ? e.rooms
+                                                          : []).filter((r) => r !== room),
+                                                      }
+                                                    : e,
+                                                ),
+                                              }))
+                                            }
+                                          >
+                                            ×
+                                          </button>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <span>
+                                      {locationEntry.rooms.map((room, roomIndex) => (
+                                        <React.Fragment
+                                          key={`${locationEntry.building}-room-${roomIndex}-${room}`}
+                                        >
+                                          {roomIndex > 0 ? ", " : null}
+                                          {this.renderPlannerLocalizedText(room)}
+                                        </React.Fragment>
+                                      ))}
+                                    </span>
+                                  )
+                                ) : (
+                                  ""
+                                )}
+                                {programLocationsEditorOpen ? (
+                                  <div
+                                    id={`nogaPlanner_location_${locationEntry.building}_addRoom`}
+                                    className="nogaPlanner_locationAddRoomRow"
+                                  >
+                                    <input
+                                      id={`nogaPlanner_homeIntervalsInput_addRoom_${locationEntry.building}`}
+                                      type="text"
+                                      className="nogaPlanner_homeIntervalsInput"
+                                      placeholder="Add room"
+                                      disabled={isHomeCardsLocked}
+                                      value={String(
+                                        (this.state?.homeProgramLocationRoomInputs &&
+                                          this.state.homeProgramLocationRoomInputs[
+                                            locationEntry.building
+                                          ]) || "",
+                                      )}
+                                      onChange={(event) =>
+                                        this.setState((prev) => ({
+                                          homeProgramLocationRoomInputs: {
+                                            ...(prev?.homeProgramLocationRoomInputs || {}),
+                                            [locationEntry.building]: String(
+                                              event.target.value || "",
+                                            ),
+                                          },
+                                        }))
+                                      }
+                                    />
+                                    <button
+                                      id={`nogaPlanner_home_button_location_addRoom_${locationEntry.building}`}
+                                      type="button"
+                                      className="nogaPlanner_homePanelCardSetBtn"
+                                      disabled={
+                                        isHomeCardsLocked ||
+                                        !String(
+                                          (this.state?.homeProgramLocationRoomInputs &&
+                                            this.state.homeProgramLocationRoomInputs[
+                                              locationEntry.building
+                                            ]) ||
+                                            "",
+                                        ).trim()
+                                      }
+                                      onClick={() =>
+                                        this.appendRoomToLocationDraftEntry(
+                                          locationEntry.building,
+                                          (this.state?.homeProgramLocationRoomInputs &&
+                                            this.state.homeProgramLocationRoomInputs[
+                                              locationEntry.building
+                                            ]) ||
+                                            "",
+                                        )
+                                      }
+                                    >
+                                      Add room
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </td>
+                              {programLocationsEditorOpen ? (
+                                <td id={`nogaPlanner_location_${locationEntry.building}_actions`}>
+                                  <button
+                                    id={`nogaPlanner_home_button_location_remove_${locationEntry.building}`}
+                                    type="button"
+                                    className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                                    disabled={isHomeCardsLocked}
+                                    onClick={() =>
+                                      this.removeHomeProgramLocationDraftEntry(
+                                        locationEntry,
+                                      )
+                                    }
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              ) : null}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <span
+                        id="nogaPlanner_homePanelCardEmptyValue_7"
+                        className="nogaPlanner_homePanelCardEmptyValue"
+                      >
+                        {programLocationsEditorOpen
+                          ? "Add at least one location."
+                          : "No stored locations"}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ) : null}
-              <div id="nogaPlanner_homePanelCardStoredBlock_6" className="nogaPlanner_homePanelCardStoredBlock">
-                {visibleProgramLocationsByBuilding.length > 0 ? (
-                  <table id="nogaPlanner_homeComponentsTable_7" className="nogaPlanner_homeComponentsTable">
-                    <thead id="nogaPlanner_homeComponentsTable_7_head">
-                      <tr id="nogaPlanner_homeComponentsTable_7_row1">
-                        <th id="nogaPlanner_homeComponentsTable_7_th_Building">Building</th>
-                        <th id="nogaPlanner_homeComponentsTable_7_th_Rooms">Rooms</th>
-                        {programLocationsEditorOpen ? <th id="nogaPlanner_programLocations_th_actions">Actions</th> : null}
-                      </tr>
-                    </thead>
-                    <tbody id="nogaPlanner_homeComponentsTable_7_body">
-                      {visibleProgramLocationsByBuilding.map((locationEntry) => (
-                        <tr id={`nogaPlanner_location_row_${locationEntry.building}`} key={locationEntry.building}>
-                          <td id={`nogaPlanner_location_${locationEntry.building}_building`}>{this.renderPlannerLocalizedText(locationEntry.building)}</td>
-                          <td id={`nogaPlanner_location_${locationEntry.building}_rooms`}>
-                            {Array.isArray(locationEntry.rooms) && locationEntry.rooms.length > 0 ? (
-                              programLocationsEditorOpen ? (
-                                <ul id={`nogaPlanner_location_${locationEntry.building}_roomsList`} className="nogaPlanner_locationRoomsList">
-                                  {locationEntry.rooms.map((room) => (
-                                    <li key={room} id={`nogaPlanner_location_${locationEntry.building}_room_${room}`} className="nogaPlanner_locationRoomsListItem">
-                                      <span>{this.renderPlannerLocalizedText(room)}</span>
-                                      <button
-                                        id={`nogaPlanner_home_button_location_removeRoom_${locationEntry.building}_${room}`}
-                                        type="button"
-                                        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                                        disabled={isHomeCardsLocked}
-                                        onClick={() =>
-                                          this.setState((prev) => ({
-                                            homeProgramLocationsDraftList: (
-                                              Array.isArray(prev?.homeProgramLocationsDraftList)
-                                                ? prev.homeProgramLocationsDraftList
-                                                : []
-                                            ).map((e) =>
-                                              String(e?.building || "").trim() === locationEntry.building
-                                                ? { ...e, rooms: (Array.isArray(e.rooms) ? e.rooms : []).filter((r) => r !== room) }
-                                                : e
-                                            ),
-                                          }))
-                                        }
-                                      >
-                                        ×
-                                      </button>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <span>
-                                  {locationEntry.rooms
-                                    .map((room, roomIndex) => (
-                                      <React.Fragment key={`${locationEntry.building}-room-${roomIndex}-${room}`}>
-                                        {roomIndex > 0 ? ", " : null}
-                                        {this.renderPlannerLocalizedText(room)}
-                                      </React.Fragment>
-                                    ))}
-                                </span>
-                              )
-                            ) : ""}
-                            {programLocationsEditorOpen ? (
-                              <div id={`nogaPlanner_location_${locationEntry.building}_addRoom`} className="nogaPlanner_locationAddRoomRow">
-                                <input
-                                  id={`nogaPlanner_homeIntervalsInput_addRoom_${locationEntry.building}`}
-                                  type="text"
-                                  className="nogaPlanner_homeIntervalsInput"
-                                  placeholder="Add room"
-                                  disabled={isHomeCardsLocked}
-                                  value={String(
-                                    (this.state?.homeProgramLocationRoomInputs &&
-                                      this.state.homeProgramLocationRoomInputs[locationEntry.building]) || "",
-                                  )}
-                                  onChange={(event) =>
-                                    this.setState((prev) => ({
-                                      homeProgramLocationRoomInputs: {
-                                        ...(prev?.homeProgramLocationRoomInputs || {}),
-                                        [locationEntry.building]: String(event.target.value || ""),
-                                      },
-                                    }))
-                                  }
-                                />
-                                <button
-                                  id={`nogaPlanner_home_button_location_addRoom_${locationEntry.building}`}
-                                  type="button"
-                                  className="nogaPlanner_homePanelCardSetBtn"
-                                  disabled={isHomeCardsLocked || !String(
-                                    (this.state?.homeProgramLocationRoomInputs &&
-                                      this.state.homeProgramLocationRoomInputs[locationEntry.building]) || "",
-                                  ).trim()}
-                                  onClick={() =>
-                                    this.appendRoomToLocationDraftEntry(
-                                      locationEntry.building,
-                                      (this.state?.homeProgramLocationRoomInputs &&
-                                        this.state.homeProgramLocationRoomInputs[locationEntry.building]) || "",
-                                    )
-                                  }
-                                >
-                                  Add room
-                                </button>
-                              </div>
-                            ) : null}
-                          </td>
-                          {programLocationsEditorOpen ? (
-                            <td id={`nogaPlanner_location_${locationEntry.building}_actions`}>
-                              <button
-                                id={`nogaPlanner_home_button_location_remove_${locationEntry.building}`}
-                                type="button"
-                                className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
-                                disabled={isHomeCardsLocked}
-                                onClick={() =>
-                                  this.removeHomeProgramLocationDraftEntry(
-                                    locationEntry,
-                                  )
-                                }
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          ) : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <span id="nogaPlanner_homePanelCardEmptyValue_7" className="nogaPlanner_homePanelCardEmptyValue">
-                    {programLocationsEditorOpen
-                      ? "Add at least one location."
-                      : "No stored locations"}
-                  </span>
-                )}
               </div>
-            </div>
             ) : null}
             </div>
       </React.Fragment>
     );
+    const studySessionsAsideContent = (() => {
+      const studySessions = this.getPlannerStudySessions(plannerRoot);
+      const activeStudySession = this.getActivePlannerStudySession(plannerRoot);
+      const formatStudySessionDateTime = (value = "") => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return "-";
+        }
+        return date.toLocaleString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+      const sessionTableRows = studySessions
+        .slice()
+        .reverse()
+        .flatMap((sessionEntry, index) => {
+          const sessionStudySessionID = String(sessionEntry?.studySessionID || "-").trim() || "-";
+          const sessionStudySessionNum = Number.isFinite(Number(sessionEntry?.studySessionNum))
+            ? Number(sessionEntry.studySessionNum)
+            : index + 1;
+          const achievements = Array.isArray(sessionEntry?.achievements)
+            ? sessionEntry.achievements
+            : [];
+          const achievementRows = achievements.length > 0 ? achievements : [{}];
+          return achievementRows.map((achievementEntry, achievementIndex) => {
+            const achievementLabels =
+              this.resolvePlannerStudySessionAchievementLabels(
+                achievementEntry,
+                plannerRoot,
+              );
+            const pagesDone = Array.isArray(achievementEntry?.pagesDone)
+              ? achievementEntry.pagesDone
+              : [];
+            const isFirstAchievementRow = achievementIndex === 0;
+              return (
+                <tr
+                  key={`studySession_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
+                  className="nogaPlanner_homeStudySessionTableRow"
+                >
+                {homeShowIdsByCard.studySessions && isFirstAchievementRow ? (
+                  <td
+                    rowSpan={achievementRows.length}
+                    className="nogaPlanner_homeStudySessionTableCell nogaPlanner_homeStudySessionTableCell--id"
+                  >
+                    {sessionStudySessionID}
+                  </td>
+                ) : null}
+                {isFirstAchievementRow ? (
+                  <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
+                    {Number.isFinite(sessionStudySessionNum) ? sessionStudySessionNum : "-"}
+                  </td>
+                ) : null}
+                {isFirstAchievementRow ? (
+                  <>
+                    <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
+                      {formatStudySessionDateTime(sessionEntry?.startDate)}
+                    </td>
+                    <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
+                      {formatStudySessionDateTime(sessionEntry?.endDate)}
+                    </td>
+                  </>
+                ) : null}
+                {homeShowIdsByCard.studySessions ? (
+                  <td className="nogaPlanner_homeStudySessionTableCell">
+                    {String(achievementEntry?.documentID || "-")}
+                  </td>
+                ) : null}
+                <td className="nogaPlanner_homeStudySessionTableCell">
+                  {achievementLabels.documentName || "-"}
+                </td>
+                <td className="nogaPlanner_homeStudySessionTableCell">
+                  {achievementLabels.lectureName || "-"}
+                </td>
+                <td className="nogaPlanner_homeStudySessionTableCell">
+                  {achievementLabels.courseName || "-"}
+                </td>
+                <td className="nogaPlanner_homeStudySessionTableCell">
+                  {achievementLabels.componentName || "-"}
+                </td>
+                <td className="nogaPlanner_homeStudySessionTableCell">
+                  {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
+                </td>
+              </tr>
+            );
+          });
+        });
+      const activeElapsedMs = activeStudySession
+        ? Math.max(
+            0,
+            (Number(
+              activeStudySession?.endDate
+                ? new Date(activeStudySession.endDate).getTime()
+                : this.state?.plannerCalendarNowMs || Date.now(),
+            ) || Date.now()) -
+              (Number(new Date(activeStudySession.startDate).getTime()) || Date.now()),
+          )
+        : 0;
+      return (
+        <div className="nogaPlanner_homePanelCardRow">
+          <div
+            id="nogaPlanner_home_studySessions_card"
+            className="nogaPlanner_homePanelCard nogaPlanner_homeStudySessionsCard"
+          >
+            {renderHomePanelCardTitleRow({
+              rowId: "nogaPlanner_homePanelCardTitleRow_studySessions",
+              headingId: "nogaPlanner_home_heading_studySessions",
+              title: "Study Sessions",
+              cardKey: "studySessions",
+              showViewControls: false,
+              idsMode: "study session",
+              actions: (
+                <div
+                  id="nogaPlanner_homePanelCardActions_studySessions"
+                  className="nogaPlanner_homePanelCardActions"
+                >
+                  {activeStudySession ? (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.endPlannerStudySession}
+                    >
+                      End Session
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.startPlannerStudySession}
+                    >
+                      Start Session
+                    </button>
+                  )}
+                </div>
+              ),
+            })}
+            <div className="nogaPlanner_homeStudySessionsBody">
+              {activeStudySession ? (
+                <div className="nogaPlanner_homeStudySessionsRunning">
+                  <strong>Running</strong>
+                  <span>
+                    {this.formatPlannerTimerDisplay(activeElapsedMs)}
+                  </span>
+                </div>
+              ) : null}
+              <div className="nogaPlanner_homeStudySessionsTableWrap">
+                {studySessions.length > 0 ? (
+                  <table className="nogaPlanner_homeStudySessionsTable">
+                    <thead>
+                      <tr>
+                        {homeShowIdsByCard.studySessions ? <th rowSpan={2}>Study Session ID</th> : null}
+                        <th rowSpan={2}>Number</th>
+                        <th colSpan={2}>Date</th>
+                        <th colSpan={homeShowIdsByCard.studySessions ? 6 : 5}>Achievements</th>
+                      </tr>
+                      <tr>
+                        <th>Start</th>
+                        <th>End</th>
+                        {homeShowIdsByCard.studySessions ? <th>Document ID</th> : null}
+                        <th>Document Name</th>
+                        <th>Lecture Name</th>
+                        <th>Course Name</th>
+                        <th>Component Name</th>
+                        <th>Pages</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessionTableRows.length > 0 ? (
+                        sessionTableRows
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={homeShowIdsByCard.studySessions ? 10 : 9}
+                            className="nogaPlanner_homeStudySessionTableEmptyCell"
+                          >
+                            No study sessions stored yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <span className="nogaPlanner_homePanelCardEmptyValue">
+                    No study sessions stored yet.
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })();
     return (
       <section
         id="nogaPlanner_homePanel"
@@ -29229,7 +30079,19 @@ export default class NogaPlanner extends Component {
             id="nogaPlanner_homePanelColumn_2"
             className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right is-collapsed"
           >
-            {primaryCardsContent}
+            <div
+              className={
+                "nogaPlanner_homePanelAllCardsArea" +
+                (expandedStackHomeCardKey
+                  ? " has-expanded-card"
+                  : "")
+              }
+            >
+              {primaryCardsContent}
+            </div>
+            <div className="nogaPlanner_homePanelAllCardsAside">
+              {studySessionsAsideContent}
+            </div>
           </div>
         )}
         {!focusedHomeCardKey && (
@@ -29943,7 +30805,7 @@ export default class NogaPlanner extends Component {
               </div>
             </div>
           </div>
-        ) : null}
+            ) : null}
         <article
           id="nogaPlanner_article"
           ref={this.plannerArticleRef}
@@ -30216,7 +31078,7 @@ export default class NogaPlanner extends Component {
                       {plannerPendingLabel}
                     </span>
                   </div>
-                ) : null}
+            ) : null}
               </div>
             </div>
             {this.renderPlannerMainTabContent(wrapperTab)}
