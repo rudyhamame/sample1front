@@ -3093,6 +3093,127 @@ resize: vertical;
   border-radius: 6px;
 }
 
+/* ── Reply section ── */
+.Home_Noga_eventReplySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(100, 60, 50, 0.1);
+  padding-top: 6px;
+}
+
+.Home_Noga_eventRepliesList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.Home_Noga_eventReplyItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(100, 60, 50, 0.06);
+}
+
+.Home_Noga_eventReplyMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.Home_Noga_eventReplyAuthor {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #5e4949;
+}
+
+.Home_Noga_eventReplyDate {
+  font-size: 0.65rem;
+  color: rgba(94, 73, 73, 0.55);
+}
+
+.Home_Noga_eventReplyText {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(40, 20, 20, 0.82);
+  line-height: 1.45;
+}
+
+.Home_Noga_eventReplyBar {
+  display: flex;
+  align-items: center;
+}
+
+.Home_Noga_eventReplyToggle {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 0.72rem;
+  color: rgba(94, 73, 73, 0.6);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.Home_Noga_eventReplyToggle:hover,
+.Home_Noga_eventReplyToggle.isOpen {
+  color: #5e4949;
+  font-weight: 600;
+}
+
+.Home_Noga_eventReplyCompose {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.Home_Noga_eventReplyInput {
+  flex: 1;
+  resize: none;
+  border: 1px solid rgba(100, 60, 50, 0.2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.6);
+  color: rgba(40, 20, 20, 0.85);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.Home_Noga_eventReplyInput:focus {
+  border-color: rgba(100, 60, 50, 0.45);
+}
+
+.Home_Noga_eventReplySend {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(94, 73, 73, 0.15);
+  color: #5e4949;
+  font-size: 0.73rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.Home_Noga_eventReplySend:hover:not(:disabled) {
+  background: rgba(94, 73, 73, 0.28);
+}
+
+.Home_Noga_eventReplySend:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .Home_Noga_friendsEventsEmpty {
   display: flex;
   align-items: center;

@@ -1640,6 +1640,9 @@ function HomeNoga(props) {
   const [isFetchingEvents, setIsFetchingEvents] = useState(false);
   const [deletingEventIds, setDeletingEventIds] = useState(new Set());
   const [eventsTab, setEventsTab] = useState("mine");
+  const [replyOpenIds, setReplyOpenIds] = useState(new Set());
+  const [replyTexts, setReplyTexts] = useState({});
+  const [submittingReplyIds, setSubmittingReplyIds] = useState(new Set());
   // Mobile portrait chat toggle
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
@@ -8535,6 +8538,107 @@ function HomeNoga(props) {
                                             ))}
                                           </div>
                                         ) : null}
+                                        {(() => {
+                                          const eventId = String(event?._id || "");
+                                          const ownerId = String(event?._ownerId || props.state?.my_id || "");
+                                          const replies = Array.isArray(event?.eventReplies)
+                                            ? event.eventReplies
+                                            : [];
+                                          const isReplyOpen = replyOpenIds.has(eventId);
+                                          const isSubmitting = submittingReplyIds.has(eventId);
+                                          return (
+                                            <div className="Home_Noga_eventReplySection">
+                                              {replies.length > 0 && (
+                                                <ul className="Home_Noga_eventRepliesList">
+                                                  {replies.map((reply, rIdx) => {
+                                                    const rFirst = String(reply?.eventReplyFooter?.eventReplyUserName?.firstName || "").trim();
+                                                    const rLast = String(reply?.eventReplyFooter?.eventReplyUserName?.lastName || "").trim();
+                                                    const rAuthor = [rFirst, rLast].filter(Boolean).join(" ");
+                                                    const rDate = reply?.eventReplyFooter?.eventReplyDatePosted
+                                                      ? new Date(reply.eventReplyFooter.eventReplyDatePosted).toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+                                                      : "";
+                                                    const rText = String(reply?.eventReplyBody?.eventReplyText || "").trim();
+                                                    return (
+                                                      <li key={reply?._id || rIdx} className="Home_Noga_eventReplyItem">
+                                                        <div className="Home_Noga_eventReplyMeta">
+                                                          {rAuthor && <span className="Home_Noga_eventReplyAuthor">{rAuthor}</span>}
+                                                          {rDate && <span className="Home_Noga_eventReplyDate">{rDate}</span>}
+                                                        </div>
+                                                        {rText && <p className="Home_Noga_eventReplyText">{rText}</p>}
+                                                      </li>
+                                                    );
+                                                  })}
+                                                </ul>
+                                              )}
+                                              <div className="Home_Noga_eventReplyBar">
+                                                <button
+                                                  type="button"
+                                                  className={`Home_Noga_eventReplyToggle${isReplyOpen ? " isOpen" : ""}`}
+                                                  onClick={() => setReplyOpenIds((prev) => {
+                                                    const next = new Set(prev);
+                                                    next.has(eventId) ? next.delete(eventId) : next.add(eventId);
+                                                    return next;
+                                                  })}
+                                                >
+                                                  {replies.length > 0
+                                                    ? `${replies.length} repl${replies.length === 1 ? "y" : "ies"}`
+                                                    : "Reply"}
+                                                </button>
+                                              </div>
+                                              {isReplyOpen && (
+                                                <div className="Home_Noga_eventReplyCompose">
+                                                  <textarea
+                                                    className="Home_Noga_eventReplyInput"
+                                                    placeholder="Write a reply…"
+                                                    rows={2}
+                                                    value={replyTexts[eventId] || ""}
+                                                    onChange={(e) => setReplyTexts((prev) => ({ ...prev, [eventId]: e.target.value }))}
+                                                    disabled={isSubmitting}
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    className="Home_Noga_eventReplySend"
+                                                    disabled={isSubmitting || !String(replyTexts[eventId] || "").trim()}
+                                                    onClick={async () => {
+                                                      const text = String(replyTexts[eventId] || "").trim();
+                                                      if (!text || !eventId || !ownerId) return;
+                                                      const token = String(props.state?.token || "").trim();
+                                                      setSubmittingReplyIds((prev) => new Set([...prev, eventId]));
+                                                      try {
+                                                        const response = await fetch(
+                                                          apiUrl(`/api/user/profileEvents/${ownerId}/${eventId}/reply`),
+                                                          {
+                                                            method: "POST",
+                                                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                                            body: JSON.stringify({ eventReplyText: text }),
+                                                          },
+                                                        );
+                                                        const payload = await response.json().catch(() => ({}));
+                                                        if (response.ok && payload?.reply) {
+                                                          setLocalProfileEvents((prev) =>
+                                                            Array.isArray(prev)
+                                                              ? prev.map((ev) =>
+                                                                  String(ev?._id || "") === eventId
+                                                                    ? { ...ev, eventReplies: [...(Array.isArray(ev.eventReplies) ? ev.eventReplies : []), payload.reply] }
+                                                                    : ev,
+                                                                )
+                                                              : prev,
+                                                          );
+                                                          setReplyTexts((prev) => ({ ...prev, [eventId]: "" }));
+                                                          setReplyOpenIds((prev) => { const next = new Set(prev); next.delete(eventId); return next; });
+                                                        }
+                                                      } finally {
+                                                        setSubmittingReplyIds((prev) => { const next = new Set(prev); next.delete(eventId); return next; });
+                                                      }
+                                                    }}
+                                                  >
+                                                    {isSubmitting ? "Sending…" : "Send"}
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })()}
                                       </li>
                                     );
                                   })}
