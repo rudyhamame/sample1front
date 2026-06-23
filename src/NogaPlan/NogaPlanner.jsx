@@ -14,6 +14,7 @@ import NogaPlannerSettings from "./components/NogaPlannerSettings";
 import NogaPlannerTelegramPanel from "./components/NogaPlannerTelegramPanel";
 import NogaPlannerDocumentsPanel, { StoredDocumentsCard } from "./components/NogaPlannerDocumentsPanel";
 import NogaPlannerYouTubeToTextPanel from "./components/NogaPlannerYouTubeToTextPanel";
+import PdfReaderModal from "../App/components/pdf-reader/PdfReaderModal";
 import * as plannerRuntimeHelpers from "./lib/plannerRuntime";
 import { updatePlannerCountdownEndDate, setPlannerActive } from "./plannerCountdown";
 var courses = [];
@@ -926,6 +927,37 @@ export default class NogaPlanner extends Component {
       ? root.programStudySessions
       : [];
   };
+  getPlannerStudyReaderDocuments = (plannerRoot = this.getResolvedPlannerRoot()) => {
+    const root = plannerRoot && typeof plannerRoot === "object" ? plannerRoot : {};
+    const programDocuments = Array.isArray(root?.programDocuments)
+      ? root.programDocuments
+      : [];
+    return programDocuments
+      .map((entry, index) => {
+        const documentInfo =
+          entry?.documentInfo && typeof entry.documentInfo === "object"
+            ? entry.documentInfo
+            : entry || {};
+        const documentID = String(
+          documentInfo?.documentID || documentInfo?.documentId || "",
+        ).trim();
+        const documentName = String(
+          documentInfo?.documentName || documentID || `Document ${index + 1}`,
+        ).trim();
+        const documentURL = String(
+          entry?.documentURL || documentInfo?.documentURL || "",
+        ).trim();
+        return documentID || documentName
+          ? {
+              key: documentID || documentName,
+              documentID,
+              documentName,
+              documentURL,
+            }
+          : null;
+      })
+      .filter(Boolean);
+  };
   buildPlannerStudySessionID = (
     programID = "",
     studySessionSymbol = "SS",
@@ -1179,6 +1211,9 @@ export default class NogaPlanner extends Component {
     if (!activeSession?.studySessionID) {
       return null;
     }
+    if (this.isPlannerStudySessionPaused()) {
+      return null;
+    }
     const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
       (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
     );
@@ -1279,6 +1314,9 @@ export default class NogaPlanner extends Component {
     if (!activeSession?.studySessionID) {
       return null;
     }
+    if (this.isPlannerStudySessionPaused()) {
+      return null;
+    }
     const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
       (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
     );
@@ -1371,10 +1409,44 @@ export default class NogaPlanner extends Component {
       nextSession,
     ]);
     this.setState({
+      plannerStudySessionPaused: false,
+      plannerStudySessionPausedAtMs: 0,
+      plannerStudySessionPausedTotalMs: 0,
       plannerRoot:
         nextPlannerRoot && typeof nextPlannerRoot === "object"
           ? nextPlannerRoot
           : this.state?.plannerRoot || {},
+    });
+  };
+  pausePlannerStudySession = () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (!activeSession?.studySessionID) {
+      this.props.serverReply?.("No study session is running.");
+      return;
+    }
+    if (this.isPlannerStudySessionPaused()) {
+      this.props.serverReply?.("Study session is already paused.");
+      return;
+    }
+    this.setState({
+      plannerStudySessionPaused: true,
+      plannerStudySessionPausedAtMs: Date.now(),
+    });
+  };
+  resumePlannerStudySession = () => {
+    const pauseState = this.getPlannerStudySessionPauseState();
+    if (!pauseState.isPaused) {
+      return;
+    }
+    const nowMs = Date.now();
+    const pausedDeltaMs =
+      pauseState.pausedAtMs > 0 ? Math.max(0, nowMs - pauseState.pausedAtMs) : 0;
+    this.setState({
+      plannerStudySessionPaused: false,
+      plannerStudySessionPausedAtMs: 0,
+      plannerStudySessionPausedTotalMs:
+        pauseState.pausedTotalMs + pausedDeltaMs,
     });
   };
   endPlannerStudySession = async () => {
@@ -1403,6 +1475,9 @@ export default class NogaPlanner extends Component {
     );
     const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
     this.setState({
+      plannerStudySessionPaused: false,
+      plannerStudySessionPausedAtMs: 0,
+      plannerStudySessionPausedTotalMs: 0,
       plannerRoot:
         nextPlannerRoot && typeof nextPlannerRoot === "object"
           ? nextPlannerRoot
@@ -7169,6 +7244,45 @@ export default class NogaPlanner extends Component {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+  getPlannerStudySessionPauseState = () => ({
+    isPaused: Boolean(this.state?.plannerStudySessionPaused),
+    pausedAtMs: Number(this.state?.plannerStudySessionPausedAtMs) || 0,
+    pausedTotalMs: Math.max(
+      0,
+      Number(this.state?.plannerStudySessionPausedTotalMs) || 0,
+    ),
+  });
+  isPlannerStudySessionPaused = () =>
+    this.getPlannerStudySessionPauseState().isPaused;
+  getPlannerStudySessionElapsedMs = (sessionEntry = null, nowMs = Date.now()) => {
+    if (!sessionEntry || typeof sessionEntry !== "object") {
+      return 0;
+    }
+    const startMs = new Date(
+      sessionEntry?.startDate || sessionEntry?.studySessionStartDate || "",
+    ).getTime();
+    const endValue =
+      sessionEntry?.endDate || sessionEntry?.studySessionEndDate || "";
+    const resolvedEndMs = endValue
+      ? new Date(endValue).getTime()
+      : Number(nowMs || Date.now());
+    if (
+      Number.isNaN(startMs) ||
+      Number.isNaN(resolvedEndMs) ||
+      resolvedEndMs < startMs
+    ) {
+      return 0;
+    }
+    const pauseState = this.getPlannerStudySessionPauseState();
+    const effectiveEndMs =
+      pauseState.isPaused && !endValue
+        ? pauseState.pausedAtMs || resolvedEndMs
+        : resolvedEndMs;
+    return Math.max(
+      0,
+      effectiveEndMs - startMs - pauseState.pausedTotalMs,
+    );
   };
   startPlannerTimer = () => {
     const minutes = Number.parseInt(String(this.state?.plannerTimerMinutesDraft || "").trim(), 10);
@@ -22110,12 +22224,12 @@ export default class NogaPlanner extends Component {
                 className="nogaPlanner_homePanelCardSetBtn"
                 disabled={isHomeCardsLocked || !canAddCourseComponentDraft}
                 onClick={this.appendHomeCourseComponentDraftEntry}
-              >
-                Add
-              </button>
-            </div>
-          </div>
-            ) : null}
+		              >
+		                Add
+		              </button>
+		            </div>
+			          </div>
+			            ) : null}
         <div
           id="nogaPlanner_courses_miniTable_wrap"
           className="nogaPlanner_homeIntervalsTableWrap"
@@ -22188,9 +22302,9 @@ export default class NogaPlanner extends Component {
                               intervalEntry?.subIntervalNum ||
                               intervalDisplay.term,
                           )}
-                        </td>
-                      </>
-                    ) : null}
+	                        </td>
+	                      </>
+			            ) : null}
                     <td id={`nogaPlanner_courses_td_componentId_${courseEntry.key}_${index}`}>{this.renderPlannerLocalizedText(componentEntry?.componentId)}</td>
                     <td id={`nogaPlanner_courses_td_componentInstructors_${courseEntry.key}_${index}`}>
                       <div className="nogaPlanner_materialMetadataComponentStack">
@@ -25259,6 +25373,27 @@ export default class NogaPlanner extends Component {
     )
       ? rawHomePanelModeTab
       : "intervals";
+    const missedConnections = this.getPlannerMissedConnections(
+      this.state?.plannerRoot || {},
+    ).map((entry) => this.normalizePlannerMissedConnectionEntry(entry)).filter(Boolean);
+    const homePanelCardTabs = [
+      { key: "all", label: "All" },
+      ...(missedConnections.length > 0
+        ? [{ key: "missedConnections", label: "Missed Connections" }]
+        : []),
+      { key: "programIntervals", label: "Program Intervals" },
+      { key: "programCourses", label: "Program Courses" },
+      { key: "programLectures", label: "Program Lectures" },
+      { key: "programTasks", label: "Program Tasks" },
+      { key: "storedDocuments", label: "Program Documents" },
+    ];
+    const rawHomePanelCardsTab =
+      String(this.state?.homePanelCardsTab || "all").trim() || "all";
+    const activeHomePanelCardsTab = homePanelCardTabs.some(
+      (entry) => entry.key === rawHomePanelCardsTab,
+    )
+      ? rawHomePanelCardsTab
+      : "all";
     const focusedHomeCardKey = String(
       this.state?.homeFocusedCardKey || "",
     ).trim();
@@ -25272,6 +25407,12 @@ export default class NogaPlanner extends Component {
         : {};
     const isHomeCardMounted = (cardKey) =>
       !focusedHomeCardKey || focusedHomeCardKey === cardKey;
+    const isPrimaryCardVisible = (cardKey) =>
+      focusedHomeCardKey
+        ? isHomeCardMounted(cardKey)
+        : isHomeCardMounted(cardKey) &&
+          (activeHomePanelCardsTab === "all" ||
+            activeHomePanelCardsTab === cardKey);
     const toggleHomeCardFocus = (cardKey) =>
       this.setState((prevState) => ({
         homeFocusedCardKey:
@@ -25333,9 +25474,6 @@ export default class NogaPlanner extends Component {
         };
       });
     const getHomePanelCardRowProps = (cardKey) => ({
-      className:
-        "nogaPlanner_homePanelCardRow" +
-        (expandedStackHomeCardKey === cardKey ? " is-expanded" : ""),
       "data-card-key": cardKey,
       onClick: (event) => {
         if (focusedHomeCardKey || isInteractiveHomeCardTarget(event.target)) {
@@ -25396,8 +25534,8 @@ export default class NogaPlanner extends Component {
               >
                 <i className="fi fi-rr-expand" aria-hidden="true" />
               </button>
-            </>
-          ) : null}
+			          </>
+			            ) : null}
           <strong id={headingId}>{title}</strong>
           {idsMode ? (
             <button
@@ -25455,17 +25593,12 @@ export default class NogaPlanner extends Component {
         </div>
       );
     };
-    const missedConnections = this.getPlannerMissedConnections(
-      this.state?.plannerRoot || {},
-    ).map((entry) => this.normalizePlannerMissedConnectionEntry(entry)).filter(Boolean);
     const primaryCardsContent = (
       <React.Fragment>
-            {missedConnections.length > 0 ? (
-            <div {...getHomePanelCardRowProps("missedConnections")}>
-            <div
-              id="nogaPlanner_home_missedConnections_card"
+            {missedConnections.length > 0 && isPrimaryCardVisible("missedConnections") ? (
+            <div {...getHomePanelCardRowProps("missedConnections")} id="nogaPlanner_home_missedConnections_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
               }
               style={
@@ -25584,25 +25717,22 @@ export default class NogaPlanner extends Component {
                             {displayJson}
                           </pre>
                         )}
-                        {isEditingThis && this.state?.homeMissedConnectionsEditorError ? (
-                          <div className="nogaPlanner_homeMissedConnectionError">
-                            {this.state.homeMissedConnectionsEditorError}
-                          </div>
-                        ) : null}
+	                        {isEditingThis && this.state?.homeMissedConnectionsEditorError ? (
+	                          <div className="nogaPlanner_homeMissedConnectionError">
+	                            {this.state.homeMissedConnectionsEditorError}
+			            </div>
+			            ) : null}
                       </div>
                     );
                   })}
                 </div>
               </div>
-              </div>
             </div>
             ) : null}
-            {isHomeCardMounted("programIntervals") ? (
-            <div {...getHomePanelCardRowProps("programIntervals")}>
-            <div
-              id="nogaPlanner_home_intervals_card"
+            {isPrimaryCardVisible("programIntervals") ? (
+            <div {...getHomePanelCardRowProps("programIntervals")} id="nogaPlanner_home_intervals_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervals" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked
                   ? " nogaPlanner_homePanelCard--disabled"
                   : "")
@@ -25662,7 +25792,8 @@ export default class NogaPlanner extends Component {
                 ),
               })}
               {renderPlannerPendingCardOverlay("programIntervals")}
-              <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
+              <div className="nogaPlanner_homePanelCardBody">
+                <div id="nogaPlanner_homeIntervalsMiniTable_2_wrap" className="nogaPlanner_homeIntervalsTableWrap">
               <table id="nogaPlanner_homeIntervalsMiniTable_2" className="nogaPlanner_homeIntervalsMiniTable">
                 <colgroup>
                 {homeShowIdsByCard.programIntervals ? (
@@ -25899,15 +26030,14 @@ export default class NogaPlanner extends Component {
                       );
                     })
                   )}
-                </tbody>
-              </table>
-              </div>
-            </div>
-
-            </div>
-            ) : null}
-            {isHomeCardMounted("programCourses") ? (
-            <div {...getHomePanelCardRowProps("programCourses")}>
+	                    </tbody>
+		                  </table>
+		                </div>
+		              </div>
+		              </div>
+		            ) : null}
+            {isPrimaryCardVisible("programCourses") ? (
+              <>
               {coursesEditorOpen ? (
                 <div id="nogaPlanner_homeIntervalsMiniForm_7_wrap">
                 <div id="nogaPlanner_homeIntervalsMiniForm_7" className="nogaPlanner_homeIntervalsMiniForm nogaPlanner_homeIntervalCoursesForm">
@@ -26501,14 +26631,14 @@ export default class NogaPlanner extends Component {
                             </button>
                           ) : null
                         ) : null}
-                </div>
-                </div>
-                </div>
-            ) : null}
+	                </div>
+	            </div>
+	            </div>
+	            ) : null}
             <div
               id="nogaPlanner_home_programCourses_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked
                   ? " nogaPlanner_homePanelCard--disabled"
                   : "")
@@ -27035,20 +27165,17 @@ export default class NogaPlanner extends Component {
                           );
                         })
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            </div>
-            ) : null}
-            {isHomeCardMounted("programLectures") ? (
-            <div {...getHomePanelCardRowProps("programLectures")}>
-            <div
-              id="nogaPlanner_home_programLectures_card"
+	                    </tbody>
+	                  </table>
+	                </div>
+	              </div>
+	            </div>
+	            </>
+	            ) : null}
+	            {isPrimaryCardVisible("programLectures") ? (
+            <div {...getHomePanelCardRowProps("programLectures")} id="nogaPlanner_home_programLectures_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
               }
               style={
@@ -27590,15 +27717,11 @@ export default class NogaPlanner extends Component {
                 return null;
               })()}
             </div>
-
-            </div>
             ) : null}
-            {isHomeCardMounted("programTasks") ? (
-            <div {...getHomePanelCardRowProps("programTasks")}>
-            <div
-              id="nogaPlanner_home_programTasks_card"
+            {isPrimaryCardVisible("programTasks") ? (
+            <div {...getHomePanelCardRowProps("programTasks")} id="nogaPlanner_home_programTasks_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
               }
               style={
@@ -27945,12 +28068,12 @@ export default class NogaPlanner extends Component {
                             homeCourseExamGradeDraft: String(event.target.value || ""),
                           })
                         }
-                      />
-                    </div>
-                  </div>
-                </div>
-            ) : null}
-                <div
+	                      />
+	                    </div>
+	            </div>
+	            </div>
+	            ) : null}
+	                <div
                   id="nogaPlanner_homeIntervalsMiniTable_8_wrap"
                   className="nogaPlanner_homeIntervalsTableWrap"
                 >
@@ -28068,20 +28191,16 @@ export default class NogaPlanner extends Component {
                           </tr>
                         ))
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            </div>
-            ) : null}
-            {isHomeCardMounted("storedDocuments") ? (
-            <div {...getHomePanelCardRowProps("storedDocuments")}>
-            <div
-              id="nogaPlanner_home_storedDocuments_card"
+	                    </tbody>
+	                  </table>
+	                </div>
+	              </div>
+	            </div>
+	            ) : null}
+	            {isPrimaryCardVisible("storedDocuments") ? (
+            <div {...getHomePanelCardRowProps("storedDocuments")} id="nogaPlanner_home_storedDocuments_card"
               className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--intervalCourses" +
+                "nogaPlanner_homePanelCard" +
                 (isHomeCardsLocked ? " nogaPlanner_homePanelCard--disabled" : "")
               }
               style={
@@ -28111,74 +28230,6 @@ export default class NogaPlanner extends Component {
                 />
               </div>
             </div>
-
-            </div>
-            ) : null}
-            {isHomeCardMounted("lecturesMode") ? (
-            <div {...getHomePanelCardRowProps("lecturesMode")}>
-            <div
-              id="nogaPlanner_home_lecturesMode_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "lectures"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              {renderHomePanelCardTitleRow({
-                rowId: "nogaPlanner_homePanelCardTitleRow_19",
-                headingId: "nogaPlanner_home_heading_lectures",
-                title: "Lectures",
-                cardKey: "lecturesMode",
-                idsMode: "lecture",
-              })}
-              <div id="nogaPlanner_homePanelCardBody_4" className="nogaPlanner_homePanelCardBody">
-                {this.renderSelectedCourseLecturesTable("full", {
-                  showLectureIds: Boolean(homeShowIdsByCard.lecturesMode),
-                })}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
-            {isHomeCardMounted("documentsMode") ? (
-            <div {...getHomePanelCardRowProps("documentsMode")}>
-            <div
-              id="nogaPlanner_home_documentsMode_card"
-              className={
-                "nogaPlanner_homePanelCard nogaPlanner_homePanelCard--modeContent" +
-                (isHomeCardsLocked
-                  ? " nogaPlanner_homePanelCard--disabled"
-                  : "")
-              }
-              style={
-                activeHomePanelModeTab === "documents"
-                  ? undefined
-                  : { display: "none" }
-              }
-            >
-              {renderHomePanelCardTitleRow({
-                rowId: "nogaPlanner_homePanelCardTitleRow_20",
-                headingId: "nogaPlanner_home_heading_documents",
-                title: "Documents",
-                cardKey: "documentsMode",
-                idsMode: "document",
-              })}
-              <div id="nogaPlanner_homePanelCardBody_5" className="nogaPlanner_homePanelCardBody">
-                <NogaPlannerTelegramPanel
-                  planner={this}
-                  runtime={NOGAPLANNER_PANEL_RUNTIME}
-                  showDocumentIds={Boolean(homeShowIdsByCard.documentsMode)}
-                />
-              </div>
-            </div>
-
-            </div>
             ) : null}
       </React.Fragment>
     );
@@ -28186,7 +28237,6 @@ export default class NogaPlanner extends Component {
       <React.Fragment>
             <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--short">
             {isHomeCardMounted("programName") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div id="nogaPlanner_home_programName_card" className="nogaPlanner_homePanelCard">
               {renderHomePanelCardTitleRow({
                 rowId: "nogaPlanner_homePanelCardTitleRow_2",
@@ -28254,11 +28304,8 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("programId") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programID_card"
               className="nogaPlanner_homePanelCard"
@@ -28331,11 +28378,8 @@ export default class NogaPlanner extends Component {
                 </span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("language") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_language_card"
               className={
@@ -28424,11 +28468,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_language_displayValue">{programLanguage || "-"}</span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("programStartYear") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programStartYear_card"
               className={
@@ -28509,11 +28550,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programStartYear_displayValue">{registeredProgramStartYear || "-"}</span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("programTotalYears") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTotalYears_card"
               className={
@@ -28596,11 +28634,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTotalYears_displayValue">{registeredProgramTotalYears || "-"}</span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("programTermsPerYear") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTermsPerYear_card"
               className={
@@ -28686,11 +28721,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_programTermsPerYear_displayValue">{registeredProgramTermsPerYear || "-"}</span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("university") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_university_card"
               className={
@@ -28771,11 +28803,8 @@ export default class NogaPlanner extends Component {
                 <span id="nogaPlanner_home_university_displayValue">{this.renderPlannerLocalizedText(locationUniversity)}</span>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("faculty") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_faculty_card"
               className={
@@ -28853,18 +28882,15 @@ export default class NogaPlanner extends Component {
                   }
                 />
               ) : (
-                <span id="nogaPlanner_home_faculty_displayValue">
-                  {locationFaculty ? `The Faculty of ${locationFaculty}` : ""}
-                </span>
-              )}
-            </div>
-
-            </div>
-            ) : null}
-            </div>
-            <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--tall">
+	                <span id="nogaPlanner_home_faculty_displayValue">
+	                  {locationFaculty ? `The Faculty of ${locationFaculty}` : ""}
+	                </span>
+		                    )}
+		            </div>
+		            ) : null}
+	            </div>
+	            <div className="nogaPlanner_homePanel_secondaryChildRow nogaPlanner_homePanel_secondaryChildRow--tall">
             {isHomeCardMounted("programComponents") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programComponents_card"
               className={
@@ -28949,12 +28975,12 @@ export default class NogaPlanner extends Component {
                       className="nogaPlanner_homePanelCardSetBtn"
                       disabled={isHomeCardsLocked}
                       onClick={this.appendHomeComponentDraftEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-            ) : null}
+	                    >
+	                      Add
+	                    </button>
+	                  </div>
+	                </div>
+	              ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_2" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramComponents.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_3" className="nogaPlanner_homeComponentsTable">
@@ -29009,17 +29035,14 @@ export default class NogaPlanner extends Component {
                     </tbody>
                   </table>
                 ) : (
-                  <span id="nogaPlanner_homePanelCardEmptyValue_3" className="nogaPlanner_homePanelCardEmptyValue">
-                    {componentEditorOpen ? "Add at least one component." : "No stored components"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
+	                  <span id="nogaPlanner_homePanelCardEmptyValue_3" className="nogaPlanner_homePanelCardEmptyValue">
+	                    {componentEditorOpen ? "Add at least one component." : "No stored components"}
+	                  </span>
+	                )}
+	              </div>
+	            </div>
+	            ) : null}
             {isHomeCardMounted("programTaskNames") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programTaskNames_card"
               className={
@@ -29102,12 +29125,12 @@ export default class NogaPlanner extends Component {
                       className="nogaPlanner_homePanelCardSetBtn"
                       disabled={isHomeCardsLocked}
                       onClick={this.appendHomeTaskDraftEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-            ) : null}
+	                    >
+	                      Add
+	                    </button>
+	                  </div>
+	                </div>
+	              ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_3" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramTasks.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_4" className="nogaPlanner_homeComponentsTable">
@@ -29157,19 +29180,16 @@ export default class NogaPlanner extends Component {
                     </tbody>
                   </table>
                 ) : (
-                  <span id="nogaPlanner_homePanelCardEmptyValue_4" className="nogaPlanner_homePanelCardEmptyValue">
-                    {tasksEditorOpen
-                      ? "Add at least one task name."
-                      : "No stored task names"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
+	                  <span id="nogaPlanner_homePanelCardEmptyValue_4" className="nogaPlanner_homePanelCardEmptyValue">
+	                    {tasksEditorOpen
+	                      ? "Add at least one task name."
+	                      : "No stored task names"}
+	                  </span>
+	                )}
+	              </div>
+	            </div>
+	            ) : null}
             {isHomeCardMounted("programDocumentTypes") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programDocumentTypes_card"
               className={
@@ -29249,12 +29269,12 @@ export default class NogaPlanner extends Component {
                       className="nogaPlanner_homePanelCardSetBtn"
                       disabled={isHomeCardsLocked}
                       onClick={this.appendHomeDocTypeDraftEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-            ) : null}
+	                    >
+	                      Add
+	                    </button>
+	                  </div>
+	                </div>
+	              ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_docTypes" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramDocTypes.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_docTypes" className="nogaPlanner_homeComponentsTable">
@@ -29294,19 +29314,16 @@ export default class NogaPlanner extends Component {
                     </tbody>
                   </table>
                 ) : (
-                  <span id="nogaPlanner_homePanelCardEmptyValue_docTypes" className="nogaPlanner_homePanelCardEmptyValue">
-                    {docTypesEditorOpen
-                      ? "Add at least one document type."
-                      : "No stored document types"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
+	                  <span id="nogaPlanner_homePanelCardEmptyValue_docTypes" className="nogaPlanner_homePanelCardEmptyValue">
+	                    {docTypesEditorOpen
+	                      ? "Add at least one document type."
+	                      : "No stored document types"}
+	                  </span>
+	                )}
+	              </div>
+	            </div>
+	            ) : null}
             {isHomeCardMounted("programDocumentVolumeUnit") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programDocumentVolumeUnit_card"
               className={
@@ -29399,12 +29416,12 @@ export default class NogaPlanner extends Component {
                       className="nogaPlanner_homePanelCardSetBtn"
                       disabled={isHomeCardsLocked}
                       onClick={this.appendHomeDocVolumeUnitDraftEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-            ) : null}
+	                    >
+	                      Add
+	                    </button>
+	                  </div>
+	                </div>
+	              ) : null}
               <div
                 id="nogaPlanner_homePanelCardStoredBlock_docVolumeUnits"
                 className="nogaPlanner_homePanelCardStoredBlock"
@@ -29467,22 +29484,19 @@ export default class NogaPlanner extends Component {
                     </tbody>
                   </table>
                 ) : (
-                  <span
-                    id="nogaPlanner_homePanelCardEmptyValue_docVolumeUnits"
-                    className="nogaPlanner_homePanelCardEmptyValue"
-                  >
+	                  <span
+	                    id="nogaPlanner_homePanelCardEmptyValue_docVolumeUnits"
+	                    className="nogaPlanner_homePanelCardEmptyValue"
+	                  >
                     {docVolumeUnitsEditorOpen
-                      ? "Add at least one document volume unit."
-                      : "No stored document volume units"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
+	                      ? "Add at least one document volume unit."
+	                      : "No stored document volume units"}
+	                  </span>
+	                )}
+	              </div>
+	            </div>
+	            ) : null}
             {isHomeCardMounted("programCurrentIntervalSelection") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programCurrentIntervalSelection_card"
               className={
@@ -29661,11 +29675,8 @@ export default class NogaPlanner extends Component {
                 </div>
               )}
             </div>
-
-            </div>
             ) : null}
             {isHomeCardMounted("programEditors") ? (
-            <div className="nogaPlanner_homePanelCardRow">
             <div
               id="nogaPlanner_home_programEditors_card"
               className={
@@ -29748,12 +29759,12 @@ export default class NogaPlanner extends Component {
                       className="nogaPlanner_homePanelCardSetBtn"
                       disabled={isHomeCardsLocked}
                       onClick={this.appendHomeProgramEditorDraftEntry}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-            ) : null}
+	                    >
+	                      Add
+	                    </button>
+	                  </div>
+	                </div>
+	              ) : null}
               <div id="nogaPlanner_homePanelCardStoredBlock_5" className="nogaPlanner_homePanelCardStoredBlock">
                 {visibleProgramEditors.length > 0 ? (
                   <table id="nogaPlanner_homeComponentsTable_6" className="nogaPlanner_homeComponentsTable">
@@ -29803,21 +29814,18 @@ export default class NogaPlanner extends Component {
                     </tbody>
                   </table>
                 ) : (
-                  <span id="nogaPlanner_homePanelCardEmptyValue_6" className="nogaPlanner_homePanelCardEmptyValue">
-                    {programEditorsEditorOpen
-                      ? "Add at least one editor."
-                      : "No stored editors"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            </div>
-            ) : null}
+	                  <span id="nogaPlanner_homePanelCardEmptyValue_6" className="nogaPlanner_homePanelCardEmptyValue">
+	                    {programEditorsEditorOpen
+	                      ? "Add at least one editor."
+	                      : "No stored editors"}
+	                  </span>
+	                )}
+	              </div>
+	            </div>
+	            ) : null}
             {isHomeCardMounted("programLocations") ? (
-              <div className="nogaPlanner_homePanelCardRow">
-                <div
-                  id="nogaPlanner_home_programLocations_card"
+              <div
+              id="nogaPlanner_home_programLocations_card"
                   className={
                     "nogaPlanner_homePanelCard" +
                     (isHomeCardsLocked
@@ -29910,12 +29918,12 @@ export default class NogaPlanner extends Component {
                           className="nogaPlanner_homePanelCardSetBtn"
                           disabled={isHomeCardsLocked}
                           onClick={this.appendHomeProgramLocationDraftEntry}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
+	                        >
+	                          Add
+	                        </button>
+	                      </div>
+	                    </div>
+	                  ) : null}
                   <div
                     id="nogaPlanner_homePanelCardStoredBlock_6"
                     className="nogaPlanner_homePanelCardStoredBlock"
@@ -30099,8 +30107,7 @@ export default class NogaPlanner extends Component {
                       </span>
                     )}
                   </div>
-                </div>
-              </div>
+            </div>
             ) : null}
             </div>
       </React.Fragment>
@@ -30108,6 +30115,7 @@ export default class NogaPlanner extends Component {
     const studySessionsAsideContent = (() => {
       const studySessions = this.getPlannerStudySessions(plannerRoot);
       const activeStudySession = this.getActivePlannerStudySession(plannerRoot);
+      const isStudySessionPaused = this.isPlannerStudySessionPaused();
       const formatStudySessionDateTime = (value = "") => {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) {
@@ -30121,128 +30129,146 @@ export default class NogaPlanner extends Component {
           minute: "2-digit",
         });
       };
-      const sessionTableRows = studySessions
+      const sessionListItems = studySessions
         .slice()
         .reverse()
-        .flatMap((sessionEntry, index) => {
+        .map((sessionEntry, index) => {
           const sessionStudySessionID = String(sessionEntry?.studySessionID || "-").trim() || "-";
           const sessionStudySessionNum = Number.isFinite(Number(sessionEntry?.studySessionNum))
             ? Number(sessionEntry.studySessionNum)
             : index + 1;
+          const sessionStartDate =
+            String(
+              sessionEntry?.startDate || sessionEntry?.studySessionStartDate || "",
+            ).trim();
+          const sessionEndDate =
+            String(
+              sessionEntry?.endDate || sessionEntry?.studySessionEndDate || "",
+            ).trim();
           const achievements = Array.isArray(sessionEntry?.achievements)
             ? sessionEntry.achievements
             : [];
           const achievementRows = achievements.length > 0 ? achievements : [{}];
-          return achievementRows.map((achievementEntry, achievementIndex) => {
-            const achievementLabels =
-              this.resolvePlannerStudySessionAchievementLabels(
-                achievementEntry,
-                plannerRoot,
-              );
-            const pagesDone = Array.isArray(achievementEntry?.pagesDone)
-              ? achievementEntry.pagesDone
-              : [];
-            const isFirstAchievementRow = achievementIndex === 0;
-            return (
-              <tr
-                key={`studySession_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
-                className="nogaPlanner_homeStudySessionTableRow"
-              >
-                {homeShowIdsByCard.studySessions && isFirstAchievementRow ? (
-                  <td
-                    rowSpan={achievementRows.length}
-                    className="nogaPlanner_homeStudySessionTableCell nogaPlanner_homeStudySessionTableCell--id"
+          return (
+            <li
+              key={`studySession_${sessionEntry?.studySessionID || index}`}
+              className="nogaPlanner_homeStudySessionItem"
+            >
+              <div className="nogaPlanner_homeStudySessionItemHeader">
+                <strong className="nogaPlanner_homeStudySessionItemTitle">
+                  {`Study Session ${Number.isFinite(sessionStudySessionNum) ? sessionStudySessionNum : "-"}`}
+                </strong>
+                <div className="nogaPlanner_homeIntervalRowActions">
+                  <button
+                    type="button"
+                    className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                    aria-label="Delete study session"
+                    disabled={isHomeCardsLocked}
+                    onClick={() => this.deletePlannerStudySession(sessionEntry)}
                   >
-                    {sessionStudySessionID}
-                  </td>
-                ) : null}
-                {isFirstAchievementRow ? (
-                  <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
-                    {Number.isFinite(sessionStudySessionNum) ? sessionStudySessionNum : "-"}
-                  </td>
-                ) : null}
-                {isFirstAchievementRow ? (
-                  <>
-                    <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
-                      {formatStudySessionDateTime(sessionEntry?.startDate)}
-                    </td>
-                    <td rowSpan={achievementRows.length} className="nogaPlanner_homeStudySessionTableCell">
-                      {formatStudySessionDateTime(sessionEntry?.endDate)}
-                    </td>
-                  </>
-                ) : null}
+                    <i className="fi fi-br-trash" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+              <div className="nogaPlanner_homeStudySessionDates">
                 {homeShowIdsByCard.studySessions ? (
-                  <td className="nogaPlanner_homeStudySessionTableCell">
-                    {String(achievementEntry?.documentID || "-")}
-                  </td>
+                  <span className="nogaPlanner_homeStudySessionItemMeta">
+                    {`ID: ${sessionStudySessionID}`}
+                  </span>
                 ) : null}
-                <td className="nogaPlanner_homeStudySessionTableCell">
-                  {achievementLabels.documentName || "-"}
-                </td>
-                <td className="nogaPlanner_homeStudySessionTableCell">
-                  {achievementLabels.lectureName || "-"}
-                </td>
-                <td className="nogaPlanner_homeStudySessionTableCell">
-                  {achievementLabels.courseName || "-"}
-                </td>
-                <td className="nogaPlanner_homeStudySessionTableCell">
-                  {achievementLabels.componentName || "-"}
-                </td>
-                <td className="nogaPlanner_homeStudySessionTableCell">
-                  {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
-                </td>
-                {isFirstAchievementRow ? (
-                  <td
-                    rowSpan={achievementRows.length}
-                    className="nogaPlanner_homeStudySessionTableCell"
-                  >
-                    <div className="nogaPlanner_homeIntervalRowActions">
-                      <button
-                        type="button"
-                        className="nogaPlanner_homeIntervalsDeleteIconBtn"
-                        aria-label="Delete study session"
-                        disabled={isHomeCardsLocked}
-                        onClick={() => this.deletePlannerStudySession(sessionEntry)}
-                      >
-                        <i className="fi fi-br-trash" aria-hidden="true" />
-                      </button>
+                <span>{`Start: ${formatStudySessionDateTime(sessionStartDate)}`}</span>
+                <span>{`End: ${formatStudySessionDateTime(sessionEndDate)}`}</span>
+                <span>{`Duration: ${this.formatPlannerDurationDisplay(sessionStartDate, sessionEndDate)}`}</span>
+              </div>
+              <div className="nogaPlanner_homeStudySessionAchievements">
+                {achievementRows.map((achievementEntry, achievementIndex) => {
+                  const achievementLabels =
+                    this.resolvePlannerStudySessionAchievementLabels(
+                      achievementEntry,
+                      plannerRoot,
+                    );
+                  const pagesDone = Array.isArray(achievementEntry?.pagesDone)
+                    ? achievementEntry.pagesDone
+                    : [];
+                  return (
+                    <div
+                      key={`studySessionAchievement_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
+                      className="nogaPlanner_homeStudySessionAchievement"
+                    >
+                      <div className="nogaPlanner_homeStudySessionAchievementMeta">
+                        {homeShowIdsByCard.studySessions ? (
+                          <div className="nogaPlanner_homeStudySessionAchievementField">
+                            <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Document ID</span>
+                            <strong>{String(achievementEntry?.documentID || "-")}</strong>
+                          </div>
+                        ) : null}
+                        <div className="nogaPlanner_homeStudySessionAchievementField">
+                          <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Document Name</span>
+                          <strong>{achievementLabels.documentName || "-"}</strong>
+                        </div>
+                        <div className="nogaPlanner_homeStudySessionAchievementField">
+                          <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Lecture Name</span>
+                          <strong>{achievementLabels.lectureName || "-"}</strong>
+                        </div>
+                        <div className="nogaPlanner_homeStudySessionAchievementField">
+                          <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Course Name</span>
+                          <strong>{achievementLabels.courseName || "-"}</strong>
+                        </div>
+                        <div className="nogaPlanner_homeStudySessionAchievementField">
+                          <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Component Name</span>
+                          <strong>{achievementLabels.componentName || "-"}</strong>
+                        </div>
+                      </div>
+                      <div className="nogaPlanner_homeStudySessionAchievementField">
+                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages</span>
+                        <div className="nogaPlanner_homeStudySessionAchievementPages">
+                          {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                ) : null}
-              </tr>
-            );
-          });
+                  );
+                })}
+              </div>
+            </li>
+          );
         });
       const activeElapsedMs = activeStudySession
-        ? Math.max(
-            0,
-            (Number(
-              activeStudySession?.endDate
-                ? new Date(activeStudySession.endDate).getTime()
-                : this.state?.plannerCalendarNowMs || Date.now(),
-            ) || Date.now()) -
-              (Number(new Date(activeStudySession.startDate).getTime()) || Date.now()),
+        ? this.getPlannerStudySessionElapsedMs(
+            activeStudySession,
+            this.state?.plannerCalendarNowMs || Date.now(),
           )
         : 0;
       return (
-        <div className="nogaPlanner_homePanelCardRow">
-          <div
-            id="nogaPlanner_home_studySessions_card"
-            className="nogaPlanner_homePanelCard nogaPlanner_homeStudySessionsCard"
-          >
-            {renderHomePanelCardTitleRow({
-              rowId: "nogaPlanner_homePanelCardTitleRow_studySessions",
-              headingId: "nogaPlanner_home_heading_studySessions",
-              title: "Study Sessions",
-              cardKey: "studySessions",
-              showViewControls: false,
-              idsMode: "study session",
-              actions: (
-                <div
-                  id="nogaPlanner_homePanelCardActions_studySessions"
-                  className="nogaPlanner_homePanelCardActions"
-                >
-                  {activeStudySession ? (
+        <div
+          id="nogaPlanner_home_studySessions_card"
+          className="nogaPlanner_homePanelCard nogaPlanner_homeStudySessionsCard"
+        >
+          {renderHomePanelCardTitleRow({
+            rowId: "nogaPlanner_homePanelCardTitleRow_studySessions",
+            headingId: "nogaPlanner_home_heading_studySessions",
+            title: "Study Sessions",
+            cardKey: "studySessions",
+            showViewControls: false,
+            idsMode: "study session",
+            actions: (
+              <div
+                id="nogaPlanner_homePanelCardActions_studySessions"
+                className="nogaPlanner_homePanelCardActions"
+              >
+                {activeStudySession ? (
+                  <>
+                    <button
+                      type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked}
+                      onClick={
+                        isStudySessionPaused
+                          ? this.resumePlannerStudySession
+                          : this.pausePlannerStudySession
+                      }
+                    >
+                      {isStudySessionPaused ? "Resume" : "Pause"}
+                    </button>
                     <button
                       type="button"
                       className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
@@ -30251,71 +30277,39 @@ export default class NogaPlanner extends Component {
                     >
                       End Session
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="nogaPlanner_homePanelCardSetBtn"
-                      disabled={isHomeCardsLocked}
-                      onClick={this.startPlannerStudySession}
-                    >
-                      Start Session
-                    </button>
-                  )}
-                </div>
-              ),
-            })}
-            <div className="nogaPlanner_homeStudySessionsBody">
-              {activeStudySession ? (
-                <div className="nogaPlanner_homeStudySessionsRunning">
-                  <strong>Running</strong>
-                  <span>
-                    {this.formatPlannerTimerDisplay(activeElapsedMs)}
-                  </span>
-                </div>
-              ) : null}
-              <div className="nogaPlanner_homeStudySessionsTableWrap">
-                {studySessions.length > 0 ? (
-                  <table className="nogaPlanner_homeStudySessionsTable">
-                    <thead>
-                      <tr>
-                        {homeShowIdsByCard.studySessions ? <th rowSpan={2}>Study Session ID</th> : null}
-                        <th rowSpan={2}>Number</th>
-                        <th colSpan={2}>Date</th>
-                        <th colSpan={homeShowIdsByCard.studySessions ? 6 : 5}>Achievements</th>
-                        <th rowSpan={2}>Actions</th>
-                      </tr>
-                      <tr>
-                        <th>Start</th>
-                        <th>End</th>
-                        {homeShowIdsByCard.studySessions ? <th>Document ID</th> : null}
-                        <th>Document Name</th>
-                        <th>Lecture Name</th>
-                        <th>Course Name</th>
-                        <th>Component Name</th>
-                        <th>Pages</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sessionTableRows.length > 0 ? (
-                        sessionTableRows
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={homeShowIdsByCard.studySessions ? 11 : 9}
-                            className="nogaPlanner_homeStudySessionTableEmptyCell"
-                          >
-                            No study sessions stored yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                  </>
                 ) : (
-                  <span className="nogaPlanner_homePanelCardEmptyValue">
-                    No study sessions stored yet.
-                  </span>
+                  <button
+                    type="button"
+                    className="nogaPlanner_homePanelCardSetBtn"
+                    disabled={isHomeCardsLocked}
+                    onClick={this.startPlannerStudySession}
+                  >
+                    Start Session
+                  </button>
                 )}
               </div>
+            ),
+          })}
+          <div className="nogaPlanner_homeStudySessionsBody">
+            {activeStudySession ? (
+              <div className="nogaPlanner_homeStudySessionsRunning">
+                <strong>{isStudySessionPaused ? "Paused" : "Running"}</strong>
+                <span>
+                  {this.formatPlannerTimerDisplay(activeElapsedMs)}
+                </span>
+              </div>
+            ) : null}
+            <div className="nogaPlanner_homeStudySessionsTableWrap">
+              {studySessions.length > 0 ? (
+                <ul className="nogaPlanner_homeStudySessionsList">
+                  {sessionListItems}
+                </ul>
+              ) : (
+                <span className="nogaPlanner_homePanelCardEmptyValue">
+                  No study sessions stored yet.
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -30332,67 +30326,58 @@ export default class NogaPlanner extends Component {
         {focusedHomeCardKey ? (
           primaryCardsContent
         ) : (
-          <div
-            id="nogaPlanner_homePanelColumn_2"
-            className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right is-collapsed"
-          >
+          <div className="nogaPlanner_homePanelMainRow">
             <div
-              className={
-                "nogaPlanner_homePanelAllCardsArea" +
-                (expandedStackHomeCardKey
-                  ? " has-expanded-card"
-                  : "")
-              }
+              id="nogaPlanner_homePanelColumn_2"
+              className="nogaPlanner_homePanelColumn nogaPlanner_homePanelColumn--right is-collapsed"
             >
-              {primaryCardsContent}
+              <div
+                id="nogaPlanner_homePanelCardsTabs"
+                className="nogaPlanner_homePanelCardsTabs"
+              >
+                {homePanelCardTabs.map((tabEntry) => (
+                  <button
+                    key={`nogaPlanner_homePanelCardsTab_${tabEntry.key}`}
+                    type="button"
+                    className={
+                      "nogaPlanner_homePanelCardsTab" +
+                      (activeHomePanelCardsTab === tabEntry.key
+                        ? " is-active"
+                        : "")
+                    }
+                    aria-pressed={activeHomePanelCardsTab === tabEntry.key}
+                    onClick={() =>
+                      this.setState({
+                        homePanelCardsTab: tabEntry.key,
+                        homeExpandedStackCardKey: "",
+                      })
+                    }
+                  >
+                    {tabEntry.label}
+                  </button>
+                ))}
+              </div>
+	              <div
+	                className={
+	                  "nogaPlanner_homePanelAllCardsArea" +
+	                  (activeHomePanelCardsTab === "all"
+	                    ? " is-all-tab-active"
+	                    : "") +
+	                  (expandedStackHomeCardKey
+	                    ? " has-expanded-card"
+	                    : "")
+	                }
+	              >
+                {primaryCardsContent}
+              </div>
             </div>
             <div className="nogaPlanner_homePanelAllCardsAside">
               {studySessionsAsideContent}
             </div>
           </div>
         )}
-        {!focusedHomeCardKey && (
-          <div className="nogaPlanner_homePanel_secondaryChildToggleWrap">
-            <button
-              id="nogaPlanner_homePanel_secondaryChildToggleBtn"
-              type="button"
-              className={
-                "nogaPlanner_homePanelSecondaryChildToggleBtn" +
-                (this.state?.homeSecondaryChildOpen
-                  ? ""
-                  : " nogaPlanner_homePanelSecondaryChildToggleBtn--closed")
-              }
-              aria-expanded={Boolean(this.state?.homeSecondaryChildOpen)}
-              aria-controls="nogaPlanner_homePanel_secondaryChild"
-              onClick={() =>
-                this.setState((previousState) => ({
-                  homeSecondaryChildOpen: !previousState?.homeSecondaryChildOpen,
-                }))
-              }
-            >
-              <i
-                className={
-                  "fi " +
-                  (this.state?.homeSecondaryChildOpen
-                    ? "fi-br-angle-down"
-                    : "fi-br-triangle")
-                }
-                aria-hidden="true"
-              />
-            </button>
-          </div>
-        )}
-        {!focusedHomeCardKey && (
-          <div
-            id="nogaPlanner_homePanel_secondaryChild"
-            className="nogaPlanner_homePanel_secondaryChild"
-            style={this.state?.homeSecondaryChildOpen ? undefined : { display: "none" }}
-          >
-            <div className="nogaPlanner_homePanel_secondaryChildScroller">
-              {secondaryCardsContent}
-            </div>
-          </div>
-        )}
+
+
         {/* <div
           id="nogaPlanner_homeStudyGoals"
           className="nogaPlanner_homeStudyGoals"
@@ -30720,7 +30705,76 @@ export default class NogaPlanner extends Component {
       return this.renderPlannerCurrentSubIntervalCalendar();
     }
     if (wrapperTab === "traces") {
-      return <div id="nogaPlanner_studyTabEmpty" className="nogaPlanner_mainTabEmptyPanel" />;
+      const studyReaderDocuments = this.getPlannerStudyReaderDocuments(
+        this.state?.plannerRoot || {},
+      );
+      const selectedStudyReaderDocumentKey = String(
+        this.state?.studyReaderSelectedDocumentKey ||
+          studyReaderDocuments[0]?.key ||
+          "",
+      ).trim();
+      const selectedStudyReaderDocument =
+        studyReaderDocuments.find(
+          (entry) => String(entry?.key || "").trim() === selectedStudyReaderDocumentKey,
+        ) ||
+        studyReaderDocuments[0] ||
+        null;
+      const selectedStudyReaderUrl = String(
+        selectedStudyReaderDocument?.documentURL || "",
+      ).trim();
+      return (
+        <div
+          id="nogaPlanner_studyTabReaderPanel"
+          className="nogaPlanner_studyTabReaderPanel"
+        >
+          <div className="nogaPlanner_studyTabReaderControls">
+            <label className="nogaPlanner_studyTabReaderField">
+              <span>Document</span>
+              <select
+                className="nogaPlanner_studyTabReaderSelect"
+                value={selectedStudyReaderDocumentKey}
+                onChange={(event) =>
+                  this.setState({
+                    studyReaderSelectedDocumentKey: String(
+                      event.target.value || "",
+                    ).trim(),
+                  })
+                }
+              >
+                <option value="">Choose a document</option>
+                {studyReaderDocuments.map((entry) => (
+                  <option
+                    key={`nogaPlanner_studyReaderDoc_${entry.key}`}
+                    value={entry.key}
+                  >
+                    {entry.documentName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="nogaPlanner_studyTabReaderMeta">
+              <strong>{selectedStudyReaderDocument?.documentName || "No document selected"}</strong>
+              <span>{selectedStudyReaderUrl || "Select a PDF from program documents."}</span>
+            </div>
+          </div>
+          <div className="nogaPlanner_studyTabReaderFrame">
+            <PdfReaderModal
+              isOpen={true}
+              renderInline
+              forceVisible
+              fileUrl={selectedStudyReaderUrl}
+              title={selectedStudyReaderDocument?.documentName || "PDF Reader"}
+              metadata={{
+                source: "programDocuments",
+                owner: String(this.props?.state?.username || "").trim(),
+                sizeBytes: 0,
+              }}
+              onClose={() => {}}
+              onChooseFile={() => {}}
+            />
+          </div>
+        </div>
+      );
     }
     if (wrapperTab === "documents") {
       return <NogaPlannerDocumentsPanel planner={this} />;
@@ -31056,14 +31110,14 @@ export default class NogaPlanner extends Component {
                   className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
                   disabled={!String(this.state?.homeResetPasswordDraft || "").trim() || this.state?.homeResetPasswordLoading}
                   onClick={this.confirmResetWithPassword}
-                >
-                  {this.state?.homeResetPasswordLoading ? "Verifying..." : "Confirm"}
-                </button>
-              </div>
-            </div>
-          </div>
-            ) : null}
-        <article
+	                >
+	                  {this.state?.homeResetPasswordLoading ? "Verifying..." : "Confirm"}
+	                </button>
+	              </div>
+	            </div>
+	          </div>
+	        ) : null}
+	        <article
           id="nogaPlanner_article"
           ref={this.plannerArticleRef}
           className="fr"

@@ -166,7 +166,10 @@ body.dark #server_answer {
   --subapps-row-hover-text: rgba(126, 79, 76, 0.98);
   --subapps-icon-bg: rgba(205, 106, 88, 0.96);
   --subapps-icon-fg: rgba(255, 245, 238, 0.98);
-  background-color: #dd2d4a !important;
+  background-color: #ffb80b !important;
+  box-shadow:
+    0 16px 30px rgba(83, 48, 35, 0.14),
+    0 4px 10px rgba(83, 48, 35, 0.10);
 }
 
 #server_answer_light.server_answer_light--active {

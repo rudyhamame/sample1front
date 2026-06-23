@@ -357,6 +357,267 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
   )
     ? plannerSelectSettings.lectureWriterOptions
     : getPlannerRegistrySelectOptionsBySettingsKey("lectureWriterOptions");
+  const plannerRoot = planner?.state?.plannerRoot || {};
+  const renderProgramInfoText = (value) =>
+    String(value || "").trim() || "—";
+  const renderProgramInfoLocalizedText = (value) =>
+    typeof planner?.renderPlannerLocalizedText === "function"
+      ? planner.renderPlannerLocalizedText(renderProgramInfoText(value))
+      : renderProgramInfoText(value);
+  const renderProgramInfoListItem = (value, key) => (
+    <li key={key} className="nogaPlanner_selectSettingsRelationshipItem">
+      <div className="nogaPlanner_selectSettingsRelationshipBody">
+        <span className="nogaPlanner_selectSettingsRelationshipText">
+          {renderProgramInfoLocalizedText(value)}
+        </span>
+      </div>
+    </li>
+  );
+  const normalizeProgramInfoList = (values) =>
+    Array.from(
+      new Set(
+        (Array.isArray(values) ? values : [])
+          .map((entry) => {
+            if (entry && typeof entry === "object") {
+              return String(
+                entry?.building ||
+                  entry?.name ||
+                  entry?.value ||
+                  entry?.componentId ||
+                  entry?.componentName ||
+                  entry?.taskName ||
+                  entry?.documentType ||
+                  entry?.editor ||
+                  entry?.lectureName ||
+                  entry?.courseName ||
+                  entry?.documentVolumeUnit ||
+                  "",
+              ).trim();
+            }
+            return String(entry || "").trim();
+          })
+          .filter(Boolean),
+      ),
+    );
+  const plannerProgramComponents = normalizeProgramInfoList(
+    plannerRoot?.programComponentNames ||
+      planner.state?.homeComponentsDraftList ||
+      [],
+  );
+  const plannerProgramTasks = normalizeProgramInfoList(
+    plannerRoot?.programTasks || planner.state?.homeTasksDraftList || [],
+  );
+  const plannerProgramDocTypes = normalizeProgramInfoList(
+    plannerRoot?.programDocumentTypes ||
+      planner.state?.homeDocTypesDraftList ||
+      [],
+  );
+  const plannerProgramDocVolumeUnits = normalizeProgramInfoList(
+    plannerRoot?.programDocumentVolumeUnit ||
+      planner.state?.homeDocVolumeUnitsDraftList ||
+      [],
+  );
+  const plannerProgramEditors = normalizeProgramInfoList(
+    plannerRoot?.programEditors || planner.state?.homeProgramEditorsDraftList || [],
+  );
+  const plannerProgramLocations = Array.isArray(
+    plannerRoot?.programLocations || planner.state?.homeProgramLocationsDraftList,
+  )
+    ? (plannerRoot?.programLocations || planner.state?.homeProgramLocationsDraftList)
+        .map((entry) => {
+          const building = String(entry?.building || entry?.location || entry || "").trim();
+          const rooms = Array.isArray(entry?.rooms)
+            ? entry.rooms.map((room) => String(room || "").trim()).filter(Boolean)
+            : [];
+          return building
+            ? {
+                key: building,
+                label: rooms.length > 0 ? `${building}: ${rooms.join(", ")}` : building,
+              }
+            : null;
+        })
+        .filter(Boolean)
+    : [];
+  const programInfoCurrentInterval = {
+    intervalNum: String(
+      plannerRoot?.programCurrentInterval?.intervalNum ||
+        plannerRoot?.currentInterval?.intervalNum ||
+        planner.state?.homeProgramCurrentIntervalNumDraft ||
+        "",
+    ).trim(),
+    subIntervalNum: String(
+      plannerRoot?.programCurrentInterval?.subIntervalNum ||
+        plannerRoot?.currentInterval?.subIntervalNum ||
+        planner.state?.homeProgramCurrentSubIntervalNumDraft ||
+        "",
+    ).trim(),
+  };
+  const renderProgramInfoActionButtons = ({
+    isEditing,
+    onEdit,
+    onSubmit,
+    onCancel,
+    editLabel = "Edit",
+    submitLabel = "Submit",
+    disabled = false,
+  }) => (
+    <div className="nogaPlanner_selectSettingsActions">
+      {isEditing ? (
+        <>
+          {onSubmit ? (
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn"
+              onClick={onSubmit}
+              disabled={disabled}
+            >
+              {submitLabel}
+            </button>
+          ) : null}
+          {onCancel ? (
+            <button
+              type="button"
+              className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+              onClick={onCancel}
+              disabled={disabled}
+            >
+              Cancel
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <button
+          type="button"
+          className="nogaPlanner_coursesMiniBarBtn"
+          onClick={onEdit}
+          disabled={disabled}
+        >
+          {editLabel}
+        </button>
+      )}
+    </div>
+  );
+  const renderProgramInfoValueField = ({
+    label,
+    value,
+    editorOpen,
+    input,
+    onEdit,
+    onSubmit,
+    onCancel,
+    editLabel,
+    submitLabel,
+    disabled,
+  }) => (
+    <label className="nogaPlanner_selectSettingsProgramInfoField">
+      <span>{label}</span>
+      {editorOpen ? (
+        <>
+          {input}
+          {renderProgramInfoActionButtons({
+            isEditing: true,
+            onSubmit,
+            onCancel,
+            submitLabel,
+            disabled,
+          })}
+        </>
+      ) : (
+        <>
+          <input
+            className="nogaPlanner_savedCoursesDetailsInput"
+            type="text"
+            value={String(value || "—")}
+            readOnly
+          />
+          {renderProgramInfoActionButtons({
+            isEditing: false,
+            onEdit,
+            editLabel,
+            disabled,
+          })}
+        </>
+      )}
+    </label>
+  );
+  const renderProgramInfoListField = ({
+    label,
+    summary,
+    editorOpen,
+    input,
+    onEdit,
+    onSubmit,
+    onCancel,
+    editLabel,
+    submitLabel,
+    disabled,
+    items,
+    emptyLabel,
+    itemKeyPrefix,
+    renderItemActions = null,
+  }) => (
+    <>
+      <div className="nogaPlanner_selectSettingsProgramInfoField">
+        <span>{label}</span>
+        {editorOpen ? (
+          <>
+            {input}
+            {renderProgramInfoActionButtons({
+              isEditing: true,
+              onSubmit,
+              onCancel,
+              submitLabel,
+              disabled,
+            })}
+          </>
+        ) : (
+          <>
+            <input
+              className="nogaPlanner_savedCoursesDetailsInput"
+              type="text"
+              value={String(summary || "—")}
+              readOnly
+            />
+            {renderProgramInfoActionButtons({
+              isEditing: false,
+              onEdit,
+              editLabel,
+              disabled,
+            })}
+          </>
+        )}
+      </div>
+      <div className="nogaPlanner_selectSettingsProgramInfoListWrap">
+        <ul className="nogaPlanner_selectSettingsRelationshipsList">
+          {items.length > 0 ? (
+            items.map((entry, index) => (
+              <li
+                key={`${itemKeyPrefix}-${index}-${String(entry?.key || entry?.label || entry || "")}`}
+                className="nogaPlanner_selectSettingsRelationshipItem"
+              >
+                <div className="nogaPlanner_selectSettingsRelationshipBody">
+                  <span className="nogaPlanner_selectSettingsRelationshipText">
+                    {String(entry?.label || entry?.value || entry || "—")}
+                  </span>
+                  {renderItemActions
+                    ? renderItemActions(entry, index)
+                    : null}
+                </div>
+              </li>
+            ))
+          ) : (
+            <li className="nogaPlanner_selectSettingsRelationshipItem nogaPlanner_selectSettingsRelationshipItem--empty">
+              <div className="nogaPlanner_selectSettingsRelationshipBody nogaPlanner_selectSettingsRelationshipBody--empty">
+                <span className="nogaPlanner_selectSettingsRelationshipText">
+                  {emptyLabel}
+                </span>
+              </div>
+            </li>
+          )}
+        </ul>
+      </div>
+    </>
+  );
 
   const plannerSettingsOptionGroupConfigs = [
     {
@@ -939,6 +1200,758 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           id="nogaPlanner_selectSettingsMain"
           className="nogaPlanner_selectSettingsMain"
         >
+          <div
+            id="nogaPlanner_selectSettingsFields_programInfo"
+            className="nogaPlanner_selectSettingsFields"
+          >
+            <span className="nogaPlanner_selectSettingsSectionTitle">
+              Program Info
+            </span>
+            <div className="nogaPlanner_selectSettingsProgramInfoGrid">
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoValueField({
+                  label: "Program Name",
+                  value: plannerRoot?.programName,
+                  editorOpen: Boolean(planner.state?.homeProgramNameEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramNameEditorOpen: true,
+                      homeProgramNameDraft: String(
+                        planner.state?.homeProgramNameDraft || plannerRoot?.programName || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeProgramNameSetSubmit,
+                  onCancel: planner.cancelHomeProgramNameEditor,
+                  editLabel: plannerRoot?.programName ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="text"
+                      value={String(planner.state?.homeProgramNameDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeProgramNameDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program name"
+                    />
+                  ),
+                })}
+                {renderProgramInfoValueField({
+                  label: "Program ID",
+                  value: plannerRoot?.programID,
+                  editorOpen: Boolean(planner.state?.homeProgramSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramSetEditorOpen: true,
+                      homeProgramIdDraft: String(
+                        planner.state?.homeProgramIdDraft || plannerRoot?.programID || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeProgramSetSubmit,
+                  onCancel: planner.cancelHomeProgramEditor,
+                  editLabel: plannerRoot?.programID ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="text"
+                      value={String(planner.state?.homeProgramIdDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeProgramIdDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program ID"
+                    />
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoValueField({
+                  label: "Language",
+                  value: plannerRoot?.programLanguage,
+                  editorOpen: Boolean(planner.state?.homeLanguageEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeLanguageEditorOpen: true,
+                      homeLanguageDraft: String(
+                        planner.state?.homeLanguageDraft || plannerRoot?.programLanguage || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeLanguageSetSubmit,
+                  onCancel: planner.cancelHomeLanguageEditor,
+                  editLabel: plannerRoot?.programLanguage ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <select
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      value={String(planner.state?.homeLanguageDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeLanguageDraft: String(event.target.value || ""),
+                        })
+                      }
+                    >
+                      <option value="">Select language</option>
+                      {Array.isArray(planner.plannerLanguageOptions)
+                        ? planner.plannerLanguageOptions.map((languageOption) => (
+                            <option key={`settings-language-${languageOption}`} value={languageOption}>
+                              {languageOption}
+                            </option>
+                          ))
+                        : null}
+                    </select>
+                  ),
+                })}
+                {renderProgramInfoValueField({
+                  label: "University",
+                  value: plannerRoot?.programUniversity,
+                  editorOpen: Boolean(planner.state?.homeUniversityEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeUniversityEditorOpen: true,
+                      homeUniversityDraft: String(
+                        planner.state?.homeUniversityDraft || plannerRoot?.programUniversity || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeUniversitySetSubmit,
+                  onCancel: planner.cancelHomeUniversityEditor,
+                  editLabel: plannerRoot?.programUniversity ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="text"
+                      value={String(planner.state?.homeUniversityDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeUniversityDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program university"
+                    />
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoValueField({
+                  label: "Faculty",
+                  value: plannerRoot?.programFaculty,
+                  editorOpen: Boolean(planner.state?.homeFacultyEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeFacultyEditorOpen: true,
+                      homeFacultyDraft: String(
+                        planner.state?.homeFacultyDraft || plannerRoot?.programFaculty || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeFacultySetSubmit,
+                  onCancel: planner.cancelHomeFacultyEditor,
+                  editLabel: plannerRoot?.programFaculty ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="text"
+                      value={String(planner.state?.homeFacultyDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeFacultyDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program faculty"
+                    />
+                  ),
+                })}
+                {renderProgramInfoValueField({
+                  label: "Current Interval",
+                  value: [
+                    programInfoCurrentInterval.intervalNum
+                      ? `Interval ${programInfoCurrentInterval.intervalNum}`
+                      : "",
+                    programInfoCurrentInterval.subIntervalNum
+                      ? `Sub-Interval ${programInfoCurrentInterval.subIntervalNum}`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" • "),
+                  editorOpen: Boolean(planner.state?.homeProgramCurrentIntervalEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramCurrentIntervalEditorOpen: true,
+                      homeProgramCurrentIntervalNumDraft:
+                        planner.state?.homeProgramCurrentIntervalNumDraft ||
+                        String(programInfoCurrentInterval.intervalNum || ""),
+                      homeProgramCurrentSubIntervalNumDraft:
+                        planner.state?.homeProgramCurrentSubIntervalNumDraft ||
+                        String(programInfoCurrentInterval.subIntervalNum || ""),
+                      homeProgramCurrentSubIntervalIDDraft:
+                        String(
+                          plannerRoot?.programCurrentInterval?.subIntervalID ||
+                            plannerRoot?.currentInterval?.subIntervalID ||
+                            "",
+                        ),
+                    }),
+                  onSubmit: planner.handleHomeProgramCurrentIntervalSetSubmit,
+                  onCancel: planner.cancelHomeProgramCurrentIntervalEditor,
+                  editLabel: programInfoCurrentInterval.intervalNum ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <select
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        value={String(
+                          planner.state?.homeProgramCurrentIntervalNumDraft || "",
+                        )}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeProgramCurrentIntervalNumDraft: String(event.target.value || ""),
+                          })
+                        }
+                      >
+                        <option value="">Interval num</option>
+                        {Array.from({ length: 20 }, (_, index) => String(index + 1)).map((num) => (
+                          <option key={`settings-current-interval-${num}`} value={num}>
+                            {num}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        value={String(
+                          planner.state?.homeProgramCurrentSubIntervalNumDraft || "",
+                        )}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeProgramCurrentSubIntervalNumDraft: String(event.target.value || ""),
+                          })
+                        }
+                      >
+                        <option value="">Sub-Interval num</option>
+                        {Array.from({ length: 20 }, (_, index) => String(index + 1)).map((num) => (
+                          <option key={`settings-current-subinterval-${num}`} value={num}>
+                            {num}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoValueField({
+                  label: "Start Year",
+                  value: plannerRoot?.programStartYear,
+                  editorOpen: Boolean(planner.state?.homeProgramStartYearEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramStartYearEditorOpen: true,
+                      homeProgramStartYearDraft: String(
+                        planner.state?.homeProgramStartYearDraft || plannerRoot?.programStartYear || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeProgramStartYearSetSubmit,
+                  onCancel: planner.cancelHomeProgramStartYearEditor,
+                  editLabel: plannerRoot?.programStartYear ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="number"
+                      value={String(planner.state?.homeProgramStartYearDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeProgramStartYearDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program start year"
+                    />
+                  ),
+                })}
+                {renderProgramInfoValueField({
+                  label: "Total Years",
+                  value: plannerRoot?.programTotalYears,
+                  editorOpen: Boolean(planner.state?.homeProgramTotalYearsEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramTotalYearsEditorOpen: true,
+                      homeProgramTotalYearsDraft: String(
+                        planner.state?.homeProgramTotalYearsDraft || plannerRoot?.programTotalYears || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeProgramTotalYearsSetSubmit,
+                  onCancel: planner.cancelHomeProgramTotalYearsEditor,
+                  editLabel: plannerRoot?.programTotalYears ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <input
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      type="number"
+                      value={String(planner.state?.homeProgramTotalYearsDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeProgramTotalYearsDraft: String(event.target.value || ""),
+                        })
+                      }
+                      placeholder="Program total years"
+                    />
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoValueField({
+                  label: "Terms Per Year",
+                  value: plannerRoot?.programTermsPerYear,
+                  editorOpen: Boolean(planner.state?.homeProgramTermsPerYearEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramTermsPerYearEditorOpen: true,
+                      homeProgramTermsPerYearDraft: String(
+                        planner.state?.homeProgramTermsPerYearDraft || plannerRoot?.programTermsPerYear || "",
+                      ),
+                    }),
+                  onSubmit: planner.handleHomeProgramTermsPerYearSetSubmit,
+                  onCancel: planner.cancelHomeProgramTermsPerYearEditor,
+                  editLabel: plannerRoot?.programTermsPerYear ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  input: (
+                    <select
+                      className="nogaPlanner_savedCoursesDetailsInput"
+                      value={String(planner.state?.homeProgramTermsPerYearDraft || "")}
+                      onChange={(event) =>
+                        planner.setState({
+                          homeProgramTermsPerYearDraft: String(event.target.value || ""),
+                        })
+                      }
+                    >
+                      <option value="">Select</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                    </select>
+                  ),
+                })}
+                <span />
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Program Components",
+                  summary: `${plannerProgramComponents.length} item${plannerProgramComponents.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeComponentsSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeComponentsSetEditorOpen: true,
+                      homeComponentIdInput: "",
+                      homeComponentsDraftList: Array.isArray(planner.state?.homeComponentsDraftList)
+                        ? planner.state.homeComponentsDraftList
+                        : Array.isArray(plannerRoot?.programComponentNames)
+                          ? plannerRoot.programComponentNames
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeComponentsSetSubmit,
+                  onCancel: planner.cancelHomeComponentsEditor,
+                  editLabel: plannerProgramComponents.length ? "Edit" : "Add Course",
+                  submitLabel: "Submit",
+                  items: plannerProgramComponents,
+                  emptyLabel: "No components",
+                  itemKeyPrefix: "program-component",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeComponentsSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeComponentDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeComponentDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeComponentIdInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeComponentIdInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Component name"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeComponentDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Program Tasks",
+                  summary: `${plannerProgramTasks.length} item${plannerProgramTasks.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeTasksSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeTasksSetEditorOpen: true,
+                      homeTaskInput: "",
+                      homeTasksDraftList: Array.isArray(planner.state?.homeTasksDraftList)
+                        ? planner.state.homeTasksDraftList
+                        : Array.isArray(plannerRoot?.programTasks)
+                          ? plannerRoot.programTasks
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeTasksSetSubmit,
+                  onCancel: planner.cancelHomeTasksEditor,
+                  editLabel: plannerProgramTasks.length ? "Edit" : "Add Task",
+                  submitLabel: "Submit",
+                  items: plannerProgramTasks,
+                  emptyLabel: "No tasks",
+                  itemKeyPrefix: "program-task",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeTasksSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeTaskDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeTaskDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeTaskInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeTaskInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Task name"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeTaskDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Document Types",
+                  summary: `${plannerProgramDocTypes.length} item${plannerProgramDocTypes.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeDocTypesSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeDocTypesSetEditorOpen: true,
+                      homeDocTypeInput: "",
+                      homeDocTypesDraftList: Array.isArray(planner.state?.homeDocTypesDraftList)
+                        ? planner.state.homeDocTypesDraftList
+                        : Array.isArray(plannerRoot?.programDocumentTypes)
+                          ? plannerRoot.programDocumentTypes
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeDocTypesSetSubmit,
+                  onCancel: planner.cancelHomeDocTypesEditor,
+                  editLabel: plannerProgramDocTypes.length ? "Edit" : "Add Document",
+                  submitLabel: "Submit",
+                  items: plannerProgramDocTypes,
+                  emptyLabel: "No document types",
+                  itemKeyPrefix: "program-doc-type",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeDocTypesSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeDocTypeDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeDocTypeDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeDocTypeInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeDocTypeInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Document type name"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeDocTypeDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Document Volume Units",
+                  summary: `${plannerProgramDocVolumeUnits.length} item${plannerProgramDocVolumeUnits.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeDocVolumeUnitsSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeDocVolumeUnitsSetEditorOpen: true,
+                      homeDocVolumeUnitInput: "",
+                      homeDocVolumeUnitsDraftList: Array.isArray(planner.state?.homeDocVolumeUnitsDraftList)
+                        ? planner.state.homeDocVolumeUnitsDraftList
+                        : Array.isArray(plannerRoot?.programDocumentVolumeUnit)
+                          ? plannerRoot.programDocumentVolumeUnit
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeDocVolumeUnitsSetSubmit,
+                  onCancel: planner.cancelHomeDocVolumeUnitsEditor,
+                  editLabel: plannerProgramDocVolumeUnits.length ? "Edit" : "Add Document",
+                  submitLabel: "Submit",
+                  items: plannerProgramDocVolumeUnits,
+                  emptyLabel: "No document volume units",
+                  itemKeyPrefix: "program-doc-volume-unit",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeDocVolumeUnitsSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeDocVolumeUnitDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeDocVolumeUnitDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeDocVolumeUnitInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeDocVolumeUnitInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Document volume unit"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeDocVolumeUnitDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Program Editors",
+                  summary: `${plannerProgramEditors.length} item${plannerProgramEditors.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeProgramEditorsSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramEditorsSetEditorOpen: true,
+                      homeProgramEditorInput: "",
+                      homeProgramEditorsDraftList: Array.isArray(planner.state?.homeProgramEditorsDraftList)
+                        ? planner.state.homeProgramEditorsDraftList
+                        : Array.isArray(plannerRoot?.programEditors)
+                          ? plannerRoot.programEditors
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeProgramEditorsSetSubmit,
+                  onCancel: planner.cancelHomeProgramEditorsEditor,
+                  editLabel: plannerProgramEditors.length ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  items: plannerProgramEditors,
+                  emptyLabel: "No editors",
+                  itemKeyPrefix: "program-editor",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeProgramEditorsSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeProgramEditorDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeProgramEditorDraftEntry(String(entry || ""))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeProgramEditorInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeProgramEditorInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Program editor"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeProgramEditorDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+              <div className="nogaPlanner_selectSettingsProgramInfoRow">
+                {renderProgramInfoListField({
+                  label: "Program Locations",
+                  summary: `${plannerProgramLocations.length} item${plannerProgramLocations.length === 1 ? "" : "s"}`,
+                  editorOpen: Boolean(planner.state?.homeProgramLocationsSetEditorOpen),
+                  onEdit: () =>
+                    planner.setState({
+                      homeProgramLocationsSetEditorOpen: true,
+                      homeProgramLocationBuildingInput: "",
+                      homeProgramLocationsDraftList: Array.isArray(planner.state?.homeProgramLocationsDraftList)
+                        ? planner.state.homeProgramLocationsDraftList
+                        : Array.isArray(plannerRoot?.programLocations)
+                          ? plannerRoot.programLocations
+                          : [],
+                    }),
+                  onSubmit: planner.handleHomeProgramLocationsSetSubmit,
+                  onCancel: planner.cancelHomeProgramLocationsEditor,
+                  editLabel: plannerProgramLocations.length ? "Edit" : "Set",
+                  submitLabel: "Submit",
+                  items: plannerProgramLocations,
+                  emptyLabel: "No locations",
+                  itemKeyPrefix: "program-location",
+                  renderItemActions: (entry) =>
+                    planner.state?.homeProgramLocationsSetEditorOpen ? (
+                      <div className="nogaPlanner_selectSettingsActions">
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn"
+                          onClick={() =>
+                            planner.editHomeProgramLocationDraftEntry(entry)
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="nogaPlanner_coursesMiniBarBtn nogaPlanner_coursesMiniBarBtn--disabledBlack"
+                          onClick={() =>
+                            planner.removeHomeProgramLocationDraftEntry(entry)
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null,
+                  input: (
+                    <div className="nogaPlanner_homeIntervalsAddRow">
+                      <input
+                        className="nogaPlanner_savedCoursesDetailsInput"
+                        type="text"
+                        value={String(planner.state?.homeProgramLocationBuildingInput || "")}
+                        onChange={(event) =>
+                          planner.setState({
+                            homeProgramLocationBuildingInput: String(event.target.value || ""),
+                          })
+                        }
+                        placeholder="Building"
+                      />
+                      <button
+                        type="button"
+                        className="nogaPlanner_coursesMiniBarBtn"
+                        onClick={planner.appendHomeProgramLocationDraftEntry}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ),
+                })}
+              </div>
+            </div>
+          </div>
+
           <div
             id="nogaPlanner_selectSettingsFields_general"
             className="nogaPlanner_selectSettingsFields"

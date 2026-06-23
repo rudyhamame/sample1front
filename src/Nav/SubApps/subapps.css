@@ -231,6 +231,9 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   background: rgba(255, 250, 244, 0.82);
   border-color: rgba(126, 79, 76, 0.16);
   color: rgba(105, 72, 71, 0.82);
+  box-shadow:
+    0 16px 30px rgba(83, 48, 35, 0.14),
+    0 4px 10px rgba(83, 48, 35, 0.10);
 }
 
 
