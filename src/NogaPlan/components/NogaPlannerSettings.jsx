@@ -3235,18 +3235,53 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
 };
 
 const RewardControlPanel = ({ planner }) => {
-  const rewardConfig = planner.getStudySessionRewardConfig();
   const friends = Array.isArray(planner.props?.state?.friends) ? planner.props.state.friends : [];
 
-  const [friendId, setFriendId] = React.useState(rewardConfig.rewardFriendId || "");
-  const [targetPages, setTargetPages] = React.useState(
-    rewardConfig.targetPagesDone != null ? String(rewardConfig.targetPagesDone) : "",
-  );
-  const [rewardImages, setRewardImages] = React.useState(rewardConfig.rewardImages || []);
+  const getFriendDisplayName = (friend) => {
+    const user = friend?.user || friend;
+    return (
+      String(user?.username || user?.name || user?.firstName || "").trim() ||
+      String(friend?.friendID || friend?._id || "").trim() ||
+      "Unknown"
+    );
+  };
+
+  const getFriendId = (friend) =>
+    String(
+      friend?._id || friend?.id || friend?.userID || friend?.friendID || friend?.chatId || "",
+    ).trim();
+
+  const [friendId, setFriendId] = React.useState("");
+  const [targetPages, setTargetPages] = React.useState("");
+  const [rewardImages, setRewardImages] = React.useState([]);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isUploading, setIsUploading] = React.useState(false);
   const [statusMsg, setStatusMsg] = React.useState("");
   const fileInputRef = React.useRef(null);
+
+  const getFriendProgramRewards = (id) => {
+    const friend = friends.find((f) => getFriendId(f) === id);
+    const fp =
+      friend?.memory?.studyPlanner ||
+      friend?.memory?.MOI?.studyPlanner ||
+      friend?.user?.memory?.studyPlanner ||
+      friend?.user?.memory?.MOI?.studyPlanner ||
+      null;
+    return fp?.programRewards || null;
+  };
+
+  const handleFriendChange = (e) => {
+    const id = e.target.value;
+    setFriendId(id);
+    if (id) {
+      const existing = getFriendProgramRewards(id);
+      setTargetPages(existing?.targetPagesDone != null ? String(existing.targetPagesDone) : "");
+      setRewardImages(Array.isArray(existing?.programRewardImagesURLs) ? existing.programRewardImagesURLs : []);
+    } else {
+      setTargetPages("");
+      setRewardImages([]);
+    }
+  };
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -3270,13 +3305,13 @@ const RewardControlPanel = ({ planner }) => {
   };
 
   const handleSave = async () => {
+    if (!friendId) { setStatusMsg("Select a friend first."); return; }
     setIsSaving(true);
     setStatusMsg("");
     try {
-      await planner.saveStudySessionRewardConfig({
-        rewardFriendId: friendId,
+      await planner.updateFriendProgramRewards(friendId, {
         targetPagesDone: Number(targetPages) || null,
-        rewardImages,
+        programRewardImagesURLs: rewardImages,
       });
       setStatusMsg("Reward config saved.");
     } catch (err) {
@@ -3286,20 +3321,6 @@ const RewardControlPanel = ({ planner }) => {
     }
   };
 
-  const getFriendDisplayName = (friend) => {
-    const user = friend?.user || friend;
-    return (
-      String(user?.username || user?.name || user?.firstName || "").trim() ||
-      String(friend?.friendID || friend?._id || "").trim() ||
-      "Unknown"
-    );
-  };
-
-  const getFriendId = (friend) =>
-    String(
-      friend?._id || friend?.id || friend?.userID || friend?.friendID || friend?.chatId || "",
-    ).trim();
-
   return (
     <div id="nogaPlanner_rewardControlPanel" className="nogaPlanner_settingsSection">
       <strong className="nogaPlanner_settingsSectionTitle">Reward Control Panel</strong>
@@ -3308,14 +3329,20 @@ const RewardControlPanel = ({ planner }) => {
         <select
           className="nogaPlanner_homeIntervalsInput"
           value={friendId}
-          onChange={(e) => setFriendId(e.target.value)}
+          onChange={handleFriendChange}
         >
           <option value="">Select a friend…</option>
           {friends.map((friend) => {
             const id = getFriendId(friend);
+            const user = friend?.user || friend;
+            const firstName = String(user?.profile?.firstname || user?.firstName || "").trim();
+            const lastName = String(user?.profile?.lastname || user?.lastName || "").trim();
+            const fullName = [firstName, lastName].filter(Boolean).join(" ");
+            const displayName = getFriendDisplayName(friend);
+            const label = fullName ? `${displayName} — ${fullName} (${id})` : `${displayName} (${id})`;
             return (
-              <option key={id || getFriendDisplayName(friend)} value={id}>
-                {getFriendDisplayName(friend)}
+              <option key={id || displayName} value={id}>
+                {label}
               </option>
             );
           })}

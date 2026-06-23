@@ -1147,8 +1147,6 @@ export default class NogaPlanner extends Component {
         entry?.sessionName || entry?.studySessionName || entry?.name || "",
       ).trim(),
       pausedTotalMs: Math.max(0, Number(entry?.pausedTotalMs) || 0),
-      targetPagesDone: entry?.targetPagesDone ?? null,
-      rewardImages: Array.isArray(entry?.rewardImages) ? entry.rewardImages : [],
       studySessionPosted: Boolean(entry?.studySessionPosted),
     };
   };
@@ -1623,29 +1621,17 @@ export default class NogaPlanner extends Component {
     }
     return payload.event;
   };
-  getStudySessionRewardConfig = () => {
-    const plannerRoot = this.getResolvedPlannerRoot();
-    const raw = plannerRoot?.studySessionReward;
-    if (!raw || typeof raw !== "object") {
-      return { targetPagesDone: null, rewardImages: [], rewardFriendId: "" };
-    }
-    return {
-      targetPagesDone: Number.isFinite(Number(raw.targetPagesDone)) ? Number(raw.targetPagesDone) : null,
-      rewardImages: Array.isArray(raw.rewardImages) ? raw.rewardImages : [],
-      rewardFriendId: String(raw.rewardFriendId || "").trim(),
-    };
-  };
-  saveStudySessionRewardConfig = async (config = {}) => {
-    const targetPagesDone = Number(config?.targetPagesDone);
-    return this.persistStudyPlannerMeta({
-      studySessionReward: {
-        targetPagesDone: Number.isFinite(targetPagesDone) && targetPagesDone > 0 ? targetPagesDone : null,
-        rewardImages: Array.isArray(config?.rewardImages)
-          ? config.rewardImages.map((u) => String(u || "").trim()).filter(Boolean)
-          : [],
-        rewardFriendId: String(config?.rewardFriendId || "").trim(),
-      },
+  updateFriendProgramRewards = async (friendId, { targetPagesDone, programRewardImagesURLs }) => {
+    const myId = String(this.props?.state?.my_id || "").trim();
+    const token = String(this.props?.state?.token || "").trim();
+    const response = await fetch(apiUrl(`/api/user/programRewards/${myId}/${friendId}`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ targetPagesDone, programRewardImagesURLs }),
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.message || "Failed to save reward config.");
+    return data;
   };
   uploadRewardImagesToCloudinary = async (files = []) => {
     const token = String(this.props?.state?.token || "").trim();
@@ -20107,6 +20093,30 @@ export default class NogaPlanner extends Component {
   componentDidUpdate(prevProps, prevState) {
     if (prevState.plannerRoot !== this.state.plannerRoot) {
       this._syncCountdownEndDate();
+      if (this.state?.studySessionGiftOpen) {
+        const plannerRoot = this.getResolvedPlannerRoot();
+        const activeSession = this.getActivePlannerStudySession(plannerRoot);
+        const ownRewards = plannerRoot?.programRewards;
+        const targetPagesDone = Number(ownRewards?.targetPagesDone);
+        const rewardImages = Array.isArray(ownRewards?.programRewardImagesURLs) ? ownRewards.programRewardImagesURLs : [];
+        const isRewardForMe = Number.isFinite(targetPagesDone) && targetPagesDone > 0 && rewardImages.length > 0;
+        if (isRewardForMe && activeSession) {
+          const allAchievements = Array.isArray(activeSession?.studySessionAchievements)
+            ? activeSession.studySessionAchievements
+            : Array.isArray(activeSession?.achievements) ? activeSession.achievements : [];
+          const pages = new Set();
+          for (const a of allAchievements) {
+            for (const p of Array.isArray(a?.pagesDone) ? a.pagesDone : []) {
+              if (Number.isFinite(Number(p)) && Number(p) > 0) pages.add(Number(p));
+            }
+          }
+          if (pages.size !== targetPagesDone) {
+            this.setState({ studySessionGiftOpen: false });
+          }
+        } else {
+          this.setState({ studySessionGiftOpen: false });
+        }
+      }
     }
     const calSelection = this.getCurrentIntervalCalendarSelection();
     if (calSelection.isReady && calSelection.currentIntervalRow) {
@@ -30289,30 +30299,43 @@ export default class NogaPlanner extends Component {
         rudyFriend?.user?.memory?.studyPlanner ||
         rudyFriend?.user?.memory?.MOI?.studyPlanner ||
         null;
-      const rudyReward =
-        rudyStudyPlanner?.studySessionReward &&
-        typeof rudyStudyPlanner.studySessionReward === "object"
-          ? rudyStudyPlanner.studySessionReward
-          : null;
-      const rewardTargetFriendId = String(rudyReward?.rewardFriendId || "").trim();
-      const rewardTargetPagesDone = Number(rudyReward?.targetPagesDone);
-      const rewardImages = Array.isArray(rudyReward?.rewardImages) ? rudyReward.rewardImages : [];
+      const ownPlannerRoot = this.getResolvedPlannerRoot();
+      const ownRewards = ownPlannerRoot?.programRewards;
+      const rewardTargetPagesDone = Number(ownRewards?.targetPagesDone);
+      const rewardImages = Array.isArray(ownRewards?.programRewardImagesURLs)
+        ? ownRewards.programRewardImagesURLs
+        : [];
       const isRewardForMe =
-        Boolean(rudyReward) &&
-        myUserId &&
-        rewardTargetFriendId &&
-        rewardTargetFriendId === myUserId &&
         Number.isFinite(rewardTargetPagesDone) &&
         rewardTargetPagesDone > 0 &&
         rewardImages.length > 0;
       const totalPagesDone = isRewardForMe
         ? this.getTotalPagesDoneFromSessions(studySessions)
         : 0;
-      const giftUnlocked = isRewardForMe && totalPagesDone >= rewardTargetPagesDone;
+      const giftUnlocked = isRewardForMe && totalPagesDone === rewardTargetPagesDone;
       const giftOpen = Boolean(this.state?.studySessionGiftOpen);
       const sessionPostingIds = this.state?.sessionPostingIds || new Set();
       const sessionPostedIds = this.state?.sessionPostedIds || new Set();
       const activeStudySession = this.getActivePlannerStudySession(plannerRoot);
+      const activeSessionPagesDone = (() => {
+        if (!isRewardForMe || !activeStudySession) return 0;
+        const allAchievements = Array.isArray(activeStudySession?.studySessionAchievements)
+          ? activeStudySession.studySessionAchievements
+          : Array.isArray(activeStudySession?.achievements)
+            ? activeStudySession.achievements
+            : [];
+        const pages = new Set();
+        for (const a of allAchievements) {
+          for (const p of Array.isArray(a?.pagesDone) ? a.pagesDone : []) {
+            if (Number.isFinite(Number(p)) && Number(p) > 0) pages.add(Number(p));
+          }
+        }
+        return pages.size;
+      })();
+      const activeSessionGiftReached = isRewardForMe &&
+        activeStudySession != null &&
+        rewardTargetPagesDone > 0 &&
+        activeSessionPagesDone === rewardTargetPagesDone;
       const isStudySessionPaused = this.isPlannerStudySessionPaused();
       const formatStudySessionDateTime = (value = "") => {
         const date = new Date(value);
@@ -30347,6 +30370,8 @@ export default class NogaPlanner extends Component {
             ? sessionEntry.achievements
             : [];
           const achievementRows = achievements.length > 0 ? achievements : [{}];
+          const isThisTheActiveSession = !sessionEndDate && activeStudySession != null;
+          const sessionGiftReached = activeSessionGiftReached && isThisTheActiveSession;
           return (
             <li
               key={`studySession_${sessionEntry?.studySessionID || index}`}
@@ -30356,6 +30381,16 @@ export default class NogaPlanner extends Component {
                 <strong className="nogaPlanner_homeStudySessionItemTitle">
                   {`Study Session ${Number.isFinite(sessionStudySessionNum) ? sessionStudySessionNum : "-"}`}
                 </strong>
+                {sessionGiftReached ? (
+                  <button
+                    type="button"
+                    className="nogaPlanner_studySessionGiftBtn nogaPlanner_studySessionGiftBtn--inline"
+                    onClick={() => this.setState({ studySessionGiftOpen: !giftOpen })}
+                    aria-label="Open your gift"
+                  >
+                    🎁
+                  </button>
+                ) : null}
                 <div className="nogaPlanner_homeIntervalRowActions">
                   {sessionEndDate ? (
                     <button
@@ -30472,6 +30507,18 @@ export default class NogaPlanner extends Component {
                   );
                 })}
               </div>
+              {sessionGiftReached && giftOpen ? (
+                <div className="nogaPlanner_studySessionGiftViewer">
+                  {rewardImages.map((url, i) => (
+                    <img
+                      key={url + i}
+                      src={url}
+                      alt={`Gift ${i + 1}`}
+                      className="nogaPlanner_studySessionGiftImage"
+                    />
+                  ))}
+                </div>
+              ) : null}
             </li>
           );
         });
@@ -30481,6 +30528,30 @@ export default class NogaPlanner extends Component {
             this.state?.plannerCalendarNowMs || Date.now(),
           )
         : 0;
+      const avgMsPerPageDisplay = (() => {
+        let totalMs = 0;
+        let totalPages = 0;
+        for (const s of studySessions) {
+          const start = new Date(s?.studySessionStartDate || s?.startDate || "").getTime();
+          const end = new Date(s?.studySessionEndDate || s?.endDate || "").getTime();
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+          const durationMs = Math.max(0, end - start - Math.max(0, Number(s?.pausedTotalMs) || 0));
+          const allAchievements = Array.isArray(s?.studySessionAchievements)
+            ? s.studySessionAchievements
+            : Array.isArray(s?.achievements) ? s.achievements : [];
+          const pages = new Set();
+          for (const a of allAchievements) {
+            for (const p of Array.isArray(a?.pagesDone) ? a.pagesDone : []) {
+              if (Number.isFinite(Number(p)) && Number(p) > 0) pages.add(Number(p));
+            }
+          }
+          if (pages.size === 0) continue;
+          totalMs += durationMs;
+          totalPages += pages.size;
+        }
+        if (totalPages === 0) return null;
+        return this.formatPlannerTimerDisplay(Math.round(totalMs / totalPages));
+      })();
       return (
         <div
           id="nogaPlanner_home_studySessions_card"
@@ -30543,7 +30614,7 @@ export default class NogaPlanner extends Component {
                 </span>
               </div>
             ) : null}
-            {giftUnlocked ? (
+            {giftUnlocked && activeStudySession ? (
               <div className="nogaPlanner_studySessionGiftRow">
                 <button
                   type="button"
@@ -30578,6 +30649,12 @@ export default class NogaPlanner extends Component {
               )}
             </div>
           </div>
+          {avgMsPerPageDisplay != null ? (
+            <div className="nogaPlanner_homeStudySessionsFooter">
+              <span className="nogaPlanner_homeStudySessionsFooterLabel">Avg. time per page</span>
+              <strong className="nogaPlanner_homeStudySessionsFooterValue">{avgMsPerPageDisplay}</strong>
+            </div>
+          ) : null}
         </div>
       );
     })();
