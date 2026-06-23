@@ -1535,7 +1535,7 @@ function HomeNoga(props) {
     if (!token || !myId) return;
     setIsFetchingEvents(true);
     try {
-      const response = await fetch(apiUrl(`/api/user/profileEvents/${myId}`), {
+      const response = await fetch(apiUrl(`/api/user/feedEvents/${myId}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await response.json().catch(() => ({}));
@@ -1568,7 +1568,8 @@ function HomeNoga(props) {
         (e) => e?._id && !currentIds.has(String(e._id)),
       );
       if (newOnes.length === 0) return current;
-      return [...(Array.isArray(current) ? current : []), ...newOnes];
+      const taggedNew = newOnes.map((e) => ({ ...e, _isOwn: true }));
+      return [...taggedNew, ...(Array.isArray(current) ? current : [])];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.state?.profile_events]);
@@ -1638,6 +1639,7 @@ function HomeNoga(props) {
   const [localProfileEvents, setLocalProfileEvents] = useState(null);
   const [isFetchingEvents, setIsFetchingEvents] = useState(false);
   const [deletingEventIds, setDeletingEventIds] = useState(new Set());
+  const [eventsTab, setEventsTab] = useState("mine");
   // Mobile portrait chat toggle
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
@@ -8331,11 +8333,19 @@ function HomeNoga(props) {
                     ) : (
                       <>
                         {(() => {
-                          const profileEvents = Array.isArray(localProfileEvents)
+                          const allEvents = Array.isArray(localProfileEvents)
                             ? localProfileEvents
                             : Array.isArray(props.state?.profile_events)
                               ? props.state.profile_events
                               : [];
+                          const ownEvents = allEvents.filter(
+                            (e) => e?._isOwn !== false && !e?._ownerName,
+                          );
+                          const friendEvents = allEvents.filter(
+                            (e) => e?._isOwn === false || Boolean(e?._ownerName),
+                          );
+                          const profileEvents =
+                            eventsTab === "friends" ? friendEvents : ownEvents;
                           return (
                             <>
                               <div className="Home_Noga_activeTab_title">
@@ -8352,7 +8362,7 @@ function HomeNoga(props) {
                                     disabled={isFetchingEvents}
                                     onClick={fetchProfileEvents}
                                   >
-                                    {isFetchingEvents ? "…" : "↻"}
+                                    {isFetchingEvents ? "…" : <i className="fi fi-sc-refresh" />}
                                   </button>
                                   <button
                                     type="button"
@@ -8366,9 +8376,32 @@ function HomeNoga(props) {
                                   </button>
                                 </div>
                               </div>
+                              <div className="Home_Noga_eventsTabBar">
+                                <button
+                                  type="button"
+                                  className={`Home_Noga_eventsTab${eventsTab === "mine" ? " isActive" : ""}`}
+                                  onClick={() => setEventsTab("mine")}
+                                >
+                                  Mine
+                                  {ownEvents.length > 0 && (
+                                    <span className="Home_Noga_eventsTabCount">{ownEvents.length}</span>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`Home_Noga_eventsTab${eventsTab === "friends" ? " isActive" : ""}`}
+                                  onClick={() => setEventsTab("friends")}
+                                >
+                                  My Friends
+                                  {friendEvents.length > 0 && (
+                                    <span className="Home_Noga_eventsTabCount">{friendEvents.length}</span>
+                                  )}
+                                </button>
+                              </div>
                               {profileEvents.length > 0 ? (
                                 <ul className="Home_Noga_eventsList">
-                                  {[...profileEvents].reverse().map((event, eventIndex) => {
+                                  {profileEvents.map((event, eventIndex) => {
+                                    const isOwn = event?._isOwn !== false && !event?._ownerName;
                                     const eventTitle = String(
                                       event?.eventTitle || "",
                                     ).trim();
@@ -8387,13 +8420,19 @@ function HomeNoga(props) {
                                           },
                                         )
                                       : "";
-                                    const firstName = String(
+                                    const footerFirst = String(
                                       event?.eventFooter?.eventUserName?.firstName || "",
                                     ).trim();
-                                    const lastName = String(
+                                    const footerLast = String(
                                       event?.eventFooter?.eventUserName?.lastName || "",
                                     ).trim();
-                                    const authorName = [firstName, lastName]
+                                    const ownerFirst = String(
+                                      event?._ownerName?.firstName || footerFirst,
+                                    ).trim();
+                                    const ownerLast = String(
+                                      event?._ownerName?.lastName || footerLast,
+                                    ).trim();
+                                    const authorName = [ownerFirst, ownerLast]
                                       .filter(Boolean)
                                       .join(" ");
                                     const imageUrls = Array.isArray(
@@ -8404,7 +8443,7 @@ function HomeNoga(props) {
                                     return (
                                       <li
                                         key={event?._id || eventIndex}
-                                        className={`Home_Noga_eventItem${event?.eventClass ? ` Home_Noga_eventItem--${event.eventClass}` : ""}`}
+                                        className={`Home_Noga_eventItem${event?.eventClass ? ` Home_Noga_eventItem--${event.eventClass}` : ""}${isOwn ? "" : " Home_Noga_eventItem--friend"}`}
                                       >
                                         <div className="Home_Noga_eventItemTopRow">
                                           {eventTitle ? (
@@ -8412,6 +8451,7 @@ function HomeNoga(props) {
                                               {eventTitle}
                                             </p>
                                           ) : null}
+                                          {isOwn ? (
                                           <button
                                             type="button"
                                             className="Home_Noga_eventItemDeleteBtn"
@@ -8449,6 +8489,7 @@ function HomeNoga(props) {
                                           >
                                             {deletingEventIds.has(String(event?._id || "")) ? "…" : "✕"}
                                           </button>
+                                          ) : null}
                                         </div>
                                         <div className="Home_Noga_eventItemHeader">
                                           {authorName ? (
