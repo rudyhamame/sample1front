@@ -3496,6 +3496,82 @@ color: #fff;
   0 12px 24px rgba(83, 48, 35, 0.12);
 }
 
+.nogaPlanner_studySessionGiftRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.nogaPlanner_studySessionGiftBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: 2px solid #c0784a;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  color: #7b3f00;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(192, 120, 74, 0.3);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.nogaPlanner_studySessionGiftBtn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(192, 120, 74, 0.45);
+}
+
+.nogaPlanner_studySessionGiftViewer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(255, 248, 240, 0.85);
+  border: 1px solid rgba(192, 120, 74, 0.2);
+  border-radius: 14px;
+  width: 100%;
+}
+
+.nogaPlanner_studySessionGiftImage {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nogaPlanner_rewardImagesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.nogaPlanner_rewardImageItem {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.nogaPlanner_rewardImageThumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(94, 73, 73, 0.2);
+}
+
+.nogaPlanner_rewardImageItem .nogaPlanner_homeIntervalsDeleteIconBtn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
 .nogaPlanner_homeStudySessionsCard {
   display: flex;
   flex: 1 1 auto;
@@ -4382,12 +4458,14 @@ color: #fff;
 .nogaPlanner_homePanelCardSetBtn:hover {
   background: #ffe9f1;
   border-color: #e78faf;
+  color: black;
 }
 
 
 
 .nogaPlanner_homePanelCardSetBtn--submit:hover {
   background: #259562;
+  color: white;
 }
 
 .nogaPlanner_homePanelCardSetBtn--cancel,

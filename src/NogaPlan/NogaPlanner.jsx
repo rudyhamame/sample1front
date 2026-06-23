@@ -1535,6 +1535,77 @@ export default class NogaPlanner extends Component {
       createdAt: String(entry?.createdAt || "").trim(),
     };
   };
+  getStudySessionRewardConfig = () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const raw = plannerRoot?.studySessionReward;
+    if (!raw || typeof raw !== "object") {
+      return { targetPagesDone: null, rewardImages: [], rewardFriendId: "" };
+    }
+    return {
+      targetPagesDone: Number.isFinite(Number(raw.targetPagesDone)) ? Number(raw.targetPagesDone) : null,
+      rewardImages: Array.isArray(raw.rewardImages) ? raw.rewardImages : [],
+      rewardFriendId: String(raw.rewardFriendId || "").trim(),
+    };
+  };
+  saveStudySessionRewardConfig = async (config = {}) => {
+    const targetPagesDone = Number(config?.targetPagesDone);
+    return this.persistStudyPlannerMeta({
+      studySessionReward: {
+        targetPagesDone: Number.isFinite(targetPagesDone) && targetPagesDone > 0 ? targetPagesDone : null,
+        rewardImages: Array.isArray(config?.rewardImages)
+          ? config.rewardImages.map((u) => String(u || "").trim()).filter(Boolean)
+          : [],
+        rewardFriendId: String(config?.rewardFriendId || "").trim(),
+      },
+    });
+  };
+  uploadRewardImagesToCloudinary = async (files = []) => {
+    const token = String(this.props?.state?.token || "").trim();
+    if (!token) throw new Error("Not authenticated.");
+    const urls = [];
+    for (const file of files) {
+      const sigResponse = await fetch(apiUrl("/api/user/image-gallery/signature"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicId: `reward-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`,
+          resourceType: "image",
+        }),
+      });
+      const sig = await sigResponse.json().catch(() => ({}));
+      if (!sigResponse.ok) throw new Error(sig?.message || "Failed to get upload signature.");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("api_key", sig.apiKey);
+      form.append("timestamp", String(sig.timestamp));
+      form.append("signature", sig.signature);
+      form.append("folder", sig.folder);
+      form.append("public_id", sig.publicId);
+      const uploadResponse = await fetch(sig.uploadUrl, { method: "POST", body: form });
+      const uploaded = await uploadResponse.json().catch(() => ({}));
+      if (!uploadResponse.ok) throw new Error(uploaded?.error?.message || "Cloudinary upload failed.");
+      if (uploaded.secure_url) urls.push(uploaded.secure_url);
+    }
+    return urls;
+  };
+  getTotalPagesDoneFromSessions = (sessions = []) => {
+    const allSessions = Array.isArray(sessions) ? sessions : [];
+    const allPages = new Set();
+    for (const session of allSessions) {
+      const achievements = Array.isArray(session?.studySessionAchievements)
+        ? session.studySessionAchievements
+        : Array.isArray(session?.achievements)
+          ? session.achievements
+          : [];
+      for (const achievement of achievements) {
+        const pages = Array.isArray(achievement?.pagesDone) ? achievement.pagesDone : [];
+        for (const page of pages) {
+          if (Number.isFinite(Number(page)) && Number(page) > 0) allPages.add(Number(page));
+        }
+      }
+    }
+    return allPages.size;
+  };
   persistPlannerMissedConnections = async (nextConnections = []) => {
     return this.persistStudyPlannerMeta({
       programMissedConnections: Array.isArray(nextConnections)
@@ -30114,6 +30185,41 @@ export default class NogaPlanner extends Component {
     );
     const studySessionsAsideContent = (() => {
       const studySessions = this.getPlannerStudySessions(plannerRoot);
+      const myUserId = String(this.props?.state?.my_id || "").trim();
+      const friends = Array.isArray(this.props?.state?.friends) ? this.props.state.friends : [];
+      const rudyFriend = friends.find((f) => {
+        const uname = String(
+          f?.user?.username || f?.username || f?.user?.name || "",
+        ).trim().toLowerCase();
+        return uname === "rudyhamame";
+      });
+      const rudyStudyPlanner =
+        rudyFriend?.memory?.studyPlanner ||
+        rudyFriend?.memory?.MOI?.studyPlanner ||
+        rudyFriend?.user?.memory?.studyPlanner ||
+        rudyFriend?.user?.memory?.MOI?.studyPlanner ||
+        null;
+      const rudyReward =
+        rudyStudyPlanner?.studySessionReward &&
+        typeof rudyStudyPlanner.studySessionReward === "object"
+          ? rudyStudyPlanner.studySessionReward
+          : null;
+      const rewardTargetFriendId = String(rudyReward?.rewardFriendId || "").trim();
+      const rewardTargetPagesDone = Number(rudyReward?.targetPagesDone);
+      const rewardImages = Array.isArray(rudyReward?.rewardImages) ? rudyReward.rewardImages : [];
+      const isRewardForMe =
+        Boolean(rudyReward) &&
+        myUserId &&
+        rewardTargetFriendId &&
+        rewardTargetFriendId === myUserId &&
+        Number.isFinite(rewardTargetPagesDone) &&
+        rewardTargetPagesDone > 0 &&
+        rewardImages.length > 0;
+      const totalPagesDone = isRewardForMe
+        ? this.getTotalPagesDoneFromSessions(studySessions)
+        : 0;
+      const giftUnlocked = isRewardForMe && totalPagesDone >= rewardTargetPagesDone;
+      const giftOpen = Boolean(this.state?.studySessionGiftOpen);
       const activeStudySession = this.getActivePlannerStudySession(plannerRoot);
       const isStudySessionPaused = this.isPlannerStudySessionPaused();
       const formatStudySessionDateTime = (value = "") => {
@@ -30298,6 +30404,29 @@ export default class NogaPlanner extends Component {
                 <span>
                   {this.formatPlannerTimerDisplay(activeElapsedMs)}
                 </span>
+              </div>
+            ) : null}
+            {giftUnlocked ? (
+              <div className="nogaPlanner_studySessionGiftRow">
+                <button
+                  type="button"
+                  className="nogaPlanner_studySessionGiftBtn"
+                  onClick={() => this.setState({ studySessionGiftOpen: !giftOpen })}
+                >
+                  🎁 Open your gift!
+                </button>
+                {giftOpen ? (
+                  <div className="nogaPlanner_studySessionGiftViewer">
+                    {rewardImages.map((url, i) => (
+                      <img
+                        key={url + i}
+                        src={url}
+                        alt={`Gift ${i + 1}`}
+                        className="nogaPlanner_studySessionGiftImage"
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div className="nogaPlanner_homeStudySessionsTableWrap">

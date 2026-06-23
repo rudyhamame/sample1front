@@ -3227,6 +3227,162 @@ const NogaPlannerSettings = ({ planner, runtime }) => {
           </div>
         </div>
       </div>
+      {String(planner?.props?.state?.username || "").trim() === "rudyhamame" ? (
+        <RewardControlPanel planner={planner} />
+      ) : null}
+    </div>
+  );
+};
+
+const RewardControlPanel = ({ planner }) => {
+  const rewardConfig = planner.getStudySessionRewardConfig();
+  const friends = Array.isArray(planner.props?.state?.friends) ? planner.props.state.friends : [];
+
+  const [friendId, setFriendId] = React.useState(rewardConfig.rewardFriendId || "");
+  const [targetPages, setTargetPages] = React.useState(
+    rewardConfig.targetPagesDone != null ? String(rewardConfig.targetPagesDone) : "",
+  );
+  const [rewardImages, setRewardImages] = React.useState(rewardConfig.rewardImages || []);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [statusMsg, setStatusMsg] = React.useState("");
+  const fileInputRef = React.useRef(null);
+
+  const handleUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setIsUploading(true);
+    setStatusMsg("");
+    try {
+      const urls = await planner.uploadRewardImagesToCloudinary(files);
+      setRewardImages((prev) => [...prev, ...urls]);
+      setStatusMsg(`${urls.length} image(s) uploaded.`);
+    } catch (err) {
+      setStatusMsg(String(err?.message || "Upload failed."));
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    setRewardImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setStatusMsg("");
+    try {
+      await planner.saveStudySessionRewardConfig({
+        rewardFriendId: friendId,
+        targetPagesDone: Number(targetPages) || null,
+        rewardImages,
+      });
+      setStatusMsg("Reward config saved.");
+    } catch (err) {
+      setStatusMsg(String(err?.message || "Save failed."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getFriendDisplayName = (friend) => {
+    const user = friend?.user || friend;
+    return (
+      String(user?.username || user?.name || user?.firstName || "").trim() ||
+      String(friend?.friendID || friend?._id || "").trim() ||
+      "Unknown"
+    );
+  };
+
+  const getFriendId = (friend) =>
+    String(
+      friend?._id || friend?.id || friend?.userID || friend?.friendID || friend?.chatId || "",
+    ).trim();
+
+  return (
+    <div id="nogaPlanner_rewardControlPanel" className="nogaPlanner_settingsSection">
+      <strong className="nogaPlanner_settingsSectionTitle">Reward Control Panel</strong>
+      <div className="nogaPlanner_selectSettingsFields">
+        <span className="nogaPlanner_selectSettingsRelationshipText">Friend</span>
+        <select
+          className="nogaPlanner_homeIntervalsInput"
+          value={friendId}
+          onChange={(e) => setFriendId(e.target.value)}
+        >
+          <option value="">Select a friend…</option>
+          {friends.map((friend) => {
+            const id = getFriendId(friend);
+            return (
+              <option key={id || getFriendDisplayName(friend)} value={id}>
+                {getFriendDisplayName(friend)}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+      <div className="nogaPlanner_selectSettingsFields">
+        <span className="nogaPlanner_selectSettingsRelationshipText">Target pages done</span>
+        <input
+          type="number"
+          min="1"
+          className="nogaPlanner_homeIntervalsInput"
+          placeholder="e.g. 100"
+          value={targetPages}
+          onChange={(e) => setTargetPages(e.target.value)}
+        />
+      </div>
+      <div className="nogaPlanner_selectSettingsFields">
+        <span className="nogaPlanner_selectSettingsRelationshipText">
+          Reward images ({rewardImages.length})
+        </span>
+        <div className="nogaPlanner_rewardImagesList">
+          {rewardImages.map((url, index) => (
+            <div key={url + index} className="nogaPlanner_rewardImageItem">
+              <img
+                src={url}
+                alt={`Reward ${index + 1}`}
+                className="nogaPlanner_rewardImageThumb"
+              />
+              <button
+                type="button"
+                className="nogaPlanner_homeIntervalsDeleteIconBtn"
+                onClick={() => handleRemoveImage(index)}
+                aria-label="Remove image"
+              >
+                <i className="fi fi-br-cross" aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={handleUpload}
+        />
+        <button
+          type="button"
+          className="nogaPlanner_homePanelCardSetBtn"
+          disabled={isUploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isUploading ? "Uploading…" : "Upload images to Cloudinary"}
+        </button>
+      </div>
+      {statusMsg ? (
+        <span className="nogaPlanner_selectSettingsRelationshipText">{statusMsg}</span>
+      ) : null}
+      <button
+        type="button"
+        className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
+        disabled={isSaving}
+        onClick={handleSave}
+      >
+        {isSaving ? "Saving…" : "Save reward config"}
+      </button>
     </div>
   );
 };
