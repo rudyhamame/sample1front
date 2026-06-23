@@ -1239,9 +1239,6 @@ export default class NogaPlanner extends Component {
           )
           .map((pageEntry) => Number(pageEntry?.pageOrder))
           .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
-        if (donePages.length === 0) {
-          return;
-        }
         documentMap.set(documentID, donePages);
       },
     );
@@ -1265,19 +1262,14 @@ export default class NogaPlanner extends Component {
         achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
       });
       documentMap.forEach((pagesDone, documentID) => {
-        const previousAchievement = achievementMap.get(documentID);
-        const mergedPages = Array.from(
-          new Set([
-            ...(Array.isArray(previousAchievement?.pagesDone)
-              ? previousAchievement.pagesDone
-              : []),
-            ...pagesDone,
-          ]),
-        ).sort((left, right) => left - right);
-        achievementMap.set(documentID, {
-          documentID,
-          pagesDone: mergedPages,
-        });
+        if (pagesDone.length === 0) {
+          achievementMap.delete(documentID);
+        } else {
+          achievementMap.set(documentID, {
+            documentID,
+            pagesDone: Array.from(new Set(pagesDone)).sort((a, b) => a - b),
+          });
+        }
       });
       return {
         ...sessionEntry,
