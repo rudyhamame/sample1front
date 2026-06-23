@@ -3556,7 +3556,6 @@ color: #fff;
 .nogaPlanner_homeStudySessionsList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3581,6 +3580,7 @@ color: #fff;
     0 4px 10px rgba(24, 8, 13, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 -10px 16px rgba(0, 0, 0, 0.12);
+  border-bottom: 1px dashed #f7f2ec2d;
 }
 
 .nogaPlanner_homeStudySessionItemHeader {
