@@ -1146,6 +1146,9 @@ export default class NogaPlanner extends Component {
       sessionName: String(
         entry?.sessionName || entry?.studySessionName || entry?.name || "",
       ).trim(),
+      pausedTotalMs: Math.max(0, Number(entry?.pausedTotalMs) || 0),
+      targetPagesDone: entry?.targetPagesDone ?? null,
+      rewardImages: Array.isArray(entry?.rewardImages) ? entry.rewardImages : [],
     };
   };
   getActivePlannerStudySession = (plannerRoot = this.getResolvedPlannerRoot()) => {
@@ -1464,12 +1467,20 @@ export default class NogaPlanner extends Component {
       this.props.serverReply?.("No study session is running.");
       return;
     }
+    const pauseState = this.getPlannerStudySessionPauseState();
+    const currentPauseDeltaMs =
+      pauseState.isPaused && pauseState.pausedAtMs > 0
+        ? Math.max(0, Date.now() - pauseState.pausedAtMs)
+        : 0;
+    const finalPausedTotalMs = pauseState.pausedTotalMs + currentPauseDeltaMs;
+    const nowIso = new Date().toISOString();
     const nextSessions = currentSessions.map((entry, index) =>
         index === activeSessionIndex
           ? {
               ...entry,
-              studySessionEndDate: new Date().toISOString(),
-              endDate: new Date().toISOString(),
+              studySessionEndDate: nowIso,
+              endDate: nowIso,
+              pausedTotalMs: finalPausedTotalMs,
             }
           : entry,
     );
@@ -7304,13 +7315,15 @@ export default class NogaPlanner extends Component {
     }
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
-  formatPlannerDurationDisplay = (startDate = "", endDate = "") => {
+  formatPlannerDurationDisplay = (startDate = "", endDate = "", pausedTotalMs = 0) => {
     const startMs = new Date(startDate).getTime();
     const endMs = endDate ? new Date(endDate).getTime() : Date.now();
     if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs < startMs) {
       return "-";
     }
-    const totalSeconds = Math.floor((endMs - startMs) / 1000);
+    const totalSeconds = Math.floor(
+      Math.max(0, endMs - startMs - Math.max(0, Number(pausedTotalMs) || 0)) / 1000,
+    );
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
@@ -30284,7 +30297,16 @@ export default class NogaPlanner extends Component {
                 ) : null}
                 <span>{`Start: ${formatStudySessionDateTime(sessionStartDate)}`}</span>
                 <span>{`End: ${formatStudySessionDateTime(sessionEndDate)}`}</span>
-                <span>{`Duration: ${this.formatPlannerDurationDisplay(sessionStartDate, sessionEndDate)}`}</span>
+                <span>{`Duration: ${
+                  sessionEndDate
+                    ? this.formatPlannerDurationDisplay(sessionStartDate, sessionEndDate, sessionEntry?.pausedTotalMs)
+                    : this.formatPlannerTimerDisplay(
+                        this.getPlannerStudySessionElapsedMs(
+                          sessionEntry,
+                          this.state?.plannerCalendarNowMs || Date.now(),
+                        ),
+                      )
+                }`}</span>
               </div>
               <div className="nogaPlanner_homeStudySessionAchievements">
                 {achievementRows.map((achievementEntry, achievementIndex) => {
@@ -30444,6 +30466,106 @@ export default class NogaPlanner extends Component {
         </div>
       );
     })();
+    const friendMessageViewerContent = (() => {
+      const normalizeFriendId = (value) => {
+        if (!value) return "";
+        if (typeof value === "object") {
+          return String(
+            value?._id ||
+              value?.id ||
+              value?.userID ||
+              value?.chatId ||
+              value?.friendID ||
+              "",
+          ).trim();
+        }
+        return String(value || "").trim();
+      };
+      const friends = Array.isArray(this.props?.state?.friends)
+        ? this.props.state.friends
+        : [];
+      const myUserId = String(this.props?.state?.my_id || "").trim();
+      const fromFriendId = String(
+        this.state?.plannerSelectSettings?.messageFriend?.from?.friendID || "",
+      ).trim();
+      const friendMessage = (() => {
+        if (!fromFriendId || !myUserId) {
+          return String(
+            this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
+              this.state?.plannerFriendIncomingMessage ||
+              "",
+          ).trim();
+        }
+        const selectedFriend = friends.find((entry) => {
+          const candidateId = String(
+            entry?._id ||
+              entry?.id ||
+              entry?.userID ||
+              entry?.chatId ||
+              entry?.user?._id ||
+              entry?.user?.id ||
+              entry?.friendID ||
+              "",
+          ).trim();
+          return candidateId && candidateId === fromFriendId;
+        });
+        const friendSettings =
+          selectedFriend?.memory?.studyPlanner?.studyOrganizer?.settings ||
+          selectedFriend?.memory?.studyPlanner?.settings ||
+          selectedFriend?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+          selectedFriend?.memory?.MOI?.studyPlanner?.settings ||
+          selectedFriend?.settings ||
+          selectedFriend?.user?.memory?.studyPlanner?.studyOrganizer?.settings ||
+          selectedFriend?.user?.memory?.studyPlanner?.settings ||
+          selectedFriend?.user?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
+          selectedFriend?.user?.memory?.MOI?.studyPlanner?.settings ||
+          {};
+        const outgoingToList = Array.isArray(friendSettings?.messageFriend?.to)
+          ? friendSettings.messageFriend.to
+          : [];
+        const matchedIncoming = outgoingToList.find(
+          (entry) =>
+            normalizeFriendId(entry?.friendID) === myUserId &&
+            String(entry?.message || "").trim(),
+        );
+        if (matchedIncoming) {
+          return String(matchedIncoming?.message || "").trim();
+        }
+        const outgoingList = Array.isArray(
+          this.state?.plannerSelectSettings?.messageFriend?.to,
+        )
+          ? this.state.plannerSelectSettings.messageFriend.to
+          : [];
+        const matchedOutgoing = outgoingList.find(
+          (entry) =>
+            normalizeFriendId(entry?.friendID) === fromFriendId &&
+            String(entry?.message || "").trim(),
+        );
+        if (matchedOutgoing) {
+          return String(matchedOutgoing?.message || "").trim();
+        }
+        return String(
+          this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
+            this.state?.plannerFriendIncomingMessage ||
+            "",
+        ).trim();
+      })();
+      const displayFriendMessage = friendMessage || "No message yet";
+      return (
+        <div className="nogaPlanner_friendMessageViewerWrap">
+          <div
+            id="nogaPlanner_friendMessageViewer"
+            data-empty={!friendMessage}
+            className="nogaPlanner_friendMessageViewer"
+          >
+            <i className="fi fi-br-envelope" aria-hidden="true" />
+            <span className="nogaPlanner_friendMessageViewer_text">
+              {displayFriendMessage}
+            </span>
+          </div>
+        </div>
+      );
+    })();
     return (
       <section
         id="nogaPlanner_homePanel"
@@ -30452,6 +30574,7 @@ export default class NogaPlanner extends Component {
           (focusedHomeCardKey ? " nogaPlanner_homePanel--soleView" : "")
         }
       >
+        {friendMessageViewerContent}
         {focusedHomeCardKey ? (
           primaryCardsContent
         ) : (
@@ -31292,118 +31415,19 @@ export default class NogaPlanner extends Component {
                 />
               </button>
               <p id="nogaPlanner_mainTabPanelTitle_text">{this.getPlannerMainTabTitle(wrapperTab)}</p>
-              {(() => {
-                const normalizeFriendId = (value) => {
-                  if (!value) return "";
-                  if (typeof value === "object") {
-                    return String(
-                      value?._id ||
-                        value?.id ||
-                        value?.userID ||
-                        value?.chatId ||
-                        value?.friendID ||
-                        "",
-                    ).trim();
-                  }
-                  return String(value || "").trim();
-                };
-                const friends = Array.isArray(this.props?.state?.friends)
-                  ? this.props.state.friends
-                  : [];
-                const myUserId = String(this.props?.state?.my_id || "").trim();
-                const fromFriendId = String(
-                  this.state?.plannerSelectSettings?.messageFriend?.from?.friendID ||
-                    "",
-                ).trim();
-                const friendMessage = (() => {
-                  if (!fromFriendId || !myUserId) {
-                    return String(
-                      this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
-                        this.state?.plannerFriendIncomingMessage ||
-                        "",
-                    ).trim();
-                  }
-                  const selectedFriend = friends.find((entry) => {
-                    const candidateId = String(
-                      entry?._id ||
-                        entry?.id ||
-                        entry?.userID ||
-                        entry?.chatId ||
-                        entry?.user?._id ||
-                        entry?.user?.id ||
-                        entry?.friendID ||
-                        "",
-                    ).trim();
-                    return candidateId && candidateId === fromFriendId;
-                  });
-                  const friendSettings =
-                    selectedFriend?.memory?.studyPlanner?.studyOrganizer?.settings ||
-                    selectedFriend?.memory?.studyPlanner?.settings ||
-                    selectedFriend?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
-                    selectedFriend?.memory?.MOI?.studyPlanner?.settings ||
-                    selectedFriend?.settings ||
-                    selectedFriend?.user?.memory?.studyPlanner?.studyOrganizer?.settings ||
-                    selectedFriend?.user?.memory?.studyPlanner?.settings ||
-                    selectedFriend?.user?.memory?.MOI?.studyPlanner?.studyOrganizer?.settings ||
-                    selectedFriend?.user?.memory?.MOI?.studyPlanner?.settings ||
-                    {};
-                  const outgoingToList = Array.isArray(friendSettings?.messageFriend?.to)
-                    ? friendSettings.messageFriend.to
-                    : [];
-                  const matchedIncoming = outgoingToList.find(
-                    (entry) =>
-                      normalizeFriendId(entry?.friendID) === myUserId &&
-                      String(entry?.message || "").trim(),
-                  );
-                  if (matchedIncoming) {
-                    return String(matchedIncoming?.message || "").trim();
-                  }
-                  const outgoingList = Array.isArray(
-                    this.state?.plannerSelectSettings?.messageFriend?.to,
-                  )
-                    ? this.state.plannerSelectSettings.messageFriend.to
-                    : [];
-                  const matchedOutgoing = outgoingList.find(
-                    (entry) =>
-                      normalizeFriendId(entry?.friendID) === fromFriendId &&
-                      String(entry?.message || "").trim(),
-                  );
-                  if (matchedOutgoing) {
-                    return String(matchedOutgoing?.message || "").trim();
-                  }
-                  return String(
-                    this.state?.plannerSelectSettings?.messageFriend?.from?.message ||
-                      this.state?.plannerFriendIncomingMessage ||
-                      "",
-                  ).trim();
-                })();
-                const displayFriendMessage = friendMessage || "No message yet";
-                return (
-                  <div
-                    id="nogaPlanner_friendMessageViewer"
-                    data-empty={!friendMessage}
-                    className="nogaPlanner_friendMessageViewer"
-                  >
-                    <i className="fi fi-br-envelope" aria-hidden="true" />
-                    <span className="nogaPlanner_friendMessageViewer_text">
-                      {displayFriendMessage}
-                    </span>
-                  </div>
-                );
-              })()}
               <div
                 id="nogaPlanner_mainTabPanelTitleRightCluster"
                 className="nogaPlanner_mainTabPanelTitleRightCluster"
               >
                 <div
                   id="nogaPlanner_worldTimerViewer"
-                  className="nogaPlanner_friendMessageViewer nogaPlanner_worldTimerViewer"
+                  className="nogaPlanner_clockWidget nogaPlanner_worldTimerViewer"
                 >
                   <div className="nogaPlanner_worldClockViewer_side">
                     <span className="nogaPlanner_worldClockViewer_location">
                       Timer
                     </span>
-                    <span className="nogaPlanner_friendMessageViewer_text nogaPlanner_worldClockViewer_time">
+                    <span className="nogaPlanner_clockWidget_text nogaPlanner_worldClockViewer_time">
                       {this.formatPlannerTimerDisplay(plannerTimerRemainingMs)}
                     </span>
                     <span className="nogaPlanner_worldClockViewer_date">
@@ -31474,13 +31498,13 @@ export default class NogaPlanner extends Component {
                 </div>
                 <div
                   id="nogaPlanner_worldClockViewer"
-                  className="nogaPlanner_friendMessageViewer nogaPlanner_worldClockViewer"
+                  className="nogaPlanner_clockWidget nogaPlanner_worldClockViewer"
                 >
                   <div className="nogaPlanner_worldClockViewer_side">
                     <span className="nogaPlanner_worldClockViewer_location">
                       {lattakiaClock.locationLabel}
                     </span>
-                    <span className="nogaPlanner_friendMessageViewer_text nogaPlanner_worldClockViewer_time">
+                    <span className="nogaPlanner_clockWidget_text nogaPlanner_worldClockViewer_time">
                       {lattakiaClock.time}
                     </span>
                     <span className="nogaPlanner_worldClockViewer_date">
@@ -31494,7 +31518,7 @@ export default class NogaPlanner extends Component {
                     <span className="nogaPlanner_worldClockViewer_location">
                       {torontoClock.locationLabel}
                     </span>
-                    <span className="nogaPlanner_friendMessageViewer_text nogaPlanner_worldClockViewer_time">
+                    <span className="nogaPlanner_clockWidget_text nogaPlanner_worldClockViewer_time">
                       {torontoClock.time}
                     </span>
                     <span className="nogaPlanner_worldClockViewer_date">

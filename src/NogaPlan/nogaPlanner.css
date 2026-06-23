@@ -520,25 +520,52 @@
 }
 
 .nogaPlanner_friendMessageViewer {
-  position: relative;
-  left: auto;
-  top: auto;
-  transform: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  z-index: 1;
+  background-color: #5e4949;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  padding: 4px 12px 4px 9px;
+  font-size: 0.70rem;
+  font-weight: 600;
+  color: white;
+  overflow: hidden;
+  rotate: 180deg;
+  text-align: center;
+}
+
+#nogaPlanner_friendMessageViewer {
+  flex-direction: column;
+  margin: 0;
+  padding: 12px 4px;
+}
+
+.nogaPlanner_friendMessageViewerWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.nogaPlanner_clockWidget {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   min-width: 0;
-  margin: 0 auto;
   z-index: 1;
   background-color: #5e4949;
   border: 1.5px solid rgba(255, 255, 255, 0.45);
-  border-radius: 20px;
   padding: 4px 12px 4px 9px;
-  font-size: 0.82rem;
+  font-size: 0.70rem;
   font-weight: 600;
   color: white;
   overflow: hidden;
-  pointer-events: none;
+  text-align: center;
+}
+
+.nogaPlanner_clockWidget_text {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
 }
 
 .nogaPlanner_worldClockViewer {
@@ -567,6 +594,11 @@
   line-height: 1;
   opacity: 0.9;
   white-space: nowrap;
+}
+
+.nogaPlanner_worldClockViewer_time {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
 }
 
 .nogaPlanner_worldClockViewer .nogaPlanner_worldClockViewer_time {
@@ -731,6 +763,8 @@
     "ELXP" 0;
   white-space: nowrap;
   font-size: 1.5rem;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .nogaPlanner_friendMessageViewer[data-empty="true"] {
@@ -3276,8 +3310,7 @@ color: #fff;
 
 .nogaPlanner_homePanel {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
@@ -3285,7 +3318,6 @@ color: #fff;
   box-sizing: border-box;
   overflow: auto;
   scrollbar-gutter: stable both-edges;
-  padding: 0px 40px;
   background-color: #ffb80b;
 }
 
