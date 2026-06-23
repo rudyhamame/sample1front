@@ -525,8 +525,6 @@
   gap: 7px;
   min-width: 0;
   z-index: 1;
-  background-color: #5e4949;
-  border: 1.5px solid rgba(255, 255, 255, 0.45);
   padding: 4px 12px 4px 9px;
   font-size: 0.70rem;
   font-weight: 600;
@@ -538,7 +536,7 @@
 
 #nogaPlanner_friendMessageViewer {
   flex-direction: column;
-  margin: 0;
+  margin: auto;
   padding: 12px 4px;
 }
 
@@ -555,12 +553,13 @@
   z-index: 1;
   background-color: #5e4949;
   border: 1.5px solid rgba(255, 255, 255, 0.45);
-  padding: 4px 12px 4px 9px;
   font-size: 0.70rem;
   font-weight: 600;
   color: white;
   overflow: hidden;
   text-align: center;
+  border-radius: 18px;
+  padding: 5px 10px;
 }
 
 .nogaPlanner_clockWidget_text {
@@ -570,12 +569,10 @@
 
 .nogaPlanner_worldClockViewer {
   gap: 12px;
-  padding: 4px 14px 4px 12px;
 }
 
 .nogaPlanner_worldTimerViewer {
   gap: 8px;
-  padding: 3px 10px 3px 9px;
   pointer-events: auto;
 }
 
@@ -3704,6 +3701,36 @@ color: #fff;
   font-size: 0.92rem;
 }
 
+.nogaPlanner_homeStudySessionPostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1.5px solid rgba(94, 73, 73, 0.5);
+  border-radius: 999px;
+  background: #5e4949;
+  color: white;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.nogaPlanner_homeStudySessionPostBtn:hover:not(:disabled) {
+  background: transparent;
+  color: white;
+}
+
+.nogaPlanner_homeStudySessionPostBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.nogaPlanner_homeStudySessionPostBtn.is-posted {
+  border-color: rgba(60, 120, 60, 0.5);
+  color: #3a7a3a;
+}
+
 .nogaPlanner_homeStudySessionItemMeta {
   flex-shrink: 0;
   font-size: 0.74rem;
@@ -4210,6 +4237,7 @@ color: #fff;
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 2px 6px rgba(10, 2, 5, 0.35),
     0 6px 16px rgba(10, 2, 5, 0.2);
+  margin-bottom: 10px;
 }
 
 #nogaPlanner_homePanelCardTitleRow_studySessions{
@@ -4720,9 +4748,6 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
   text-align: center;
 }
 
-.nogaPlanner_homeIntervalsMiniTable tbody tr.is-current {
-  background: rgba(42, 168, 101, 0.12);
-}
 
 .nogaPlanner_homeIntervalsMiniTable tbody tr.is-manual-preview td {
   background: rgba(153, 94, 200, 0.08);

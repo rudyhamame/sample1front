@@ -1149,6 +1149,7 @@ export default class NogaPlanner extends Component {
       pausedTotalMs: Math.max(0, Number(entry?.pausedTotalMs) || 0),
       targetPagesDone: entry?.targetPagesDone ?? null,
       rewardImages: Array.isArray(entry?.rewardImages) ? entry.rewardImages : [],
+      studySessionPosted: Boolean(entry?.studySessionPosted),
     };
   };
   getActivePlannerStudySession = (plannerRoot = this.getResolvedPlannerRoot()) => {
@@ -1545,6 +1546,82 @@ export default class NogaPlanner extends Component {
           : {},
       createdAt: String(entry?.createdAt || "").trim(),
     };
+  };
+  postStudySessionAsEvent = async (sessionEntry = {}) => {
+    const token = String(this.props?.state?.token || "").trim();
+    const userId = String(this.props?.state?.my_id || "").trim();
+    if (!token || !userId) throw new Error("Not authenticated.");
+    const sessionNum = sessionEntry?.studySessionNum ?? sessionEntry?.sessionNum ?? "";
+    const startDate = sessionEntry?.studySessionStartDate || sessionEntry?.startDate || "";
+    const endDate = sessionEntry?.studySessionEndDate || sessionEntry?.endDate || "";
+    const pausedTotalMs = Math.max(0, Number(sessionEntry?.pausedTotalMs) || 0);
+    const durationDisplay = this.formatPlannerDurationDisplay(startDate, endDate, pausedTotalMs);
+    const achievements = Array.isArray(sessionEntry?.studySessionAchievements)
+      ? sessionEntry.studySessionAchievements
+      : Array.isArray(sessionEntry?.achievements)
+        ? sessionEntry.achievements
+        : [];
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const achievementLines = achievements
+      .filter((a) => String(a?.documentID || "").trim())
+      .map((a) => {
+        const labels = this.resolvePlannerStudySessionAchievementLabels(a, plannerRoot);
+        const pages = Array.isArray(a?.pagesDone) && a.pagesDone.length > 0
+          ? `\n    Pages: ${a.pagesDone.join(", ")}`
+          : "";
+        return [
+          `  - Document: ${labels.documentName || a.documentID}`,
+          labels.lectureName && labels.lectureName !== "-" ? `    Lecture: ${labels.lectureName}` : null,
+          labels.courseName && labels.courseName !== "-" ? `    Course: ${labels.courseName}` : null,
+          labels.componentName && labels.componentName !== "-" ? `    Component: ${labels.componentName}` : null,
+          pages ? `    Pages: ${a.pagesDone.join(", ")}` : null,
+        ].filter(Boolean).join("\n");
+      })
+      .join("\n");
+    const achievementData = [
+      `Type: Study Session`,
+      `Session number: ${sessionNum}`,
+      `Duration: ${durationDisplay}`,
+      achievementLines ? `Achievements:\n${achievementLines}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const aiProvider = String(this.props?.state?.aiProvider || "").trim() || undefined;
+    const response = await fetch(apiUrl(`/api/user/postProfileEvent/${userId}`), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        achievementData,
+        studySessionID: String(sessionEntry?.studySessionID || sessionEntry?.studySessionId || "").trim(),
+        images: [],
+        videos: [],
+        ...(aiProvider ? { aiProvider } : {}),
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.message || "Failed to post event.");
+    if (payload?.event && typeof this.props?.addProfileEvent === "function") {
+      this.props.addProfileEvent(payload.event);
+    }
+    const sessionID = String(
+      sessionEntry?.studySessionID || sessionEntry?.studySessionId || "",
+    ).trim();
+    if (sessionID) {
+      const plannerRoot = this.getResolvedPlannerRoot();
+      const currentSessions = Array.isArray(plannerRoot?.programStudySessions)
+        ? plannerRoot.programStudySessions
+        : [];
+      const updatedSessions = currentSessions.map((s) =>
+        String(s?.studySessionID || s?.studySessionId || "") === sessionID
+          ? { ...s, studySessionPosted: true }
+          : s,
+      );
+      await this.persistStudyPlannerStudySessions(updatedSessions);
+    }
+    return payload.event;
   };
   getStudySessionRewardConfig = () => {
     const plannerRoot = this.getResolvedPlannerRoot();
@@ -30233,6 +30310,8 @@ export default class NogaPlanner extends Component {
         : 0;
       const giftUnlocked = isRewardForMe && totalPagesDone >= rewardTargetPagesDone;
       const giftOpen = Boolean(this.state?.studySessionGiftOpen);
+      const sessionPostingIds = this.state?.sessionPostingIds || new Set();
+      const sessionPostedIds = this.state?.sessionPostedIds || new Set();
       const activeStudySession = this.getActivePlannerStudySession(plannerRoot);
       const isStudySessionPaused = this.isPlannerStudySessionPaused();
       const formatStudySessionDateTime = (value = "") => {
@@ -30278,6 +30357,42 @@ export default class NogaPlanner extends Component {
                   {`Study Session ${Number.isFinite(sessionStudySessionNum) ? sessionStudySessionNum : "-"}`}
                 </strong>
                 <div className="nogaPlanner_homeIntervalRowActions">
+                  {sessionEndDate ? (
+                    <button
+                      type="button"
+                      className={`nogaPlanner_homeStudySessionPostBtn${sessionEntry?.studySessionPosted || sessionPostedIds.has(sessionStudySessionID) ? " is-posted" : ""}`}
+                      aria-label="Post session as event"
+                      disabled={isHomeCardsLocked || sessionPostingIds.has(sessionStudySessionID) || sessionEntry?.studySessionPosted || sessionPostedIds.has(sessionStudySessionID)}
+                      onClick={async () => {
+                        if (sessionPostingIds.has(sessionStudySessionID)) return;
+                        this.setState((prev) => ({
+                          sessionPostingIds: new Set([...(prev.sessionPostingIds || []), sessionStudySessionID]),
+                        }));
+                        try {
+                          await this.postStudySessionAsEvent(sessionEntry);
+                          this.setState((prev) => {
+                            const nextPosting = new Set(prev.sessionPostingIds || []);
+                            nextPosting.delete(sessionStudySessionID);
+                            const nextPosted = new Set([...(prev.sessionPostedIds || []), sessionStudySessionID]);
+                            return { sessionPostingIds: nextPosting, sessionPostedIds: nextPosted };
+                          });
+                        } catch (err) {
+                          this.setState((prev) => {
+                            const nextPosting = new Set(prev.sessionPostingIds || []);
+                            nextPosting.delete(sessionStudySessionID);
+                            return { sessionPostingIds: nextPosting };
+                          });
+                          this.props.serverReply?.(String(err?.message || "Failed to post event."));
+                        }
+                      }}
+                    >
+                      {sessionPostingIds.has(sessionStudySessionID)
+                        ? "Posting…"
+                        : sessionEntry?.studySessionPosted || sessionPostedIds.has(sessionStudySessionID)
+                          ? "Posted ✓"
+                          : "Post"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="nogaPlanner_homeIntervalsDeleteIconBtn"

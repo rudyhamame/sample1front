@@ -1528,6 +1528,51 @@ function HomeNoga(props) {
       window.removeEventListener("focus", syncTheme);
     };
   }, []);
+
+  const fetchProfileEvents = async () => {
+    const token = String(props.state?.token || "").trim();
+    const myId = String(props.state?.my_id || "").trim();
+    if (!token || !myId) return;
+    setIsFetchingEvents(true);
+    try {
+      const response = await fetch(apiUrl(`/api/user/profileEvents/${myId}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && Array.isArray(payload?.events)) {
+        setLocalProfileEvents(payload.events);
+      }
+    } catch (_err) {
+      // ignore — fall back to props
+    } finally {
+      setIsFetchingEvents(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.state?.my_id]);
+
+  useEffect(() => {
+    if (localProfileEvents === null) return;
+    const incoming = Array.isArray(props.state?.profile_events)
+      ? props.state.profile_events
+      : [];
+    if (incoming.length === 0) return;
+    setLocalProfileEvents((current) => {
+      const currentIds = new Set(
+        (Array.isArray(current) ? current : []).map((e) => String(e?._id || "")),
+      );
+      const newOnes = incoming.filter(
+        (e) => e?._id && !currentIds.has(String(e._id)),
+      );
+      if (newOnes.length === 0) return current;
+      return [...(Array.isArray(current) ? current : []), ...newOnes];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.state?.profile_events]);
+
   // Set background style for everyone except naghamtrkmani
   const baseUrl =
     typeof import.meta !== "undefined" &&
@@ -1590,6 +1635,9 @@ function HomeNoga(props) {
   const [galleryTab, setGalleryTab] = useState("images");
   // Mobile portrait tab: 'gallery' | 'events'
   const [friendsEventsTab, setFriendsEventsTab] = useState("gallery");
+  const [localProfileEvents, setLocalProfileEvents] = useState(null);
+  const [isFetchingEvents, setIsFetchingEvents] = useState(false);
+  const [deletingEventIds, setDeletingEventIds] = useState(new Set());
   // Mobile portrait chat toggle
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [galleryImageVisibilityTab, setGalleryImageVisibilityTab] =
@@ -8282,29 +8330,182 @@ function HomeNoga(props) {
                       </>
                     ) : (
                       <>
-                        <div className="Home_Noga_activeTab_title">
-                          <div className="Home_Noga_activeTab_titleTitleRow">
-                            <h3>Events</h3>
-                            <span className="Home_Noga_socialFriendsCount">
-                              0
-                            </span>
-                          </div>
-                          <div className="Home_Noga_activeTab_titleActions">
-                            <button
-                              type="button"
-                              className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                              onClick={() =>
-                                setIsAboutOpen((currentValue) => !currentValue)
-                              }
-                              aria-pressed={isAboutOpen}
-                            >
-                              Profile
-                            </button>
-                          </div>
-                        </div>
-                        <div className="Home_Noga_friendsEventsEmpty">
-                          There are no events to show.
-                        </div>
+                        {(() => {
+                          const profileEvents = Array.isArray(localProfileEvents)
+                            ? localProfileEvents
+                            : Array.isArray(props.state?.profile_events)
+                              ? props.state.profile_events
+                              : [];
+                          return (
+                            <>
+                              <div className="Home_Noga_activeTab_title">
+                                <div className="Home_Noga_activeTab_titleTitleRow">
+                                  <h3>Events</h3>
+                                  <span className="Home_Noga_socialFriendsCount">
+                                    {profileEvents.length}
+                                  </span>
+                                </div>
+                                <div className="Home_Noga_activeTab_titleActions">
+                                  <button
+                                    type="button"
+                                    className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                                    disabled={isFetchingEvents}
+                                    onClick={fetchProfileEvents}
+                                  >
+                                    {isFetchingEvents ? "…" : "↻"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                                    onClick={() =>
+                                      setIsAboutOpen((currentValue) => !currentValue)
+                                    }
+                                    aria-pressed={isAboutOpen}
+                                  >
+                                    Profile
+                                  </button>
+                                </div>
+                              </div>
+                              {profileEvents.length > 0 ? (
+                                <ul className="Home_Noga_eventsList">
+                                  {[...profileEvents].reverse().map((event, eventIndex) => {
+                                    const eventTitle = String(
+                                      event?.eventTitle || "",
+                                    ).trim();
+                                    const eventText = String(
+                                      event?.eventBody?.eventText || "",
+                                    ).trim();
+                                    const eventDate = event?.eventFooter?.eventDatePosted
+                                      ? new Date(event.eventFooter.eventDatePosted).toLocaleString(
+                                          undefined,
+                                          {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          },
+                                        )
+                                      : "";
+                                    const firstName = String(
+                                      event?.eventFooter?.eventUserName?.firstName || "",
+                                    ).trim();
+                                    const lastName = String(
+                                      event?.eventFooter?.eventUserName?.lastName || "",
+                                    ).trim();
+                                    const authorName = [firstName, lastName]
+                                      .filter(Boolean)
+                                      .join(" ");
+                                    const imageUrls = Array.isArray(
+                                      event?.eventBody?.eventImagesURLs,
+                                    )
+                                      ? event.eventBody.eventImagesURLs
+                                      : [];
+                                    return (
+                                      <li
+                                        key={event?._id || eventIndex}
+                                        className={`Home_Noga_eventItem${event?.eventClass ? ` Home_Noga_eventItem--${event.eventClass}` : ""}`}
+                                      >
+                                        <div className="Home_Noga_eventItemTopRow">
+                                          {eventTitle ? (
+                                            <p className="Home_Noga_eventItemTitle">
+                                              {eventTitle}
+                                            </p>
+                                          ) : null}
+                                          <button
+                                            type="button"
+                                            className="Home_Noga_eventItemDeleteBtn"
+                                            aria-label="Delete event"
+                                            disabled={deletingEventIds.has(String(event?._id || ""))}
+                                            onClick={async () => {
+                                              const eventId = String(event?._id || "").trim();
+                                              if (!eventId) return;
+                                              setDeletingEventIds((prev) => new Set([...prev, eventId]));
+                                              try {
+                                                const myId = String(props.state?.my_id || "").trim();
+                                                const token = String(props.state?.token || "").trim();
+                                                const response = await fetch(
+                                                  apiUrl(`/api/user/profileEvents/${myId}/${eventId}`),
+                                                  { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+                                                );
+                                                if (response.ok) {
+                                                  setLocalProfileEvents((prev) =>
+                                                    Array.isArray(prev)
+                                                      ? prev.filter((e) => String(e?._id || "") !== eventId)
+                                                      : prev,
+                                                  );
+                                                  if (typeof props.removeProfileEvent === "function") {
+                                                    props.removeProfileEvent(eventId);
+                                                  }
+                                                }
+                                              } finally {
+                                                setDeletingEventIds((prev) => {
+                                                  const next = new Set(prev);
+                                                  next.delete(String(event?._id || ""));
+                                                  return next;
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            {deletingEventIds.has(String(event?._id || "")) ? "…" : "✕"}
+                                          </button>
+                                        </div>
+                                        <div className="Home_Noga_eventItemHeader">
+                                          {authorName ? (
+                                            <span className="Home_Noga_eventItemAuthor">
+                                              {authorName}
+                                            </span>
+                                          ) : null}
+                                          {eventDate ? (
+                                            <span className="Home_Noga_eventItemDate">
+                                              {eventDate}
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        {eventText ? (
+                                          <div className="Home_Noga_eventItemText">
+                                            {eventText.split("\n").map((line, lineIndex) => {
+                                              const bulletMatch = line.match(/^-\s+([^:]+):\s*(.*)/);
+                                              if (bulletMatch) {
+                                                return (
+                                                  <div key={lineIndex} className="Home_Noga_eventItemBullet">
+                                                    <span className="Home_Noga_eventItemKey">{bulletMatch[1]}:</span>
+                                                    <span className="Home_Noga_eventItemValue">{bulletMatch[2]}</span>
+                                                  </div>
+                                                );
+                                              }
+                                              return (
+                                                <p key={lineIndex} className="Home_Noga_eventItemLine">
+                                                  {line}
+                                                </p>
+                                              );
+                                            })}
+                                          </div>
+                                        ) : null}
+                                        {imageUrls.length > 0 ? (
+                                          <div className="Home_Noga_eventItemImages">
+                                            {imageUrls.map((url, imgIndex) => (
+                                              <img
+                                                key={url + imgIndex}
+                                                src={url}
+                                                alt=""
+                                                className="Home_Noga_eventItemImage"
+                                              />
+                                            ))}
+                                          </div>
+                                        ) : null}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              ) : (
+                                <div className="Home_Noga_friendsEventsEmpty">
+                                  There are no events to show.
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </>
                     )}
                   </div>

@@ -2893,6 +2893,134 @@ resize: vertical;
   min-height: 72px;
 }
 
+.Home_Noga_eventsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.Home_Noga_eventItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(205, 107, 106, 0.18);
+}
+
+.Home_Noga_eventItem--studySession {
+  border-left: 3px solid rgba(94, 73, 73, 0.55);
+}
+
+.Home_Noga_eventItemTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.Home_Noga_eventItemTitle {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #5e4949;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.Home_Noga_eventItemDeleteBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(180, 60, 60, 0.5);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.Home_Noga_eventItemDeleteBtn:hover:not(:disabled) {
+  background: rgba(200, 60, 60, 0.12);
+  color: rgba(180, 40, 40, 0.9);
+}
+
+.Home_Noga_eventItemDeleteBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.Home_Noga_eventItemHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.Home_Noga_eventItemAuthor {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #5e4949;
+}
+
+.Home_Noga_eventItemDate {
+  font-size: 0.68rem;
+  color: rgba(94, 73, 73, 0.6);
+  white-space: nowrap;
+}
+
+.Home_Noga_eventItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  color: rgba(40, 20, 20, 0.85);
+  line-height: 1.5;
+}
+
+.Home_Noga_eventItemLine {
+  margin: 0;
+}
+
+.Home_Noga_eventItemBullet {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.Home_Noga_eventItemKey {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #5e4949;
+  font-size: 0.75rem;
+}
+
+.Home_Noga_eventItemValue {
+  color: rgba(40, 20, 20, 0.85);
+}
+
+.Home_Noga_eventItemImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.Home_Noga_eventItemImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 .Home_Noga_friendsEventsEmpty {
   display: flex;
   align-items: center;

@@ -391,5 +391,6 @@ export const normalizeUserUpdatePayload = (payload) => {
     ),
     homeDrawing: normalizeHomeDrawingPayload(media?.homeDrawing),
     imageGallery: toArray(media?.imageGallery),
+    profileEvents: toArray(profile?.events),
   };
 };

@@ -313,6 +313,7 @@ class App extends React.Component {
         secs: 0,
       },
       login_record: [],
+      profile_events: [],
       profile: false,
       friendAddedSuccessfully: null,
       posts_updated: false,
@@ -3010,6 +3011,7 @@ class App extends React.Component {
           posts: normalizedPayload.posts,
           chat: normalizedPayload.chat,
           login_record: [],
+          profile_events: normalizedPayload.profileEvents || [],
           isOnline: normalizedPayload.isOnline,
           profilePicture: nextProfilePicture,
           profilePictureViewport: nextProfilePictureViewport,
@@ -3588,6 +3590,22 @@ class App extends React.Component {
   };
 
   //........Server answer..........
+  addProfileEvent = (event) => {
+    if (!event || typeof event !== "object") return;
+    this.safeSetState((prev) => ({
+      profile_events: [event, ...Array.isArray(prev.profile_events) ? prev.profile_events : []],
+    }));
+  };
+
+  removeProfileEvent = (eventId) => {
+    const id = String(eventId || "").trim();
+    if (!id) return;
+    this.safeSetState((prev) => ({
+      profile_events: Array.isArray(prev.profile_events)
+        ? prev.profile_events.filter((e) => String(e?._id || "") !== id)
+        : [],
+    }));
+  };
   serverReply = (answer) => {
     const nextAnswer = String(answer || "").trim() || "NO NEW SERVER REPLY";
     const isActiveReply = nextAnswer !== "NO NEW SERVER REPLY";
@@ -4078,6 +4096,7 @@ class App extends React.Component {
                 setAppFooterHidden={this.setAppFooterHidden}
                 setUserAcademicInfo={this.setUserAcademicInfo}
                 setUserMediaInfo={this.setUserMediaInfo}
+                removeProfileEvent={this.removeProfileEvent}
                 homeBasePath="/phenomed/home"
               />,
             )}
@@ -4108,6 +4127,7 @@ class App extends React.Component {
                 setAppFooterHidden={this.setAppFooterHidden}
                 setUserAcademicInfo={this.setUserAcademicInfo}
                 setUserMediaInfo={this.setUserMediaInfo}
+                removeProfileEvent={this.removeProfileEvent}
                 homeBasePath="/phenomed/home"
               />,
             )}
@@ -4124,6 +4144,7 @@ class App extends React.Component {
                 show_profile={this.show_profile}
                 memory={this.memory}
                 serverReply={this.serverReply}
+                addProfileEvent={this.addProfileEvent}
               />,
             )}
           </Route>
@@ -4139,6 +4160,7 @@ class App extends React.Component {
                 show_profile={this.show_profile}
                 memory={this.memory}
                 serverReply={this.serverReply}
+                addProfileEvent={this.addProfileEvent}
               />,
             )}
           </Route>
@@ -4154,6 +4176,7 @@ class App extends React.Component {
                 show_profile={this.show_profile}
                 memory={this.memory}
                 serverReply={this.serverReply}
+                addProfileEvent={this.addProfileEvent}
               />,
             )}
           </Route>
@@ -4169,6 +4192,7 @@ class App extends React.Component {
                 show_profile={this.show_profile}
                 memory={this.memory}
                 serverReply={this.serverReply}
+                addProfileEvent={this.addProfileEvent}
               />,
             )}
           </Route>
