@@ -8557,13 +8557,23 @@ function HomeNoga(props) {
                                                       ? new Date(reply.eventReplyFooter.eventReplyDatePosted).toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })
                                                       : "";
                                                     const rText = String(reply?.eventReplyBody?.eventReplyText || "").trim();
+                                                    const rDirection = ARABIC_TEXT_PATTERN.test(rText)
+                                                      ? "rtl"
+                                                      : "ltr";
                                                     return (
                                                       <li key={reply?._id || rIdx} className="Home_Noga_eventReplyItem">
                                                         <div className="Home_Noga_eventReplyMeta">
                                                           {rAuthor && <span className="Home_Noga_eventReplyAuthor">{rAuthor}</span>}
                                                           {rDate && <span className="Home_Noga_eventReplyDate">{rDate}</span>}
                                                         </div>
-                                                        {rText && <p className="Home_Noga_eventReplyText">{rText}</p>}
+                                                        {rText ? (
+                                                          <p
+                                                            className={`Home_Noga_eventReplyText${rDirection === "rtl" ? " Home_Noga_eventReplyText--rtl" : ""}`}
+                                                            dir={rDirection}
+                                                          >
+                                                            {rText}
+                                                          </p>
+                                                        ) : null}
                                                       </li>
                                                     );
                                                   })}
