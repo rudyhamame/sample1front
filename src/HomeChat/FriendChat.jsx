@@ -3565,7 +3565,7 @@ const FriendChat = ({
                     }
                     onClick={() => handleCallButtonPress("audio")}
                   >
-                    <i className="fas fa-phone-alt"></i>
+                    <i className="fi fi-sr-phone" aria-hidden="true"></i>
                   </button>
                   <button
                     id="Chat_videoCallButton"
@@ -3580,7 +3580,7 @@ const FriendChat = ({
                     }
                     onClick={() => handleCallButtonPress("video")}
                   >
-                    <i className="fas fa-video"></i>
+                    <i className="fi fi-sr-video" aria-hidden="true"></i>
                   </button>
                   <button
                     id="Chat_moreActionsButton"
@@ -4200,7 +4200,7 @@ const FriendChat = ({
 	                          }
 	                        }}
 	                      >
-	                        <i className="fas fa-smile" aria-hidden="true"></i>
+	                        <i className="fi fi-sr-smile-beam" aria-hidden="true"></i>
 	                      </button>
 	                    </div>
 	                  </div>
@@ -4215,8 +4215,8 @@ const FriendChat = ({
 	                    disabled={isUploadingAttachments || isMessageMutationPending}
 	                  >
 	                    <i
-                        className={`fas ${
-                          isRecordingVoiceNote ? "fa-stop" : "fa-microphone"
+                        className={`fi ${
+                          isRecordingVoiceNote ? "fi-sr-stop" : "fi-sr-microphone"
                         }`}
                       ></i>
 	                  </button>
@@ -4230,7 +4230,7 @@ const FriendChat = ({
 	                    onClick={() => attachmentInputRef.current?.click()}
                       disabled={isRecordingVoiceNote}
 	                  >
-	                    <i className="fas fa-image" aria-hidden="true"></i>
+	                    <i className="fi fi-sr-picture" aria-hidden="true"></i>
 	                  </button>
 	                  <input
 	                    ref={attachmentInputRef}
@@ -4266,7 +4266,9 @@ const FriendChat = ({
 		                    disabled={isUploadingAttachments || isMessageMutationPending}
 		                  >
 		                    <i
-                              className={`fc ${editingMessageId ? "fas fa-check" : "far fa-paper-plane"}`}
+                              className={`fi ${
+                                editingMessageId ? "fi-sr-check" : "fi-sr-paper-plane"
+                              }`}
                             ></i>
 		                  </button>
 	                </div>

@@ -622,6 +622,8 @@ order: 1;
   align-self: stretch;
   position: relative;
   isolation: isolate;
+  padding-left: 40px;
+  padding-right: 40px;
 }
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_mainDrawingButton {
@@ -2430,8 +2432,6 @@ gap: 10px;
   z-index: var(--home-drawing-blocked-z);
   overflow: hidden;
   flex-grow: 1;
-  margin-left: 50px;
-  margin-right: 50px;
   box-shadow: 0 6px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
 
 }
@@ -2512,8 +2512,8 @@ border-color: rgba(110, 168, 180, 0.18);
   flex-wrap: nowrap;
   overflow: hidden;
   background-color: var(--home-main-wrapper-soft);
-  padding: 20px;
-  gap: 20px
+  padding: 15px;
+  gap: 15px
 }
 
 .Home_Noga_friendsEventsTabBar {
@@ -2621,6 +2621,7 @@ display: block;
   color: rgba(88, 45, 57, 0.92);
   border-right: 1px dashed rgba(205, 107, 106, 0.24);
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   background-color:#5e4949;
   border-radius: 25px;
@@ -3878,11 +3879,11 @@ width: auto;
   flex: 0 0 auto;
 }
 
-.Home_Noga_galleryGrid {
-display: grid;
+.Home_Noga_galleryGrid {  
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
-  overflow: visible;
+  overflow: scroll;
   overscroll-behavior: contain;
   padding-bottom: 8px;
 }
@@ -5147,6 +5148,92 @@ display: flex;
   border-left: 1px dashed rgba(205, 107, 106, 0.24);
   border-right: 1px dashed rgba(205, 107, 106, 0.24);
   box-shadow: 0 6px 28px 0 rgba(0, 0, 0, 0.16), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
+  background: linear-gradient(
+    180deg,
+    var(--home-main-wrapper-overlay-start, rgba(246, 222, 217, 0.84)) 0%,
+    var(--home-main-wrapper-overlay-end, rgba(255, 255, 255, 0.74)) 100%
+  );
+  color: var(--home-main-wrapper-text, var(--home-readable-ink));
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper {
+  background: linear-gradient(
+    180deg,
+    var(--home-dark-surface-2) 0%,
+    var(--home-dark-surface-1) 54%,
+    var(--home-dark-surface-0) 100%
+  );
+  border-left-color: rgba(110, 168, 180, 0.18);
+  border-right-color: rgba(110, 168, 180, 0.18);
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_title_container,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_inlineHeader {
+  background: rgba(14, 36, 44, 0.62);
+  border-bottom-color: rgba(110, 168, 180, 0.18);
+  backdrop-filter: blur(4px);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_title_text,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_title_localStatus,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_inlineHeaderLocalStatus {
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_messages {
+  background: rgba(9, 24, 31, 0.28);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #Chat_form,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_editingBanner {
+  background: rgba(12, 31, 39, 0.82);
+  border-color: rgba(110, 168, 180, 0.16);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_messageActionBarButton,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_messageActionBarClose,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_editingBannerCancel {
+  background: rgba(14, 39, 46, 0.92);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .sentMessagesLI {
+  background: linear-gradient(180deg, rgba(17, 46, 54, 0.92), rgba(12, 33, 40, 0.88));
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .receivedMessagesLI {
+  background: linear-gradient(180deg, rgba(14, 36, 44, 0.86), rgba(9, 24, 31, 0.82));
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .sentMessagesLI p,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .receivedMessagesLI p {
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_daySeparatorText {
+  background: rgba(14, 36, 44, 0.82);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #FriendChat_empty_state,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper #FriendChat_mediaEmpty_state {
+  background: rgba(14, 36, 44, 0.72);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: var(--home-readable-ink);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .sentMessagesLI .Chat_messageTimestamp,
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .receivedMessagesLI .Chat_messageTimestamp {
+  color: rgba(173, 217, 226, 0.62);
+  border-bottom-color: rgba(110, 168, 180, 0.14);
+}
+
+#Home_Noga_article.Home_Noga_themeDark #Home_Noga_rightColumn_wrapper .Chat_editingBannerCopy {
+  color: var(--home-readable-ink);
 }
 
 #Home_Noga_rightColumn_wrapper > * {
@@ -5167,7 +5254,8 @@ display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background-color: #5e4949;
+  background: transparent;
+  color: var(--home-main-wrapper-text, var(--home-readable-ink));
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_title_container {
@@ -5176,8 +5264,10 @@ display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px;
-  border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+  border-bottom: 1px solid rgba(205, 107, 106, 0.18);
   min-width: 0;
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(4px);
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_messageActionBar {
@@ -5186,8 +5276,8 @@ display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(124, 157, 165, 0.14);
-  background: rgba(252, 254, 254, 0.96);
+  border-bottom: 1px solid rgba(205, 107, 106, 0.18);
+  background: rgba(255, 246, 243, 0.94);
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_messageActionBarButton {
@@ -5310,7 +5400,9 @@ display: grid;
   min-width: 0;
   gap: 12px;
   padding: 10px;
-  border-bottom: 1px solid rgba(124, 157, 165, 0.14);
+  border-bottom: 1px solid rgba(205, 107, 106, 0.18);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(4px);
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_inlineHeader #Chat_backToListBtn {
@@ -5329,9 +5421,51 @@ display: flex;
   position: relative;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   justify-content: flex-end;
   min-width: 0;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_callActions :is(#Chat_audioCallButton, #Chat_videoCallButton, #Chat_moreActionsButton) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(214, 170, 27, 0.96);
+  box-shadow: none;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_callActions :is(#Chat_audioCallButton, #Chat_videoCallButton, #Chat_moreActionsButton) > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.05rem;
+  color: currentColor !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_callActions :is(#Chat_audioCallButton, #Chat_videoCallButton, #Chat_moreActionsButton):hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.03);
+  box-shadow: 0 10px 18px rgba(72, 66, 56, 0.08);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_callActions
+  :is(#Chat_audioCallButton, #Chat_videoCallButton, #Chat_moreActionsButton) {
+  background: rgba(9, 24, 31, 0.78);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(214, 170, 27, 0.96);
+  box-shadow: none;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_moreActionsMenu {
@@ -5379,8 +5513,9 @@ display: flex;
   padding: 10px;
   margin: 0;
   list-style: none;
-  box-shadow: 0 2px 12px rgba(224, 144, 128, 0.07);
-  border: 1px solid rgba(124, 157, 165, 0.14);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 2px 8px rgba(205, 107, 106, 0.06);
+  border: none;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_mediaPanel {
@@ -5901,21 +6036,39 @@ padding: 18px 16px;
 position: relative;
   z-index: 1;
   flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: stretch;
-  overflow: visible;
-  padding: 8px;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "banner banner banner banner banner"
+    "preview preview preview preview preview"
+    "text text text text text"
+    "emoji voice attach . send";
+  gap: 10px 8px;
+  align-items: end;
+  overflow: hidden;
+  padding: 12px;
   min-width: 0;
+  border: 1px solid rgba(137, 128, 110, 0.18);
+  border-top-right-radius: 20px;
+  border-top-left-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 253, 248, 0.96),
+    rgba(246, 241, 233, 0.94)
+  );
+  box-shadow: 0 12px 26px rgba(72, 66, 56, 0.08);
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_form > .Chat_editingBanner {
+  grid-column: 1 / -1;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_form > .Chat_attachmentPreviewRow {
+  grid-column: 1 / -1;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_formControls {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 8px;
-  min-width: 0;
+  display: contents;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_editingBanner {
@@ -5926,8 +6079,8 @@ position: relative;
   gap: 10px;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid rgba(124, 157, 165, 0.18);
-  background: rgba(252, 254, 254, 0.96);
+  border: 1px solid rgba(205, 107, 106, 0.18);
+  background: rgba(255, 246, 243, 0.96);
   min-width: 0;
 }
 
@@ -6180,7 +6333,8 @@ display: inline-flex;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input {
-flex: 1 1 auto;
+grid-area: text;
+  flex: 1 1 auto;
   min-width: 0;
   width: 100%;
   font-family:
@@ -6203,18 +6357,15 @@ flex: 1 1 auto;
   text-rendering: auto;
   -webkit-text-size-adjust: 100%;
   color: #184f58;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.98),
-    rgba(246, 250, 250, 0.96)
-  );
-  border: 1px solid rgba(124, 157, 165, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(137, 128, 110, 0.18);
   outline: none;
   resize: none;
   font-size: 0.74rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 -1px 0 rgba(225, 234, 236, 0.38);
+  min-height: 92px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  box-shadow: none;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_textarea_input::placeholder {
@@ -6222,57 +6373,114 @@ color: rgba(30, 82, 90, 0.54);
   font-weight: 500;
 }
 
+#Home_Noga_rightColumn_wrapper #Chat_emoji_button_mount {
+  grid-area: emoji;
+  display: inline-flex;
+  align-self: stretch;
+  min-width: 44px;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_emoji_button_wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+
+#Home_Noga_rightColumn_wrapper #Chat_emoji_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(214, 170, 27, 0.96);
+  box-shadow: none;
+}
+
+#Home_Noga_rightColumn_wrapper
+  #Chat_form
+  :is(#Chat_emoji_button, #Chat_voiceNote_button, #Chat_attachment_button, #Chat_submit_button)
+  > i,
+#Home_Noga_rightColumn_wrapper
+  #Chat_form
+  :is(#Chat_emoji_button, #Chat_voiceNote_button, #Chat_attachment_button, #Chat_submit_button)
+  > .fc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.05rem;
+  color: currentColor !important;
+  -webkit-text-fill-color: currentColor;
+}
+
 #Home_Noga_rightColumn_wrapper #Chat_submit_button {
+grid-area: send;
 display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
   flex: 0 0 44px;
   min-width: 44px;
-  border: 1px solid rgba(20, 105, 99, 0.18);
+  min-height: 44px;
+  border: 1px solid rgba(214, 170, 27, 0.24);
   padding: 0;
-  color: rgba(247, 251, 252, 0.96);
-  background: var(--noga-4);
+  color: #fffdf8;
+  background: linear-gradient(180deg, rgba(214, 170, 27, 0.98), rgba(184, 141, 16, 0.98));
   cursor: pointer;
-  border-radius: 0px;
+  border-radius: 14px;
+  box-shadow: 0 10px 18px rgba(184, 141, 16, 0.14);
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_attachment_button {
+grid-area: attach;
 display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
   flex: 0 0 44px;
   min-width: 44px;
+  min-height: 44px;
   padding: 0;
   cursor: pointer;
-  border-radius: 0px;
-  background: transparent;
-  color: #eb796e;
-  font-size: 1.5rem;
+  border: 1px solid rgba(137, 128, 110, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(214, 170, 27, 0.96);
+  font-size: 1.2rem;
+  box-shadow: none;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_voiceNote_button {
+grid-area: voice;
 display: inline-flex;
   align-items: center;
   justify-content: center;
   align-self: stretch;
   flex: 0 0 44px;
   min-width: 44px;
+  min-height: 44px;
   padding: 0;
-  color: #eb796e;
+  color: rgba(214, 170, 27, 0.96);
   cursor: pointer;
-  border-radius: 0px;
-  background: transparent;
-  font-size: 1.5rem;
+  border: 1px solid rgba(137, 128, 110, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 1.15rem;
+  box-shadow: none;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_submit_button:hover:not(:disabled),
 #Home_Noga_rightColumn_wrapper #Chat_voiceNote_button:hover:not(:disabled),
 #Home_Noga_rightColumn_wrapper #Chat_attachment_button:hover:not(:disabled),
+#Home_Noga_rightColumn_wrapper #Chat_emoji_button:hover:not(:disabled),
 #Home_Noga_rightColumn_wrapper .Chat_messageImageSaveButton:hover:not(:disabled) {
-transform: translateY(-1px);
-  filter: saturate(1.05);
+  transform: translateY(-1px);
+  filter: saturate(1.03);
+  box-shadow: 0 10px 18px rgba(72, 66, 56, 0.08);
 }
 
 #Home_Noga_article.Home_Noga_themeDark
@@ -6501,27 +6709,53 @@ background: linear-gradient(
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
   #Chat_textarea_input {
-color: #eef9fb;
-  background: transparent;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+grid-area: text;
+  color: #eef9fb;
+  background: rgba(9, 24, 31, 0.58);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: none;
 }
 
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
   #Chat_emoji_button {
-  color: #eb796e;
-  background: transparent;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+grid-area: emoji;
+  color: rgba(235, 121, 110, 0.94);
+  background: rgba(9, 24, 31, 0.78);
+  border-color: rgba(110, 168, 180, 0.18);
+  box-shadow: none;
 }
 
 #Home_Noga_article.Home_Noga_themeDark
   #Home_Noga_rightColumn_wrapper
   #Chat_textarea_input::placeholder {
 color: rgba(216, 232, 237, 0.5);
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_submit_button {
+grid-area: send;
+  background: linear-gradient(
+    180deg,
+    rgba(214, 170, 27, 0.9),
+    rgba(184, 141, 16, 0.96)
+  ) !important;
+  border-color: rgba(214, 170, 27, 0.26) !important;
+  color: rgba(255, 253, 248, 0.98) !important;
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_attachment_button,
+#Home_Noga_article.Home_Noga_themeDark
+  #Home_Noga_rightColumn_wrapper
+  #Chat_voiceNote_button {
+grid-area: unset;
+  background: rgba(9, 24, 31, 0.78);
+  border-color: rgba(110, 168, 180, 0.18);
+  color: rgba(235, 121, 110, 0.94);
+  box-shadow: none;
 }
 
 #Home_Noga_article.Home_Noga_themeDark
@@ -6541,18 +6775,6 @@ background: transparent !important;
   #Home_Noga_rightColumn_wrapper
   * {
 color: rgba(230, 242, 244, 0.92);
-}
-
-#Home_Noga_article.Home_Noga_themeDark
-  #Home_Noga_rightColumn_wrapper
-  #Chat_submit_button {
-background: linear-gradient(
-    180deg,
-    rgba(14, 36, 44, 0.96),
-    rgba(10, 28, 35, 0.94)
-  ) !important;
-  border-color: rgba(110, 168, 180, 0.28) !important;
-  color: rgba(230, 242, 244, 0.95) !important;
 }
 
 
@@ -8802,7 +9024,7 @@ width: 100%;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     0 10px 22px rgba(160, 62, 79, 0.2);
-  color: var(--home-readable-ink);
+  color: white;
   font-size: 0.62rem;
   font-weight: 700;
   font-family: inherit;
@@ -9133,6 +9355,72 @@ color: rgba(228, 243, 246, 0.9);
   background: var(--home-main-wrapper-soft);
 }
 
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_mainWrapperShell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.8;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 39%,
+      rgba(214, 170, 27, 0.08) 39%,
+      rgba(214, 170, 27, 0.08) 40.5%,
+      transparent 40.5%,
+      transparent 100%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 0,
+      transparent 64%,
+      rgba(137, 128, 110, 0.06) 64%,
+      rgba(137, 128, 110, 0.06) 65.5%,
+      transparent 65.5%,
+      transparent 100%
+    ),
+    radial-gradient(
+      circle at 16% 24%,
+      rgba(214, 170, 27, 0.09) 0,
+      rgba(214, 170, 27, 0.09) 3px,
+      transparent 3px
+    ),
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(137, 128, 110, 0.08) 0,
+      rgba(137, 128, 110, 0.08) 3px,
+      transparent 3px
+    ),
+    radial-gradient(
+      circle at 32% 72%,
+      rgba(214, 170, 27, 0.07) 0,
+      rgba(214, 170, 27, 0.07) 4px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 84% 78%,
+      rgba(137, 128, 110, 0.06) 0,
+      rgba(137, 128, 110, 0.06) 4px,
+      transparent 4px
+    );
+  background-size:
+    320px 320px,
+    260px 260px,
+    180px 180px,
+    220px 220px,
+    260px 260px,
+    320px 320px;
+  background-position:
+    0 0,
+    40px 30px,
+    0 0,
+    0 0,
+    0 0,
+    0 0;
+}
+
 #Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_bioWrapper {
   background: linear-gradient(180deg, var(--home-bio-start), var(--home-bio-end));
   border-bottom: 1px solid var(--home-min-card-border);
@@ -9297,10 +9585,6 @@ color: rgba(228, 243, 246, 0.9);
   color: var(--home-min-accent-strong);
 }
 
-#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEventsWrapper {
-  padding: 28px;
-  gap: 28px;
-}
 
 #Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGallery,
 #Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEvents {
@@ -9460,6 +9744,212 @@ color: rgba(228, 243, 246, 0.9);
   background: rgba(250, 247, 241, 0.86);
   border: 1px dashed rgba(137, 128, 110, 0.24);
   color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  ) {
+  position: relative;
+  isolation: isolate;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  )::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0.12) 16%,
+    rgba(255, 255, 255, 0) 38%
+  );
+  opacity: 0.45;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  ) > * {
+  position: relative;
+  z-index: 1;
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  ) {
+  position: relative;
+  isolation: isolate;
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  )::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.04) 18%,
+    rgba(255, 255, 255, 0) 40%
+  );
+  opacity: 0.24;
+}
+
+#Home_Noga_article.Home_Noga_themeDark
+  :is(
+    .Home_Noga_compactBioCard,
+    .Home_Noga_profileInfoColumn,
+    .Home_Noga_galleryItem,
+    .Home_Noga_galleryItemActions,
+    .Home_Noga_socialDirectorySearch,
+    .Home_Noga_socialRequestButton,
+    .Home_Noga_preStart_reportsCard,
+    .Home_Noga_preStart_reportCard,
+    .Home_Noga_preStart_toolCard,
+    .Home_Noga_graphicControlCard,
+    .Home_Noga_bioProfileWrapper,
+    .Home_Noga_friendsGallery,
+    .Home_Noga_friendsEvents,
+    .Home_Noga_socialFriendsCard,
+    .Home_Noga_galleryCard,
+    .Home_Noga_logRecordCard,
+    .Home_Noga_musicApiCard,
+    #Home_Noga_rightColumn_wrapper #Chat_form,
+    #Home_Noga_rightColumn_wrapper #Chat_messageActionBar,
+    #Home_Noga_rightColumn_wrapper .Chat_mediaPanelCard,
+    #Home_Noga_rightColumn_wrapper .Chat_messageImageCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteCard,
+    #Home_Noga_rightColumn_wrapper .Chat_voiceNoteDraftCard,
+    #Home_Noga_rightColumn_wrapper .Chat_attachmentPreviewCard
+  ) > * {
+  position: relative;
+  z-index: 1;
 }
 
 #Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectorySearch,

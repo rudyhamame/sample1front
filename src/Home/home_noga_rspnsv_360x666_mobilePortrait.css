@@ -119,8 +119,8 @@
     text-overflow: ellipsis;
   }
 
-  #Home_Noga_rightColumn_wrapper .Chat_formControls {
-    padding-bottom: 52px;
+  #Home_Noga_rightColumn_wrapper #Chat_form {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
   #App_globalVoiceCallDockLayer {
