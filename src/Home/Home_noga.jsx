@@ -1610,9 +1610,6 @@ function HomeNoga(props) {
   const homeNogaSplitDragRef = React.useRef(null);
   const profilePictureWrapperRef = React.useRef(null);
   const profilePictureImageRef = React.useRef(null);
-  const newMessageAudioRef = React.useRef(null);
-  const previousUnreadChatCountsRef = React.useRef({});
-  const hasHydratedUnreadCountsRef = React.useRef(false);
   const controlPanelCardRef = React.useRef(null);
   const academicInfoFormRef = React.useRef(null);
   const profilePictureGestureRef = React.useRef({
@@ -2397,61 +2394,6 @@ function HomeNoga(props) {
       return accumulator;
     }, {});
   }, [props.state?.chat, props.state?.chatLastReadAtByFriendId]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    if (!newMessageAudioRef.current) {
-      newMessageAudioRef.current = new Audio("/sounds/newmessage.mp3");
-      newMessageAudioRef.current.preload = "auto";
-    }
-
-    return () => {
-      if (newMessageAudioRef.current) {
-        newMessageAudioRef.current.pause();
-        newMessageAudioRef.current = null;
-      }
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const currentCounts = unreadChatCountsByFriendId || {};
-    const previousCounts = previousUnreadChatCountsRef.current || {};
-    const normalizedActiveChatFriendId = String(
-      props.state?.activeChatFriendId || "",
-    ).trim();
-
-    if (!hasHydratedUnreadCountsRef.current) {
-      previousUnreadChatCountsRef.current = currentCounts;
-      hasHydratedUnreadCountsRef.current = true;
-      return;
-    }
-
-    const hasNewUnreadMessage = Object.keys(currentCounts).some((friendId) => {
-      const currentValue = Number(currentCounts[friendId] || 0);
-      const previousValue = Number(previousCounts[friendId] || 0);
-
-      return (
-        currentValue > previousValue &&
-        String(friendId || "").trim() !== normalizedActiveChatFriendId
-      );
-    });
-
-    previousUnreadChatCountsRef.current = currentCounts;
-
-    if (!hasNewUnreadMessage || !newMessageAudioRef.current) {
-      return;
-    }
-
-    try {
-      newMessageAudioRef.current.currentTime = 0;
-      newMessageAudioRef.current.play().catch(() => null);
-    } catch {
-      // Ignore playback failures.
-    }
-  }, [props.state?.activeChatFriendId, unreadChatCountsByFriendId]);
 
   const friendRequestNotifications = React.useMemo(() => {
     const rawRequests = Array.isArray(props.state?.friend_requests)

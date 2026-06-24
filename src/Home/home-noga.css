@@ -2506,6 +2506,7 @@ border-color: rgba(110, 168, 180, 0.18);
   align-self: stretch;
   position: relative;
   flex-wrap: nowrap;
+  flex-grow: 1;
   overflow: hidden;
   background-color: var(--home-main-wrapper-soft);
   padding: 15px;

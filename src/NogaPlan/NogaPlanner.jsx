@@ -3373,6 +3373,27 @@ export default class NogaPlanner extends Component {
     return this.runPlannerPendingTask("Saving documents...", async () => {
       const userId = String(this.props?.state?.my_id || "").trim();
       const token = String(this.props?.state?.token || "").trim();
+      const plannerRoot = this.getResolvedPlannerRoot();
+      const programID = String(plannerRoot?.programID || "").trim();
+      const programName = String(plannerRoot?.programName || "").trim();
+      const normalizedProgramDocumentTypes = Array.from(
+        new Set(
+          (Array.isArray(plannerRoot?.programDocumentTypes)
+            ? plannerRoot.programDocumentTypes
+            : [])
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean),
+        ),
+      );
+      const normalizedProgramDocumentVolumeUnit = Array.from(
+        new Set(
+          (Array.isArray(plannerRoot?.programDocumentVolumeUnit)
+            ? plannerRoot.programDocumentVolumeUnit
+            : [])
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean),
+        ),
+      );
       if (!userId || !token) {
         throw new Error("Failed to save documents: login data is incomplete.");
       }
@@ -3385,7 +3406,13 @@ export default class NogaPlanner extends Component {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ programDocuments }),
+          body: JSON.stringify({
+            ...(programID ? { programID } : {}),
+            ...(programName ? { programName } : {}),
+            programDocuments,
+            programDocumentTypes: normalizedProgramDocumentTypes,
+            programDocumentVolumeUnit: normalizedProgramDocumentVolumeUnit,
+          }),
         },
       );
       const payload = await response.json().catch(() => ({}));
@@ -25215,32 +25242,72 @@ export default class NogaPlanner extends Component {
         groupEntry,
       ]),
     );
+    const programCoursesForStats = Array.isArray(plannerRoot?.programCourses)
+      ? plannerRoot.programCourses
+      : [];
+    const resolveProgramCourseSubIntervalId = (courseEntry = {}) => {
+      const courseInfo =
+        courseEntry?.courseInfo && typeof courseEntry.courseInfo === "object"
+          ? courseEntry.courseInfo
+          : courseEntry || {};
+      const rawCourseID = String(
+        courseInfo?.courseID || courseEntry?.courseID || courseEntry?.courseId || "",
+      ).trim();
+      const parsedCourseID = this.parsePlannerMaterialMetadataCourseId(rawCourseID);
+      return String(
+        courseEntry?.subIntervalId ||
+          courseEntry?.subIntervalID ||
+          courseEntry?.intervalId ||
+          courseEntry?.intervalID ||
+          parsedCourseID?.subIntervalId ||
+          "",
+      ).trim();
+    };
+    const programCoursesBySubIntervalId = programCoursesForStats.reduce(
+      (map, courseEntry) => {
+        const subIntervalId = resolveProgramCourseSubIntervalId(courseEntry);
+        if (!subIntervalId) {
+          return map;
+        }
+        const nextEntries = map.get(subIntervalId) || [];
+        nextEntries.push(courseEntry);
+        map.set(subIntervalId, nextEntries);
+        return map;
+      },
+      new Map(),
+    );
     const intervalCourseStatsByRowIndex = new Map(
       intervalYearGroupRows.map((groupEntry) => {
         const groupedIntervalRows = homeIntervalsDisplayRows.slice(
           groupEntry.rowIndex,
           groupEntry.rowIndex + groupEntry.rowSpan,
         );
-        const groupedCourseEntries = groupedIntervalRows.flatMap((intervalEntry) =>
-          Array.isArray(intervalEntry?.intervalCourses)
-            ? intervalEntry.intervalCourses
-            : Array.isArray(intervalEntry?.subIntervalCourses)
-              ? intervalEntry.subIntervalCourses
-              : [],
-        );
+        const groupedCourseEntries = groupedIntervalRows.flatMap((intervalEntry) => {
+          const subIntervalId = String(
+            intervalEntry?.subIntervalId ||
+              intervalEntry?.subIntervalID ||
+              intervalEntry?.key ||
+              "",
+          ).trim();
+          return subIntervalId
+            ? programCoursesBySubIntervalId.get(subIntervalId) || []
+            : [];
+        });
         return [groupEntry.rowIndex, this.getPlannerCourseStats(groupedCourseEntries)];
       }),
     );
     const subIntervalCourseStatsByRowIndex = new Map(
       homeIntervalsDisplayRows.map((intervalEntry, rowIndex) => {
-        const storedCourseIDs = Array.isArray(intervalEntry?.subIntervalCourses)
-          ? intervalEntry.subIntervalCourses
+        const subIntervalId = String(
+          intervalEntry?.subIntervalId ||
+            intervalEntry?.subIntervalID ||
+            intervalEntry?.key ||
+            "",
+        ).trim();
+        const courseObjects = subIntervalId
+          ? programCoursesBySubIntervalId.get(subIntervalId) || []
           : [];
-        const courseObjects = Array.isArray(intervalEntry?.intervalCourses)
-          ? intervalEntry.intervalCourses
-          : storedCourseIDs;
-        const stats = this.getPlannerCourseStats(courseObjects);
-        return [rowIndex, { ...stats, total: storedCourseIDs.length }];
+        return [rowIndex, this.getPlannerCourseStats(courseObjects)];
       }),
     );
     const normalizeIdListForCompare = (values = []) =>

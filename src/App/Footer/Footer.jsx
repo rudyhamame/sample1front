@@ -36,6 +36,9 @@ const Footer = ({
     button: "",
     command: "",
   });
+  const newMessageAudioRef = React.useRef(null);
+  const previousUnreadChatCountsRef = React.useRef({});
+  const hasHydratedUnreadCountsRef = React.useRef(false);
   const currentPath =
     typeof window !== "undefined" ? window.location.pathname : "";
   const isHomeNogaFooterRoute =
@@ -88,6 +91,39 @@ const Footer = ({
   const browserStatus =
     typeof navigator === "undefined" || navigator.onLine ? "online" : "offline";
   const userStatus = appState.my_id ? "connected" : "offline";
+  const unreadChatCountsByFriendId = React.useMemo(() => {
+    const chatEntries = Array.isArray(appState?.chat) ? appState.chat : [];
+    const chatLastReadAtByFriendId =
+      appState?.chatLastReadAtByFriendId &&
+      typeof appState.chatLastReadAtByFriendId === "object"
+        ? appState.chatLastReadAtByFriendId
+        : {};
+
+    return chatEntries.reduce((accumulator, message) => {
+      const friendId = String(message?._id || "").trim();
+      const messageSender = String(message?.from || "").trim().toLowerCase();
+      const messageStatus = String(message?.status || "").trim().toLowerCase();
+      const messageTimestamp = new Date(message?.date || 0).getTime();
+      const lastReadAtTimestamp = new Date(
+        chatLastReadAtByFriendId[friendId] || 0,
+      ).getTime();
+
+      if (
+        !friendId ||
+        messageSender === "me" ||
+        message?.deleted ||
+        messageStatus === "read" ||
+        (Number.isFinite(messageTimestamp) &&
+          Number.isFinite(lastReadAtTimestamp) &&
+          messageTimestamp <= lastReadAtTimestamp)
+      ) {
+        return accumulator;
+      }
+
+      accumulator[friendId] = Number(accumulator[friendId] || 0) + 1;
+      return accumulator;
+    }, {});
+  }, [appState?.chat, appState?.chatLastReadAtByFriendId]);
   const appHealthRows = [
     {
       id: "browser",
@@ -201,6 +237,61 @@ const Footer = ({
       );
     };
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    if (!newMessageAudioRef.current) {
+      newMessageAudioRef.current = new Audio("/sounds/newmessage.mp3");
+      newMessageAudioRef.current.preload = "auto";
+    }
+
+    return () => {
+      if (newMessageAudioRef.current) {
+        newMessageAudioRef.current.pause();
+        newMessageAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const currentCounts = unreadChatCountsByFriendId || {};
+    const previousCounts = previousUnreadChatCountsRef.current || {};
+    const normalizedActiveChatFriendId = String(
+      appState?.activeChatFriendId || "",
+    ).trim();
+
+    if (!hasHydratedUnreadCountsRef.current) {
+      previousUnreadChatCountsRef.current = currentCounts;
+      hasHydratedUnreadCountsRef.current = true;
+      return;
+    }
+
+    const hasNewUnreadMessage = Object.keys(currentCounts).some((friendId) => {
+      const currentValue = Number(currentCounts[friendId] || 0);
+      const previousValue = Number(previousCounts[friendId] || 0);
+
+      return (
+        currentValue > previousValue &&
+        String(friendId || "").trim() !== normalizedActiveChatFriendId
+      );
+    });
+
+    previousUnreadChatCountsRef.current = currentCounts;
+
+    if (!hasNewUnreadMessage || !newMessageAudioRef.current) {
+      return;
+    }
+
+    try {
+      newMessageAudioRef.current.currentTime = 0;
+      newMessageAudioRef.current.play().catch(() => null);
+    } catch {
+      // Ignore playback failures.
+    }
+  }, [appState?.activeChatFriendId, unreadChatCountsByFriendId]);
 
   const submitVoicePrompt = () => {
     const command = String(voicePromptState?.command || "").trim();

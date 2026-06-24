@@ -688,29 +688,29 @@ body:not(.dark) #server_answer.server_answer--home-noga #server_answer_light {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
-body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container,
+body:not(.dark) #server_answer.server_answer--home-noga #SubApps_icon_container,
 body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button,
 body:not(.dark) #server_answer.server_answer--home-noga .server_answer_noga_playerButton {
   border-color: rgba(137, 128, 110, 0.18);
-  background: rgba(214, 170, 27, 0.14);
-  color: rgba(184, 141, 16, 0.98);
+  background: rgba(214, 170, 27, 0.2) !important;
+  color: rgba(184, 141, 16, 0.98) !important;
 }
 
-body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container > i {
-  color: rgba(184, 141, 16, 0.98);
+body:not(.dark) #server_answer.server_answer--home-noga #SubApps_icon_container > i {
+  color: rgba(184, 141, 16, 0.98) !important;
 }
 
-body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container:hover,
+body:not(.dark) #server_answer.server_answer--home-noga #SubApps_icon_container:hover,
 body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button:hover:not(:disabled),
 body:not(.dark) #server_answer.server_answer--home-noga .server_answer_noga_playerButton:hover:not(:disabled) {
   border-color: rgba(184, 141, 16, 0.24);
-  background: rgba(214, 170, 27, 0.2);
-  color: rgba(184, 141, 16, 0.98);
+  background: rgba(214, 170, 27, 0.24) !important;
+  color: rgba(184, 141, 16, 0.98) !important;
   box-shadow: none;
 }
 
-body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container:hover > i {
-  color: rgba(184, 141, 16, 0.96);
+body:not(.dark) #server_answer.server_answer--home-noga #SubApps_icon_container:hover > i {
+  color: rgba(184, 141, 16, 0.96) !important;
 }
 
 body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button:disabled,
