@@ -36,9 +36,12 @@ const Footer = ({
     button: "",
     command: "",
   });
+  const [chatNotification, setChatNotification] = React.useState(null);
   const newMessageAudioRef = React.useRef(null);
   const previousUnreadChatCountsRef = React.useRef({});
   const hasHydratedUnreadCountsRef = React.useRef(false);
+  const previousChatNotificationKeysRef = React.useRef(new Set());
+  const chatNotificationTimeoutRef = React.useRef(null);
   const currentPath =
     typeof window !== "undefined" ? window.location.pathname : "";
   const isHomeNogaFooterRoute =
@@ -121,6 +124,83 @@ const Footer = ({
       }
 
       accumulator[friendId] = Number(accumulator[friendId] || 0) + 1;
+      return accumulator;
+    }, {});
+  }, [appState?.chat, appState?.chatLastReadAtByFriendId]);
+  const resolveChatFriendDisplayName = React.useCallback(
+    (friendId) => {
+      const normalizedFriendId = String(friendId || "").trim();
+      if (!normalizedFriendId) {
+        return "Friend";
+      }
+
+      const friends = Array.isArray(appState?.friends) ? appState.friends : [];
+      const matchedFriend = friends.find((friend) => {
+        const candidateFriendId = String(
+          friend?.chatId || friend?.friendId || friend?._id || friend?.id || "",
+        ).trim();
+        return candidateFriendId === normalizedFriendId;
+      });
+
+      const displayName = String(
+        matchedFriend?.displayName ||
+          matchedFriend?.info?.firstname ||
+          matchedFriend?.info?.username ||
+          matchedFriend?.username ||
+          "",
+      ).trim();
+      return displayName || "Friend";
+    },
+    [appState?.friends],
+  );
+  const latestIncomingChatByFriendId = React.useMemo(() => {
+    const chatEntries = Array.isArray(appState?.chat) ? appState.chat : [];
+    const chatLastReadAtByFriendId =
+      appState?.chatLastReadAtByFriendId &&
+      typeof appState.chatLastReadAtByFriendId === "object"
+        ? appState.chatLastReadAtByFriendId
+        : {};
+
+    return chatEntries.reduce((accumulator, message, index) => {
+      const friendId = String(message?._id || "").trim();
+      const messageSender = String(message?.from || "").trim().toLowerCase();
+      const messageStatus = String(message?.status || "").trim().toLowerCase();
+      const messageTimestamp = new Date(message?.date || 0).getTime();
+      const lastReadAtTimestamp = new Date(
+        chatLastReadAtByFriendId[friendId] || 0,
+      ).getTime();
+      const messageText = String(message?.message || "").trim();
+      const messageKey = String(
+        message?.id || message?._id || message?.date || `${friendId}-${index}`,
+      ).trim();
+
+      if (
+        !friendId ||
+        messageSender === "me" ||
+        message?.deleted ||
+        messageStatus === "read" ||
+        (Number.isFinite(messageTimestamp) &&
+          Number.isFinite(lastReadAtTimestamp) &&
+          messageTimestamp <= lastReadAtTimestamp)
+      ) {
+        return accumulator;
+      }
+
+      const currentEntry = accumulator[friendId];
+      if (
+        !currentEntry ||
+        messageTimestamp > currentEntry.timestamp ||
+        (messageTimestamp === currentEntry.timestamp &&
+          messageKey > currentEntry.messageKey)
+      ) {
+        accumulator[friendId] = {
+          friendId,
+          messageKey,
+          timestamp: Number.isFinite(messageTimestamp) ? messageTimestamp : Date.now(),
+          messageText,
+        };
+      }
+
       return accumulator;
     }, {});
   }, [appState?.chat, appState?.chatLastReadAtByFriendId]);
@@ -293,6 +373,89 @@ const Footer = ({
     }
   }, [appState?.activeChatFriendId, unreadChatCountsByFriendId]);
 
+  React.useEffect(() => {
+    if (!isNogaPlanRoute) {
+      setChatNotification(null);
+      if (chatNotificationTimeoutRef.current) {
+        window.clearTimeout(chatNotificationTimeoutRef.current);
+        chatNotificationTimeoutRef.current = null;
+      }
+      return undefined;
+    }
+
+    const latestByFriendId = latestIncomingChatByFriendId || {};
+    const previousKeys = previousChatNotificationKeysRef.current || new Set();
+    const nextKeys = new Set(Object.values(latestByFriendId).map((entry) => entry.messageKey));
+    const normalizedActiveChatFriendId = String(
+      appState?.activeChatFriendId || "",
+    ).trim();
+
+    const newlyArrived = Object.values(latestByFriendId).find((entry) => {
+      if (!entry?.friendId || !entry?.messageKey) {
+        return false;
+      }
+      if (String(entry.friendId).trim() === normalizedActiveChatFriendId) {
+        return false;
+      }
+      return !previousKeys.has(entry.messageKey);
+    });
+
+    previousChatNotificationKeysRef.current = nextKeys;
+
+    if (!newlyArrived) {
+      return;
+    }
+
+    const friendName = resolveChatFriendDisplayName(newlyArrived.friendId);
+    const messageText = String(newlyArrived.messageText || "").trim() || "Voice note";
+    const nextNotification = {
+      friendId: newlyArrived.friendId,
+      friendName,
+      messageText,
+      messageKey: newlyArrived.messageKey,
+      timestamp: newlyArrived.timestamp,
+    };
+
+    setChatNotification(nextNotification);
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (window.Notification.permission === "granted") {
+        try {
+          new window.Notification(`${friendName} sent you a message`, {
+            body: messageText,
+          });
+        } catch {
+          // Ignore browser notification failures.
+        }
+      } else if (window.Notification.permission === "default") {
+        window.Notification.requestPermission().catch(() => null);
+      }
+    }
+
+    if (chatNotificationTimeoutRef.current) {
+      window.clearTimeout(chatNotificationTimeoutRef.current);
+    }
+
+    chatNotificationTimeoutRef.current = window.setTimeout(() => {
+      setChatNotification((currentValue) =>
+        currentValue?.messageKey === nextNotification.messageKey ? null : currentValue,
+      );
+      chatNotificationTimeoutRef.current = null;
+    }, 5000);
+
+    return () => {
+      if (chatNotificationTimeoutRef.current) {
+        window.clearTimeout(chatNotificationTimeoutRef.current);
+        chatNotificationTimeoutRef.current = null;
+      }
+    };
+  }, [
+    appState?.activeChatFriendId,
+    isNogaPlanRoute,
+    latestIncomingChatByFriendId,
+    resolveChatFriendDisplayName,
+  ]);
+
   const submitVoicePrompt = () => {
     const command = String(voicePromptState?.command || "").trim();
     if (!voicePromptState?.isOpen || !command) {
@@ -451,6 +614,25 @@ const Footer = ({
       id="server_answer"
       className={`${appState.has_active_server_reply ? "server_answer--active " : ""}${footerThemeClass}`.trim()}
     >
+      {isNogaPlanRoute && chatNotification ? (
+        <div className="Footer_chatNotification" role="status" aria-live="polite">
+          <button
+            type="button"
+            className="Footer_chatNotificationClose"
+            onClick={() => setChatNotification(null)}
+            aria-label="Dismiss message notification"
+            title="Dismiss"
+          >
+            <i className="fi fi-br-cross" aria-hidden="true"></i>
+          </button>
+          <span className="Footer_chatNotificationTitle">
+            {chatNotification.friendName} sent you a message
+          </span>
+          <span className="Footer_chatNotificationBody">
+            {chatNotification.messageText}
+          </span>
+        </div>
+      ) : null}
       <div id="server_answer_mainCluster">
         <SubApps
           subApps={footerSubApps}
