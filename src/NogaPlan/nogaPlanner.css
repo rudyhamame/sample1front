@@ -5416,6 +5416,15 @@ body.dark .nogaPlanner_homeIntervalsTableWrap,
   max-width: 220px;
 }
 
+.nogaPlanner_materialMetadataCourseNameTd {
+  cursor: pointer;
+  user-select: none;
+}
+
+.nogaPlanner_materialMetadataCourseNameTd:hover {
+  background: rgba(94, 73, 73, 0.06) !important;
+}
+
 .nogaPlanner_materialMetadataCourseNameCell {
   display: flex;
   align-items: center;

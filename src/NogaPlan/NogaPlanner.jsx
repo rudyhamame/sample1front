@@ -24070,6 +24070,7 @@ export default class NogaPlanner extends Component {
       }];
     })();
     const liveEditingPreviewCourseIDs = new Set(liveEditingPreviewRows.map((r) => r.courseID).filter(Boolean));
+    const materialMetadataCourseNameFilter = String(this.state?.materialMetadataCourseNameFilter || "").trim().toLowerCase();
     const visibleMaterialMetadataCourseInfoRows = [
       ...liveInputRows,
       ...stagedAiCourseInfoRows,
@@ -24079,7 +24080,10 @@ export default class NogaPlanner extends Component {
       ...materialMetadataCourseInfoRows.filter(
         (r) => !editedPreviewCourseIDs.has(r.courseID) && !liveEditingPreviewCourseIDs.has(r.courseID),
       ),
-    ];
+    ].filter((r) =>
+      !materialMetadataCourseNameFilter ||
+      String(r?.courseName || "").trim().toLowerCase() === materialMetadataCourseNameFilter,
+    );
     const materialMetadataComponentRows = this.getPlannerMaterialMetadataComponentRows(
       this.state?.plannerRoot || {},
     );
@@ -27172,7 +27176,20 @@ export default class NogaPlanner extends Component {
                                   </td>
                                 </>
                               ) : null}
-                              <td id={`nogaPlanner_materialMetadata_${courseRow.key}_courseName`}>
+                              <td
+                                id={`nogaPlanner_materialMetadata_${courseRow.key}_courseName`}
+                                className="nogaPlanner_materialMetadataCourseNameTd"
+                                title={materialMetadataCourseNameFilter === String(courseRow.courseName || "").trim().toLowerCase() ? "Click to clear filter" : "Click to filter by this course"}
+                                onClick={() => {
+                                  const clicked = String(courseRow.courseName || "").trim().toLowerCase();
+                                  this.setState((prev) => ({
+                                    materialMetadataCourseNameFilter:
+                                      String(prev?.materialMetadataCourseNameFilter || "").trim().toLowerCase() === clicked
+                                        ? ""
+                                        : clicked,
+                                  }));
+                                }}
+                              >
                                 <div className="nogaPlanner_materialMetadataCourseNameCell">
                                   <span>{this.renderPlannerLocalizedText(courseRow.courseName)}</span>
                                   {courseRow.isAiExtracted && courseRow.isStagedDraft ? (
