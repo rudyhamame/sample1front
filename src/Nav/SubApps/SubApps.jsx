@@ -701,50 +701,52 @@ const SubApps = (props) => {
         ></i>
       </div>
 
-      <section id="SubApps_content_container">
-        <ul
-          id="SubApps_dropMenu_container"
-          className={`fc${isOpen ? " is-open" : ""}`}
-          onDragOver={allowStartMenuDrop}
-          onDrop={(event) => dropStartMenuItem(event, "main")}
-        >
-          {mainStartItems.length === 0 ? (
-            <li id="SubApps_empty_state">No apps available</li>
-          ) : (
-            mainStartItems.map((itemId) => renderStartMenuItem(itemId, "main"))
-          )}
-          <li className="SubApps_menuItem SubApps_settingsItem">
-            <button
-              ref={settingsButtonRef}
-              type="button"
-              className="SubApps_row SubApps_row--button fr"
-              onClick={toggleSettings}
-              onDragOver={allowSettingsButtonDrop}
-              onDrop={(event) => dropStartMenuItem(event, "settings")}
-              aria-expanded={isSettingsOpen}
-            >
-              <i className="fas fa-cog"></i>
-              <span>Settings</span>
-              <i className="fas fa-chevron-right SubApps_rowCaret"></i>
-            </button>
-            {isSettingsOpen ? (
-              <div
-                className="SubApps_settingsInlineList fc"
-                onDragOver={allowStartMenuDrop}
+      {isOpen ? (
+        <section id="SubApps_content_container">
+          <ul
+            id="SubApps_dropMenu_container"
+            className="fc is-open"
+            onDragOver={allowStartMenuDrop}
+            onDrop={(event) => dropStartMenuItem(event, "main")}
+          >
+            {mainStartItems.length === 0 ? (
+              <li id="SubApps_empty_state">No apps available</li>
+            ) : (
+              mainStartItems.map((itemId) => renderStartMenuItem(itemId, "main"))
+            )}
+            <li className="SubApps_menuItem SubApps_settingsItem">
+              <button
+                ref={settingsButtonRef}
+                type="button"
+                className="SubApps_row SubApps_row--button fr"
+                onClick={toggleSettings}
+                onDragOver={allowSettingsButtonDrop}
                 onDrop={(event) => dropStartMenuItem(event, "settings")}
+                aria-expanded={isSettingsOpen}
               >
-                {settingsStartItems.length === 0 ? (
-                  <div id="SubApps_settingsEmptyState">Drop buttons here</div>
-                ) : (
-                  settingsStartItems.map((itemId) =>
-                    renderStartMenuItem(itemId, "settings"),
-                  )
-                )}
-              </div>
-            ) : null}
-          </li>
-        </ul>
-      </section>
+                <i className="fas fa-cog"></i>
+                <span>Settings</span>
+                <i className="fas fa-chevron-right SubApps_rowCaret"></i>
+              </button>
+              {isSettingsOpen ? (
+                <div
+                  className="SubApps_settingsInlineList fc"
+                  onDragOver={allowStartMenuDrop}
+                  onDrop={(event) => dropStartMenuItem(event, "settings")}
+                >
+                  {settingsStartItems.length === 0 ? (
+                    <div id="SubApps_settingsEmptyState">Drop buttons here</div>
+                  ) : (
+                    settingsStartItems.map((itemId) =>
+                      renderStartMenuItem(itemId, "settings"),
+                    )
+                  )}
+                </div>
+              ) : null}
+            </li>
+          </ul>
+        </section>
+      ) : null}
       {minimizedStartWindows.length ? (
         <div className="SubApps_minimizedWindows fr">
           {minimizedStartWindows.map(([windowId]) => (
