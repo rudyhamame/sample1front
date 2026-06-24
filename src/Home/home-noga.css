@@ -1539,6 +1539,12 @@ flex: 1 1 auto;
   letter-spacing: 0.01em;
   color: white;
   line-height: 1.15;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.22),
+    inset 0 1px 2px rgba(0, 0, 0, 0.14);
 }
 
 .Home_Noga_compactBioUsername {
@@ -1551,13 +1557,19 @@ border: 1px dashed rgba(124, 157, 165, 0.18);
 }
 
 .Home_Noga_compactBioText {
-margin: 0;
+  margin: 0;
   font-size: 0.76rem;
   line-height: 1.52;
   color: white;
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: left;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.22),
+    inset 0 1px 2px rgba(0, 0, 0, 0.14);
 }
 
 .Home_Noga_compactBioText--ltr {
@@ -1793,7 +1805,7 @@ flex: 1 1 auto;
 }
 
 .Home_Noga_aboutButton {
-border: 1px solid rgba(205, 107, 106, 0.3);
+  border: 1px solid rgba(205, 107, 106, 0.3);
   background: rgba(255, 255, 255, 0.62);
   color: rgba(120, 51, 62, 0.92);
   border-radius: 10px;
@@ -1811,9 +1823,9 @@ background: rgba(255, 255, 255, 0.82);
 }
 
 .Home_Noga_aboutToggle {
-border-color: rgba(205, 107, 106, 0.18);
+  border-color: rgba(205, 107, 106, 0.18);
   background: rgba(255, 255, 255, 0.36);
-  color: rgba(120, 51, 62, 0.76);
+  color: white;
   padding: 4px 10px;
   font-size: 0.66rem;
   font-weight: 600;
@@ -1833,7 +1845,7 @@ margin-top: 2px;
 }
 
 .Home_Noga_bioWallpaperControls {
-width: min(100%, 320px);
+  width: min(100%, 320px);
   margin-top: 8px;
   padding: 10px 12px;
   gap: 10px;
@@ -2420,9 +2432,8 @@ gap: 10px;
   flex-grow: 1;
   margin-left: 50px;
   margin-right: 50px;
-  box-shadow: 0 6px 28px 0 rgba(0, 0, 0, 0.16), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
-  border-left: 1px dashed rgba(0, 0, 0, 0.12);
-  border-right: 1px dashed rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
+
 }
 
 .Home_Noga_callDock {
@@ -2625,7 +2636,6 @@ display: block;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 6px;
   padding: 20px;
   box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
 }
@@ -2934,6 +2944,8 @@ resize: vertical;
   display: flex;
   gap: 4px;
   color: white;
+  padding: 5px;
+  justify-content: center;
 }
 
 .Home_Noga_eventsTab {
@@ -3306,12 +3318,7 @@ resize: vertical;
   padding: 4px;
   border: 1px solid rgba(205, 107, 106, 0.24);
   border-radius: 999px;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.88) 0%,
-      rgba(251, 236, 236, 0.92) 100%
-    );
+  background: #ffb80b;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 8px 18px rgba(154, 82, 94, 0.12);
@@ -3455,7 +3462,7 @@ margin: 0;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: rgba(120, 51, 62, 0.68);
+  color: whitesmoke;
   font-size: 0.62rem;
   line-height: 1.05;
   letter-spacing: 0.05em;
@@ -3499,7 +3506,7 @@ background:
       rgba(205, 107, 106, 0.32) 100%
     );
   border-color: rgba(181, 83, 92, 0.42);
-  color: rgba(106, 33, 46, 0.98);
+  color: whitesmoke;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     0 6px 14px rgba(154, 82, 94, 0.14);
@@ -3881,12 +3888,12 @@ display: grid;
 }
 
 .Home_Noga_galleryItem {
-gap: 10px;
+  gap: 10px;
   padding: 3px;
   min-width: 0;
   border-radius: 14px;
   border: 1px solid rgba(124, 157, 165, 0.16);
-  background: rgba(252, 253, 253, 0.88);
+  background: #ffb80b;
 }
 
 .Home_Noga_galleryThumbButton {
@@ -5138,7 +5145,8 @@ display: flex;
   border-radius: inherit;
   box-sizing: border-box;
   border-left: 1px dashed rgba(205, 107, 106, 0.24);
-  box-shadow: -4px 0 18px 0 rgba(0, 0, 0, 0.18), -1px 0 4px 0 rgba(0, 0, 0, 0.10);
+  border-right: 1px dashed rgba(205, 107, 106, 0.24);
+  box-shadow: 0 6px 28px 0 rgba(0, 0, 0, 0.16), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
 }
 
 #Home_Noga_rightColumn_wrapper > * {
@@ -9040,4 +9048,561 @@ color: rgba(228, 243, 246, 0.9);
     min-width: 0;
     width: 100%;
   }
+}
+
+/* Minimal light-theme refresh for Home_noga */
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) {
+  --home-page-bg-accent-a: rgba(214, 196, 148, 0.1);
+  --home-page-bg-accent-b: rgba(231, 222, 201, 0.12);
+  --home-page-bg-base-start: #f7f4ee;
+  --home-page-bg-base-mid: #f2eee7;
+  --home-page-bg-base-end: #ece7df;
+  --home-page-pattern-bg:
+    linear-gradient(
+      180deg,
+      rgba(255, 252, 246, 0.18) 0%,
+      rgba(248, 244, 236, 0.08) 100%
+    ),
+    linear-gradient(
+      120deg,
+      transparent 0,
+      transparent 42%,
+      rgba(214, 170, 27, 0.05) 42%,
+      rgba(214, 170, 27, 0.05) 44%,
+      transparent 44%,
+      transparent 100%
+    ),
+    linear-gradient(
+      60deg,
+      transparent 0,
+      transparent 58%,
+      rgba(137, 128, 110, 0.045) 58%,
+      rgba(137, 128, 110, 0.045) 60%,
+      transparent 60%,
+      transparent 100%
+    ),
+    radial-gradient(
+      circle at 18% 22%,
+      rgba(214, 170, 27, 0.07) 0,
+      rgba(214, 170, 27, 0.07) 2px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 76% 30%,
+      rgba(137, 128, 110, 0.06) 0,
+      rgba(137, 128, 110, 0.06) 2px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 34% 78%,
+      rgba(214, 170, 27, 0.05) 0,
+      rgba(214, 170, 27, 0.05) 3px,
+      transparent 3px
+    );
+  --home-main-wrapper-dominant: #645c4f;
+  --home-main-wrapper-soft: #f3efe8;
+  --home-main-wrapper-accent: #ddd4c3;
+  --home-main-wrapper-text: #2f342f;
+  --home-bio-start: rgba(248, 245, 239, 0.96);
+  --home-bio-end: rgba(242, 237, 228, 0.94);
+  --home-reports-toggle-bg-current: rgba(244, 239, 229, 0.96);
+  --home-reports-toggle-bg-hover-current: rgba(239, 233, 220, 0.98);
+  --home-intro-bg-start-base-current: rgba(248, 245, 238, 0.94);
+  --home-intro-bg-end-base-current: rgba(241, 236, 227, 0.92);
+  --home-intro-border-current: rgba(151, 141, 121, 0.16);
+  --home-intro-shadow-current: rgba(78, 71, 60, 0.08);
+  --home-main-wrapper-overlay-start: rgba(247, 244, 237, 0.7);
+  --home-main-wrapper-overlay-end: rgba(244, 241, 235, 0.6);
+  --home-reports-wrapper-border-current: rgba(151, 141, 121, 0.14);
+  --home-reports-wrapper-spot-current: rgba(255, 255, 255, 0.14);
+  --home-reports-wrapper-stripe-current: rgba(151, 141, 121, 0.06);
+  --home-reports-wrapper-start-current: rgba(247, 244, 237, 0.8);
+  --home-reports-wrapper-end-current: rgba(241, 236, 227, 0.72);
+  --home-reports-wrapper-shadow-current: 0 14px 30px rgba(78, 71, 60, 0.08);
+  --home-min-card-bg: rgba(255, 252, 248, 0.9);
+  --home-min-card-border: rgba(137, 128, 110, 0.16);
+  --home-min-card-shadow: 0 10px 24px rgba(72, 66, 56, 0.07);
+  --home-min-muted: rgba(74, 75, 67, 0.68);
+  --home-min-accent: #d6aa1b;
+  --home-min-accent-strong: #b88d10;
+  --home-min-accent-soft: rgba(214, 170, 27, 0.14);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_mainWrapperShell,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEventsWrapper {
+  background: var(--home-main-wrapper-soft);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_bioWrapper {
+  background: linear-gradient(180deg, var(--home-bio-start), var(--home-bio-end));
+  border-bottom: 1px solid var(--home-min-card-border);
+  padding: 28px 40px 18px;
+  gap: 24px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #Home_Noga_preStart_profileWrapper {
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 10px 24px rgba(72, 66, 56, 0.1);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_mainDrawingButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendChatIcon,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectorySearch,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryHiddenPasswordPrompt,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryItemActions .Home_Noga_editPicButton {
+  box-shadow: var(--home-min-card-shadow);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_mainDrawingButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendChatIcon {
+  background: rgba(255, 252, 248, 0.94);
+  border-color: var(--home-min-card-border);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #Home_Noga_preStart_personalInfoGrid,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioCard,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_profileInfoColumn,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGallery,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEvents,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsCard,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditRow,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileScheduleRow {
+  background: var(--home-min-card-bg);
+  border: 1px solid var(--home-min-card-border);
+  border-radius: 16px;
+  box-shadow: var(--home-min-card-shadow);
+  color: var(--home-main-wrapper-text);
+  text-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #Home_Noga_preStart_personalInfoGrid {
+  gap: 12px;
+  padding: 12px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioCard {
+  grid-template-columns: minmax(220px, 0.92fr) minmax(0, 1.08fr);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioIdentity,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioSummary {
+  padding: 20px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioSummary {
+  border-left: 1px solid var(--home-min-card-border);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioName,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioText {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--home-main-wrapper-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioName {
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioText {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioUsername,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioEyebrow,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_profileInfoColumnTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p strong,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditRow strong,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_title h3,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeader h3,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_chatColumnTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectoryStatus {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioUsername,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_compactBioEyebrow,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_profileInfoColumnTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p strong,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditRow strong,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectoryStatus {
+  color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsTitle {
+  font-size: 1.2rem;
+  color: var(--home-main-wrapper-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(214, 170, 27, 0.12);
+  border: 1px solid rgba(214, 170, 27, 0.18);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleTitleRow h3,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleTitleRow .Home_Noga_socialFriendsCount,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleTitleRow i {
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutToggle {
+  border-color: rgba(214, 170, 27, 0.18);
+  background: rgba(214, 170, 27, 0.12);
+  color: var(--home-min-accent-strong);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutButton:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutToggle:hover {
+  border-color: rgba(214, 170, 27, 0.24);
+  background: rgba(214, 170, 27, 0.18);
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutButton i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_activeTab_titleActions .Home_Noga_aboutToggle i {
+  color: currentColor;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeaderTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(214, 170, 27, 0.12);
+  border: 1px solid rgba(214, 170, 27, 0.18);
+  align-self: flex-start;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeaderTitleRow h3,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeaderTitleRow i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeaderTitleRow .Home_Noga_changePasswordSubmit {
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEventsWrapper {
+  padding: 28px;
+  gap: 28px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGallery,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEvents {
+  padding: 18px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGallery {
+  gap: 16px;
+  border-right: 0;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsHeaderWrapper,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsContentWrapper,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryHeader {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsContentWrapper,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel {
+  gap: 14px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsList {
+  padding: 0;
+  gap: 12px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItem,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyItem {
+  background: rgba(255, 252, 248, 0.92);
+  border: 1px solid var(--home-min-card-border);
+  color: var(--home-main-wrapper-text);
+  box-shadow: 0 6px 16px rgba(72, 66, 56, 0.05);
+  text-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemAuthor,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemDate,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemText,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemLine,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemKey,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemValue,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyAuthor,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyDate,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyText {
+  color: inherit;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyText {
+  color: var(--home-min-muted);
+  font-style: normal;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventItemHeader,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyMeta,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplySection {
+  border-color: rgba(137, 128, 110, 0.12);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryTabs,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityTabs,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsMiniNavRail {
+  background: rgba(244, 240, 233, 0.96);
+  border: 1px solid var(--home-min-card-border);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsMiniNavSelector {
+  background: var(--home-min-accent-soft);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryTabButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityTabButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsTab,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsMiniNavButton {
+  color: var(--home-min-muted);
+  font-weight: 500;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryTabButton:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityTabButton:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsTab:hover:not(.isActive),
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsMiniNavButton:hover {
+  background: rgba(214, 170, 27, 0.08);
+  border-color: rgba(214, 170, 27, 0.14);
+  color: var(--home-main-wrapper-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryTabButton.isActive,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityTabButton.isActive,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsTab.isActive {
+  background: var(--home-min-accent);
+  border-color: var(--home-min-accent-strong);
+  color: #fffdf8;
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsTabCount,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsCount {
+  background: var(--home-min-accent-soft);
+  color: var(--home-min-accent-strong);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventsTab.isActive .Home_Noga_eventsTabCount {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fffdf8;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_changePasswordSubmit {
+  border-color: rgba(214, 170, 27, 0.3);
+  background: var(--home-min-accent);
+  color: #fffdf8;
+  box-shadow: 0 10px 20px rgba(184, 141, 16, 0.16);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_changePasswordSubmit:hover {
+  border-color: rgba(184, 141, 16, 0.42);
+  background: var(--home-min-accent-strong);
+  color: #fffdf8;
+  box-shadow: 0 12px 22px rgba(184, 141, 16, 0.2);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_changePasswordSubmit i {
+  color: currentColor;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityButton {
+  background: rgba(248, 245, 239, 0.94);
+  border-color: var(--home-min-card-border);
+  color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityButton.isActive {
+  background: var(--home-min-accent-soft);
+  border-color: rgba(214, 170, 27, 0.26);
+  color: var(--home-min-accent-strong);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsEventsEmpty,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryEmptyState,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsGalleryEmpty {
+  background: rgba(250, 247, 241, 0.86);
+  border: 1px dashed rgba(137, 128, 110, 0.24);
+  color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectorySearch,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p input,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p textarea,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutPanel p select,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditField input,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditField textarea,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileEditField select,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileScheduleEditor select,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_eventReplyInput,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileScheduleAdd,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_aboutProfileScheduleRemove {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(137, 128, 110, 0.18);
+  box-shadow: none;
+  color: var(--home-main-wrapper-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialDirectorySearch i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_galleryVisibilityButton i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendsMiniNavButton i {
+  opacity: 0.72;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelHeader {
+  padding: 18px clamp(14px, 2vw, 20px) 8px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleRow {
+  background: rgba(244, 240, 233, 0.96);
+  border: 1px solid var(--home-min-card-border);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleRowSelector {
+  background: rgba(214, 170, 27, 0.14);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitle,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleButton,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleButton i {
+  color: var(--home-min-muted);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleButton.isActive {
+  background: var(--home-min-accent);
+  color: #fffdf8;
+  transform: none;
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleButton.isActive i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelTitleButton.isActive .Home_Noga_friendsPanelCount {
+  color: inherit;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsPanelCount {
+  background: rgba(214, 170, 27, 0.14);
+  border-color: rgba(214, 170, 27, 0.2);
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_friendsList {
+  padding: 16px 18px 18px;
+  gap: 10px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendItem {
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid var(--home-min-card-border);
+  background: rgba(255, 252, 248, 0.94);
+  color: var(--home-main-wrapper-text);
+  box-shadow: 0 6px 16px rgba(72, 66, 56, 0.05);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendItem--request {
+  background: rgba(255, 250, 244, 0.96);
+  box-shadow: 0 6px 16px rgba(72, 66, 56, 0.05);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendSummary {
+  padding: 12px 14px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendAvatar {
+  background: rgba(214, 170, 27, 0.16);
+  color: var(--home-min-accent-strong);
+  letter-spacing: 0.04em;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendAvatar--request {
+  background: rgba(214, 170, 27, 0.18);
+  color: var(--home-min-accent-strong);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendName {
+  color: var(--home-main-wrapper-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendUsername,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusLine,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--chatting,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--busy,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--studying,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--online,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--connected,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusText--unknown {
+  color: var(--home-min-muted);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendStatusDivider {
+  color: rgba(137, 128, 110, 0.42);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialFriendUnreadBadge {
+  background: var(--home-min-accent-soft);
+  border-color: rgba(214, 170, 27, 0.22);
+  box-shadow: none;
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialRequestButton {
+  border-color: rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--home-main-wrapper-text);
+  box-shadow: none;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialRequestButton--pending,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .Home_Noga_socialRequestButton--sent {
+  background: rgba(214, 170, 27, 0.12);
+  border-color: rgba(214, 170, 27, 0.18);
+  color: var(--home-min-accent-strong);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #Home_Noga_rightColumn_wrapper {
+  border-right: 1px solid rgba(137, 128, 110, 0.14);
+  border-left: 1px solid rgba(137, 128, 110, 0.14);
+  box-shadow: var(--home-min-card-shadow);
 }

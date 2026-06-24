@@ -168,9 +168,10 @@
     right: 0;
     height: 52px;
     padding: 0 24px;
-    background: rgba(255, 248, 245, 0.96);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(174, 101, 88, 0.15);
+    background: rgba(247, 243, 236, 0.96);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(137, 128, 110, 0.18);
+    box-shadow: 0 -8px 20px rgba(72, 66, 56, 0.08);
     z-index: 200;
   }
 
@@ -183,15 +184,16 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: rgba(120, 50, 35, 0.75);
+    color: rgba(74, 75, 67, 0.76);
     font-size: 1.05rem;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
   }
 
   .Home_Noga_mobileNavBtn:active {
-    background: rgba(160, 60, 40, 0.12);
-    color: rgba(140, 50, 30, 0.95);
+    background: rgba(214, 170, 27, 0.14);
+    color: rgba(184, 141, 16, 0.96);
+    box-shadow: 0 0 0 1px rgba(214, 170, 27, 0.12);
   }
 
   /* Icon-only visibility buttons */

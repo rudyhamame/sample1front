@@ -617,17 +617,24 @@ body.dark #server_answer_musicVolumeValue {
 }
 
 #server_answer.server_answer--home-noga {
-  --subapps-surface-start: rgba(255, 241, 238, 0.99);
-  --subapps-surface-end: rgba(243, 219, 218, 0.98);
-  --subapps-border: rgba(171, 92, 86, 0.28);
-  --subapps-row-text: rgba(86, 36, 41, 0.94);
-  --subapps-row-hover-bg: rgba(255, 247, 246, 0.98);
-  --subapps-row-hover-text: rgba(132, 54, 58, 0.98);
-  --subapps-icon-bg: rgba(214, 111, 106, 0.96);
-  --subapps-icon-fg: rgba(255, 246, 244, 0.98);
-  background-color: #ffb80b;
-  color: white;
-  box-shadow: 0 -4px 18px 0 rgba(0, 0, 0, 0.22), 0 -1px 4px 0 rgba(0, 0, 0, 0.12);
+  --subapps-surface-start: rgba(255, 252, 248, 0.98);
+  --subapps-surface-end: rgba(244, 239, 231, 0.96);
+  --subapps-border: rgba(137, 128, 110, 0.18);
+  --subapps-row-text: rgba(47, 52, 47, 0.92);
+  --subapps-row-hover-bg: rgba(250, 247, 241, 0.98);
+  --subapps-row-hover-text: rgba(47, 52, 47, 0.98);
+  --subapps-icon-bg: rgba(214, 170, 27, 0.96);
+  --subapps-icon-fg: rgba(255, 253, 248, 0.98);
+  background: linear-gradient(
+    180deg,
+    rgba(249, 246, 240, 0.98),
+    rgba(241, 236, 227, 0.96)
+  );
+  border-top-color: rgba(137, 128, 110, 0.18);
+  color: rgba(47, 52, 47, 0.84);
+  box-shadow:
+    0 -10px 24px rgba(72, 66, 56, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
   backdrop-filter: blur(12px);
 }
 
@@ -655,38 +662,123 @@ body.dark #server_answer.server_answer--home-noga {
 
 
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_message {
-  color: rgba(86, 36, 41, 0.94);
+  color: rgba(47, 52, 47, 0.9);
 }
 
 body:not(.dark)
   #server_answer.server_answer--home-noga
   #server_answer_message.server_answer_message--idle {
-  color: rgba(132, 54, 58, 0.76);
+  color: rgba(74, 75, 67, 0.68);
 }
 
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicPlayer,
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicLabel,
 body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicTrack {
-  color: rgba(86, 36, 41, 0.94);
+  color: rgba(47, 52, 47, 0.92);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_wrapper {
+  border-color: rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.46);
+  box-shadow: none;
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_light {
+  background: rgba(137, 128, 110, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container,
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button,
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_noga_playerButton {
+  border-color: rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.88);
+  color: rgba(47, 52, 47, 0.86);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container > i {
+  color: rgba(184, 141, 16, 0.96);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container:hover,
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button:hover:not(:disabled),
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_noga_playerButton:hover:not(:disabled) {
+  border-color: rgba(184, 141, 16, 0.24);
+  background: rgba(255, 250, 242, 0.96);
+  color: rgba(47, 52, 47, 0.96);
+  box-shadow: none;
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer #SubApps_icon_container:hover > i {
+  color: rgba(184, 141, 16, 0.96);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button:disabled,
+body:not(.dark) #server_answer.server_answer--home-noga .server_answer_locale_button.server_answer_locale_button--active {
+  border-color: rgba(214, 170, 27, 0.26);
+  background: rgba(214, 170, 27, 0.14);
+  color: rgba(184, 141, 16, 0.96);
 }
 
 body:not(.dark)
   #server_answer.server_answer--home-noga
   #server_answer_plannerCountdown {
-  border-color: rgba(176, 188, 198, 0.2);
-  background: rgba(250, 252, 253, 0.9);
+  border-color: rgba(137, 128, 110, 0.16);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: none;
 }
 
 body:not(.dark)
   #server_answer.server_answer--home-noga
   #server_answer_plannerCountdownLabel {
-  color: rgba(74, 98, 109, 0.62);
+  color: rgba(74, 75, 67, 0.64);
 }
 
 body:not(.dark)
   #server_answer.server_answer--home-noga
   #server_answer_plannerCountdownValue {
-  color: rgba(24, 49, 58, 0.88);
+  color: rgba(47, 52, 47, 0.88);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicPlayer {
+  border-color: rgba(137, 128, 110, 0.16);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: none;
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicLabel {
+  color: rgba(74, 75, 67, 0.64);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicVolume {
+  border-color: rgba(137, 128, 110, 0.16);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(47, 52, 47, 0.84);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicVolumeInput {
+  accent-color: rgba(214, 170, 27, 0.92);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_musicVolumeValue {
+  color: rgba(74, 75, 67, 0.76);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_voicePromptMeta {
+  color: rgba(74, 75, 67, 0.78);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_voicePromptInput {
+  border-color: rgba(137, 128, 110, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(47, 52, 47, 0.94);
+}
+
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_voicePromptSubmit,
+body:not(.dark) #server_answer.server_answer--home-noga #server_answer_voicePromptCancel {
+  border-color: rgba(214, 170, 27, 0.28);
+  background: rgba(214, 170, 27, 0.14);
+  color: rgba(184, 141, 16, 0.96);
 }
 
 body.dark #server_answer.server_answer--home-noga #server_answer_musicPlayer,
