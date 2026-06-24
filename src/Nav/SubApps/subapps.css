@@ -23,7 +23,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
   border-left: 1px solid var(--subapps-border);
   border-right: 1px solid var(--subapps-border);
   cursor: pointer;
@@ -116,8 +120,9 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 }
 
 #SubApps_article.SubApps_article--footer #SubApps_icon_container {
-  height: 100%;
+  height: auto;
   min-height: 100%;
+  min-height: 44px;
   align-self: stretch;
 }
 
