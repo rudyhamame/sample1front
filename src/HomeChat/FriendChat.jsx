@@ -3565,7 +3565,7 @@ const FriendChat = ({
                     }
                     onClick={() => handleCallButtonPress("audio")}
                   >
-                    <i className="fi fi-sr-phone" aria-hidden="true"></i>
+                    <i className="fi fi-br-phone-call" aria-hidden="true"></i>
                   </button>
                   <button
                     id="Chat_videoCallButton"
@@ -3580,7 +3580,7 @@ const FriendChat = ({
                     }
                     onClick={() => handleCallButtonPress("video")}
                   >
-                    <i className="fi fi-sr-video" aria-hidden="true"></i>
+                    <i className="fi fi-br-video-camera" aria-hidden="true"></i>
                   </button>
                   <button
                     id="Chat_moreActionsButton"
