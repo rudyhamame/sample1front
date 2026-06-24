@@ -1,4 +1,7 @@
 @import url('https://cdn-uicons.flaticon.com/4.0.0/uicons-solid-chubby/css/uicons-solid-chubby.css');
+@import url('https://cdn-uicons.flaticon.com/4.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css');
+@import url('https://cdn-uicons.flaticon.com/4.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css');
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 
 @keyframes Home_ropeAuroraDrift {
   0% {
@@ -41,7 +44,7 @@ background-position:
     rgba(255, 246, 238, 0.1) 100%
   );
   --home-main-wrapper-dominant: #e09080;
-  --home-main-wrapper-soft: #f6ded9;
+  --home-main-wrapper-soft: #ffb80b;
   --home-main-wrapper-accent: #eecbc2;
   --home-main-wrapper-text: var(--home-readable-ink);
   --home-bio-start: rgba(251, 233, 225, 0.96);
@@ -377,6 +380,10 @@ position: absolute;
     );
 }
 
+#Home_Noga_article * {
+  font-family: inherit;
+}
+
 .Home_Noga_bioWrapper {
 --home-profile-size: clamp(78px, 8vw, 108px);
   --home-bio-wallpaper-image: url("/img/schoolplanner-floral.avif");
@@ -392,12 +399,11 @@ position: absolute;
   min-width: 0;
   position: relative;
   background-color: var(--home-main-wrapper-soft);
-  border-bottom: 1px dashed rgba(174, 101, 88, 0.16);
+  border-bottom: 1px solid rgba(129, 101, 23, 0.18);
   position: relative;
   z-index: 2;
-  padding: 40px 60px 20px 60px;
+  padding: 20px 40px 10px 40px;
   gap:20px;
-  backdrop-filter: blur(12px);
 }
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_bioWrapper {
@@ -457,6 +463,10 @@ position: relative;
   justify-content: center;
   cursor: pointer;
   touch-action: none;
+  text-shadow: none;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
 }
 
 #Home_Noga_preStart_profilePic {
@@ -494,7 +504,7 @@ color: #888;
 font-size: clamp(0.8rem, 1.6cqi, 0.8rem);
   font-weight: 400;
   color: rgba(30, 82, 90, 0.58);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
 }
 
@@ -593,7 +603,7 @@ order: 1;
 }
 
 .Home_Noga_mainWrapperShell {
-order: 2;
+  order: 2;
   flex: 2 1 0;
   width: 100%;
   max-width: 100%;
@@ -996,7 +1006,6 @@ display: flex;
   );
   overflow-y: auto;
   overflow-x: hidden;
-  backdrop-filter: blur(10px) saturate(1.04);
 }
 
 #Home_Noga_article .Home_Noga_mainWrapperShell > * {
@@ -1043,7 +1052,7 @@ display: inline-flex;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.58rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -1108,7 +1117,7 @@ display: flex;
 --home-top-strip-height: clamp(90px, 9vw, 148px);
   --home-intro-separator-width: 20px;
   --home-left-column-min-width: clamp(400px, 42vw, 520px);
-  --home-right-column-min-width: clamp(200px, 18vw, 220px);
+  --home-right-column-min-width: clamp(260px, 22vw, 300px);
   --home-left-column-width: calc(100% - var(--home-right-column-min-width));
   --home-right-column-width: var(--home-right-column-min-width);
   --home-intro-border: var(
@@ -1408,7 +1417,7 @@ color: var(--home-dark-subtle-text);
 margin: 0;
   max-width: 100%;
   color: #0f5058;
-  font-family: "Raleway", sans-serif;
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: clamp(0.95rem, 10cqi, 2.7rem);
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -1458,14 +1467,16 @@ background: linear-gradient(
 }
 
 #Home_Noga_preStart_personalInfoGrid {
-display: grid;
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   width: 100%;
   box-shadow:
-    0 4px 18px 0 rgba(205, 107, 106, 0.1),
-    0 1.5px 6px 0 rgba(0, 0, 0, 0.06);
+    0 4px 18px 0 rgba(0, 0, 0, 0.22),
+    0 1px 4px 0 rgba(0, 0, 0, 0.12);
     border-radius: 20px;
+  background-color: #5e4949;
+  text-shadow: none;
 }
 
 #Home_Noga_preStart_personalInfoGrid.Home_Noga_preStart_personalInfoGrid--compact {
@@ -1482,9 +1493,10 @@ display: grid;
   gap: 0;
   padding: 0;
   border: 1px solid rgba(176, 111, 126, 0.24);
-  background: var(--home-bio-start, rgba(251, 233, 225, 0.61));
   overflow: hidden;
   border-radius: inherit;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55), 0 0px 2px rgba(0, 0, 0, 0.35);
 }
 
 .Home_Noga_compactBioCard--editing {
@@ -1521,11 +1533,11 @@ flex: 1 1 auto;
 }
 
 .Home_Noga_compactBioName {
-margin: 0;
+  margin: 0;
   font-size: 1.08rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.01em;
-  color: rgba(20, 61, 69, 0.96);
+  color: white;
   line-height: 1.15;
 }
 
@@ -1534,7 +1546,7 @@ margin: 0;
   font-size: 0.64rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(120, 59, 75, 0.68);
+  color: white;
 border: 1px dashed rgba(124, 157, 165, 0.18);
 }
 
@@ -1542,7 +1554,7 @@ border: 1px dashed rgba(124, 157, 165, 0.18);
 margin: 0;
   font-size: 0.76rem;
   line-height: 1.52;
-  color: rgba(71, 43, 52, 0.92);
+  color: white;
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: left;
@@ -1574,7 +1586,7 @@ margin: 0 0 4px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 800;
-  color: rgba(120, 59, 75, 0.68);
+  color: white;
 }
 
 .Home_Noga_compactBioHeadingRow {
@@ -1768,13 +1780,10 @@ flex: 1 1 auto;
   overflow-x: visible;
   white-space: normal;
   color: #6d3b2c;
-  font-family: "Jost", "Inter", "Nunito", Arial, sans-serif;
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-weight: 600;
   font-size: clamp(0.8rem, 1.6cqi, 1.2rem);
   letter-spacing: 0.025em;
-  text-shadow:
-    0 1.5px 8px rgba(205, 107, 106, 0.08),
-    0 0.5px 0px #fff;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1811,7 +1820,6 @@ border-color: rgba(205, 107, 106, 0.18);
   letter-spacing: 0.04em;
   text-transform: none;
   box-shadow: none;
-  backdrop-filter: blur(4px);
 }
 
 .Home_Noga_aboutToggle:hover {
@@ -1940,7 +1948,7 @@ color: rgba(230, 242, 244, 0.9);
 font-size: clamp(2rem, 1.6cqi, 3rem);
   font-weight: 600;
   color: inherit;
-  font-family: "Jost", sans-serif;
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
@@ -2398,25 +2406,23 @@ gap: 10px;
 }
 
 .Home_Noga_main_leftColumn_wrapper {
-width: 100%;
+  width: 100%;
   max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   min-width: var(--home-left-column-min-width);
   min-height: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 238, 236, 0.293) 1%,
-    rgba(240, 206, 205, 0.38) 50%,
-    rgba(210, 164, 180, 0.34) 100%
-  );
   border-radius: inherit;
   position: relative;
   z-index: var(--home-drawing-blocked-z);
   overflow: hidden;
-  backdrop-filter: blur(3px);
   flex-grow: 1;
+  margin-left: 50px;
+  margin-right: 50px;
+  box-shadow: 0 6px 28px 0 rgba(0, 0, 0, 0.16), 0 1px 6px 0 rgba(0, 0, 0, 0.14);
+  border-left: 1px dashed rgba(0, 0, 0, 0.12);
+  border-right: 1px dashed rgba(0, 0, 0, 0.12);
 }
 
 .Home_Noga_callDock {
@@ -2494,7 +2500,9 @@ border-color: rgba(110, 168, 180, 0.18);
   position: relative;
   flex-wrap: nowrap;
   overflow: hidden;
-  backdrop-filter: blur(3px);
+  background-color: var(--home-main-wrapper-soft);
+  padding: 20px;
+  gap: 20px
 }
 
 .Home_Noga_friendsEventsTabBar {
@@ -2523,12 +2531,10 @@ border-color: rgba(110, 168, 180, 0.18);
   flex: 1 1 70%;
   min-width: 0;
   min-height: 0;
-  gap: 10px;
-  padding: 14px;
-  background-color: var(--home-main-wrapper-soft);
   color: rgba(88, 45, 57, 0.92);
-  border-right:1px dashed rgba(240, 230, 229, 0.897);
-  backdrop-filter: blur(12px);
+  background-color: #5e4949;
+  border-radius: 25px;
+  box-shadow: inset 0 2px 8px 0 rgba(0, 0, 0, 0.28), inset 0 1px 2px 0 rgba(0, 0, 0, 0.18);
 }
 
 .Home_Noga_aboutPanel {
@@ -2598,17 +2604,41 @@ display: block;
 }
 
 .Home_Noga_friendsGallery {
-  width: min-content;
-  min-width: min-content;
-  max-width: 100%;
+  width: max-content;  
   gap: 10px;
   padding: 14px;
   color: rgba(88, 45, 57, 0.92);
   border-right: 1px dashed rgba(205, 107, 106, 0.24);
   display: flex;
   flex-direction: column;
-  background-color: var(--home-main-wrapper-soft);
-  flex: 1 1 30%;
+  background-color:#5e4949;
+  border-radius: 25px;
+  box-shadow: inset 0 2px 8px 0 rgba(0, 0, 0, 0.28), inset 0 1px 2px 0 rgba(0, 0, 0, 0.18);
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.Home_Noga_friendsGallery * {
+  font-family: inherit;
+}
+
+.Home_Noga_eventsHeaderWrapper {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 20px;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
+}
+
+.Home_Noga_eventsContentWrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+  background-color: transparent;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
 }
 
 .Home_Noga_activeTab_title {
@@ -2629,8 +2659,8 @@ display: inline-flex;
 }
 
 .Home_Noga_activeTab_title h3 {
-margin: 0;
-  color: rgba(120, 51, 62, 0.94);
+  margin: 0;
+  color: white;
   font-size: 0.82rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2903,9 +2933,7 @@ resize: vertical;
 .Home_Noga_eventsTabBar {
   display: flex;
   gap: 4px;
-  padding: 4px 0 8px;
-  border-bottom: 1px solid rgba(94, 73, 73, 0.1);
-  margin-bottom: 4px;
+  color: white;
 }
 
 .Home_Noga_eventsTab {
@@ -2918,20 +2946,20 @@ resize: vertical;
   background: transparent;
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgba(94, 73, 73, 0.6);
   cursor: pointer;
+  color: white;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .Home_Noga_eventsTab:hover:not(.isActive) {
   background: rgba(94, 73, 73, 0.07);
-  color: rgba(94, 73, 73, 0.85);
+  color: white;
 }
 
 .Home_Noga_eventsTab.isActive {
   background: rgba(94, 73, 73, 0.1);
   border-color: rgba(94, 73, 73, 0.25);
-  color: #5e4949;
+  color: white;
   font-weight: 700;
 }
 
@@ -2960,7 +2988,13 @@ resize: vertical;
   gap: 10px;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  background-color: rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 8px 0 rgba(0, 0, 0, 0.28), inset 0 1px 2px 0 rgba(0, 0, 0, 0.18);
 }
 
 .Home_Noga_eventItem {
@@ -2968,11 +3002,11 @@ resize: vertical;
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: rgba(210, 185, 180, 0.25);
-  border: 1px solid rgba(160, 110, 100, 0.2);
-  box-shadow:
-    inset 0 2px 4px rgba(100, 60, 50, 0.12),
-    inset 0 1px 2px rgba(100, 60, 50, 0.08);
+  box-shadow: 0 6px 22px 0 rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  background-color: rgba(0, 0, 0, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55), 0 0px 2px rgba(0, 0, 0, 0.35);
 }
 
 .Home_Noga_eventItem--studySession {
@@ -2995,11 +3029,15 @@ resize: vertical;
   gap: 6px;
 }
 
+.Home_Noga_eventItem {
+  color: white;
+}
+
 .Home_Noga_eventItemTitle {
   margin: 0 0 2px;
-  font-size: 0.85rem;
+  font-size: 0.70rem;
   font-weight: 700;
-  color: #5e4949;
+  color: white;
   line-height: 1.3;
   flex: 1;
 }
@@ -3014,7 +3052,7 @@ resize: vertical;
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: rgba(180, 60, 60, 0.5);
+  color: white;
   font-size: 0.7rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -3036,17 +3074,19 @@ resize: vertical;
   align-items: baseline;
   gap: 8px;
   justify-content: space-between;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .Home_Noga_eventItemAuthor {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #5e4949;
+  font-size: 0.80rem;
+  font-weight: 500;
+  color: white;
 }
 
 .Home_Noga_eventItemDate {
-  font-size: 0.68rem;
-  color: rgba(94, 73, 73, 0.6);
+  font-size: 0.60rem;
+  color: white;
   white-space: nowrap;
 }
 
@@ -3054,30 +3094,33 @@ resize: vertical;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 0.78rem;
-  color: rgba(40, 20, 20, 0.85);
+  font-size: 0.88rem;
+  color: white;
   line-height: 1.5;
 }
 
 .Home_Noga_eventItemLine {
   margin: 0;
+  color: white;
 }
 
 .Home_Noga_eventItemBullet {
   display: flex;
   align-items: baseline;
   gap: 5px;
+  justify-content: space-between;
 }
 
 .Home_Noga_eventItemKey {
   flex-shrink: 0;
-  font-weight: 700;
-  color: #5e4949;
-  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  font-size: 0.70rem;
 }
 
 .Home_Noga_eventItemValue {
-  color: rgba(40, 20, 20, 0.85);
+  color: white;
+  font-size: 0.75rem;
 }
 
 .Home_Noga_eventItemImages {
@@ -3098,9 +3141,10 @@ resize: vertical;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 4px;
-  border-top: 1px solid rgba(100, 60, 50, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .Home_Noga_eventRepliesList {
@@ -3118,31 +3162,36 @@ resize: vertical;
   gap: 2px;
   padding: 5px 8px;
   border-radius: 6px;
-  background: rgba(100, 60, 50, 0.06);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .Home_Noga_eventReplyMeta {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  justify-content: space-between;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .Home_Noga_eventReplyAuthor {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #5e4949;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
 }
 
 .Home_Noga_eventReplyDate {
   font-size: 0.65rem;
-  color: rgba(94, 73, 73, 0.55);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .Home_Noga_eventReplyText {
   margin: 0;
-  font-size: 0.75rem;
-  color: rgba(40, 20, 20, 0.82);
-  line-height: 1.45;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.5;
+  font-style: italic;
 }
 
 .Home_Noga_eventReplyBar {
@@ -3155,7 +3204,7 @@ resize: vertical;
   border: none;
   padding: 2px 0;
   font-size: 0.72rem;
-  color: rgba(94, 73, 73, 0.6);
+  color: #ede6d6;
   cursor: pointer;
   font-family: inherit;
   transition: color 0.15s;
@@ -3197,7 +3246,7 @@ resize: vertical;
   border-radius: 8px;
   border: none;
   background: rgba(94, 73, 73, 0.15);
-  color: #5e4949;
+  color: #ede6d6;
   font-size: 0.73rem;
   font-weight: 600;
   font-family: inherit;
@@ -3224,21 +3273,26 @@ resize: vertical;
   background: rgba(255, 255, 255, 0.42);
   color: rgba(120, 51, 62, 0.72);
   font-size: 0.72rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-align: center;
 }
 
 .Home_Noga_friendsGalleryHeader {
-display: flex;
+  display: flex;
   align-items: stretch;
   justify-content: flex-start;
   gap: 8px;
   flex-direction: column;
+  position: relative;
+  z-index: 2;
+  box-shadow:
+    0 4px 12px rgba(154, 82, 94, 0.12),
+    0 1px 3px rgba(154, 82, 94, 0.08);
 }
 
 .Home_Noga_friendsGalleryHeaderTitleRow {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
 }
 
@@ -3247,8 +3301,8 @@ display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
   padding: 4px;
   border: 1px solid rgba(205, 107, 106, 0.24);
   border-radius: 999px;
@@ -3273,7 +3327,7 @@ align-self: flex-start;
 }
 
 .Home_Noga_friendsGalleryHeaderControls {
-display: flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
@@ -3282,21 +3336,19 @@ display: flex;
 }
 
 .Home_Noga_galleryVisibilityTabs {
-display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 4px;
   width: 100%;
   flex: 1 1 auto;
   min-width: 0;
   padding: 4px;
-  border: 1px solid rgba(205, 107, 106, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.46);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.64),
-    0 6px 14px rgba(154, 82, 94, 0.08);
-  font-size: 0.58rem;
+    inset 0 2px 6px rgba(120, 50, 40, 0.16),
+    inset 0 1px 2px rgba(120, 50, 40, 0.1);
 }
 
 .Home_Noga_galleryHiddenPasswordPrompt {
@@ -3383,7 +3435,7 @@ display: inline-flex;
 margin: 0;
   flex: 1 1 auto;
   min-width: 0;
-  color: rgba(120, 51, 62, 0.94);
+  color: white;
   font-size: 0.82rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -3454,7 +3506,7 @@ background:
 }
 
 .Home_Noga_galleryVisibilityTabButton {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 100%;
@@ -3463,8 +3515,8 @@ display: inline-flex;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: rgba(120, 51, 62, 0.72);
-  font-size: 0.56rem;
+  color: white;
+  font-size: 0.70rem;
   line-height: 1.05;
   letter-spacing: 0.04em;
   box-shadow: none;
@@ -3483,20 +3535,15 @@ background: rgba(205, 107, 106, 0.1);
 }
 
 .Home_Noga_galleryVisibilityTabButton:focus-visible {
-background: rgba(205, 107, 106, 0.1);
+  background: rgba(205, 107, 106, 0.1);
   border-color: rgba(205, 107, 106, 0.16);
   color: rgba(120, 51, 62, 0.94);
 }
 
 .Home_Noga_galleryVisibilityTabButton.isActive {
-background:
-    linear-gradient(
-      180deg,
-      rgba(205, 107, 106, 0.18) 0%,
-      rgba(205, 107, 106, 0.28) 100%
-    );
+background: #ffb80b;
   border-color: rgba(181, 83, 92, 0.36);
-  color: rgba(106, 33, 46, 0.98);
+  color: white;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 4px 10px rgba(154, 82, 94, 0.12);
@@ -3513,7 +3560,7 @@ display: flex;
   background: rgba(255, 255, 255, 0.42);
   color: rgba(120, 51, 62, 0.72);
   font-size: 0.72rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-align: center;
 }
 
@@ -4017,7 +4064,7 @@ display: flex;
   background: rgba(255, 255, 255, 0.42);
   color: rgba(120, 51, 62, 0.72);
   font-size: 0.72rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-align: center;
 }
 
@@ -4037,7 +4084,6 @@ width: 100%;
   overflow-y: hidden;
   position: relative;
   z-index: var(--home-drawing-blocked-z);
-  backdrop-filter: blur(10px) saturate(1.04);
 }
 
 #Home_Noga_navWrap .Nav_actionButton {
@@ -4150,7 +4196,7 @@ padding: 3px 12px;
   background: var(--noga-6);
   color: #fff;
   font-size: 0.9rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -4318,7 +4364,7 @@ display: inline-flex;
   background: rgba(243, 250, 249, 0.56);
   color: rgba(14, 94, 90, 0.92);
   font-size: 0.58rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4383,11 +4429,11 @@ border-color: rgba(34, 207, 187, 0.24);
   padding: clamp(3px, 0.4vw, 4px);
   min-width: max-content;
   flex: 1 1 auto;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  background: #5e4949;
   border-radius: 999px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 8px 18px rgba(97, 49, 39, 0.1);
+    inset 0 2px 8px 0 rgba(0, 0, 0, 0.28),
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.18);
   overflow: visible;
   border: 0;
   box-sizing: border-box;
@@ -4448,15 +4494,21 @@ display: flex;
   font-size: clamp(1vw, 1.2vw, 2vw);
 }
 
-.Home_Noga_friendsPanelTitleButton i{
-  color: var(--noga-6);
+.Home_Noga_friendsPanelTitleButton i {
+  color: white;
 }
 .Home_Noga_friendsPanelTitleButton:hover {
 opacity: 0.92;
 }
 
 .Home_Noga_friendsPanelTitleButton.isActive {
-color: rgba(112, 47, 39, 0.98);
+  color: white;
+  background-color: #ffb80b;
+  transform: translateY(-2px);
+  z-index: 2;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 10px rgba(94, 73, 73, 0.28);
 }
 
 .Home_Noga_friendsPanelTitleButton .Home_Noga_friendsPanelCount {
@@ -4466,6 +4518,7 @@ color: rgba(112, 47, 39, 0.98);
   display: flex;
   flex-direction: row;
   gap:3px;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
 }
 
 .Home_Noga_friendsPanelCount {
@@ -4478,7 +4531,7 @@ color: rgba(112, 47, 39, 0.98);
   border-radius: 999px;
   background: rgba(180, 80, 65, 0.14);
   border: 1px solid rgba(180, 80, 65, 0.22);
-  color: rgba(140, 52, 42, 0.9);
+  color: white;
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.03em;
@@ -4636,7 +4689,7 @@ color: rgba(145, 62, 71, 0.54);
 margin: 0;
   color: rgba(145, 62, 71, 0.84);
   font-size: 0.58rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.06em;
   line-height: 1.45;
   text-transform: uppercase;
@@ -4713,23 +4766,17 @@ display: none;
 }
 
 .Home_Noga_socialFriendItem {
-align-items: stretch;
+  align-items: stretch;
   justify-content: flex-start;
   flex-direction: row;
   flex-wrap: nowrap;
   gap: 0;
   padding: 5px;
-  border-bottom: 1px solid rgba(205, 107, 106, 0.24);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 248, 246, 0.98) 0%,
-    rgba(247, 226, 221, 0.92) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 20px rgba(118, 64, 53, 0.12);
   border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.22), 0 1px 4px 0 rgba(0, 0, 0, 0.12);
+  background-color: #5e4949;
+  color: white;
 }
 
 .Home_Noga_socialFriendItem--request {
@@ -4820,7 +4867,7 @@ width: 38px;
   color: var(--home-readable-ink);
   font-size: 0.7rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.08em;
 }
 
@@ -4856,8 +4903,8 @@ display: flex;
 }
 
 .Home_Noga_socialFriendName {
-display: block;
-  color: rgba(24, 79, 88, 0.95);
+  display: block;
+  color: white;
   font-size: 0.92rem;
   font-weight: 700;
   text-decoration: none;
@@ -4871,10 +4918,10 @@ text-decoration: underline;
 }
 
 .Home_Noga_socialFriendUsername {
-display: block;
-  color: rgba(30, 82, 90, 0.7);
+  display: block;
+  color:white;
   font-size: 0.56rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
@@ -4882,22 +4929,22 @@ display: block;
 }
 
 .Home_Noga_socialFriendStatusText {
-display: block;
-  color: rgba(23, 95, 70, 0.86);
+  display: block;
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   text-transform: lowercase;
   white-space: nowrap;
 }
 
 .Home_Noga_socialFriendStatusLine {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
   flex-wrap: nowrap;
   white-space: nowrap;
+  color: white;
 }
 
 .Home_Noga_socialFriendStatusDivider {
@@ -4909,23 +4956,23 @@ display: inline-flex;
 }
 
 .Home_Noga_socialFriendStatusText--chatting {
-color: #2f7ff6;
+color: white;
 }
 
 .Home_Noga_socialFriendStatusText--busy {
-color: #d66b1d;
+color: white;
 }
 
 .Home_Noga_socialFriendStatusText--studying {
-color: #7a5ad6;
+color: white;
 }
 
 .Home_Noga_socialFriendStatusText--online {
-color: #1b8b82;
+color: white;
 }
 
 .Home_Noga_socialFriendStatusText--connected {
-color: #1b8b82;
+color: white;
 }
 
 .Home_Noga_socialFriendStatusText--offline {
@@ -4933,7 +4980,7 @@ color: rgba(95, 106, 112, 0.84);
 }
 
 .Home_Noga_socialFriendStatusText--unknown {
-color: rgba(120, 131, 138, 0.92);
+color: white;
 }
 
 .Home_Noga_socialFriendPresence {
@@ -4964,7 +5011,7 @@ display: inline-flex;
   box-shadow: 0 10px 22px rgba(225, 79, 99, 0.22);
   color: var(--home-readable-ink);
   font-size: 0.64rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -5020,7 +5067,7 @@ color: rgba(17, 72, 81, 0.94);
 .Home_Noga_socialFriendIncomingCallCopy span {
 color: rgba(24, 79, 88, 0.72);
   font-size: 0.68rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   line-height: 1.45;
 }
 
@@ -5030,7 +5077,7 @@ min-height: 34px;
   border-radius: 12px;
   border: 1px solid rgba(68, 169, 194, 0.22);
   color: #fff !important;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
@@ -5090,9 +5137,8 @@ display: flex;
   z-index: 2;
   border-radius: inherit;
   box-sizing: border-box;
-  backdrop-filter: blur(12px) saturate(1.05);
-  -webkit-backdrop-filter: blur(12px) saturate(1.05);
   border-left: 1px dashed rgba(205, 107, 106, 0.24);
+  box-shadow: -4px 0 18px 0 rgba(0, 0, 0, 0.18), -1px 0 4px 0 rgba(0, 0, 0, 0.10);
 }
 
 #Home_Noga_rightColumn_wrapper > * {
@@ -5111,8 +5157,9 @@ display: flex;
   min-height: 0;
   max-height: 100%;
   flex-direction: column;
-position: relative;
+  position: relative;
   overflow: hidden;
+  background-color: #5e4949;
 }
 
 #Home_Noga_rightColumn_wrapper #Chat_title_container {
@@ -5217,7 +5264,7 @@ display: inline-flex;
   margin: 0;
   color: rgba(30, 82, 90, 0.64);
   font-size: 0.58rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   line-height: 1.4;
   min-width: 0;
 }
@@ -5243,7 +5290,7 @@ display: inline-flex;
   margin: 0;
   color: rgba(30, 82, 90, 0.64);
   font-size: 0.58rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   line-height: 1.4;
 }
 
@@ -5369,7 +5416,7 @@ color: rgba(24, 79, 88, 0.96);
 color: rgba(30, 82, 90, 0.7);
   font-size: 0.56rem;
   line-height: 1.5;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 #Home_Noga_rightColumn_wrapper .Chat_mediaPanelBackButton {
@@ -5445,7 +5492,7 @@ display: inline-flex;
   border: 1px solid rgba(124, 157, 165, 0.16);
   background: rgba(255, 255, 255, 0.86);
   color: rgba(30, 82, 90, 0.7);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-size: 0.52rem;
   line-height: 1;
   letter-spacing: 0.08em;
@@ -5772,7 +5819,7 @@ display: inline-flex;
   line-height: 1.3;
   letter-spacing: 0.04em;
   opacity: 0.82;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   border-bottom: 1px solid rgba(124, 157, 165, 0.20);
 }
 
@@ -5798,7 +5845,7 @@ display: inline-flex;
   font-size: 0.54rem;
   line-height: 1;
   letter-spacing: -0.08em;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 700;
 }
 
@@ -6119,7 +6166,7 @@ display: inline-flex;
   align-items: center;
   color: rgba(24, 79, 88, 0.74);
   font-size: 0.54rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   white-space: nowrap;
   min-width: 0;
 }
@@ -6510,7 +6557,7 @@ display: inline-flex;
   background: rgba(239, 247, 247, 0.82);
   color: var(--noga-5, #cd6b6a) !important;
   font-size: 0.56rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -6606,7 +6653,7 @@ width: 100%;
   background: rgba(250, 252, 252, 0.94);
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   outline: none;
 }
 
@@ -7135,7 +7182,7 @@ color: rgba(39, 108, 118, 0.72);
   letter-spacing: 0.12em;
   font-size: 0.58rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 .Home_Noga_videoViewerTitle {
@@ -7629,7 +7676,7 @@ color: rgba(30, 82, 90, 0.68);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 #Home_Noga_article.Home_Noga_themeDark .Home_Noga_logRecordLabel {
@@ -7647,7 +7694,7 @@ display: block;
   text-overflow: clip;
   overflow-wrap: anywhere;
   word-break: break-word;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   font-weight: 400;
 }
 
@@ -7685,7 +7732,6 @@ display: inline-flex;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 12px 26px rgba(87, 118, 127, 0.12);
-  backdrop-filter: blur(10px) saturate(1.04);
 }
 
 #Home_Noga_article.Home_Noga_themeDark #Home_Noga_userMenu_button {
@@ -7728,7 +7774,6 @@ position: relative;
   );
   border: 1px solid rgba(118, 151, 160, 0.18);
   box-shadow: 0 14px 28px rgba(90, 121, 130, 0.1);
-  backdrop-filter: blur(10px) saturate(1.04);
 }
 
 #Home_Noga_navWrap #Nav_article i {
@@ -7835,7 +7880,7 @@ color: rgba(30, 82, 90, 0.76);
 margin: 0;
   font-size: 0.64rem;
   color: rgba(26, 59, 67, 0.82);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 .Home_Noga_userMenu_title_label {
@@ -7846,7 +7891,7 @@ display: block;
   letter-spacing: 0.12em;
   font-size: 0.62rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 #Home_Noga_article.Home_Noga_themeDark
@@ -7865,21 +7910,21 @@ color: rgba(182, 214, 221, 0.76);
 margin: 0;
   font-size: 0.64rem;
   color: rgba(26, 59, 67, 0.82);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 #Home_Noga_userMenu_div p {
 margin: 0;
   font-size: 0.64rem;
   color: rgba(26, 59, 67, 0.82);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 #Home_Noga_userMenu_panelCard .Home_Noga_userMenu_panelBody p {
 margin: 0;
   font-size: 0.64rem;
   color: rgba(26, 59, 67, 0.82);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 font-size: 0.66rem;
   font-weight: 500;
   color: rgba(22, 52, 59, 0.9);
@@ -7935,7 +7980,7 @@ flex: 1 1 auto;
   background: rgba(255, 255, 255, 0.56);
   color: rgba(18, 52, 59, 0.92);
   font-size: 0.64rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   outline: none;
 }
 
@@ -8006,7 +8051,7 @@ border: 0;
   font-size: 0.62rem;
   font-weight: 700;
   cursor: pointer;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -8021,7 +8066,7 @@ margin: 12px 0 0;
   border-radius: 12px;
   font-size: 0.62rem;
   line-height: 1.5;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
 }
 
 .Home_Noga_passwordFeedback--success {
@@ -8192,7 +8237,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8212,7 +8257,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8234,7 +8279,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8254,7 +8299,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8274,7 +8319,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8294,7 +8339,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8314,7 +8359,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8334,7 +8379,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8354,7 +8399,7 @@ width: 100%;
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.64rem;
   line-height: 1.65;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
   position: relative;
@@ -8716,7 +8761,7 @@ width: 100%;
   background: rgba(250, 252, 252, 0.94);
   color: rgba(26, 59, 67, 0.9);
   font-size: 0.62rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   letter-spacing: 0.02em;
   outline: none;
 }
@@ -8752,7 +8797,7 @@ width: 100%;
   color: var(--home-readable-ink);
   font-size: 0.62rem;
   font-weight: 700;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.1;

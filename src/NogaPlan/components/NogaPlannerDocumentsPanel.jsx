@@ -429,7 +429,6 @@ const EMPTY_STORED_DOC_DRAFT = {
   documentVolume: "",
   documentEditors: [],
   documentLectureID: "",
-  documentLectureName: "",
 };
 
 const StoredDocumentFormFields = ({
@@ -439,9 +438,12 @@ const StoredDocumentFormFields = ({
   volumeUnits,
   programEditors,
   lectureOptions,
+  programCourses = [],
 }) => {
   const [editorSelection, setEditorSelection] = useState("");
   const [documentNameSameAsLectureName, setDocumentNameSameAsLectureName] = useState(false);
+  const [courseFilter, setCourseFilter] = useState("");
+  const [componentFilter, setComponentFilter] = useState("");
 
   const availableEditors = useMemo(
     () => programEditors.filter((e) => !draft.documentEditors.includes(e)),
@@ -466,13 +468,8 @@ const StoredDocumentFormFields = ({
     const selectedLecture = lectureOptions.find(
       (option) => String(option?.value || "").trim() === String(draft?.documentLectureID || "").trim(),
     );
-    return String(
-      selectedLecture?.lectureName ||
-        selectedLecture?.label ||
-        draft?.documentLectureName ||
-        "",
-    ).trim();
-  }, [lectureOptions, draft?.documentLectureID, draft?.documentLectureName]);
+    return String(selectedLecture?.lectureName || selectedLecture?.label || "").trim();
+  }, [lectureOptions, draft?.documentLectureID]);
 
   useEffect(() => {
     if (!documentNameSameAsLectureName) {
@@ -528,42 +525,154 @@ const StoredDocumentFormFields = ({
             placeholder="Enter document name"
           />
         </label>
-        <label className="nogaPlanner_storedDocumentFormField">
-          <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Lecture</span>
-          <select
-            className="nogaPlanner_homeIntervalsInput"
-            dir="auto"
-            value={draft.documentLectureID}
-            onChange={(e) => {
-              const nextLectureId = String(e.target.value || "");
-              const selectedOption = e.target.selectedOptions?.[0] || null;
-              const nextLectureName = String(
-                selectedOption?.dataset?.lectureName ||
-                  selectedOption?.textContent ||
-                  "",
-              ).trim();
-              setDraft((prev) => ({
-                ...prev,
-                documentLectureID: nextLectureId,
-                documentLectureName: nextLectureId ? nextLectureName : "",
-                ...(documentNameSameAsLectureName && nextLectureName
-                  ? { documentName: nextLectureName }
-                  : {}),
-              }));
-            }}
-          >
-            <option value="">— select lecture —</option>
-            {lectureOptions.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                data-lecture-name={option.lectureName}
-              >
-                {option.lectureName || option.value}
-              </option>
-            ))}
-          </select>
-        </label>
+        {(() => {
+          const selectedCourseEntry = programCourses.find(
+            (c) => String(c?.courseInfo?.courseID || "").trim() === courseFilter,
+          ) || null;
+          const courseSelectOptions = programCourses
+            .map((c) => {
+              const info = c?.courseInfo || {};
+              const id = String(info?.courseID || "").trim();
+              const name = [
+                String(info?.courseName || "").trim(),
+                String(info?.courseCode || "").trim(),
+              ].filter(Boolean).join(" | ");
+              return id ? { id, name: name || id } : null;
+            })
+            .filter(Boolean);
+          const componentSelectOptions = selectedCourseEntry
+            ? (Array.isArray(selectedCourseEntry.courseComponents) ? selectedCourseEntry.courseComponents : [])
+                .map((comp) => {
+                  const info = comp?.componentInfo || {};
+                  const id = String(info?.componentID || "").trim();
+                  const name = String(info?.componentName || info?.componentID || "").trim();
+                  return id ? { id, name: name || id } : null;
+                })
+                .filter(Boolean)
+            : [];
+          const selectedComponentEntry = selectedCourseEntry
+            ? (Array.isArray(selectedCourseEntry.courseComponents) ? selectedCourseEntry.courseComponents : []).find(
+                (comp) => String(comp?.componentInfo?.componentID || "").trim() === componentFilter,
+              ) || null
+            : null;
+          const selectedCourseName = selectedCourseEntry
+            ? String(selectedCourseEntry.courseInfo?.courseName || "").trim()
+            : "";
+          const selectedComponentName = selectedComponentEntry
+            ? String(selectedComponentEntry.componentInfo?.componentName || "").trim()
+            : "";
+          const filteredLectureOptions = (() => {
+            if (!courseFilter || !componentFilter) return lectureOptions;
+            return lectureOptions.filter((o) => {
+              const courseMatch = !selectedCourseName || String(o.courseName || "").trim() === selectedCourseName;
+              const compMatch = !selectedComponentName || String(o.componentName || "").trim() === selectedComponentName;
+              return courseMatch && compMatch;
+            });
+          })();
+          return (
+            <>
+              <label className="nogaPlanner_storedDocumentFormField">
+                <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Course</span>
+                <select
+                  className="nogaPlanner_homeIntervalsInput"
+                  dir="auto"
+                  value={courseFilter}
+                  onChange={(e) => {
+                    setCourseFilter(e.target.value);
+                    setComponentFilter("");
+                    setDraft((prev) => ({ ...prev, documentLectureID: "" }));
+                  }}
+                >
+                  <option value="">— select course —</option>
+                  {courseSelectOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="nogaPlanner_storedDocumentFormField">
+                <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Component</span>
+                <select
+                  className="nogaPlanner_homeIntervalsInput"
+                  dir="auto"
+                  value={componentFilter}
+                  onChange={(e) => {
+                    setComponentFilter(e.target.value);
+                    setDraft((prev) => ({ ...prev, documentLectureID: "" }));
+                  }}
+                  disabled={!courseFilter}
+                >
+                  <option value="">— select component —</option>
+                  {componentSelectOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="nogaPlanner_storedDocumentFormField">
+                <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Lecture</span>
+                <select
+                  className="nogaPlanner_homeIntervalsInput"
+                  dir="auto"
+                  value={draft.documentLectureID}
+                  onChange={(e) => {
+                    const nextLectureId = String(e.target.value || "").trim();
+                    const selectedOption = e.target.selectedOptions?.[0] || null;
+                    const nextLectureName = String(
+                      selectedOption?.dataset?.lectureName ||
+                        selectedOption?.textContent ||
+                        "",
+                    ).trim();
+                    if (nextLectureId) {
+                      const lecOpt = lectureOptions.find(
+                        (o) => String(o.value || "").trim() === nextLectureId,
+                      );
+                      if (lecOpt) {
+                        const lecCourseName = String(lecOpt.courseName || "").trim();
+                        const lecComponentName = String(lecOpt.componentName || "").trim();
+                        let matchedCourseID = "";
+                        let matchedComponentID = "";
+                        for (const courseEntry of programCourses) {
+                          const cInfo = courseEntry?.courseInfo || {};
+                          if (String(cInfo?.courseName || "").trim() === lecCourseName) {
+                            matchedCourseID = String(cInfo?.courseID || "").trim();
+                            for (const comp of (Array.isArray(courseEntry?.courseComponents)
+                              ? courseEntry.courseComponents : [])) {
+                              const compInfo = comp?.componentInfo || {};
+                              if (String(compInfo?.componentName || "").trim() === lecComponentName) {
+                                matchedComponentID = String(compInfo?.componentID || "").trim();
+                                break;
+                              }
+                            }
+                            break;
+                          }
+                        }
+                        if (matchedCourseID) setCourseFilter(matchedCourseID);
+                        if (matchedComponentID) setComponentFilter(matchedComponentID);
+                      }
+                    }
+                    setDraft((prev) => ({
+                      ...prev,
+                      documentLectureID: nextLectureId,
+                      ...(documentNameSameAsLectureName && nextLectureName
+                        ? { documentName: nextLectureName }
+                        : {}),
+                    }));
+                  }}
+                >
+                  <option value="">— select lecture —</option>
+                  {filteredLectureOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      data-lecture-name={option.lectureName}
+                    >
+                      {option.lectureName || option.value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          );
+        })()}
         <label className="nogaPlanner_storedDocumentFormField">
           <span className="nogaPlanner_homeIntervalsMiniFormEyebrow">Document Type</span>
           <select
@@ -711,6 +820,8 @@ export const StoredDocumentsCard = ({
           return {
             value: lectureId,
             lectureName: lectureName || lectureId,
+            courseName,
+            componentName,
             label: [lectureName || lectureId, courseName, componentName]
               .filter(Boolean)
               .join(" | "),
@@ -727,6 +838,19 @@ export const StoredDocumentsCard = ({
       Array.isArray(plannerRoot?.programDocuments) ? plannerRoot.programDocuments : [],
     [plannerRoot],
   );
+
+  const lectureLabelsMap = useMemo(() => {
+    const map = new Map();
+    for (const opt of lectureOptions) {
+      const lectureId = String(opt?.value || "").trim();
+      if (!lectureId) continue;
+      map.set(lectureId, {
+        courseLabel: String(opt?.courseName || "").trim() || "—",
+        componentLabel: String(opt?.componentName || "").trim() || "—",
+      });
+    }
+    return map;
+  }, [lectureOptions]);
   const isDraftPopulated = hasStoredDocumentDraftValues(draft);
   const isEditingExistingDocument = editingRef?.source === "existing";
 
@@ -734,9 +858,6 @@ export const StoredDocumentsCard = ({
     const info = getDocumentInfoForEntry(entry);
     const storedLectureId = String(
       entry?.documentLectureID || info?.documentLectureID || "",
-    ).trim();
-    const storedLectureName = String(
-      info?.documentLectureName || entry?.documentLectureName || "",
     ).trim();
     setDraft({
       documentName: String(info.documentName || ""),
@@ -748,7 +869,6 @@ export const StoredDocumentsCard = ({
           : "",
       documentEditors: Array.isArray(info.documentEditors) ? info.documentEditors : [],
       documentLectureID: storedLectureId,
-      documentLectureName: storedLectureName,
     });
     setEditingRef({ source, idx });
     setShowSubmitAction(false);
@@ -815,7 +935,7 @@ export const StoredDocumentsCard = ({
         .join("")
         .replace(/[-_]/g, "");
     }
-    const { documentLectureID: _lid, documentLectureName: _lname, ...previousEntryClean } =
+    const { documentLectureID: _lid, ...previousEntryClean } =
       previousEntry && typeof previousEntry === "object" ? previousEntry : {};
     return {
       ...previousEntryClean,
@@ -824,12 +944,6 @@ export const StoredDocumentsCard = ({
         documentNum: docNum,
         documentID,
         documentLectureID: lectureIdRaw,
-        documentLectureName: String(
-          draft.documentLectureName ||
-            lectureOptions.find((option) => String(option?.value || "").trim() === lectureIdRaw)
-              ?.lectureName ||
-            "",
-        ).trim(),
         documentName: String(draft.documentName || "").trim(),
         documentType: draft.documentType,
         documentVolumeUnit: draft.documentVolumeUnit,
@@ -887,7 +1001,6 @@ export const StoredDocumentsCard = ({
           ? stagedEntryWithPages.documentInfo.documentEditors
           : [],
         documentLectureID: String(stagedEntryWithPages?.documentInfo?.documentLectureID || ""),
-        documentLectureName: String(stagedEntryWithPages?.documentInfo?.documentLectureName || ""),
       });
       setShowSubmitAction(false);
     } else {
@@ -1005,6 +1118,16 @@ export const StoredDocumentsCard = ({
       }
       if (!targetPageWasDone && typeof planner.recordActiveStudySessionPageDone === "function") {
         await planner.recordActiveStudySessionPageDone({
+          documentID: String(
+            targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
+          ).trim(),
+          pageNumber,
+          plannerRoot: nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : planner.getResolvedPlannerRoot?.(),
+        });
+      } else if (targetPageWasDone && typeof planner.removeActiveStudySessionPageDone === "function") {
+        await planner.removeActiveStudySessionPageDone({
           documentID: String(
             targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
           ).trim(),
@@ -1307,6 +1430,7 @@ export const StoredDocumentsCard = ({
               volumeUnits={volumeUnits}
               programEditors={programEditors}
               lectureOptions={lectureOptions}
+              programCourses={Array.isArray(plannerRoot?.programCourses) ? plannerRoot.programCourses : []}
             />
           </div>
         ) : null}
@@ -1323,6 +1447,8 @@ export const StoredDocumentsCard = ({
               <tr>
                 {showDocumentIds ? <th rowSpan={2}>Document ID</th> : null}
                 <th rowSpan={2}>Document Name</th>
+                <th rowSpan={2}>Course</th>
+                <th rowSpan={2}>Component</th>
                 <th rowSpan={2}>Lecture</th>
                 <th rowSpan={2}>Type</th>
                 <th rowSpan={2}>Volume Unit</th>
@@ -1380,10 +1506,20 @@ export const StoredDocumentsCard = ({
                           </td>
                         ) : null}
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
-                        <td>{isBeingEdited
-                          ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
-                          : String(storedInfo.documentLectureName || "—")}
-                        </td>
+                        {(() => {
+                          const lectureId = String(entry?.documentLectureID || storedInfo?.documentLectureID || "").trim();
+                          const labels = lectureLabelsMap.get(lectureId) || {};
+                          return (
+                            <>
+                              <td>{labels.courseLabel || "—"}</td>
+                              <td>{labels.componentLabel || "—"}</td>
+                            </>
+                          );
+                        })()}
+                        <td>{(() => {
+                          const lid = String((isBeingEdited ? draft.documentLectureID : null) || storedInfo?.documentLectureID || "").trim();
+                          return lid ? (lectureOptions.find((o) => o.value === lid)?.lectureName || lid) : "—";
+                        })()}</td>
                         <td>{String(info.documentType || "—")}</td>
                         <td>{String(info.documentVolumeUnit || "—")}</td>
                         <td>{totalVolume != null ? totalVolume : "—"}</td>
@@ -1468,10 +1604,20 @@ export const StoredDocumentsCard = ({
                           </td>
                         ) : null}
                         <td>{renderLocalizedDocumentText(info.documentName || "—")}</td>
-                        <td>{isBeingEdited
-                          ? String(draft.documentLectureName || storedInfo.documentLectureName || "—")
-                          : String(storedInfo.documentLectureName || "—")}
-                        </td>
+                        {(() => {
+                          const lectureId = String(entry?.documentLectureID || storedInfo?.documentLectureID || "").trim();
+                          const labels = lectureLabelsMap.get(lectureId) || {};
+                          return (
+                            <>
+                              <td>{labels.courseLabel || "—"}</td>
+                              <td>{labels.componentLabel || "—"}</td>
+                            </>
+                          );
+                        })()}
+                        <td>{(() => {
+                          const lid = String(storedInfo?.documentLectureID || "").trim();
+                          return lid ? (lectureOptions.find((o) => o.value === lid)?.lectureName || lid) : "—";
+                        })()}</td>
                         <td>{String(info.documentType || "—")}</td>
                         <td>{String(info.documentVolumeUnit || "—")}</td>
                         <td>{totalVolume != null ? totalVolume : "—"}</td>

@@ -354,9 +354,6 @@ export default class NogaPlanner extends Component {
       documentLectureID: String(
         documentInfo?.documentLectureID || rawEntry?.documentLectureID || "",
       ).trim(),
-      documentLectureName: String(
-        documentInfo?.documentLectureName || rawEntry?.documentLectureName || "",
-      ).trim(),
       documentURL: String(rawEntry?.documentURL || "").trim(),
     };
   };
@@ -886,6 +883,9 @@ export default class NogaPlanner extends Component {
             }
           : {}),
       };
+      if (Object.keys(normalizedMeta).length === 0) {
+        return this.normalizePlannerRootForUi(this.getResolvedPlannerRoot());
+      }
       if (!userId || !token) {
         throw new Error(
           "Failed to save planner details: login data is incomplete.",
@@ -1012,7 +1012,6 @@ export default class NogaPlanner extends Component {
       documentInfo?.documentName || documentID || "-",
     ).trim();
     const documentLectureID = String(documentInfo?.documentLectureID || "").trim();
-    const documentLectureName = String(documentInfo?.documentLectureName || "").trim();
     const matchedLecture =
       programLectures.find((lectureEntry) => {
         const lectureInfo =
@@ -1020,19 +1019,13 @@ export default class NogaPlanner extends Component {
             ? lectureEntry.lectureInfo
             : lectureEntry || {};
         const lectureID = String(lectureInfo?.lectureID || "").trim();
-        const lectureName = String(lectureInfo?.lectureName || "").trim();
-        return (
-          (documentLectureID && lectureID === documentLectureID) ||
-          (documentLectureName && lectureName === documentLectureName)
-        );
+        return documentLectureID && lectureID === documentLectureID;
       }) || null;
     const lectureInfo =
       matchedLecture?.lectureInfo && typeof matchedLecture.lectureInfo === "object"
         ? matchedLecture.lectureInfo
         : matchedLecture || {};
-    const lectureName = String(
-      lectureInfo?.lectureName || documentLectureName || "-",
-    ).trim();
+    const lectureName = String(lectureInfo?.lectureName || "-").trim();
     const lectureCourseName = String(lectureInfo?.lectureCourseName || "").trim();
     const lectureComponentName = String(lectureInfo?.lectureComponentName || "").trim();
     const matchedCourse =
@@ -1361,6 +1354,78 @@ export default class NogaPlanner extends Component {
     });
     return nextPlannerRoot;
   };
+  removeActiveStudySessionPageDone = async ({
+    documentID = "",
+    pageNumber = 0,
+    plannerRoot: basePlannerRoot = null,
+  } = {}) => {
+    const normalizedDocumentID = String(documentID || "").trim();
+    const normalizedPageNumber = Number(pageNumber);
+    if (
+      !normalizedDocumentID ||
+      !Number.isFinite(normalizedPageNumber) ||
+      normalizedPageNumber <= 0
+    ) {
+      return null;
+    }
+    const plannerRoot =
+      basePlannerRoot && typeof basePlannerRoot === "object"
+        ? basePlannerRoot
+        : this.getResolvedPlannerRoot();
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (!activeSession?.studySessionID) {
+      return null;
+    }
+    if (this.isPlannerStudySessionPaused()) {
+      return null;
+    }
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const nextSessions = currentSessions.map((sessionEntry) => {
+      if (
+        String(sessionEntry?.studySessionID || "").trim() !==
+        String(activeSession?.studySessionID || "").trim()
+      ) {
+        return sessionEntry;
+      }
+      const currentAchievements = Array.isArray(sessionEntry?.achievements)
+        ? sessionEntry.achievements
+        : [];
+      const achievementMap = new Map();
+      currentAchievements.forEach((achievementEntry) => {
+        const normalizedAchievement =
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry);
+        if (!normalizedAchievement?.documentID) {
+          return;
+        }
+        achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
+      });
+      const existing = achievementMap.get(normalizedDocumentID);
+      if (existing) {
+        const nextPages = (Array.isArray(existing.pagesDone) ? existing.pagesDone : [])
+          .filter((p) => Number(p) !== normalizedPageNumber);
+        if (nextPages.length === 0) {
+          achievementMap.delete(normalizedDocumentID);
+        } else {
+          achievementMap.set(normalizedDocumentID, { documentID: normalizedDocumentID, pagesDone: nextPages });
+        }
+      }
+      return {
+        ...sessionEntry,
+        studySessionAchievements: Array.from(achievementMap.values()),
+        achievements: Array.from(achievementMap.values()),
+      };
+    });
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextPlannerRoot;
+  };
   startPlannerStudySession = async () => {
     const plannerRoot = this.getResolvedPlannerRoot();
     const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
@@ -1474,6 +1539,25 @@ export default class NogaPlanner extends Component {
               pausedTotalMs: finalPausedTotalMs,
             }
           : entry,
+    );
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerStudySessionPaused: false,
+      plannerStudySessionPausedAtMs: 0,
+      plannerStudySessionPausedTotalMs: 0,
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+  };
+  cancelPlannerStudySession = async () => {
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const nextSessions = currentSessions.filter(
+      (entry) => String(entry?.studySessionEndDate || entry?.endDate || "").trim() !== "",
     );
     const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
     this.setState({
@@ -2880,6 +2964,7 @@ export default class NogaPlanner extends Component {
       homeCourseOriginalCourseNum: "",
       homeCourseOriginalComponentClass: "",
       homeCourseOriginalLectureNum: "",
+      materialMetadataCourseNameFilter: "",
       homeCourseDraftList: [],
       homeCourseNameDraft: "",
       homeCourseIdDraft: "",
@@ -30363,7 +30448,7 @@ export default class NogaPlanner extends Component {
             : [];
           const achievementRows = achievements.length > 0 ? achievements : [{}];
           const isThisTheActiveSession = !sessionEndDate && activeStudySession != null;
-          const sessionGiftReached = activeSessionGiftReached && isThisTheActiveSession;
+          const sessionGiftReached = giftUnlocked && isThisTheActiveSession;
           return (
             <li
               key={`studySession_${sessionEntry?.studySessionID || index}`}
@@ -30520,7 +30605,7 @@ export default class NogaPlanner extends Component {
             this.state?.plannerCalendarNowMs || Date.now(),
           )
         : 0;
-      const avgMsPerPageDisplay = (() => {
+      const avgMsPerPage = (() => {
         let totalMs = 0;
         let totalPages = 0;
         for (const s of studySessions) {
@@ -30542,8 +30627,130 @@ export default class NogaPlanner extends Component {
           totalPages += pages.size;
         }
         if (totalPages === 0) return null;
-        return this.formatPlannerTimerDisplay(Math.round(totalMs / totalPages));
+        return Math.round(totalMs / totalPages);
       })();
+      const avgMsPerPageDisplay = avgMsPerPage != null
+        ? this.formatPlannerTimerDisplay(avgMsPerPage)
+        : null;
+      const programDocuments = Array.isArray(ownPlannerRoot?.programDocuments)
+        ? ownPlannerRoot.programDocuments
+        : [];
+      const programLectures = Array.isArray(ownPlannerRoot?.programLectures)
+        ? ownPlannerRoot.programLectures
+        : [];
+      const programCourses = Array.isArray(ownPlannerRoot?.programCourses)
+        ? ownPlannerRoot.programCourses
+        : [];
+      // lectureID → { lectureCourseName, lectureComponentName }
+      const lectureInfoMap = new Map();
+      for (const lec of programLectures) {
+        const info = lec?.lectureInfo && typeof lec.lectureInfo === "object" ? lec.lectureInfo : lec || {};
+        const id = String(info?.lectureID || "").trim();
+        if (!id) continue;
+        lectureInfoMap.set(id, {
+          lectureCourseName: String(info?.lectureCourseName || "").trim(),
+          lectureComponentName: String(info?.lectureComponentName || "").trim(),
+        });
+      }
+      // courseID → { courseName }; componentID → { componentName, courseID, courseName }
+      const courseOptions = [];
+      const allComponentOptions = [];
+      for (const courseEntry of programCourses) {
+        const cInfo = courseEntry?.courseInfo && typeof courseEntry.courseInfo === "object"
+          ? courseEntry.courseInfo : courseEntry || {};
+        const courseID = String(cInfo?.courseID || "").trim();
+        const courseName = String(cInfo?.courseName || cInfo?.courseCode || courseID || "").trim();
+        if (!courseID) continue;
+        courseOptions.push({ courseID, courseName });
+        for (const comp of (Array.isArray(courseEntry?.courseComponents) ? courseEntry.courseComponents : [])) {
+          const compInfo = comp?.componentInfo && typeof comp.componentInfo === "object"
+            ? comp.componentInfo : comp || {};
+          const componentID = String(compInfo?.componentID || "").trim();
+          const componentName = String(compInfo?.componentName || componentID || "").trim();
+          if (!componentID) continue;
+          allComponentOptions.push({ componentID, componentName, courseID, courseName });
+        }
+      }
+      // Unique component names across all courses (for "component" mode)
+      const uniqueComponentNames = (() => {
+        const seen = new Set();
+        const result = [];
+        for (const opt of allComponentOptions) {
+          if (opt.componentName && !seen.has(opt.componentName)) {
+            seen.add(opt.componentName);
+            result.push(opt.componentName);
+          }
+        }
+        return result;
+      })();
+      // Report filter state
+      const reportFilterMode = String(this.state?.reportFilterMode || "all").trim();
+      const reportFilterCourseID = String(this.state?.reportFilterCourseID || "").trim();
+      const reportFilterComponentID = String(this.state?.reportFilterComponentID || "").trim();
+      const selectedCourseEntry = courseOptions.find(c => c.courseID === reportFilterCourseID) || null;
+      const selectedCourseName = selectedCourseEntry?.courseName || "";
+      const courseComponentOptions = reportFilterCourseID
+        ? allComponentOptions.filter(c => c.courseID === reportFilterCourseID)
+        : [];
+      // In "component" mode: reportFilterComponentID stores the component NAME (not ID)
+      const selectedComponentName = (() => {
+        if (reportFilterMode === "component") return reportFilterComponentID;
+        if (reportFilterMode === "course-component") {
+          return courseComponentOptions.find(c => c.componentID === reportFilterComponentID)?.componentName || "";
+        }
+        return "";
+      })();
+      // Build matching document ID set for current filter
+      const matchingDocumentIDs = (() => {
+        if (reportFilterMode === "all") return null;
+        const matchingLectureIDs = new Set();
+        for (const [lectureID, info] of lectureInfoMap) {
+          if (reportFilterMode === "component" && selectedComponentName && info.lectureComponentName === selectedComponentName) {
+            matchingLectureIDs.add(lectureID);
+          } else if (reportFilterMode === "course" && selectedCourseName && info.lectureCourseName === selectedCourseName) {
+            matchingLectureIDs.add(lectureID);
+          } else if (reportFilterMode === "course-component" && selectedCourseName && selectedComponentName &&
+            info.lectureCourseName === selectedCourseName && info.lectureComponentName === selectedComponentName) {
+            matchingLectureIDs.add(lectureID);
+          }
+        }
+        const docIDs = new Set();
+        for (const doc of programDocuments) {
+          const info = doc?.documentInfo && typeof doc.documentInfo === "object" ? doc.documentInfo : doc || {};
+          const lid = String(info?.documentLectureID || "").trim();
+          if (lid && matchingLectureIDs.has(lid)) {
+            const did = String(info?.documentID || "").trim();
+            if (did) docIDs.add(did);
+          }
+        }
+        return docIDs;
+      })();
+      const filteredDocuments = matchingDocumentIDs == null
+        ? programDocuments
+        : programDocuments.filter(doc => {
+            const info = doc?.documentInfo && typeof doc.documentInfo === "object" ? doc.documentInfo : doc || {};
+            return matchingDocumentIDs.has(String(info?.documentID || "").trim());
+          });
+      const programPageStats = (() => {
+        let allPages = 0;
+        let donePages = 0;
+        for (const docEntry of filteredDocuments) {
+          const info = docEntry?.documentInfo && typeof docEntry.documentInfo === "object"
+            ? docEntry.documentInfo
+            : docEntry || {};
+          const vol = Number(info?.documentVolume);
+          if (Number.isFinite(vol) && vol > 0) allPages += vol;
+          const pages = Array.isArray(info?.documentPages) ? info.documentPages : [];
+          for (const p of pages) {
+            if (String(p?.pageStatus || "").trim().toLowerCase() === "done") donePages += 1;
+          }
+        }
+        return { allPages, donePages, remainingPages: Math.max(0, allPages - donePages) };
+      })();
+      const estimatedRemainingMs = avgMsPerPage != null && programPageStats.remainingPages > 0
+        ? avgMsPerPage * programPageStats.remainingPages
+        : null;
+      const studySessionsCardTab = String(this.state?.studySessionsCardTab || "sessions").trim();
       return (
         <div
           id="nogaPlanner_home_studySessions_card"
@@ -30577,6 +30784,14 @@ export default class NogaPlanner extends Component {
                     </button>
                     <button
                       type="button"
+                      className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--cancel"
+                      disabled={isHomeCardsLocked}
+                      onClick={this.cancelPlannerStudySession}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
                       className="nogaPlanner_homePanelCardSetBtn nogaPlanner_homePanelCardSetBtn--submit"
                       disabled={isHomeCardsLocked}
                       onClick={this.endPlannerStudySession}
@@ -30597,56 +30812,172 @@ export default class NogaPlanner extends Component {
               </div>
             ),
           })}
-          <div className="nogaPlanner_homeStudySessionsBody">
-            {activeStudySession ? (
-              <div className="nogaPlanner_homeStudySessionsRunning">
-                <strong>{isStudySessionPaused ? "Paused" : "Running"}</strong>
-                <span>
-                  {this.formatPlannerTimerDisplay(activeElapsedMs)}
-                </span>
+          <div className="nogaPlanner_studySessionsCardTabs">
+            <button
+              type="button"
+              className={`nogaPlanner_studySessionsCardTabBtn${studySessionsCardTab === "sessions" ? " is-active" : ""}`}
+              onClick={() => this.setState({ studySessionsCardTab: "sessions" })}
+            >
+              Study Sessions
+            </button>
+            <button
+              type="button"
+              className={`nogaPlanner_studySessionsCardTabBtn${studySessionsCardTab === "report" ? " is-active" : ""}`}
+              onClick={() => this.setState({ studySessionsCardTab: "report" })}
+            >
+              Study Report
+            </button>
+          </div>
+          {studySessionsCardTab === "sessions" ? (
+            <div className="nogaPlanner_homeStudySessionsBody">
+              {activeStudySession ? (
+                <div className="nogaPlanner_homeStudySessionsRunning">
+                  <strong>{isStudySessionPaused ? "Paused" : "Running"}</strong>
+                  <span>
+                    {this.formatPlannerTimerDisplay(activeElapsedMs)}
+                  </span>
+                </div>
+              ) : null}
+              {giftUnlocked && activeStudySession ? (
+                <div className="nogaPlanner_studySessionGiftRow">
+                  <button
+                    type="button"
+                    className="nogaPlanner_studySessionGiftBtn"
+                    onClick={() => this.setState({ studySessionGiftOpen: !giftOpen })}
+                  >
+                    🎁 Open your gift!
+                  </button>
+                  {giftOpen ? (
+                    <div className="nogaPlanner_studySessionGiftViewer">
+                      {rewardImages.map((url, i) => (
+                        <img
+                          key={url + i}
+                          src={url}
+                          alt={`Gift ${i + 1}`}
+                          className="nogaPlanner_studySessionGiftImage"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="nogaPlanner_homeStudySessionsTableWrap">
+                {studySessions.length > 0 ? (
+                  <ul className="nogaPlanner_homeStudySessionsList">
+                    {sessionListItems}
+                  </ul>
+                ) : (
+                  <span className="nogaPlanner_homePanelCardEmptyValue">
+                    No study sessions stored yet.
+                  </span>
+                )}
               </div>
-            ) : null}
-            {giftUnlocked && activeStudySession ? (
-              <div className="nogaPlanner_studySessionGiftRow">
-                <button
-                  type="button"
-                  className="nogaPlanner_studySessionGiftBtn"
-                  onClick={() => this.setState({ studySessionGiftOpen: !giftOpen })}
-                >
-                  🎁 Open your gift!
-                </button>
-                {giftOpen ? (
-                  <div className="nogaPlanner_studySessionGiftViewer">
-                    {rewardImages.map((url, i) => (
-                      <img
-                        key={url + i}
-                        src={url}
-                        alt={`Gift ${i + 1}`}
-                        className="nogaPlanner_studySessionGiftImage"
-                      />
-                    ))}
+            </div>
+          ) : (
+            <div className="nogaPlanner_studyReportBody">
+              <div className="nogaPlanner_studyReportFilters">
+                <div className="nogaPlanner_studyReportFilterRow">
+                  <span className="nogaPlanner_studyReportFilterLabel">Scope</span>
+                  <select
+                    className="nogaPlanner_studyReportFilterSelect"
+                    value={reportFilterMode}
+                    onChange={(e) => this.setState({
+                      reportFilterMode: e.target.value,
+                      reportFilterCourseID: "",
+                      reportFilterComponentID: "",
+                    })}
+                  >
+                    <option value="all">All program</option>
+                    <option value="component">Component (all courses)</option>
+                    <option value="course">Course</option>
+                    <option value="course-component">Course → Component</option>
+                  </select>
+                </div>
+                {reportFilterMode === "component" ? (
+                  <div className="nogaPlanner_studyReportFilterRow">
+                    <span className="nogaPlanner_studyReportFilterLabel">Component</span>
+                    <select
+                      className="nogaPlanner_studyReportFilterSelect"
+                      value={reportFilterComponentID}
+                      onChange={(e) => this.setState({ reportFilterComponentID: e.target.value })}
+                    >
+                      <option value="">— select —</option>
+                      {uniqueComponentNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                {(reportFilterMode === "course" || reportFilterMode === "course-component") ? (
+                  <div className="nogaPlanner_studyReportFilterRow">
+                    <span className="nogaPlanner_studyReportFilterLabel">Course</span>
+                    <select
+                      className="nogaPlanner_studyReportFilterSelect"
+                      value={reportFilterCourseID}
+                      onChange={(e) => this.setState({
+                        reportFilterCourseID: e.target.value,
+                        reportFilterComponentID: "",
+                      })}
+                    >
+                      <option value="">— select —</option>
+                      {courseOptions.map((opt) => (
+                        <option key={opt.courseID} value={opt.courseID}>{opt.courseName}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                {reportFilterMode === "course-component" && reportFilterCourseID ? (
+                  <div className="nogaPlanner_studyReportFilterRow">
+                    <span className="nogaPlanner_studyReportFilterLabel">Component</span>
+                    <select
+                      className="nogaPlanner_studyReportFilterSelect"
+                      value={reportFilterComponentID}
+                      onChange={(e) => this.setState({ reportFilterComponentID: e.target.value })}
+                    >
+                      <option value="">— select —</option>
+                      {courseComponentOptions.map((opt) => (
+                        <option key={opt.componentID} value={opt.componentID}>{opt.componentName}</option>
+                      ))}
+                    </select>
                   </div>
                 ) : null}
               </div>
-            ) : null}
-            <div className="nogaPlanner_homeStudySessionsTableWrap">
-              {studySessions.length > 0 ? (
-                <ul className="nogaPlanner_homeStudySessionsList">
-                  {sessionListItems}
-                </ul>
-              ) : (
-                <span className="nogaPlanner_homePanelCardEmptyValue">
-                  No study sessions stored yet.
-                </span>
-              )}
+              <div className="nogaPlanner_studyReportStats">
+                <div className="nogaPlanner_studyReportRow">
+                  <span className="nogaPlanner_studyReportLabel">Avg. time per page</span>
+                  <strong className="nogaPlanner_studyReportValue">
+                    {avgMsPerPageDisplay ?? "—"}
+                  </strong>
+                </div>
+                <div className="nogaPlanner_studyReportRow">
+                  <span className="nogaPlanner_studyReportLabel">Total pages</span>
+                  <strong className="nogaPlanner_studyReportValue">
+                    {programPageStats.allPages > 0 ? programPageStats.allPages : "—"}
+                  </strong>
+                </div>
+                <div className="nogaPlanner_studyReportRow">
+                  <span className="nogaPlanner_studyReportLabel">Done pages</span>
+                  <strong className="nogaPlanner_studyReportValue">
+                    {programPageStats.allPages > 0 ? programPageStats.donePages : "—"}
+                  </strong>
+                </div>
+                <div className="nogaPlanner_studyReportRow">
+                  <span className="nogaPlanner_studyReportLabel">Remaining pages</span>
+                  <strong className="nogaPlanner_studyReportValue">
+                    {programPageStats.allPages > 0 ? programPageStats.remainingPages : "—"}
+                  </strong>
+                </div>
+                <div className="nogaPlanner_studyReportRow nogaPlanner_studyReportRow--estimate">
+                  <span className="nogaPlanner_studyReportLabel">Est. time to finish</span>
+                  <strong className="nogaPlanner_studyReportValue">
+                    {estimatedRemainingMs != null
+                      ? this.formatPlannerTimerDisplay(estimatedRemainingMs)
+                      : "—"}
+                  </strong>
+                </div>
+              </div>
             </div>
-          </div>
-          {avgMsPerPageDisplay != null ? (
-            <div className="nogaPlanner_homeStudySessionsFooter">
-              <span className="nogaPlanner_homeStudySessionsFooterLabel">Avg. time per page</span>
-              <strong className="nogaPlanner_homeStudySessionsFooterValue">{avgMsPerPageDisplay}</strong>
-            </div>
-          ) : null}
+          )}
         </div>
       );
     })();

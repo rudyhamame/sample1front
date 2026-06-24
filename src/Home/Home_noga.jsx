@@ -82,9 +82,9 @@ const HOME_GALLERY_TAB_UPLOAD_CONFIG = {
 };
 
 const HOME_GALLERY_VISIBILITY_FILTERS = [
-  { id: "public", label: "Public" },
-  { id: "me", label: "Private" },
-  { id: "hidden", label: "Hidden" },
+  { id: "public", label: "Public", icon: "fi fi-br-unlock" },
+  { id: "me", label: "Private", icon: "fi fi-sr-lock" },
+  { id: "hidden", label: "Hidden", icon: "fi fi-br-password-lock" },
 ];
 
 const HOME_ACADEMIC_YEAR_OPTIONS = Array.from(
@@ -7942,42 +7942,37 @@ function HomeNoga(props) {
                             className={`fi ${isImageGalleryUploading ? "fi-rr-spinner" : "fi-rr-cloud-upload-alt"}`}
                             aria-hidden="true"
                           ></i>
-                          <span>
-                            {isImageGalleryUploading
-                              ? `Uploading ${activeGalleryUploadConfig.label}`
-                              : `Upload ${activeGalleryUploadConfig.label}`}
-                          </span>
                         </button>
                       </div>
                       <div className="Home_Noga_friendsGalleryHeaderControls">
-                        <div className="Home_Noga_galleryTabs">
-                          <button
-                            type="button"
-                            className={`Home_Noga_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
-                            onClick={() => setGalleryTab("images")}
-                            aria-label="Images"
-                            title="Images"
-                            aria-pressed={galleryTab === "images"}
-                          >
-                            <i
-                              className="fi fi-rr-copy-image"
-                              aria-hidden="true"
-                            ></i>
-                          </button>
-                          <button
-                            type="button"
-                            className={`Home_Noga_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
-                            onClick={() => setGalleryTab("videos")}
-                            aria-label="Videos"
-                            title="Videos"
-                            aria-pressed={galleryTab === "videos"}
-                          >
-                            <i className="fi fi-rr-film" aria-hidden="true"></i>
-                          </button>
-                        </div>
-                        {galleryTab === "images" ? (
-                          <div className="Home_Noga_galleryVisibilityTabs">
-                            {HOME_GALLERY_VISIBILITY_FILTERS.map((filter) => (
+                        <div className="Home_Noga_galleryVisibilityTabs">
+                          <div className="Home_Noga_galleryTabs">
+                            <button
+                              type="button"
+                              className={`Home_Noga_galleryTabButton${galleryTab === "images" ? " isActive" : ""}`}
+                              onClick={() => setGalleryTab("images")}
+                              aria-label="Images"
+                              title="Images"
+                              aria-pressed={galleryTab === "images"}
+                            >
+                              <i
+                                className="fi fi-rr-copy-image"
+                                aria-hidden="true"
+                              ></i>
+                            </button>
+                            <button
+                              type="button"
+                              className={`Home_Noga_galleryTabButton${galleryTab === "videos" ? " isActive" : ""}`}
+                              onClick={() => setGalleryTab("videos")}
+                              aria-label="Videos"
+                              title="Videos"
+                              aria-pressed={galleryTab === "videos"}
+                            >
+                              <i className="fi fi-rr-film" aria-hidden="true"></i>
+                            </button>
+                          </div>
+                          {galleryTab === "images" ? (
+                            HOME_GALLERY_VISIBILITY_FILTERS.map((filter) => (
                               <button
                                 key={filter.id}
                                 type="button"
@@ -7995,11 +7990,14 @@ function HomeNoga(props) {
                                   galleryImageVisibilityTab === filter.id
                                 }
                               >
-                                <span>{filter.label}</span>
+                                {filter.icon
+                                  ? <i className={filter.icon} aria-hidden="true" />
+                                  : <span>{filter.label}</span>
+                                }
                               </button>
-                            ))}
-                          </div>
-                        ) : null}
+                            ))
+                          ) : null}
+                        </div>
                         {galleryTab === "images" &&
                         isHiddenGalleryPasswordPromptOpen ? (
                           <div className="Home_Noga_galleryHiddenPasswordPrompt">
@@ -8351,56 +8349,57 @@ function HomeNoga(props) {
                             eventsTab === "friends" ? friendEvents : ownEvents;
                           return (
                             <>
-                              <div className="Home_Noga_activeTab_title">
-                                <div className="Home_Noga_activeTab_titleTitleRow">
-                                  <h3>Events</h3>
-                                  <span className="Home_Noga_socialFriendsCount">
-                                    {profileEvents.length}
-                                  </span>
+                              <div className="Home_Noga_eventsHeaderWrapper">
+                                <div className="Home_Noga_activeTab_title">
+                                  <div className="Home_Noga_activeTab_titleTitleRow">
+                                    <h3>Events</h3>
+                                    <span className="Home_Noga_socialFriendsCount">
+                                      {profileEvents.length}
+                                    </span>
+                                  </div>
+                                  <div className="Home_Noga_activeTab_titleActions">
+                                    <button
+                                      type="button"
+                                      className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                                      disabled={isFetchingEvents}
+                                      onClick={fetchProfileEvents}
+                                    >
+                                      {isFetchingEvents ? "…" : <i className="fi fi-sc-refresh" />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="Home_Noga_aboutButton Home_Noga_aboutToggle"
+                                      onClick={() => setIsAboutOpen((v) => !v)}
+                                      aria-pressed={isAboutOpen}
+                                    >
+                                      Profile
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="Home_Noga_activeTab_titleActions">
+                                <div className="Home_Noga_eventsTabBar">
                                   <button
                                     type="button"
-                                    className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                                    disabled={isFetchingEvents}
-                                    onClick={fetchProfileEvents}
+                                    className={`Home_Noga_eventsTab${eventsTab === "mine" ? " isActive" : ""}`}
+                                    onClick={() => setEventsTab("mine")}
                                   >
-                                    {isFetchingEvents ? "…" : <i className="fi fi-sc-refresh" />}
+                                    Mine
+                                    {ownEvents.length > 0 && (
+                                      <span className="Home_Noga_eventsTabCount">{ownEvents.length}</span>
+                                    )}
                                   </button>
                                   <button
                                     type="button"
-                                    className="Home_Noga_aboutButton Home_Noga_aboutToggle"
-                                    onClick={() =>
-                                      setIsAboutOpen((currentValue) => !currentValue)
-                                    }
-                                    aria-pressed={isAboutOpen}
+                                    className={`Home_Noga_eventsTab${eventsTab === "friends" ? " isActive" : ""}`}
+                                    onClick={() => setEventsTab("friends")}
                                   >
-                                    Profile
+                                    My Friends
+                                    {friendEvents.length > 0 && (
+                                      <span className="Home_Noga_eventsTabCount">{friendEvents.length}</span>
+                                    )}
                                   </button>
                                 </div>
                               </div>
-                              <div className="Home_Noga_eventsTabBar">
-                                <button
-                                  type="button"
-                                  className={`Home_Noga_eventsTab${eventsTab === "mine" ? " isActive" : ""}`}
-                                  onClick={() => setEventsTab("mine")}
-                                >
-                                  Mine
-                                  {ownEvents.length > 0 && (
-                                    <span className="Home_Noga_eventsTabCount">{ownEvents.length}</span>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`Home_Noga_eventsTab${eventsTab === "friends" ? " isActive" : ""}`}
-                                  onClick={() => setEventsTab("friends")}
-                                >
-                                  My Friends
-                                  {friendEvents.length > 0 && (
-                                    <span className="Home_Noga_eventsTabCount">{friendEvents.length}</span>
-                                  )}
-                                </button>
-                              </div>
+                              <div className="Home_Noga_eventsContentWrapper">
                               {profileEvents.length > 0 ? (
                                 <ul className="Home_Noga_eventsList">
                                   {profileEvents.map((event, eventIndex) => {
@@ -8490,7 +8489,7 @@ function HomeNoga(props) {
                                               }
                                             }}
                                           >
-                                            {deletingEventIds.has(String(event?._id || "")) ? "…" : "✕"}
+                                            {deletingEventIds.has(String(event?._id || "")) ? "…" : <i className="fi fi-br-cross-small" aria-hidden="true" />}
                                           </button>
                                           ) : null}
                                         </div>
@@ -8648,6 +8647,7 @@ function HomeNoga(props) {
                                   There are no events to show.
                                 </div>
                               )}
+                              </div>
                             </>
                           );
                         })()}

@@ -3626,6 +3626,114 @@ color: #fff;
     inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 
+.nogaPlanner_studySessionsCardTabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.nogaPlanner_studySessionsCardTabBtn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.nogaPlanner_studySessionsCardTabBtn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.nogaPlanner_studySessionsCardTabBtn.is-active {
+  color: #fff;
+  border-bottom-color: #f7e8d0;
+}
+
+.nogaPlanner_studyReportBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  overflow-y: auto;
+}
+
+.nogaPlanner_studyReportFilters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.nogaPlanner_studyReportFilterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nogaPlanner_studyReportFilterLabel {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.nogaPlanner_studyReportFilterSelect {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  cursor: pointer;
+}
+
+.nogaPlanner_studyReportStats {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.nogaPlanner_studyReportRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.nogaPlanner_studyReportRow--estimate {
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: none;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.nogaPlanner_studyReportLabel {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nogaPlanner_studyReportValue {
+  font-size: 0.9rem;
+  color: #fff;
+  text-align: right;
+}
+
 .nogaPlanner_homeStudySessionsBody {
   display: flex;
   flex-direction: column;
