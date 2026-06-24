@@ -5,8 +5,8 @@
   --subapps-row-text: rgba(21, 57, 64, 0.92);
   --subapps-row-hover-bg: rgba(236, 246, 247, 0.99);
   --subapps-row-hover-text: #0b6a64;
-  --subapps-icon-bg: #e16354;
-  --subapps-icon-fg: #f4d1ca;
+  --subapps-icon-bg: rgba(214, 170, 27, 0.18);
+  --subapps-icon-fg: rgba(214, 170, 27, 0.96);
   position: relative;
   z-index: 10010;
   display: flex;
@@ -36,12 +36,6 @@
 }
 
 #app_page.app_page--has-background-pattern #SubApps_icon_container {
-  background: linear-gradient(
-    180deg,
-    var(--home-pattern-button-bg-start),
-    var(--home-pattern-button-bg-end)
-  );
-  border-color: var(--home-pattern-button-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.56),
     0 12px 24px rgba(156, 97, 84, 0.16);
@@ -72,28 +66,29 @@ body.dark #server_answer #SubApps_icon_container {
   transition: color 160ms ease, transform 160ms ease;
 }
 
-#app_page.app_page--has-background-pattern #SubApps_icon_container > i {
-  color: var(--home-pattern-button-icon);
-}
-
 #Home_studysessions_article.Home_themeDark #SubApps_icon_container > i,
 #PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i,
 body.dark #server_answer #SubApps_icon_container > i {
   color: var(--subapps-row-text);
 }
 
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #SubApps_icon_container > i {
+  color: rgba(214, 170, 27, 0.96);
+}
+
 #SubApps_icon_container > i:hover {
   color: #0b6a64;
 }
 
-#app_page.app_page--has-background-pattern #SubApps_icon_container > i:hover {
-  color: var(--home-pattern-button-hover-text);
-}
 
 #Home_studysessions_article.Home_themeDark #SubApps_icon_container > i:hover,
 #PhenomedSocial_article.PhenomedSocial_themeDark #SubApps_icon_container > i:hover,
 body.dark #server_answer #SubApps_icon_container > i:hover {
   color: var(--subapps-row-hover-text);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #SubApps_icon_container > i:hover {
+  color: rgba(184, 141, 16, 0.98);
 }
 
 #SubApps_content_container {
@@ -106,6 +101,34 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   overflow: visible;
   font-size: 0.72rem;
   line-height: 1.3;
+}
+
+#server_answer.server_answer--noga #SubApps_content_container,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #SubApps_content_container {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 244, 0.98),
+    rgba(242, 231, 216, 0.96)
+  );
+  border: 1px solid rgba(126, 79, 76, 0.14);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 18px 34px rgba(105, 72, 71, 0.16);
+  padding: 4px;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) #SubApps_dropMenu_container,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark) .SubApps_settingsInlineList {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 251, 245, 0.98),
+    rgba(244, 236, 224, 0.98)
+  );
+  border-color: rgba(126, 79, 76, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 18px 34px rgba(105, 72, 71, 0.12);
 }
 
 #SubApps_article.SubApps_article--footer #SubApps_content_container {
@@ -174,7 +197,7 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
 
 .SubApps_menuItem {
   cursor: grab;
-  background-color: #f4d1ca;
+  background-color: rgba(255, 250, 244, 0.96);
 }
 
 .SubApps_menuItem:active {
@@ -202,6 +225,71 @@ body.dark #server_answer #SubApps_icon_container > i:hover {
   text-align: left;
   border-radius: 0;
   background: transparent;
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  a.SubApps_row,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  button.SubApps_row,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  a.SubApps_row,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  button.SubApps_row {
+  color: rgba(24, 79, 88, 0.92);
+  background: rgba(255, 251, 245, 0.92);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  a.SubApps_row
+  i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  button.SubApps_row
+  i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  a.SubApps_row
+  i,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  button.SubApps_row
+  i {
+  color: var(--subapps-icon-fg);
+  background: var(--subapps-icon-bg);
+  border: 1px solid rgba(214, 170, 27, 0.14);
+}
+
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  a.SubApps_row:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  #SubApps_dropMenu_container
+  li
+  button.SubApps_row:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  a.SubApps_row:hover,
+#Home_Noga_article.Home_Noga_themeNoga:not(.Home_Noga_themeDark)
+  .SubApps_settingsInlineList
+  li
+  button.SubApps_row:hover {
+  background: rgba(244, 236, 224, 0.96);
+  color: rgba(11, 106, 100, 0.96);
 }
 
 
