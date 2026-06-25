@@ -1101,13 +1101,44 @@ export default class NogaPlanner extends Component {
         entry?.id ||
         "",
     ).trim();
-    const achievements = Array.isArray(entry?.achievements)
-      ? entry.achievements
-      : Array.isArray(entry?.studySessionAchievements)
+    const achievements = [
+      ...(Array.isArray(entry?.achievements) ? entry.achievements : []),
+      ...(Array.isArray(entry?.studySessionAchievements)
         ? entry.studySessionAchievements
-      : Array.isArray(entry?.sessionAchievements)
-        ? entry.sessionAchievements
-        : [];
+        : []),
+      ...(Array.isArray(entry?.sessionAchievements) ? entry.sessionAchievements : []),
+    ];
+    const achievementMap = new Map();
+    achievements.forEach((achievementEntry) => {
+      const normalizedAchievement =
+        this.normalizePlannerStudySessionAchievementEntry(achievementEntry);
+      if (!normalizedAchievement?.documentID) {
+        return;
+      }
+      const previousAchievement = achievementMap.get(normalizedAchievement.documentID);
+      const nextPagesDone = this.normalizePlannerStudySessionPageNumbers([
+        ...(Array.isArray(previousAchievement?.pagesDone)
+          ? previousAchievement.pagesDone
+          : []),
+        ...(Array.isArray(normalizedAchievement?.pagesDone)
+          ? normalizedAchievement.pagesDone
+          : []),
+      ]);
+      const nextPagesRevised = this.normalizePlannerStudySessionPageNumbers([
+        ...(Array.isArray(previousAchievement?.pagesRevised)
+          ? previousAchievement.pagesRevised
+          : []),
+        ...(Array.isArray(normalizedAchievement?.pagesRevised)
+          ? normalizedAchievement.pagesRevised
+          : []),
+      ]);
+      achievementMap.set(normalizedAchievement.documentID, {
+        documentID: normalizedAchievement.documentID,
+        pagesDone: nextPagesDone,
+        pagesRevised: nextPagesRevised,
+      });
+    });
+    const normalizedAchievements = Array.from(achievementMap.values());
     const startDate = String(
       entry?.studySessionStartDate || entry?.startDate || entry?.start_date || "",
     ).trim();
@@ -1127,18 +1158,10 @@ export default class NogaPlanner extends Component {
       studySessionNum: Number.isFinite(studySessionNum) ? studySessionNum : index + 1,
       studySessionStartDate: startDate,
       studySessionEndDate: endDate,
-      studySessionAchievements: achievements
-        .map((achievementEntry) =>
-          this.normalizePlannerStudySessionAchievementEntry(achievementEntry),
-        )
-        .filter(Boolean),
+      studySessionAchievements: normalizedAchievements,
       startDate,
       endDate,
-      achievements: achievements
-        .map((achievementEntry) =>
-          this.normalizePlannerStudySessionAchievementEntry(achievementEntry),
-        )
-        .filter(Boolean),
+      achievements: normalizedAchievements,
       sessionName: String(
         entry?.sessionName || entry?.studySessionName || entry?.name || "",
       ).trim(),
