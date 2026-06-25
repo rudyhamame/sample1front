@@ -1203,8 +1203,12 @@ export default class NogaPlanner extends Component {
     ).trim();
   syncActiveStudySessionAchievementsFromDocuments = async (
     programDocuments = [],
+    basePlannerRoot = null,
   ) => {
-    const plannerRoot = this.getResolvedPlannerRoot();
+    const plannerRoot =
+      basePlannerRoot && typeof basePlannerRoot === "object"
+        ? basePlannerRoot
+        : this.getResolvedPlannerRoot();
     const activeSession = this.getActivePlannerStudySession(plannerRoot);
     if (!activeSession?.studySessionID) {
       return null;

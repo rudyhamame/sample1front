@@ -1180,6 +1180,14 @@ export const StoredDocumentsCard = ({
             : planner.getResolvedPlannerRoot?.(),
         });
       }
+      if (typeof planner.syncActiveStudySessionAchievementsFromDocuments === "function") {
+        await planner.syncActiveStudySessionAchievementsFromDocuments(
+          updatedExisting.map(sanitizeDocumentEntry),
+          nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : planner.getResolvedPlannerRoot?.(),
+        );
+      }
       setSubmitState({ loading: false, error: "" });
     } catch (err) {
       setSubmitState({
