@@ -9848,6 +9848,13 @@ width: 100%;
   color: #fff;
 }
 
+.nogaPlanner_documentsPageBtn--revised {
+  background: #f3c316;
+  border-color: #d7a80f;
+  color: #3d2e00;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
 .nogaPlanner_documentsPageBtn:disabled {
   opacity: 0.5;
   cursor: default;

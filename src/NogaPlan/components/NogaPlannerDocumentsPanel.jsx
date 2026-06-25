@@ -81,6 +81,42 @@ const getDocumentPagesForUi = (documentInfo = {}) => {
   return buildDocumentPagesFromVolume(normalizedVolume, explicitPages);
 };
 
+const isDocumentPageDoneLike = (pageStatus = "") => {
+  const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
+  return normalizedStatus === "done" || normalizedStatus === "done: revised";
+};
+
+const isDocumentPageRevised = (pageStatus = "") =>
+  String(pageStatus || "").trim().toLowerCase() === "done: revised";
+
+  const getNextDocumentPageStatus = (pageStatus = "") => {
+    const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
+    if (!normalizedStatus) {
+      return "Done";
+    }
+  if (normalizedStatus === "done") {
+    return "Done: Revised";
+  }
+  if (normalizedStatus === "done: revised") {
+    return null;
+    }
+    return "Done";
+  };
+
+  const getDocumentPageTransitionKind = (pageStatus = "") => {
+    const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
+    if (!normalizedStatus) {
+      return "done";
+    }
+    if (normalizedStatus === "done") {
+      return "revised";
+    }
+    if (normalizedStatus === "done: revised") {
+      return "clear";
+    }
+    return "done";
+  };
+
 const hasStoredDocumentDraftValues = (draft = {}) =>
   Boolean(
     String(draft?.documentName || "").trim() ||
@@ -1079,8 +1115,7 @@ export const StoredDocumentsCard = ({
       targetCurrentPages.find(
         (pageEntry) => Number(pageEntry?.pageOrder) === Number(pageNumber),
       ) || null;
-    const targetPageWasDone =
-      String(targetCurrentPage?.pageStatus || "").trim().toLowerCase() === "done";
+    const pageTransitionKind = getDocumentPageTransitionKind(targetCurrentPage?.pageStatus);
     setSubmitState({ loading: true, error: "" });
     try {
       const updatedExisting = existingProgramDocuments.map((entry, idx) => {
@@ -1093,11 +1128,9 @@ export const StoredDocumentsCard = ({
           if (Number(pageEntry?.pageOrder) !== Number(pageNumber)) {
             return pageEntry;
           }
-          const isDone =
-            String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done";
           return {
             ...pageEntry,
-            pageStatus: isDone ? null : "done",
+            pageStatus: getNextDocumentPageStatus(pageEntry?.pageStatus),
           };
         });
         return {
@@ -1116,7 +1149,7 @@ export const StoredDocumentsCard = ({
       if (nextPlannerRoot && typeof nextPlannerRoot === "object") {
         planner.setState({ plannerRoot: nextPlannerRoot });
       }
-      if (!targetPageWasDone && typeof planner.recordActiveStudySessionPageDone === "function") {
+      if (pageTransitionKind === "done" && typeof planner.recordActiveStudySessionPageDone === "function") {
         await planner.recordActiveStudySessionPageDone({
           documentID: String(
             targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
@@ -1126,8 +1159,18 @@ export const StoredDocumentsCard = ({
             ? nextPlannerRoot
             : planner.getResolvedPlannerRoot?.(),
         });
-      } else if (targetPageWasDone && typeof planner.removeActiveStudySessionPageDone === "function") {
+      } else if (pageTransitionKind === "clear" && typeof planner.removeActiveStudySessionPageDone === "function") {
         await planner.removeActiveStudySessionPageDone({
+          documentID: String(
+            targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
+          ).trim(),
+          pageNumber,
+          plannerRoot: nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : planner.getResolvedPlannerRoot?.(),
+        });
+      } else if (pageTransitionKind === "revised" && typeof planner.recordActiveStudySessionPageRevised === "function") {
+        await planner.recordActiveStudySessionPageRevised({
           documentID: String(
             targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
           ).trim(),
@@ -1155,15 +1198,16 @@ export const StoredDocumentsCard = ({
       <div className="nogaPlanner_documentsPageList">
         {pages.map((pageEntry) => {
           const pageNumber = Number(pageEntry?.pageOrder);
-          const isDone =
-            String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done";
+          const isDoneLike = isDocumentPageDoneLike(pageEntry?.pageStatus);
+          const isRevised = isDocumentPageRevised(pageEntry?.pageStatus);
           return (
             <button
               key={`nogaPlanner_documentsPageBtn_${pageNumber}`}
               type="button"
               className={
                 "nogaPlanner_documentsPageBtn" +
-                (isDone ? " nogaPlanner_documentsPageBtn--done" : "")
+                (isDoneLike ? " nogaPlanner_documentsPageBtn--done" : "") +
+                (isRevised ? " nogaPlanner_documentsPageBtn--revised" : "")
               }
               disabled={disabled}
               onClick={
@@ -1481,10 +1525,7 @@ export const StoredDocumentsCard = ({
                       : storedInfo;
                     const totalVolume = resolveDocumentVolumeNumber(info);
                     const doneVolume = getDocumentPagesForUi(info).filter(
-                      (pageEntry) =>
-                        String(pageEntry?.pageStatus || "")
-                          .trim()
-                          .toLowerCase() === "done",
+                      (pageEntry) => isDocumentPageDoneLike(pageEntry?.pageStatus),
                     ).length;
                     const remainingVolume =
                       totalVolume != null && doneVolume != null
@@ -1579,10 +1620,7 @@ export const StoredDocumentsCard = ({
                       : storedInfo;
                     const totalVolume = resolveDocumentVolumeNumber(info);
                     const doneVolume = getDocumentPagesForUi(info).filter(
-                      (pageEntry) =>
-                        String(pageEntry?.pageStatus || "")
-                          .trim()
-                          .toLowerCase() === "done",
+                      (pageEntry) => isDocumentPageDoneLike(pageEntry?.pageStatus),
                     ).length;
                     const remainingVolume =
                       totalVolume != null && doneVolume != null

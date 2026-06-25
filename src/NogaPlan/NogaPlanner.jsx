@@ -1056,25 +1056,28 @@ export default class NogaPlanner extends Component {
     if (!entry || typeof entry !== "object") {
       return null;
     }
-    const pagesDone = Array.isArray(entry?.pagesDone)
-      ? entry.pagesDone
-      : Array.isArray(entry?.pageNumbers)
-        ? entry.pageNumbers
-        : [];
-    const normalizedPagesDone = Array.from(
-      new Set(
-        pagesDone
-          .map((pageNumber) => Number(pageNumber))
-          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0),
-      ),
-    ).sort((left, right) => left - right);
+    const normalizedPagesDone = this.normalizePlannerStudySessionPageNumbers(
+      Array.isArray(entry?.pagesDone)
+        ? entry.pagesDone
+        : Array.isArray(entry?.pageNumbers)
+          ? entry.pageNumbers
+          : [],
+    );
+    const normalizedPagesRevised = this.normalizePlannerStudySessionPageNumbers(
+      Array.isArray(entry?.pagesRevised)
+        ? entry.pagesRevised
+        : Array.isArray(entry?.revisedPages)
+          ? entry.revisedPages
+          : [],
+    );
     const documentID = String(
       entry?.documentID || entry?.documentId || entry?.id || "",
     ).trim();
-    return documentID || normalizedPagesDone.length > 0
+    return documentID || normalizedPagesDone.length > 0 || normalizedPagesRevised.length > 0
       ? {
           documentID,
           pagesDone: normalizedPagesDone,
+          pagesRevised: normalizedPagesRevised,
         }
       : null;
   };
@@ -1228,11 +1231,17 @@ export default class NogaPlanner extends Component {
         const donePages = this.getHomeStudyGoalDocumentPages(documentInfo)
           .filter(
             (pageEntry) =>
-              String(pageEntry?.pageStatus || "").trim().toLowerCase() === "done",
+              this.isHomeStudyGoalDocumentPageDoneLike(pageEntry?.pageStatus),
           )
           .map((pageEntry) => Number(pageEntry?.pageOrder))
           .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
-        documentMap.set(documentID, donePages);
+        const revisedPages = this.getHomeStudyGoalDocumentPages(documentInfo)
+          .filter((pageEntry) =>
+            this.isHomeStudyGoalDocumentPageRevised(pageEntry?.pageStatus),
+          )
+          .map((pageEntry) => Number(pageEntry?.pageOrder))
+          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
+        documentMap.set(documentID, { donePages, revisedPages });
       },
     );
     const nextSessions = currentSessions.map((sessionEntry) => {
@@ -1254,13 +1263,14 @@ export default class NogaPlanner extends Component {
         }
         achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
       });
-      documentMap.forEach((pagesDone, documentID) => {
-        if (pagesDone.length === 0) {
+      documentMap.forEach(({ donePages, revisedPages }, documentID) => {
+        if ((donePages || []).length === 0 && (revisedPages || []).length === 0) {
           achievementMap.delete(documentID);
         } else {
           achievementMap.set(documentID, {
             documentID,
-            pagesDone: Array.from(new Set(pagesDone)).sort((a, b) => a - b),
+            pagesDone: this.normalizePlannerStudySessionPageNumbers(donePages),
+            pagesRevised: this.normalizePlannerStudySessionPageNumbers(revisedPages),
           });
         }
       });
@@ -1327,17 +1337,98 @@ export default class NogaPlanner extends Component {
         achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
       });
       const previousAchievement = achievementMap.get(normalizedDocumentID);
-      const nextPages = Array.from(
-        new Set([
-          ...(Array.isArray(previousAchievement?.pagesDone)
-            ? previousAchievement.pagesDone
-            : []),
-          normalizedPageNumber,
-        ]),
-      ).sort((left, right) => left - right);
+      const nextPages = this.normalizePlannerStudySessionPageNumbers([
+        ...(Array.isArray(previousAchievement?.pagesDone)
+          ? previousAchievement.pagesDone
+          : []),
+        normalizedPageNumber,
+      ]);
       achievementMap.set(normalizedDocumentID, {
         documentID: normalizedDocumentID,
         pagesDone: nextPages,
+        pagesRevised: this.normalizePlannerStudySessionPageNumbers(
+          previousAchievement?.pagesRevised,
+        ),
+      });
+      return {
+        ...sessionEntry,
+        studySessionAchievements: Array.from(achievementMap.values()),
+        achievements: Array.from(achievementMap.values()),
+      };
+    });
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextPlannerRoot;
+  };
+  recordActiveStudySessionPageRevised = async ({
+    documentID = "",
+    pageNumber = 0,
+    plannerRoot: basePlannerRoot = null,
+  } = {}) => {
+    const normalizedDocumentID = String(documentID || "").trim();
+    const normalizedPageNumber = Number(pageNumber);
+    if (
+      !normalizedDocumentID ||
+      !Number.isFinite(normalizedPageNumber) ||
+      normalizedPageNumber <= 0
+    ) {
+      return null;
+    }
+    const plannerRoot =
+      basePlannerRoot && typeof basePlannerRoot === "object"
+        ? basePlannerRoot
+        : this.getResolvedPlannerRoot();
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (!activeSession?.studySessionID) {
+      return null;
+    }
+    if (this.isPlannerStudySessionPaused()) {
+      return null;
+    }
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const nextSessions = currentSessions.map((sessionEntry) => {
+      if (
+        String(sessionEntry?.studySessionID || "").trim() !==
+        String(activeSession?.studySessionID || "").trim()
+      ) {
+        return sessionEntry;
+      }
+      const currentAchievements = Array.isArray(sessionEntry?.achievements)
+        ? sessionEntry.achievements
+        : [];
+      const achievementMap = new Map();
+      currentAchievements.forEach((achievementEntry) => {
+        const normalizedAchievement =
+          this.normalizePlannerStudySessionAchievementEntry(achievementEntry);
+        if (!normalizedAchievement?.documentID) {
+          return;
+        }
+        achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
+      });
+      const previousAchievement = achievementMap.get(normalizedDocumentID);
+      const nextPagesDone = this.normalizePlannerStudySessionPageNumbers([
+        ...(Array.isArray(previousAchievement?.pagesDone)
+          ? previousAchievement.pagesDone
+          : []),
+        normalizedPageNumber,
+      ]);
+      const nextPagesRevised = this.normalizePlannerStudySessionPageNumbers([
+        ...(Array.isArray(previousAchievement?.pagesRevised)
+          ? previousAchievement.pagesRevised
+          : []),
+        normalizedPageNumber,
+      ]);
+      achievementMap.set(normalizedDocumentID, {
+        documentID: normalizedDocumentID,
+        pagesDone: nextPagesDone,
+        pagesRevised: nextPagesRevised,
       });
       return {
         ...sessionEntry,
@@ -1403,12 +1494,22 @@ export default class NogaPlanner extends Component {
       });
       const existing = achievementMap.get(normalizedDocumentID);
       if (existing) {
-        const nextPages = (Array.isArray(existing.pagesDone) ? existing.pagesDone : [])
-          .filter((p) => Number(p) !== normalizedPageNumber);
-        if (nextPages.length === 0) {
+        const nextPagesDone = this.normalizePlannerStudySessionPageNumbers(
+          (Array.isArray(existing.pagesDone) ? existing.pagesDone : [])
+            .filter((p) => Number(p) !== normalizedPageNumber),
+        );
+        const nextPagesRevised = this.normalizePlannerStudySessionPageNumbers(
+          (Array.isArray(existing.pagesRevised) ? existing.pagesRevised : [])
+            .filter((p) => Number(p) !== normalizedPageNumber),
+        );
+        if (nextPagesDone.length === 0 && nextPagesRevised.length === 0) {
           achievementMap.delete(normalizedDocumentID);
         } else {
-          achievementMap.set(normalizedDocumentID, { documentID: normalizedDocumentID, pagesDone: nextPages });
+          achievementMap.set(normalizedDocumentID, {
+            documentID: normalizedDocumentID,
+            pagesDone: nextPagesDone,
+            pagesRevised: nextPagesRevised,
+          });
         }
       }
       return {
@@ -1551,6 +1652,52 @@ export default class NogaPlanner extends Component {
           : this.state?.plannerRoot || {},
     });
   };
+  resumePlannerStudySessionEntry = async (sessionEntry = {}) => {
+    const targetStudySessionID = String(sessionEntry?.studySessionID || "").trim();
+    if (!targetStudySessionID) {
+      return null;
+    }
+    const plannerRoot = this.getResolvedPlannerRoot();
+    const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
+      (entry, index) => this.normalizePlannerStudySessionEntry(entry, index),
+    );
+    const activeSession = this.getActivePlannerStudySession(plannerRoot);
+    if (activeSession?.studySessionID) {
+      this.props.serverReply?.("Stop the current study session before resuming another one.");
+      return null;
+    }
+    const targetSession = currentSessions.find(
+      (entry) => String(entry?.studySessionID || "").trim() === targetStudySessionID,
+    );
+    if (!targetSession) {
+      this.props.serverReply?.("That study session is no longer available.");
+      return null;
+    }
+    if (!String(targetSession?.studySessionEndDate || targetSession?.endDate || "").trim()) {
+      this.props.serverReply?.("That study session is already running.");
+      return null;
+    }
+    const nextSessions = currentSessions.map((entry) =>
+      String(entry?.studySessionID || "").trim() === targetStudySessionID
+        ? {
+            ...entry,
+            studySessionEndDate: "",
+            endDate: "",
+          }
+        : entry,
+    );
+    const nextPlannerRoot = await this.persistStudyPlannerStudySessions(nextSessions);
+    this.setState({
+      plannerStudySessionPaused: false,
+      plannerStudySessionPausedAtMs: 0,
+      plannerStudySessionPausedTotalMs: 0,
+      plannerRoot:
+        nextPlannerRoot && typeof nextPlannerRoot === "object"
+          ? nextPlannerRoot
+          : this.state?.plannerRoot || {},
+    });
+    return nextPlannerRoot;
+  };
   cancelPlannerStudySession = async () => {
     const plannerRoot = this.getResolvedPlannerRoot();
     const currentSessions = this.getPlannerStudySessions(plannerRoot).map(
@@ -1640,15 +1787,19 @@ export default class NogaPlanner extends Component {
       .filter((a) => String(a?.documentID || "").trim())
       .map((a) => {
         const labels = this.resolvePlannerStudySessionAchievementLabels(a, plannerRoot);
-        const pages = Array.isArray(a?.pagesDone) && a.pagesDone.length > 0
-          ? `\n    Pages: ${a.pagesDone.join(", ")}`
+        const pagesDone = Array.isArray(a?.pagesDone) && a.pagesDone.length > 0
+          ? `\n    Pages done: ${a.pagesDone.join(", ")}`
+          : "";
+        const pagesRevised = Array.isArray(a?.pagesRevised) && a.pagesRevised.length > 0
+          ? `\n    Pages revised: ${a.pagesRevised.join(", ")}`
           : "";
         return [
           `  - Document: ${labels.documentName || a.documentID}`,
           labels.lectureName && labels.lectureName !== "-" ? `    Lecture: ${labels.lectureName}` : null,
           labels.courseName && labels.courseName !== "-" ? `    Course: ${labels.courseName}` : null,
           labels.componentName && labels.componentName !== "-" ? `    Component: ${labels.componentName}` : null,
-          pages ? `    Pages: ${a.pagesDone.join(", ")}` : null,
+          pagesDone ? `    Pages done: ${a.pagesDone.join(", ")}` : null,
+          pagesRevised ? `    Pages revised: ${a.pagesRevised.join(", ")}` : null,
         ].filter(Boolean).join("\n");
       })
       .join("\n");
@@ -2222,11 +2373,25 @@ export default class NogaPlanner extends Component {
       };
     });
   };
+  isHomeStudyGoalDocumentPageDoneLike = (pageStatus = "") => {
+    const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
+    return normalizedStatus === "done" || normalizedStatus === "done: revised";
+  };
+  isHomeStudyGoalDocumentPageRevised = (pageStatus = "") =>
+    String(pageStatus || "").trim().toLowerCase() === "done: revised";
+  normalizePlannerStudySessionPageNumbers = (value = []) =>
+    Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [])
+          .map((pageNumber) => Number(pageNumber))
+          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0),
+      ),
+    ).sort((left, right) => left - right);
   getHomeStudyGoalUndonePageNumbers = (documentInfo = {}) =>
     this.getHomeStudyGoalDocumentPages(documentInfo)
       .filter(
         (pageEntry) =>
-          String(pageEntry?.pageStatus || "").trim().toLowerCase() !== "done",
+          !this.isHomeStudyGoalDocumentPageDoneLike(pageEntry?.pageStatus),
       )
       .map((pageEntry) => Number(pageEntry?.pageOrder))
       .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
@@ -30556,6 +30721,16 @@ export default class NogaPlanner extends Component {
                   {sessionEndDate ? (
                     <button
                       type="button"
+                      className="nogaPlanner_homePanelCardSetBtn"
+                      disabled={isHomeCardsLocked || Boolean(activeStudySession)}
+                      onClick={() => this.resumePlannerStudySessionEntry(sessionEntry)}
+                    >
+                      Resume Session
+                    </button>
+                  ) : null}
+                  {sessionEndDate ? (
+                    <button
+                      type="button"
                       className={`nogaPlanner_homeStudySessionPostBtn${sessionEntry?.studySessionPosted || sessionPostedIds.has(sessionStudySessionID) ? " is-posted" : ""}`}
                       aria-label="Post session as event"
                       disabled={isHomeCardsLocked || sessionPostingIds.has(sessionStudySessionID) || sessionEntry?.studySessionPosted || sessionPostedIds.has(sessionStudySessionID)}
@@ -30629,6 +30804,9 @@ export default class NogaPlanner extends Component {
                   const pagesDone = Array.isArray(achievementEntry?.pagesDone)
                     ? achievementEntry.pagesDone
                     : [];
+                  const pagesRevised = Array.isArray(achievementEntry?.pagesRevised)
+                    ? achievementEntry.pagesRevised
+                    : [];
                   return (
                     <div
                       key={`studySessionAchievement_${sessionEntry?.studySessionID || index}_${achievementIndex}`}
@@ -30659,9 +30837,15 @@ export default class NogaPlanner extends Component {
                         </div>
                       </div>
                       <div className="nogaPlanner_homeStudySessionAchievementField">
-                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages</span>
+                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages done</span>
                         <div className="nogaPlanner_homeStudySessionAchievementPages">
                           {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
+                        </div>
+                      </div>
+                      <div className="nogaPlanner_homeStudySessionAchievementField">
+                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages revised</span>
+                        <div className="nogaPlanner_homeStudySessionAchievementPages">
+                          {pagesRevised.length > 0 ? pagesRevised.join(", ") : "-"}
                         </div>
                       </div>
                     </div>
@@ -30826,7 +31010,7 @@ export default class NogaPlanner extends Component {
           if (Number.isFinite(vol) && vol > 0) allPages += vol;
           const pages = Array.isArray(info?.documentPages) ? info.documentPages : [];
           for (const p of pages) {
-            if (String(p?.pageStatus || "").trim().toLowerCase() === "done") donePages += 1;
+            if (this.isHomeStudyGoalDocumentPageDoneLike(p?.pageStatus)) donePages += 1;
           }
         }
         return { allPages, donePages, remainingPages: Math.max(0, allPages - donePages) };
