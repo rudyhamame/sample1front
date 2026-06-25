@@ -89,21 +89,21 @@ const isDocumentPageDoneLike = (pageStatus = "") => {
 const isDocumentPageRevised = (pageStatus = "") =>
   String(pageStatus || "").trim().toLowerCase() === "done: revised";
 
-  const getNextDocumentPageStatus = (pageStatus = "") => {
+  const getNextDocumentPageStatus = (pageStatus = "", { duringSession = false } = {}) => {
     const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
     if (!normalizedStatus) {
       return "Done";
     }
-  if (normalizedStatus === "done") {
-    return "Done: Revised";
-  }
-  if (normalizedStatus === "done: revised") {
-    return null;
+    if (normalizedStatus === "done") {
+      return "Done: Revised";
+    }
+    if (normalizedStatus === "done: revised") {
+      return duringSession ? "Done" : null;
     }
     return "Done";
   };
 
-  const getDocumentPageTransitionKind = (pageStatus = "") => {
+  const getDocumentPageTransitionKind = (pageStatus = "", { duringSession = false } = {}) => {
     const normalizedStatus = String(pageStatus || "").trim().toLowerCase();
     if (!normalizedStatus) {
       return "done";
@@ -112,7 +112,7 @@ const isDocumentPageRevised = (pageStatus = "") =>
       return "revised";
     }
     if (normalizedStatus === "done: revised") {
-      return "clear";
+      return duringSession ? "unrevise" : "clear";
     }
     return "done";
   };
@@ -1115,7 +1115,16 @@ export const StoredDocumentsCard = ({
       targetCurrentPages.find(
         (pageEntry) => Number(pageEntry?.pageOrder) === Number(pageNumber),
       ) || null;
-    const pageTransitionKind = getDocumentPageTransitionKind(targetCurrentPage?.pageStatus);
+    const activeSession =
+      typeof planner.getActivePlannerStudySession === "function"
+        ? planner.getActivePlannerStudySession()
+        : null;
+    const isSessionPaused =
+      typeof planner.isPlannerStudySessionPaused === "function"
+        ? planner.isPlannerStudySessionPaused()
+        : false;
+    const duringSession = Boolean(activeSession?.studySessionID) && !isSessionPaused;
+    const pageTransitionKind = getDocumentPageTransitionKind(targetCurrentPage?.pageStatus, { duringSession });
     setSubmitState({ loading: true, error: "" });
     try {
       const updatedExisting = existingProgramDocuments.map((entry, idx) => {
@@ -1130,7 +1139,7 @@ export const StoredDocumentsCard = ({
           }
           return {
             ...pageEntry,
-            pageStatus: getNextDocumentPageStatus(pageEntry?.pageStatus),
+            pageStatus: getNextDocumentPageStatus(pageEntry?.pageStatus, { duringSession }),
           };
         });
         return {
@@ -1171,6 +1180,16 @@ export const StoredDocumentsCard = ({
         });
       } else if (pageTransitionKind === "revised" && typeof planner.recordActiveStudySessionPageRevised === "function") {
         await planner.recordActiveStudySessionPageRevised({
+          documentID: String(
+            targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
+          ).trim(),
+          pageNumber,
+          plannerRoot: nextPlannerRoot && typeof nextPlannerRoot === "object"
+            ? nextPlannerRoot
+            : planner.getResolvedPlannerRoot?.(),
+        });
+      } else if (pageTransitionKind === "unrevise" && typeof planner.removeActiveStudySessionPageRevised === "function") {
+        await planner.removeActiveStudySessionPageRevised({
           documentID: String(
             targetDocumentInfo?.documentID || targetDocumentInfo?.documentId || "",
           ).trim(),
