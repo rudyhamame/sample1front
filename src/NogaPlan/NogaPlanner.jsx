@@ -1255,19 +1255,25 @@ export default class NogaPlanner extends Component {
         if (!documentID) {
           return;
         }
-        const donePages = this.getHomeStudyGoalDocumentPages(documentInfo)
-          .filter(
-            (pageEntry) =>
-              this.isHomeStudyGoalDocumentPageDoneLike(pageEntry?.pageStatus),
-          )
-          .map((pageEntry) => Number(pageEntry?.pageOrder))
-          .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
         const revisedPages = this.getHomeStudyGoalDocumentPages(documentInfo)
           .filter((pageEntry) =>
             this.isHomeStudyGoalDocumentPageRevised(pageEntry?.pageStatus),
           )
           .map((pageEntry) => Number(pageEntry?.pageOrder))
           .filter((pageNumber) => Number.isFinite(pageNumber) && pageNumber > 0);
+        const revisedSet = new Set(revisedPages);
+        const donePages = this.getHomeStudyGoalDocumentPages(documentInfo)
+          .filter(
+            (pageEntry) =>
+              this.isHomeStudyGoalDocumentPageDoneLike(pageEntry?.pageStatus),
+          )
+          .map((pageEntry) => Number(pageEntry?.pageOrder))
+          .filter(
+            (pageNumber) =>
+              Number.isFinite(pageNumber) &&
+              pageNumber > 0 &&
+              !revisedSet.has(pageNumber),
+          );
         documentMap.set(documentID, { donePages, revisedPages });
       },
     );
@@ -1440,12 +1446,13 @@ export default class NogaPlanner extends Component {
         achievementMap.set(normalizedAchievement.documentID, normalizedAchievement);
       });
       const previousAchievement = achievementMap.get(normalizedDocumentID);
-      const nextPagesDone = this.normalizePlannerStudySessionPageNumbers([
-        ...(Array.isArray(previousAchievement?.pagesDone)
+      // Only keep the page in pagesDone if it was already recorded as done in this session.
+      // If it was done before the session started, it should only appear in pagesRevised.
+      const nextPagesDone = this.normalizePlannerStudySessionPageNumbers(
+        Array.isArray(previousAchievement?.pagesDone)
           ? previousAchievement.pagesDone
-          : []),
-        normalizedPageNumber,
-      ]);
+          : [],
+      );
       const nextPagesRevised = this.normalizePlannerStudySessionPageNumbers([
         ...(Array.isArray(previousAchievement?.pagesRevised)
           ? previousAchievement.pagesRevised
