@@ -1822,18 +1822,18 @@ export default class NogaPlanner extends Component {
       .map((a) => {
         const labels = this.resolvePlannerStudySessionAchievementLabels(a, plannerRoot);
         const pagesDone = Array.isArray(a?.pagesDone) && a.pagesDone.length > 0
-          ? `\n    Pages done: ${a.pagesDone.join(", ")}`
+          ? `\n    Document units done: ${a.pagesDone.join(", ")}`
           : "";
         const pagesRevised = Array.isArray(a?.pagesRevised) && a.pagesRevised.length > 0
-          ? `\n    Pages revised: ${a.pagesRevised.join(", ")}`
+          ? `\n    Document units revised: ${a.pagesRevised.join(", ")}`
           : "";
         return [
           `  - Document: ${labels.documentName || a.documentID}`,
           labels.lectureName && labels.lectureName !== "-" ? `    Lecture: ${labels.lectureName}` : null,
           labels.courseName && labels.courseName !== "-" ? `    Course: ${labels.courseName}` : null,
           labels.componentName && labels.componentName !== "-" ? `    Component: ${labels.componentName}` : null,
-          pagesDone ? `    Pages done: ${a.pagesDone.join(", ")}` : null,
-          pagesRevised ? `    Pages revised: ${a.pagesRevised.join(", ")}` : null,
+          pagesDone ? `    Document units done: ${a.pagesDone.join(", ")}` : null,
+          pagesRevised ? `    Document units revised: ${a.pagesRevised.join(", ")}` : null,
         ].filter(Boolean).join("\n");
       })
       .join("\n");
@@ -30871,13 +30871,13 @@ export default class NogaPlanner extends Component {
                         </div>
                       </div>
                       <div className="nogaPlanner_homeStudySessionAchievementField">
-                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages done</span>
+                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Document units done</span>
                         <div className="nogaPlanner_homeStudySessionAchievementPages">
                           {pagesDone.length > 0 ? pagesDone.join(", ") : "-"}
                         </div>
                       </div>
                       <div className="nogaPlanner_homeStudySessionAchievementField">
-                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Pages revised</span>
+                        <span className="nogaPlanner_homeStudySessionAchievementEyebrow">Document units revised</span>
                         <div className="nogaPlanner_homeStudySessionAchievementPages">
                           {pagesRevised.length > 0 ? pagesRevised.join(", ") : "-"}
                         </div>
