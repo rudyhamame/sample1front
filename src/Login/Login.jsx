@@ -1710,13 +1710,9 @@ const Login = ({ onLogin, onForceLogout }) => {
     <div id="Login_brandTextColumn" className="fc">
       <h1 id="Login_brandWordmark">
         <span className="Login_brandWordmarkFlex">
-          <span className="Login_brandName">MCTOS|H</span>
+          <span className="Login_brandName">Noga Planner</span>
         </span>
       </h1>
-      <h2 id="Login_brandProduct">PhenoMed</h2>
-      <h4 id="Login_brandTagline">
-        From Patient Traces to Diagnosis
-      </h4>
     </div>
   );
 
