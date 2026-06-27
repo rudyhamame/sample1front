@@ -507,6 +507,7 @@
 /* Form Shell */
 #Login_authPanel {
   display: flex;
+  flex-direction: column;
   height: auto;
   max-height: none;
   justify-content: center;

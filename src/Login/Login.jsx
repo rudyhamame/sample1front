@@ -1873,7 +1873,7 @@ const Login = ({ onLogin, onForceLogout }) => {
             .filter(Boolean)
             .join(" ")}
         >
-          {shouldMoveBrandTextColumn && renderBrandTextColumn()}
+          {renderBrandTextColumn()}
           <section
             id="Login_authCard"
             className="fc"
